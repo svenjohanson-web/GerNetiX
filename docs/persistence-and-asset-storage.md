@@ -12,6 +12,14 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 - Zugriff wird serverseitig aus Route, Sitzung, Besitz, Projektzuordnung und Freigabeklasse abgeleitet. Ein Client darf keine fremde `account_id` als Berechtigung setzen.
 - Oeffentliche, angemeldete, berechtigte, kontoeigene, projektgebundene und interne Daten sind getrennte Schutzklassen.
 - Veroeffentlichte Releases sind unveraenderlich. Eine neue Fassung erhaelt eine neue Version; Widerruf ersetzt kein Artefakt stillschweigend.
+- Dem Account zurechenbare Forgejo-Repositories einschliesslich Historie und
+  Git-LFS sowie dauerhafte Projekt-Releases werden gegen die effektive,
+  versionierte Speicherpolicy des Accounts gerechnet. Technische Build-Caches
+  und kurzlebige Artefakte werden davon getrennt ausgewiesen.
+- Konkrete Kontingente und Fristen sind keine unveraenderlichen Codekonstanten.
+  Admin- und Kundenansicht lesen dieselbe effektive Policy und denselben
+  serverseitig ermittelten Verbrauch. Details stehen in der
+  [Account-Speicher- und Lifecycle-Policy](account-storage-and-lifecycle-policy.md).
 - Docker-Volumes schaffen Dauerhaftigkeit, sind aber kein Backup. Backup und Restore muessen SQLite samt WAL konsistent beziehungsweise PostgreSQL logisch sichern.
 - Eine SQLite-Datei wird niemals zwischen Entwicklungsrechnern geteilt oder aus der Ferne geoeffnet. Gemeinsamer Zugriff erfolgt ueber den jeweiligen Dienst. Der lokale Identity-Entwicklungsprozess nutzt die zentrale PostgreSQL-Datenbank ueber einen SSH-Tunnel; alle anderen Domaenen werden ueber ihre kanonischen APIs angesprochen.
 
@@ -116,8 +124,10 @@ Neue Worker verwenden folgende Grenze:
   Groessen- und SHA-256-Pruefung als vollstaendiger Satz transaktional in der
   PostgreSQL-BYTEA-Implementierung veroeffentlicht. Unvollstaendige Uploads
   liegen nur im zeitlich begrenzten technischen Staging und sind nicht lesbar.
-- Die Klassen `deployable`, `symbols` und `diagnostic` besitzen derzeit 90,
-  30 beziehungsweise 14 Tage Retention. ELF, HEX, Map und Log werden als Gzip
+- Die Klassen `deployable`, `symbols` und `diagnostic` besitzen im heutigen
+  Rueckfallvertrag 90, 30 beziehungsweise 14 Tage Retention. Der Zielvertrag
+  leitet die Frist aus der serverseitig aktiven, versionierten Policy ab. ELF,
+  HEX, Map und Log werden als Gzip
   gespeichert und fuer Download sowie Symbolisierung transparent dekodiert;
   Firmware-Binaries bleiben unveraendert.
 - S3-kompatibler Primaerspeicher ist vorbereitet, aber nicht freigegeben. Seine

@@ -9,6 +9,7 @@ function registerPlatformRoutes({
   handleBootstrap,
   updateWorkspaceState,
   updateLearningProgress,
+  updateResourceSelection,
 }) {
   async function withSession(req, res, action) {
     const session = await requireSession(req, res);
@@ -38,6 +39,13 @@ function registerPlatformRoutes({
     path: "/api/platform/learning-progress",
     handler: ({ req, res }) => withSession(req, res, async (session) => {
       sendJson(res, 200, await updateLearningProgress(session, await readJsonBody(req)));
+    }),
+  });
+  registry.register({
+    method: "PUT",
+    path: "/api/platform/billing/project-selection",
+    handler: ({ req, res }) => withSession(req, res, async (session) => {
+      sendJson(res, 200, await updateResourceSelection(session, await readJsonBody(req)));
     }),
   });
 }

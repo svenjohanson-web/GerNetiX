@@ -13,6 +13,7 @@ const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-
 const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
 const { validateSha } = require("../repository-store/git-project-repository-store");
 const { loadProjectFileSet, mimeTypeForPath, validateProjectChanges } = require("../repository-store/project-file-schema");
+const { SqlCacheAccountStorageMeter } = require("./sql-cache-account-storage-meter");
 
 const RESERVED_PLATFORMIO_OPTIONS = new Set([
   "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
@@ -24,15 +25,20 @@ class ProjectService {
   constructor(options) {
     this.repository = options.repository;
     this.projectRepositoryStore = options.projectRepositoryStore || null;
+    this.storageMeter = options.storageMeter || new SqlCacheAccountStorageMeter(this.repository);
     this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
     this.ready = this.ensureResourcePolicies();
   }
 
   async createProject(input = {}) {
     await this.ready;
+    const requestedStatus = normalizeProjectStatus(input.status || "active");
+    if (requestedStatus === "plan_locked") {
+      throw new ProjectServerError("project_status_managed", "Tarifgesperrte Projekte werden ausschließlich durch interne Tarifprozesse erzeugt.", 409);
+    }
     const template = input.template_project_id ? await this.requireProject(input.template_project_id) : null;
     if (template && template.status !== "template") throw new ProjectServerError("project_template_required", "Die Projektquelle ist kein unveränderliches Template.", 409);
-    if (input.status !== "template") await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
+    if (requestedStatus !== "template") await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
     const now = new Date().toISOString();
     const templateBinding = template ? this.activeRepositoryBinding(template) : null;
     const templateSources = template
@@ -82,25 +88,30 @@ class ProjectService {
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
       view_manifest: remapSoftwarePathValues(normalizedManifest, sourceLayoutMappings),
-      status: input.status || "active",
+      status: requestedStatus,
       created_at: now,
       updated_at: now,
     };
     await this.repository.saveProject(project);
-    const initialSources = (input.sources?.length ? input.sources : templateSources)
-      .map((source) => ({ ...source, path: remapSoftwareSourcePath(source.path, sourceLayoutMappings) }));
-    for (const source of defaultSources(project, initialSources)) {
-      if (project.status === "template") {
-        const sourcePath = normalizeSourcePath(required(source.path, "path"));
-        const content = String(source.content || "");
-        await this.repository.saveSource({ project_id: project.project_id, path: sourcePath, content, content_sha256: sha256(content), content_type: source.content_type || contentType(sourcePath), role: source.role || inferSourceRole(sourcePath), updated_at: now });
-      } else await this.upsertSource(project.project_id, source);
-    }
     let configurationProjection = emptyProjectionResult();
-    if (project.status !== "template" || this.projectRepositoryStore) {
-      const platformioProjection = await this.syncPlatformioSources(project);
-      const projectProjection = await this.syncProjectConfigurationSources(project);
-      configurationProjection = mergeProjectionResults(platformioProjection, projectProjection);
+    try {
+      const initialSources = (input.sources?.length ? input.sources : templateSources)
+        .map((source) => ({ ...source, path: remapSoftwareSourcePath(source.path, sourceLayoutMappings) }));
+      for (const source of defaultSources(project, initialSources)) {
+        if (project.status === "template") {
+          const sourcePath = normalizeSourcePath(required(source.path, "path"));
+          const content = String(source.content || "");
+          await this.repository.saveSource({ project_id: project.project_id, path: sourcePath, content, content_sha256: sha256(content), content_type: source.content_type || contentType(sourcePath), role: source.role || inferSourceRole(sourcePath), updated_at: now });
+        } else await this.upsertSource(project.project_id, source);
+      }
+      if (project.status !== "template" || this.projectRepositoryStore) {
+        const platformioProjection = await this.syncPlatformioSources(project);
+        const projectProjection = await this.syncProjectConfigurationSources(project);
+        configurationProjection = mergeProjectionResults(platformioProjection, projectProjection);
+      }
+    } catch (error) {
+      if (error.code === "storage_quota_exceeded") await this.repository.deleteProject(project.project_id);
+      throw error;
     }
     let persistedProject = project;
     if (this.projectRepositoryStore) {
@@ -146,10 +157,13 @@ class ProjectService {
   async updateProject(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
+    this.assertProjectWritable(project);
+    if (Object.hasOwn(input, "status") && normalizeProjectStatus(input.status) !== project.status) {
+      throw new ProjectServerError("project_status_managed", "Der Projektstatus wird ausschließlich durch interne Tarif- und Template-Prozesse geändert.", 409);
+    }
     if (this.activeRepositoryBinding(project)) validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, input.expected_head_sha);
-    const rollbackSources = this.activeRepositoryBinding(project) ? await this.repository.listSources(projectId) : null;
+    const rollbackSources = await this.repository.listSources(projectId);
     const nextViewManifest = input.view_manifest || input.project_view_manifest
       ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
       : project.view_manifest;
@@ -186,7 +200,7 @@ class ProjectService {
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
       view_manifest: nextViewManifest,
-      status: input.status || project.status,
+      status: project.status,
       updated_at: new Date().toISOString(),
     };
     let saved = await this.repository.saveProject(next);
@@ -221,6 +235,21 @@ class ProjectService {
       configuration_projection: mergeProjectionResults(platformioProjection, projectProjection),
       repository_commit: repositoryCommit,
     };
+  }
+
+  async setProjectPlanStatus(projectId, status) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const normalizedStatus = normalizeProjectStatus(status);
+    if (project.status === "template" || normalizedStatus === "template") {
+      throw new ProjectServerError("project_template_immutable", "Der Template-Status kann nicht durch eine Tariftransition geändert werden.", 409);
+    }
+    const saved = await this.repository.saveProject({
+      ...project,
+      status: normalizedStatus,
+      updated_at: new Date().toISOString(),
+    });
+    return this.projectWithSummary(saved);
   }
 
   async syncPlatformioSources(project) {
@@ -287,6 +316,8 @@ class ProjectService {
       result.unchanged_paths.push(source.path);
       return existing;
     }
+    const project = await this.repository.findProject(projectId);
+    await this.assertStorageQuota(project, [{ path: source.path, content: source.content }]);
     await this.repository.saveSource(source);
     result.changed_paths.push(source.path);
     return source;
@@ -337,7 +368,7 @@ class ProjectService {
   async upsertSource(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    this.assertProjectWritable(project);
     this.assertExpectedRepositoryHead(project, input.expected_head_sha);
     const requestedPath = normalizeSourcePath(required(input.path, "path"));
     const path = remapSoftwareSourcePath(requestedPath, softwareLayoutMappings([], project.software_units || []));
@@ -352,6 +383,7 @@ class ProjectService {
       role: input.role || inferSourceRole(path),
       updated_at: now,
     };
+    await this.assertStorageQuota(project, [{ path, content }]);
     let repositoryCommit = null;
     const binding = this.activeRepositoryBinding(project);
     if (binding) {
@@ -377,12 +409,13 @@ class ProjectService {
   async commitRepositoryChanges(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    this.assertProjectWritable(project);
     const binding = this.activeRepositoryBinding(project);
     if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
     const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, expectedHeadSha);
     const changes = validateProjectChanges(input.changes);
+    await this.assertStorageQuota(project, changes);
     await this.assertValidProjectFileChangeSet(project, binding, expectedHeadSha, changes);
     const commit = await this.projectRepositoryStore.commitChanges(binding, {
       expected_head_sha: expectedHeadSha,
@@ -416,7 +449,7 @@ class ProjectService {
   async renameSource(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    this.assertProjectWritable(project);
     const binding = this.activeRepositoryBinding(project);
     if (!binding) throw new ProjectServerError("repository_not_active", "Umbenennen erfordert ein aktives Forgejo-Repository.", 409);
     const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
@@ -441,7 +474,7 @@ class ProjectService {
   async deleteSource(projectId, sourcePath, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    this.assertProjectWritable(project);
     const binding = this.activeRepositoryBinding(project);
     if (!binding) {
       const path = normalizeSourcePath(sourcePath);
@@ -489,12 +522,15 @@ class ProjectService {
   async restoreRepository(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht wiederhergestellt werden.", 409);
+    this.assertProjectWritable(project);
     const binding = this.activeRepositoryBinding(project);
     if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
     const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, expectedHeadSha);
     const restoreCommitSha = validateSha(input.restore_commit_sha, "restore_commit_sha");
+    const restoredSources = (await this.projectRepositoryStore.readFiles(binding, restoreCommitSha))
+      .map((file) => repositoryFileSource(projectId, file, restoreCommitSha));
+    await this.assertStorageQuotaForReplacement(project, restoredSources);
     const commit = await this.projectRepositoryStore.restore(binding, {
       expected_head_sha: expectedHeadSha,
       restore_commit_sha: restoreCommitSha,
@@ -506,6 +542,7 @@ class ProjectService {
       repository_binding: { ...binding, head_sha: commit.head_sha, updated_at: now },
       updated_at: now,
     });
+    await this.replaceSqlSourceCache(projectId, restoredSources);
     return { project_id: projectId, repository_binding: publicRepositoryBinding(saved.repository_binding), commit };
   }
 
@@ -571,9 +608,18 @@ class ProjectService {
     await this.repository.saveProject(project);
   }
 
+  async replaceSqlSourceCache(projectId, sources) {
+    const expectedPaths = new Set(sources.map((source) => source.path));
+    for (const source of await this.repository.listSources(projectId)) {
+      if (!expectedPaths.has(source.path)) await this.repository.deleteSource(projectId, source.path);
+    }
+    for (const source of sources) await this.repository.saveSource({ ...source, project_id: projectId, updated_at: new Date().toISOString() });
+  }
+
   async createBuildJob(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    this.assertProjectBuildAllowed(project);
     const binding = this.activeRepositoryBinding(project);
     const commitSha = binding ? validateSha(input.commit_sha || binding.head_sha, "commit_sha") : "";
     const buildProject = binding
@@ -584,6 +630,7 @@ class ProjectService {
     if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
       throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
     }
+    const buildProfile = normalizeBuildProfile(input.build_profile);
     const softwareUnits = softwareUnitsForProject(buildProject);
     const requestedSoftwareUnitId = String(input.software_unit_id || buildProject.active_software_unit_id || "").trim();
     const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === requestedSoftwareUnitId)
@@ -606,6 +653,7 @@ class ProjectService {
       repository_provider: binding?.provider || null,
       commit_sha: commitSha || null,
       mode,
+      build_profile: buildProfile,
       status: "created",
       build_deploy_job_id: null,
       device_id: input.device_id || softwareUnit?.device_id || project.device_id || null,
@@ -699,6 +747,7 @@ class ProjectService {
     await this.ready;
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
+    this.assertProjectBuildAllowed(project);
     const binding = this.activeRepositoryBinding(project);
     let buildProject = project;
     let allSources;
@@ -795,6 +844,7 @@ class ProjectService {
   async markBuildSubmitted(jobId, input = {}) {
     await this.ready;
     const job = await this.getBuildJob(jobId);
+    this.assertProjectBuildAllowed(await this.requireProject(job.project_id));
     const next = {
       ...job,
       status: "submitted",
@@ -861,6 +911,7 @@ class ProjectService {
   async createVersionRecord(projectId, input = {}, internal = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    this.assertProjectPlanUnlocked(project, "Für das tarifgesperrte Projekt kann keine neue Version angelegt werden.");
     const versions = await this.repository.listVersions({ project_id: projectId });
     const now = new Date().toISOString();
     const binding = this.activeRepositoryBinding(project);
@@ -935,6 +986,7 @@ class ProjectService {
   async restoreVersion(projectId, versionId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    this.assertProjectWritable(project);
     const version = await this.repository.findVersion(versionId);
     if (!version || version.project_id !== project.project_id) throw new ProjectServerError("project_version_not_found", "Projektversion wurde nicht gefunden.", 404);
     const binding = this.activeRepositoryBinding(project);
@@ -950,6 +1002,7 @@ class ProjectService {
         commit_sha: restored.commit.head_sha,
       }, { commit_kind: "restore", restored_from_version_id: versionId });
     }
+    await this.assertStorageQuotaForReplacement(project, version.sources || []);
     let versions = await this.repository.listVersions({ project_id: projectId });
     const currentSources = await this.repository.listSources(project.project_id);
     const currentHash = projectVersionHash(sanitizeProject(project), currentSources);
@@ -977,7 +1030,7 @@ class ProjectService {
       software_units: snapshot.software_units ?? project.software_units,
       active_software_unit_id: snapshot.active_software_unit_id ?? project.active_software_unit_id,
       view_manifest: snapshot.view_manifest ?? project.view_manifest,
-      status: snapshot.status || project.status,
+      status: project.status,
       updated_at: new Date().toISOString(),
     });
     const restored = await this.createVersionRecord(projectId, {
@@ -1200,22 +1253,89 @@ class ProjectService {
     for (const project of await this.repository.listProjects()) {
       const entry = byAccount.get(project.user_id) || { account_id: project.user_id, plan_id: project.plan_id || "free", projects: 0, storage_bytes: 0 };
       entry.projects += 1;
-      entry.storage_bytes += await this.projectStorageBytes(project.project_id);
+      entry.storage_bytes += await this.storageMeter.projectStorageBytes(project.project_id);
       byAccount.set(project.user_id, entry);
     }
-    return { policies, accounts: Array.from(byAccount.values()).sort((a, b) => b.storage_bytes - a.storage_bytes) };
+    return {
+      policies,
+      accounts: Array.from(byAccount.values()).sort((a, b) => b.storage_bytes - a.storage_bytes),
+      measurement_source: "sql_source_cache",
+    };
+  }
+
+  async accountResourceSummary(accountId, planId = "free") {
+    await this.ready;
+    const normalizedAccountId = required(accountId, "account_id");
+    const policy = await this.policyFor(planId);
+    const projects = (await this.repository.listProjects({ user_id: normalizedAccountId }))
+      .filter((project) => project.status !== "template");
+    const storageBytes = await this.storageMeter.accountStorageBytes(normalizedAccountId);
+    return {
+      account_id: normalizedAccountId,
+      plan_id: policy.plan_id,
+      policy,
+      usage: {
+        projects: projects.length,
+        active_projects: projects.filter((project) => project.status === "active").length,
+        locked_projects: projects.filter((project) => project.status === "plan_locked").length,
+        storage_bytes: storageBytes,
+      },
+      over_quota: {
+        projects: policy.max_projects !== null && projects.length > policy.max_projects,
+        storage: policy.max_storage_bytes !== null && storageBytes > policy.max_storage_bytes,
+      },
+      measurement_source: "sql_source_cache",
+    };
+  }
+
+  async applyAccountResourcePlan(accountId, input = {}) {
+    await this.ready;
+    const normalizedAccountId = required(accountId, "account_id");
+    const policy = await this.policyFor(input.plan_id || "free");
+    const projects = (await this.repository.listProjects({ user_id: normalizedAccountId }))
+      .filter((project) => project.status !== "template")
+      .sort((left, right) => String(right.updated_at || "").localeCompare(String(left.updated_at || "")));
+    const selectable = policy.max_projects === null ? projects.length : policy.max_projects;
+    const requested = new Set((input.active_project_ids || []).map(String));
+    const unknown = [...requested].filter((projectId) => !projects.some((project) => project.project_id === projectId));
+    if (unknown.length) throw new ProjectServerError("project_selection_invalid", "Die Projektauswahl enthält fremde oder unbekannte Projekte.", 400, { project_ids: unknown });
+    if (requested.size > selectable) throw new ProjectServerError("project_selection_exceeds_plan", `Der Zielplan erlaubt maximal ${selectable} aktive Projekte.`, 409);
+    const selected = requested.size
+      ? requested
+      : new Set(projects.filter((project) => project.status === "active").slice(0, selectable).map((project) => project.project_id));
+    if (selected.size < Math.min(selectable, projects.length)) {
+      for (const project of projects) {
+        if (selected.size >= selectable) break;
+        selected.add(project.project_id);
+      }
+    }
+    const now = new Date().toISOString();
+    for (const project of projects) {
+      const status = selected.has(project.project_id) ? "active" : "plan_locked";
+      if (project.status !== status || project.plan_id !== policy.plan_id) {
+        await this.repository.saveProject({ ...project, plan_id: policy.plan_id, status, updated_at: now });
+      }
+    }
+    return this.accountResourceSummary(normalizedAccountId, policy.plan_id);
   }
 
   async updateResourcePolicy(planId, input = {}) {
     await this.ready;
     const current = await this.policyFor(planId);
+    const now = new Date().toISOString();
     const policy = {
       ...current,
       plan_id: String(planId).toLowerCase(),
+      policy_id: current.policy_id || resourcePolicyId(planId),
+      policy_version: Math.max(1, Number(current.policy_version) || 1) + 1,
+      effective_from: now,
+      status: "active",
+      changed_by: String(input.changed_by || input.admin_id || "admin").trim() || "admin",
+      change_reason: required(input.change_reason, "change_reason"),
       max_projects: unlimitedOrPositiveLimit(input.max_projects, current.max_projects),
       max_storage_bytes: unlimitedOrPositiveLimit(input.max_storage_bytes, current.max_storage_bytes),
       max_monthly_traffic_bytes: unlimitedOrPositiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     };
     return this.repository.saveResourcePolicy(policy);
   }
@@ -1225,9 +1345,12 @@ class ProjectService {
     for (const policy of defaultResourcePolicies()) {
       const current = existing.get(policy.plan_id);
       if (!current) { await this.repository.saveResourcePolicy(policy); continue; }
+      const normalized = normalizePersistedResourcePolicy(current);
       // Migration bisheriger Premium-Vorgaben auf die beschlossene grosszuegige Missbrauchsgrenze.
       if (["premium", "premium_demo"].includes(policy.plan_id) && [null, 50].includes(current.max_projects)) {
-        await this.repository.saveResourcePolicy({ ...current, max_projects: 200, updated_at: new Date().toISOString() });
+        await this.repository.saveResourcePolicy({ ...normalized, max_projects: 200, updated_at: new Date().toISOString() });
+      } else if (JSON.stringify(normalized) !== JSON.stringify(current)) {
+        await this.repository.saveResourcePolicy(normalized);
       }
     }
   }
@@ -1247,17 +1370,40 @@ class ProjectService {
     }
   }
 
-  async assertStorageQuota(project, sourcePath, content, planId) {
-    const policy = await this.policyFor(planId);
-    const existing = await this.repository.findSource(project.project_id, sourcePath);
-    const nextBytes = await this.projectStorageBytes(project.project_id) - Buffer.byteLength(existing?.content || "", "utf8") + Buffer.byteLength(content, "utf8");
-    if (policy.max_storage_bytes !== null && nextBytes > policy.max_storage_bytes) {
-      throw new ProjectServerError("storage_quota_exceeded", `Speicherlimit von ${policy.max_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413);
+  async assertStorageQuota(project, changes) {
+    const usage = await this.storageMeter.projectedAccountStorage(project, changes);
+    await this.assertProjectedStorageQuota(project, usage);
+  }
+
+  async assertStorageQuotaForReplacement(project, sources) {
+    const usage = await this.storageMeter.projectedAccountStorageForReplacement(project, sources);
+    await this.assertProjectedStorageQuota(project, usage);
+  }
+
+  async assertProjectedStorageQuota(project, usage) {
+    const policy = await this.policyFor(project.plan_id);
+    const growsStorage = usage.projected_bytes > usage.current_bytes;
+    if (policy.max_storage_bytes !== null && growsStorage && usage.projected_bytes > policy.max_storage_bytes) {
+      throw new ProjectServerError("storage_quota_exceeded", `Speicherlimit von ${policy.max_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413, {
+        account_id: project.user_id,
+        current_bytes: usage.current_bytes,
+        projected_bytes: usage.projected_bytes,
+        measurement_source: usage.measurement_source,
+      });
     }
   }
 
-  async projectStorageBytes(projectId) {
-    return (await this.repository.listSources(projectId)).reduce((sum, source) => sum + Buffer.byteLength(source.content || "", "utf8"), 0);
+  assertProjectWritable(project) {
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
+    this.assertProjectPlanUnlocked(project, "Das Projekt ist durch den aktuellen Tarif schreibgeschützt.");
+  }
+
+  assertProjectBuildAllowed(project) {
+    this.assertProjectPlanUnlocked(project, "Das Projekt kann mit dem aktuellen Tarif nicht gebaut werden.");
+  }
+
+  assertProjectPlanUnlocked(project, message) {
+    if (project.status === "plan_locked") throw new ProjectServerError("project_plan_locked", message, 409);
   }
 
   async touchProject(projectId) {
@@ -1273,6 +1419,7 @@ class ProjectService {
   }
 
   async ensureComponentSoftwareLayout(project) {
+    if (project.status === "plan_locked") return project;
     const previousUnits = Array.isArray(project.software_units) ? project.software_units : [];
     const softwareUnits = normalizeSoftwareUnits(previousUnits, project.build_config || null);
     const activeSoftwareUnitId = activeSoftwareUnitIdFor(project.active_software_unit_id, softwareUnits);
@@ -1741,10 +1888,35 @@ function unlimitedOrPositiveLimit(value, fallback) {
 function defaultResourcePolicies() {
   const now = new Date().toISOString();
   return [
-    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, max_monthly_traffic_bytes: 25 * 1024 * 1024, updated_at: now },
-    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
-    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
-  ];
+    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, max_monthly_traffic_bytes: 25 * 1024 * 1024 },
+    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
+    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
+  ].map((policy) => ({
+    ...policy,
+    policy_id: resourcePolicyId(policy.plan_id),
+    policy_version: 1,
+    effective_from: now,
+    status: "active",
+    changed_by: "system",
+    change_reason: "initial_default",
+    updated_at: now,
+  }));
+}
+
+function normalizePersistedResourcePolicy(policy) {
+  return {
+    ...policy,
+    policy_id: policy.policy_id || resourcePolicyId(policy.plan_id),
+    policy_version: Math.max(1, Number(policy.policy_version) || 1),
+    effective_from: policy.effective_from || policy.updated_at || new Date().toISOString(),
+    status: "active",
+    changed_by: policy.changed_by || "system",
+    change_reason: policy.change_reason || "legacy_policy_migration",
+  };
+}
+
+function resourcePolicyId(planId) {
+  return `resource_policy.${String(planId || "free").trim().toLowerCase()}`;
 }
 
 function normalizePwaDashboard(input = {}) {
@@ -1841,6 +2013,7 @@ function sanitizeProject(project) {
   return {
     project_id: project.project_id,
     user_id: project.user_id,
+    plan_id: project.plan_id || "free",
     title: project.title,
     description: project.description,
     learning_project_id: project.learning_project_id,
@@ -2096,6 +2269,22 @@ function normalizeSourcePath(value) {
 function normalizeOptionalSourcePath(value) {
   const raw = String(value || "").trim();
   return raw ? normalizeSourcePath(raw) : "";
+}
+
+function normalizeProjectStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  if (!["active", "plan_locked", "template"].includes(status)) {
+    throw new ProjectServerError("invalid_project_status", "Projektstatus muss active, plan_locked oder template sein.");
+  }
+  return status;
+}
+
+function normalizeBuildProfile(value) {
+  const profile = String(value || "standard").trim().toLowerCase();
+  if (!["standard", "debug"].includes(profile)) {
+    throw new ProjectServerError("invalid_build_profile", "Buildprofil muss standard oder debug sein.", 400);
+  }
+  return profile;
 }
 
 function contentType(sourcePath) {

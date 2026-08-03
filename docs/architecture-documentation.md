@@ -32,6 +32,11 @@ Fachliche Entscheidungen werden weiterhin im SQLite-Graphen gepflegt. Lesbare Ko
 
 Die Zuordnung von SQL-Datenbanken, Docker-Volumes, Downloadklassen, Firmware-BLOBs, Account-Assets, Community-Inhalten und technischen Caches steht im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
 
+Die serviceuebergreifende Trennung von festen technischen Schutzregeln und
+variablen, versionierten Tarif-, Speicher-, Artefakt- und Lifecycle-Werten
+steht in der
+[Account-Speicher- und Lifecycle-Policy](account-storage-and-lifecycle-policy.md).
+
 Die beschlossene Ablösung der PostgreSQL-Projektquellen durch private
 Forgejo-Repositories, die Speichergrenze zu PostgreSQL und Artifact Store sowie
 die testbaren Migrationsschritte stehen in

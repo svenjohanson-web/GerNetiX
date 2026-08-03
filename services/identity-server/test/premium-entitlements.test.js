@@ -30,6 +30,8 @@ test("seeds separate persisted Basis and Premium demo profiles", () => {
   assert.match(server, /user_id: "acct-demo"[\s\S]*subscription_plan: "premium_demo"/);
   assert.match(server, /user_id: "acct-basis-demo"[\s\S]*subscription_plan: "free"/);
   assert.match(server, /subscription_plan: account\.subscription_plan/);
+  assert.match(server, /configuredPlan = effectiveSubscriptionPlan/);
+  assert.match(server, /plan_valid_until: account\.plan_valid_until \|\| null/);
   assert.match(server, /plan_id: premium \? configuredPlan\.replace\("-", "_"\) : "free"/);
   assert.match(server, /plan: premium \? "Premium" : "Basis"/);
   assert.doesNotMatch(server, /plan_id: accountSubscription\(session\)\.plan,/);

@@ -444,8 +444,13 @@ class AdminService {
     });
     if (access.decision === "denied") throw new AdminToolError("access_denied", "Ressourcen-Monitoring ist nicht erlaubt.", 403, access);
     if (!this.serviceClients?.projectServerBaseUrl) return { access, policies: [], accounts: [], degraded: true };
-    const summary = await this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/resource-policies");
-    return { access, ...summary };
+    const [summary, buildPolicy] = await Promise.all([
+      this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/resource-policies"),
+      this.serviceClients.buildDeployBaseUrl
+        ? this.httpJson(this.serviceClients.buildDeployBaseUrl, "/api/policy").catch((error) => ({ available: false, error: error.message || String(error) }))
+        : Promise.resolve({ available: false }),
+    ]);
+    return { access, ...summary, build_policy: buildPolicy };
   }
 
   async updateResourcePolicy(planId, input, context) {
@@ -456,10 +461,30 @@ class AdminService {
       dataModelId: "data_model.account_resource_policy",
     });
     if (access.decision === "denied") throw new AdminToolError("access_denied", "Ressourcen-Limits duerfen nicht geaendert werden.", 403, access);
-    return this.httpJson(this.serviceClients.projectServerBaseUrl, `/api/resource-policies/${encodeURIComponent(planId)}`, {
+    validateRequired(input, ["change_reason"]);
+    const currentSummary = await this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/resource-policies");
+    const previous = (currentSummary.policies || []).find((policy) => policy.plan_id === String(planId).toLowerCase()) || null;
+    const updated = await this.httpJson(this.serviceClients.projectServerBaseUrl, `/api/resource-policies/${encodeURIComponent(planId)}`, {
       method: "PUT",
-      body: input,
+      body: {
+        ...input,
+        changed_by: context.actor.actor_id,
+      },
     });
+    await this.repository.addAuditEvent({
+      actor_id: context.actor.actor_id,
+      actor_role: context.actor.role,
+      accessed_data_model_id: "data_model.account_resource_policy",
+      purpose: "resource_cost_control",
+      account_id: null,
+      access_decision: "full",
+      reason: String(input.change_reason),
+      policy_id: updated.policy_id || `account-resource:${updated.plan_id || planId}`,
+      policy_version: updated.policy_version || null,
+      previous,
+      updated,
+    });
+    return updated;
   }
 
   async recordSecurityEvent(input) {

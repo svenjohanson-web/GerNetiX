@@ -37,3 +37,21 @@ test("persists build artifacts as SQL BLOBs independently from build files", asy
     await fs.rm(sqliteDir, { recursive: true, force: true });
   }
 });
+
+test("prunes expired sqlite artifacts independently from new builds", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-artifact-retention-"));
+  const source = path.join(root, "firmware.bin");
+  await fs.writeFile(source, "firmware");
+  let now = new Date("2026-01-01T00:00:00.000Z");
+  const store = new ArtifactStore({ artifactDir: root, sqlitePath: ":memory:", now: () => now });
+  try {
+    await store.saveBuildArtifacts("job-1", { artifacts: { "firmware.bin": source } });
+    assert.ok(store.getArtifact("job-1", "firmware.bin"));
+    now = new Date("2027-01-01T00:00:00.000Z");
+    assert.equal(store.getArtifact("job-1", "firmware.bin"), null);
+    assert.deepEqual(await store.pruneExpired(), { deleted_count: 1 });
+  } finally {
+    store.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

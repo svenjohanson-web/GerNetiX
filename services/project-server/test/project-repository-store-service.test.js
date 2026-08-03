@@ -176,6 +176,39 @@ test("rejects a build commit that is not reachable in the bound project reposito
   );
 });
 
+test("checks account storage before Forgejo commits and repository restores", async () => {
+  const store = new RecordingRepositoryStore();
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository, projectRepositoryStore: store });
+  await service.updateResourcePolicy("free", { max_storage_bytes: 0, change_reason: "Forgejo-Quotentest vorbereiten" });
+  await service.createProject({ project_id: "quota-repository-peer", user_id: "quota-repository-user", title: "Peer" });
+  const project = await service.createProject({ project_id: "quota-repository-main", user_id: "quota-repository-user", title: "Main" });
+  const large = await service.commitRepositoryChanges(project.project_id, {
+    expected_head_sha: project.repository_binding.head_sha,
+    changes: [{ path: "large.txt", content: "0123456789" }],
+  });
+  const small = await service.commitRepositoryChanges(project.project_id, {
+    expected_head_sha: large.commit.head_sha,
+    changes: [{ path: "large.txt", content: "x" }],
+  });
+  const currentBytes = (await service.resourceSummary()).accounts
+    .find((account) => account.account_id === "quota-repository-user").storage_bytes;
+  await service.updateResourcePolicy("free", { max_storage_bytes: currentBytes, change_reason: "Kein weiteres Wachstum erlauben" });
+  const commitsBeforeRejectedWrite = store.commits.length;
+
+  await assert.rejects(service.commitRepositoryChanges(project.project_id, {
+    expected_head_sha: small.commit.head_sha,
+    changes: [{ path: "new.txt", content: "grow" }],
+  }), (error) => error.code === "storage_quota_exceeded");
+  assert.equal(store.commits.length, commitsBeforeRejectedWrite, "Quota-Prüfung muss vor dem Forgejo-Commit erfolgen");
+
+  await assert.rejects(service.restoreRepository(project.project_id, {
+    expected_head_sha: small.commit.head_sha,
+    restore_commit_sha: large.commit.head_sha,
+  }), (error) => error.code === "storage_quota_exceeded");
+  assert.equal(store.commits.length, commitsBeforeRejectedWrite, "Quota-Prüfung muss vor dem Forgejo-Restore erfolgen");
+});
+
 class RecordingRepositoryStore {
   constructor() { this.commits = []; this.files = new Map(); this.snapshots = new Map(); }
   async provisionProject(input) {

@@ -3,12 +3,15 @@ const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { DEFAULT_ARTIFACT_POLICY_SOURCE } = require("./artifact-contract");
 
 class ArtifactStore {
   constructor(options) {
     this.artifactDir = options.artifactDir;
     this.sqlitePath = options.sqlitePath || path.join(this.artifactDir, "gernetix-build-artifacts.sqlite");
     this.publicBaseUrl = options.publicBaseUrl || "";
+    this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
+    this.now = options.now || (() => new Date());
     if (this.sqlitePath !== ":memory:") fsSync.mkdirSync(path.dirname(this.sqlitePath), { recursive: true });
     this.db = new DatabaseSync(this.sqlitePath);
     this.db.exec("PRAGMA busy_timeout = 5000;");
@@ -23,10 +26,21 @@ class ArtifactStore {
         sha256 TEXT NOT NULL,
         esp_image_sha256 TEXT,
         created_at TEXT NOT NULL,
+        artifact_class TEXT NOT NULL DEFAULT 'deployable',
+        retention_until TEXT,
         PRIMARY KEY (job_id, artifact_name)
       );
       CREATE INDEX IF NOT EXISTS idx_build_artifacts_job ON build_artifacts(job_id);
     `);
+    ensureColumn(this.db, "artifact_class", "TEXT NOT NULL DEFAULT 'deployable'");
+    ensureColumn(this.db, "retention_until", "TEXT");
+    this.db.exec("CREATE INDEX IF NOT EXISTS idx_build_artifacts_retention ON build_artifacts(retention_until);");
+    const applyLegacyRetention = this.db.prepare(`UPDATE build_artifacts
+      SET artifact_class = ?, retention_until = datetime(created_at, ?)
+      WHERE artifact_name = ? AND retention_until IS NULL`);
+    for (const [name, policy] of Object.entries(this.artifactPolicySource.policies)) {
+      applyLegacyRetention.run(policy.artifactClass, `+${policy.retentionDays} days`, name);
+    }
   }
 
   async saveBuildArtifacts(jobId, buildOutput) {
@@ -37,7 +51,9 @@ class ArtifactStore {
       if (!sourcePath) continue;
       const content = await fs.readFile(sourcePath);
       const metadata = describeContent(content);
-      rows.push({ artifactName, content, metadata });
+      const policy = this.artifactPolicySource.get(artifactName);
+      if (!policy) throw new Error(`Artefakt ${artifactName} ist serverseitig nicht erlaubt.`);
+      rows.push({ artifactName, content, metadata, policy });
       artifacts[artifactName] = {
         file_name: artifactName,
         size_bytes: metadata.size_bytes,
@@ -55,13 +71,14 @@ class ArtifactStore {
     const insert = this.db.prepare(`
       INSERT INTO build_artifacts (
         job_id, artifact_name, content_type, content_blob, size_bytes, sha256,
-        esp_image_sha256, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        esp_image_sha256, created_at, artifact_class, retention_until
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     this.db.exec("BEGIN IMMEDIATE");
     try {
       this.db.prepare("DELETE FROM build_artifacts WHERE job_id = ?").run(safeJobId);
-      const now = new Date().toISOString();
+      const now = this.now();
+      const createdAt = now.toISOString();
       for (const row of rows) {
         insert.run(
           safeJobId,
@@ -71,7 +88,9 @@ class ArtifactStore {
           row.metadata.size_bytes,
           row.metadata.sha256,
           row.metadata.esp_image_sha256,
-          now,
+          createdAt,
+          row.policy.artifactClass,
+          new Date(now.getTime() + row.policy.retentionDays * 86400000).toISOString(),
         );
       }
       this.db.exec("COMMIT");
@@ -88,8 +107,15 @@ class ArtifactStore {
       SELECT artifact_name, content_type, content_blob, size_bytes, sha256
       FROM build_artifacts
       WHERE job_id = ? AND artifact_name = ?
-    `).get(sanitizeName(jobId), artifactName);
+        AND (retention_until IS NULL OR retention_until > ?)
+    `).get(sanitizeName(jobId), artifactName, this.now().toISOString());
     return row ? { ...row, content_blob: Buffer.from(row.content_blob) } : null;
+  }
+
+  async pruneExpired(now = this.now()) {
+    const result = this.db.prepare("DELETE FROM build_artifacts WHERE retention_until IS NOT NULL AND retention_until <= ?")
+      .run(now.toISOString());
+    return { deleted_count: Number(result.changes || 0) };
   }
 
   close() {
@@ -118,6 +144,11 @@ function contentType(artifactName) {
 
 function sanitizeName(value) {
   return String(value || "").replace(/[^a-zA-Z0-9_.-]/g, "_");
+}
+
+function ensureColumn(db, name, definition) {
+  const columns = db.prepare("PRAGMA table_info(build_artifacts)").all();
+  if (!columns.some((column) => column.name === name)) db.exec(`ALTER TABLE build_artifacts ADD COLUMN ${name} ${definition}`);
 }
 
 module.exports = { ArtifactStore, describeContent, describeFile };

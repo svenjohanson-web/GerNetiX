@@ -8,7 +8,7 @@ const { Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const zlib = require("node:zlib");
 const { BuildDeployError } = require("../errors");
-const { artifactPolicy, contentType, isAllowedArtifactName, sanitizeJobId } = require("./artifact-contract");
+const { DEFAULT_ARTIFACT_POLICY_SOURCE, contentType, sanitizeJobId } = require("./artifact-contract");
 
 class ArtifactUploadIngress {
   constructor(options = {}) {
@@ -18,6 +18,7 @@ class ArtifactUploadIngress {
     this.maxOriginalBytes = options.maxOriginalBytes || 128 * 1024 * 1024;
     this.staleMs = options.staleMs || 60 * 60 * 1000;
     this.now = options.now || (() => Date.now());
+    this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
     if (options.scheduleCleanup !== false) {
       this.cleanupTimer = setInterval(() => this.cleanupExpired().catch(() => {}), this.staleMs);
       this.cleanupTimer.unref?.();
@@ -26,8 +27,8 @@ class ArtifactUploadIngress {
 
   async stage(jobId, artifactName, req) {
     const safeJobId = requireSafeJobId(jobId);
-    if (!isAllowedArtifactName(artifactName)) throw notFound();
-    const metadata = parseHeaders(req.headers, artifactName, this.maxStoredBytes, this.maxOriginalBytes);
+    if (!this.artifactPolicySource.isAllowed(artifactName)) throw notFound();
+    const metadata = parseHeaders(req.headers, artifactName, this.maxStoredBytes, this.maxOriginalBytes, this.artifactPolicySource);
     await this.cleanupExpired();
     const jobDir = path.join(this.stagingDir, safeJobId);
     await fsp.mkdir(jobDir, { recursive: true, mode: 0o700 });
@@ -65,7 +66,7 @@ class ArtifactUploadIngress {
     if (!Array.isArray(artifactNames) || artifactNames.length === 0 || new Set(artifactNames).size !== artifactNames.length) {
       throw invalid("invalid_artifact_set");
     }
-    if (artifactNames.some((name) => !isAllowedArtifactName(name))) throw notFound();
+    if (artifactNames.some((name) => !this.artifactPolicySource.isAllowed(name))) throw notFound();
     const jobDir = path.join(this.stagingDir, safeJobId);
     const uploads = [];
     for (const name of artifactNames.slice().sort()) {
@@ -93,8 +94,9 @@ class ArtifactUploadIngress {
   }
 }
 
-function parseHeaders(headers, artifactName, maxStoredBytes, maxOriginalBytes) {
-  const policy = artifactPolicy(artifactName);
+function parseHeaders(headers, artifactName, maxStoredBytes, maxOriginalBytes, policySource = DEFAULT_ARTIFACT_POLICY_SOURCE) {
+  const policy = policySource.get(artifactName);
+  if (!policy) throw notFound();
   const encoding = String(headers["content-encoding"] || "identity").toLowerCase();
   const storedSizeBytes = parseBoundedInteger(headers["content-length"], maxStoredBytes);
   const sizeBytes = parseBoundedInteger(headers["x-artifact-size"], maxOriginalBytes);

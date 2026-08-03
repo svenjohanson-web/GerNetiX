@@ -2,14 +2,70 @@
 function renderBilling() {
   const target = document.querySelector("#billingSummary");
   const packages = state.billing.ai_credit_packages || [];
+  const resources = state.billing.resources || {};
+  const usage = resources.usage || {};
+  const policy = resources.policy || {};
   target.innerHTML = [
     ["Plan", state.billing.plan],
+    ["Policy-Version", policy.policy_version ? `v${policy.policy_version}` : "nicht verfügbar"],
+    ["Projekte", formatQuota(usage.projects, policy.max_projects)],
+    ["Davon gesperrt", usage.locked_projects ?? "–"],
+    ["Projekt-/Git-Speicher", formatByteQuota(usage.storage_bytes, policy.max_storage_bytes)],
+    ["Messgrundlage", resources.measurement_source === "sql_source_cache" ? "Projektdateien (Übergangsmessung)" : (resources.measurement_source || "nicht verfügbar")],
+    ["Plangültig bis", state.billing.plan_valid_until ? new Date(state.billing.plan_valid_until).toLocaleString("de-DE") : "unbefristet"],
+    ["Kontostatus", state.billing.lifecycle_state || "active"],
     ["Entitlements", state.billing.entitlements.join(", ")],
     ["Monatliche KI-Credits", state.billing.ai_credits.monthly_available_credits ?? 0],
     ["Gekaufte KI-Credits", state.billing.ai_credits.purchased_available_credits ?? 0],
     ["Verbrauchte Credits", state.billing.ai_credits.consumed_credits ?? 0],
-  ].map(summaryItem).join("") + `<article class="summary-item ai-credit-purchase-card"><span>KI-Guthaben</span><strong>Mehr KI-Credits kaufen</strong><small>Gekaufte Credits verfallen nicht.</small><div class="ai-credit-package-list">${packages.map(renderAiCreditPackage).join("")}</div><button class="primary" type="button" data-buy-ai-credits>KI-Credits kaufen</button></article>`;
+  ].map(summaryItem).join("")
+    + renderProjectSelection(policy)
+    + `<article class="summary-item ai-credit-purchase-card"><span>KI-Guthaben</span><strong>Mehr KI-Credits kaufen</strong><small>Gekaufte Credits verfallen nicht.</small><div class="ai-credit-package-list">${packages.map(renderAiCreditPackage).join("")}</div><button class="primary" type="button" data-buy-ai-credits>KI-Credits kaufen</button></article>`;
   target.querySelector("[data-buy-ai-credits]")?.addEventListener("click", () => openAiCreditPurchaseDialog());
+  target.querySelector("[data-save-project-selection]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const activeProjectIds = [...target.querySelectorAll("[data-project-selection]:checked")].map((input) => input.value);
+    button.disabled = true;
+    try {
+      await putJson("/api/platform/billing/project-selection", { active_project_ids: activeProjectIds });
+      await refresh();
+      renderAll();
+    } catch (error) {
+      const status = target.querySelector("[data-project-selection-status]");
+      if (status) status.textContent = error.message || "Die Projektauswahl konnte nicht gespeichert werden.";
+      button.disabled = false;
+    }
+  });
+}
+
+function renderProjectSelection(policy) {
+  if (!state.projects?.length || policy.max_projects === null || policy.max_projects === undefined) return "";
+  const accountProjects = state.projects.filter((project) => project.status !== "catalog_template");
+  if (!accountProjects.some((project) => project.status === "plan_locked") && accountProjects.length <= policy.max_projects) return "";
+  return `<article class="summary-item project-plan-selection"><span>Verwendbare Projekte auswählen</span><strong>Maximal ${formatNumber(policy.max_projects)} aktiv</strong><small>Gesperrte Projekte bleiben lesbar und können gelöscht werden.</small><div>${accountProjects.map((project) => `<label><input type="checkbox" data-project-selection value="${escapeAttribute(project.id)}" ${project.status === "active" ? "checked" : ""}> ${escapeHtml(project.name)}</label>`).join("")}</div><button type="button" data-save-project-selection>Auswahl speichern</button><small data-project-selection-status></small></article>`;
+}
+
+function formatQuota(used, limit) {
+  if (used === undefined || used === null) return "nicht verfügbar";
+  return `${formatNumber(used)} / ${limit === null ? "unbegrenzt" : formatNumber(limit)}`;
+}
+
+function formatByteQuota(used, limit) {
+  if (used === undefined || used === null) return "nicht verfügbar";
+  return `${formatBytes(used)} / ${limit === null ? "unbegrenzt" : formatBytes(limit)}`;
+}
+
+function formatBytes(value) {
+  const bytes = Math.max(0, Number(value || 0));
+  if (bytes < 1024) return `${bytes.toLocaleString("de-DE")} B`;
+  const units = ["KiB", "MiB", "GiB", "TiB"];
+  let amount = bytes / 1024;
+  let unit = units[0];
+  for (let index = 1; index < units.length && amount >= 1024; index += 1) {
+    amount /= 1024;
+    unit = units[index];
+  }
+  return `${amount.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ${unit}`;
 }
 
 function renderAiCreditPackage(item) {

@@ -1,5 +1,6 @@
 const { randomUUID } = require("node:crypto");
 const { BuildDeployError } = require("../errors");
+const { DEFAULT_ARTIFACT_POLICY_SOURCE, normalizeBuildProfile } = require("../modules/artifact-contract");
 
 class BuildDeployService {
   constructor(options) {
@@ -7,6 +8,7 @@ class BuildDeployService {
     this.packageStore = options.packageStore;
     this.runner = options.runner;
     this.artifactStore = options.artifactStore;
+    this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
     this.elfSymbolizer = options.elfSymbolizer;
     this.deployOrchestrator = options.deployOrchestrator;
     this.deviceJobLock = options.deviceJobLock;
@@ -20,6 +22,25 @@ class BuildDeployService {
     this.stateStore = options.stateStore || null;
     this.stateStore?.ensureSchema?.(buildDeploySchema());
     this.jobs = new Map(((this.stateStore && this.stateStore.load().jobs) || []).map((job) => [job.job_id, job]));
+  }
+
+  policySummary() {
+    return {
+      policy_id: "build_artifact_and_cache_policy",
+      source: "server_runtime_configuration",
+      build_profiles: ["standard", "debug"],
+      artifacts: Object.entries(this.artifactPolicySource.policies).map(([file_name, policy]) => ({
+        file_name,
+        artifact_class: policy.artifactClass,
+        retention_days: policy.retentionDays,
+        compressed: policy.compress,
+        standard_build: policy.artifactClass === "deployable",
+      })),
+      incremental_cache: {
+        ttl_ms: this.packageStore.incrementalCacheTtlMs,
+        prune_interval_ms: this.packageStore.incrementalCachePruneIntervalMs,
+      },
+    };
   }
 
   async submitJob(input) {
@@ -149,7 +170,7 @@ class BuildDeployService {
       onProgress: (message) => this.reportProgress(job, "compute", message),
     }).then((result) => {
       if (job.abortController.signal.aborted) throw cancellationError();
-      validateComputeBuildResult(result, job);
+      validateComputeBuildResult(result, job, this.artifactPolicySource);
       job.status = "succeeded";
       job.result = result;
       this.reportProgress(job, "completed", "Elastischer Build erfolgreich abgeschlossen.");
@@ -339,14 +360,20 @@ class BuildDeployService {
       });
       throwIfCancelled(job);
       this.reportProgress(job, "artifacts", "Firmware-Artefakte werden gesichert.");
-      const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, buildOutput);
+      const publishableOutput = {
+        ...buildOutput,
+        artifacts: this.artifactPolicySource.filterArtifacts(buildOutput.artifacts, job.build_profile),
+      };
+      const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, publishableOutput);
       throwIfCancelled(job);
+      const primaryFirmware = selectPrimaryFirmware(artifacts);
       const buildResult = {
         status: buildOutput.status,
-        build_id: artifacts["firmware.elf"]?.sha256 || "",
+        build_profile: job.build_profile,
+        build_id: artifacts["firmware.elf"]?.sha256 || primaryFirmware?.sha256 || "",
         artifacts,
         flash_manifest: Array.isArray(buildOutput.flash_manifest) ? buildOutput.flash_manifest : [],
-        primary_firmware: selectPrimaryFirmware(artifacts),
+        primary_firmware: primaryFirmware,
         build_log: artifacts["build.log"],
         usb_flash: buildOutput.usb_flash || { requested: false, status: "not_requested" },
       };
@@ -468,9 +495,18 @@ function normalizeJob(input = {}) {
     throw new BuildDeployError("invalid_job_mode", "BuildJob mode muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
   }
 
+  let buildProfile;
+  try {
+    // Profilfreie Altauftraege bleiben gueltig, erhalten aber das sichere Standardprofil.
+    buildProfile = normalizeBuildProfile(input.build_profile, "standard");
+  } catch (error) {
+    throw new BuildDeployError("invalid_build_profile", error.message, 400);
+  }
+
   return {
     job_id: input.job_id || randomUUID(),
     mode,
+    build_profile: buildProfile,
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
     project_id: input.project_id || null,
     account_id: input.account_id || null,
@@ -484,7 +520,7 @@ function normalizeJob(input = {}) {
   };
 }
 
-function validateComputeBuildResult(result, job) {
+function validateComputeBuildResult(result, job, artifactPolicySource = DEFAULT_ARTIFACT_POLICY_SOURCE) {
   if (!result || result.job_id !== job.job_id || result.mode !== job.mode || result.build?.status !== "succeeded") {
     throw new BuildDeployError("invalid_compute_build_result", "Der Compute-Worker lieferte kein gültiges Build-Ergebnis.", 502);
   }
@@ -497,6 +533,10 @@ function validateComputeBuildResult(result, job) {
   if (result.build?.usb_flash?.requested === true || (result.build?.usb_flash?.status && result.build.usb_flash.status !== "not_requested")) {
     throw new BuildDeployError("compute_usb_boundary_violated", "Ein Compute-Worker darf keinen USB-Flash ausführen.", 502);
   }
+  const artifactNames = Object.keys(result.build?.artifacts || {});
+  if (artifactNames.some((name) => !artifactPolicySource.allowsForProfile(name, job.build_profile))) {
+    throw new BuildDeployError("compute_artifact_profile_violated", "Compute-Worker lieferte Artefakte ausserhalb des Buildprofils.", 502);
+  }
 }
 
 function summarizeJob(job) {
@@ -504,6 +544,7 @@ function summarizeJob(job) {
     job_id: job.job_id,
     worker_id: job.worker_id || null,
     mode: job.mode,
+    build_profile: job.build_profile,
     device_id: job.device_id,
     flashbox: job.flashbox,
     status: job.status,

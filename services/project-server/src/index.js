@@ -4,6 +4,7 @@ const { FileBackedProjectRepository } = require("./repositories/file-backed-proj
 const { InMemoryProjectRepository } = require("./repositories/in-memory-project-repository");
 const { SqliteBackedProjectRepository } = require("./repositories/sqlite-backed-project-repository");
 const { ProjectService } = require("./services/project-service");
+const { SqlCacheAccountStorageMeter } = require("./services/sql-cache-account-storage-meter");
 
 function createDefaultProjectServer(config = createConfig()) {
   const repository = createRepository(config);
@@ -67,6 +68,7 @@ module.exports = {
   SqliteBackedProjectRepository,
   PostgresProjectRepository: require("./repositories/postgres-project-repository").PostgresProjectRepository,
   ProjectService,
+  SqlCacheAccountStorageMeter,
   createProjectRepositoryStore,
   createDefaultProjectServer,
 };

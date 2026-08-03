@@ -730,16 +730,30 @@ function renderResources() {
     metricCard("Free-Projekte", formatNumber(policies.find((item) => item.plan_id === "free")?.max_projects || 0), "harte Obergrenze"),
     metricCard("Free-Speicher", formatBytes(policies.find((item) => item.plan_id === "free")?.max_storage_bytes || 0), "pro Account"),
   ].join("");
-  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong></td><td><input data-field="max_projects" type="number" min="1" value="${policy.max_projects ?? ""}" placeholder="unbegrenzt" aria-label="Maximale Anzahl Projekte fuer ${escapeHtml(policy.plan_id)}" /></td><td><div class="resource-limit-input"><input data-field="max_storage_bytes" data-display-unit="mib" type="number" min="0" step="any" value="${bytesToMebibytes(policy.max_storage_bytes)}" aria-label="Speicherlimit in MiB fuer ${escapeHtml(policy.plan_id)}" /><span>MiB</span></div></td><td><div class="resource-limit-input"><input data-field="max_monthly_traffic_bytes" data-display-unit="mib" type="number" min="0" step="any" value="${bytesToMebibytes(policy.max_monthly_traffic_bytes)}" aria-label="Monatlicher Traffic in MiB fuer ${escapeHtml(policy.plan_id)}" /><span>MiB</span></div></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
+  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong><small>Version ${escapeHtml(policy.policy_version || 1)}</small></td><td><input data-field="max_projects" type="number" min="1" value="${policy.max_projects ?? ""}" placeholder="unbegrenzt" aria-label="Maximale Anzahl Projekte fuer ${escapeHtml(policy.plan_id)}" /></td><td><div class="resource-limit-input"><input data-field="max_storage_bytes" data-display-unit="mib" type="number" min="0" step="any" value="${bytesToMebibytes(policy.max_storage_bytes)}" aria-label="Speicherlimit in MiB fuer ${escapeHtml(policy.plan_id)}" /><span>MiB</span></div></td><td><div class="resource-limit-input"><input data-field="max_monthly_traffic_bytes" data-display-unit="mib" type="number" min="0" step="any" value="${bytesToMebibytes(policy.max_monthly_traffic_bytes)}" aria-label="Monatlicher Traffic in MiB fuer ${escapeHtml(policy.plan_id)}" /><span>MiB</span></div></td><td><input data-field="change_reason" type="text" required maxlength="300" placeholder="Warum wird die Policy geaendert?" aria-label="Aenderungsgrund fuer ${escapeHtml(policy.plan_id)}" /></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="6" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
   document.querySelector("#resourceAccountRows").innerHTML = accounts.length ? accounts.map((account) => `<tr><td>${escapeHtml(account.account_id)}</td><td>${formatNumber(account.projects)}</td><td>${formatBytes(account.storage_bytes)}</td></tr>`).join("") : `<tr><td colspan="3" class="empty-cell">Keine gespeicherten Projekte.</td></tr>`;
+  const buildPolicy = data.build_policy || {};
+  document.querySelector("#buildResourcePolicy").innerHTML = buildPolicy.available === false
+    ? `<p class="empty">Build-Policy nicht verfügbar${buildPolicy.error ? `: ${escapeHtml(buildPolicy.error)}` : "."}</p>`
+    : `<p class="resource-limit-help">Quelle: ${escapeHtml(buildPolicy.source || "server_runtime_configuration")} · Cache-TTL: ${formatDuration(buildPolicy.incremental_cache?.ttl_ms)}</p><div class="table-wrap"><table><thead><tr><th>Artefakt</th><th>Klasse</th><th>Aufbewahrung</th><th>Standardbuild</th></tr></thead><tbody>${(buildPolicy.artifacts || []).map((artifact) => `<tr><td>${escapeHtml(artifact.file_name)}</td><td>${escapeHtml(artifact.artifact_class)}</td><td>${formatNumber(artifact.retention_days)} Tage</td><td>${artifact.standard_build ? "ja" : "nur Debug"}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function formatDuration(milliseconds) {
+  const value = Number(milliseconds);
+  if (!Number.isFinite(value) || value <= 0) return "nicht verfügbar";
+  const days = value / (24 * 60 * 60 * 1000);
+  return `${days.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Tage`;
 }
 
 async function saveResourcePolicy(event) {
   const button = event.target.closest("button"); if (!button) return;
   const row = button.closest("tr"); const plan = row.dataset.plan; if (!plan) return;
+  const reason = row.querySelector('[data-field="change_reason"]')?.value.trim();
+  if (!reason) { alert("Bitte begruende die Policy-Aenderung."); return; }
   button.disabled = true;
   try {
     const body = Object.fromEntries([...row.querySelectorAll("input")].map((input) => {
+      if (input.dataset.field === "change_reason") return [input.dataset.field, input.value.trim()];
       if (input.dataset.displayUnit === "mib") return [input.dataset.field, mebibytesToBytes(input.value)];
       return [input.dataset.field, input.value === "" ? null : Number(input.value)];
     }));

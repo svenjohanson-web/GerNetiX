@@ -8,6 +8,16 @@ class BuildPackageStore {
   constructor(options) {
     this.tempDir = options.tempDir;
     this.incrementalCacheDir = options.incrementalCacheDir;
+    this.incrementalCacheTtlMs = Number(options.incrementalCacheTtlMs || 7 * 24 * 60 * 60 * 1000);
+    this.incrementalCachePruneIntervalMs = Number(options.incrementalCachePruneIntervalMs || 60 * 60 * 1000);
+    this.now = options.now || (() => Date.now());
+    this.lastCachePruneAt = 0;
+    if (!Number.isSafeInteger(this.incrementalCacheTtlMs) || this.incrementalCacheTtlMs < 1000) {
+      throw new TypeError("Build-Cache-TTL muss mindestens 1000 ms betragen.");
+    }
+    if (!Number.isSafeInteger(this.incrementalCachePruneIntervalMs) || this.incrementalCachePruneIntervalMs < 1000) {
+      throw new TypeError("Build-Cache-Pruefintervall muss mindestens 1000 ms betragen.");
+    }
   }
 
   async materialize(job) {
@@ -52,6 +62,10 @@ class BuildPackageStore {
     const platformioConfigHashPath = path.join(jobDir, ".gernetix-platformio-config.sha256");
     if (!persistentCacheDir) await fs.rm(jobDir, { recursive: true, force: true });
     await fs.mkdir(packageDir, { recursive: true });
+    if (persistentCacheDir) {
+      await touchCacheUsage(jobDir, this.now());
+      await this.maybePruneExpiredIncrementalCaches(jobDir);
+    }
 
     try {
       const platformioConfigHash = persistentCacheDir
@@ -105,12 +119,44 @@ class BuildPackageStore {
     return cacheDirectories.length;
   }
 
+  async maybePruneExpiredIncrementalCaches(excludedCacheDir = "") {
+    const now = this.now();
+    if (now - this.lastCachePruneAt < this.incrementalCachePruneIntervalMs) return { deleted_count: 0, skipped: true };
+    this.lastCachePruneAt = now;
+    return this.pruneExpiredIncrementalCaches({ now, excludedCacheDir });
+  }
+
+  async pruneExpiredIncrementalCaches(options = {}) {
+    if (!this.incrementalCacheDir) return { deleted_count: 0 };
+    const now = Number(options.now ?? this.now());
+    const excluded = options.excludedCacheDir ? path.resolve(options.excludedCacheDir) : "";
+    const entries = await fs.readdir(this.incrementalCacheDir, { withFileTypes: true }).catch(() => []);
+    let deletedCount = 0;
+    for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
+      const cacheDir = path.join(this.incrementalCacheDir, entry.name);
+      if (excluded && path.resolve(cacheDir) === excluded) continue;
+      const marker = path.join(cacheDir, ".gernetix-cache-last-used");
+      const stat = await fs.stat(marker).catch(() => fs.stat(cacheDir).catch(() => null));
+      if (!stat || now - stat.mtimeMs <= this.incrementalCacheTtlMs) continue;
+      await fs.rm(cacheDir, { recursive: true, force: true });
+      deletedCount += 1;
+    }
+    return { deleted_count: deletedCount };
+  }
+
   async cleanup(workspace) {
     const normalized = typeof workspace === "string" ? { jobDir: workspace, persistent: false } : workspace;
     if (!normalized?.persistent) {
       await fs.rm(normalized.jobDir, { recursive: true, force: true });
     }
   }
+}
+
+async function touchCacheUsage(cacheDir, now) {
+  const marker = path.join(cacheDir, ".gernetix-cache-last-used");
+  await fs.writeFile(marker, "", { flag: "a" });
+  const instant = new Date(now);
+  await fs.utimes(marker, instant, instant);
 }
 
 function jobStorageKey(jobId) {

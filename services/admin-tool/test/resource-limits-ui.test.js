@@ -12,4 +12,11 @@ test("resource limits show understandable units and explain zero", () => {
   assert.match(html, /0 bedeutet bei Speicher und Traffic: unbegrenzt/);
   assert.match(client, /bytesToMebibytes\(policy\.max_storage_bytes\)/);
   assert.match(client, /mebibytesToBytes\(input\.value\)/);
+  assert.match(html, /Begruendung/);
+  assert.match(client, /policy\.policy_version/);
+  assert.match(client, /Bitte begruende die Policy-Aenderung/);
+  assert.match(html, /Wirksame serverseitige Aufbewahrung/);
+  assert.match(client, /build_policy/);
+  assert.match(client, /artifact\.retention_days/);
+  assert.match(client, /incremental_cache\?\.ttl_ms/);
 });

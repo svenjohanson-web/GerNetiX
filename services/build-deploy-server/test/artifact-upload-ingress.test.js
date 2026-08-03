@@ -9,6 +9,7 @@ const { Readable } = require("node:stream");
 const test = require("node:test");
 const zlib = require("node:zlib");
 const { ArtifactUploadIngress } = require("../src/modules/artifact-upload-ingress");
+const { createArtifactPolicySource } = require("../src/modules/artifact-contract");
 
 test("keeps verified gzip uploads invisible until atomic finalization", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-upload-ingress-"));
@@ -52,6 +53,24 @@ test("rejects payloads whose decoded hash does not match the signed metadata", a
   try {
     await assert.rejects(ingress.stage("job-1", "firmware.elf", req), (error) => error.code === "artifact_integrity_mismatch");
   } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validates worker retention against the injected server policy", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-upload-policy-"));
+  const original = Buffer.from("firmware");
+  const policySource = createArtifactPolicySource({ "firmware.bin": { retentionDays: 5 } });
+  const ingress = new ArtifactUploadIngress({ stagingDir: root, artifactStore: {}, artifactPolicySource: policySource });
+  try {
+    const rejected = Readable.from(original);
+    rejected.headers = { ...uploadHeaders(original, original, "deployable", 90), "content-encoding": "identity" };
+    await assert.rejects(ingress.stage("job-1", "firmware.bin", rejected), (error) => error.code === "invalid_artifact_policy");
+    const accepted = Readable.from(original);
+    accepted.headers = { ...uploadHeaders(original, original, "deployable", 5), "content-encoding": "identity" };
+    assert.equal((await ingress.stage("job-2", "firmware.bin", accepted)).status, "staged");
+  } finally {
+    ingress.close();
     await fs.rm(root, { recursive: true, force: true });
   }
 });

@@ -21,6 +21,7 @@ test("build job produces required artifacts and removes temporary project worksp
   const accepted = await service.submitJob({
     job_id: "job-1",
     mode: "build",
+    build_profile: "debug",
     build_package: {
       files: {
         "build-job.json": { id: "job-1" },
@@ -47,6 +48,40 @@ test("build job produces required artifacts and removes temporary project worksp
     fs.access(path.join(config.tempDir, "job-1")),
     /ENOENT/,
   );
+});
+
+test("standard build publishes only flashable artifacts while debug remains explicit", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-standard-build-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  try {
+    const accepted = await service.submitJob({
+      job_id: "standard-artifacts",
+      mode: "build",
+      build_profile: "standard",
+      build_package: { files: { "platformio.ini": "[env:test]\n", "src/main.cpp": "void setup() {}" } },
+    });
+    assert.equal(accepted.build_profile, "standard");
+    await service.jobs.get("standard-artifacts").promise;
+    const build = service.getJob("standard-artifacts").result.build;
+    assert.equal(build.build_profile, "standard");
+    assert.deepEqual(Object.keys(build.artifacts).sort(), ["firmware.bin", "firmware.hex"]);
+    assert.equal(build.artifacts["firmware.elf"], undefined);
+    assert.equal(build.artifacts["firmware.map"], undefined);
+    assert.equal(build.artifacts["build.log"], undefined);
+    assert.equal(build.build_id, build.primary_firmware.sha256);
+    await assert.rejects(
+      service.submitJob({ job_id: "bad-profile", build_profile: "release", mode: "build" }),
+      (error) => error.code === "invalid_build_profile" && error.status === 400,
+    );
+  } finally {
+    service.artifactRetentionScheduler?.close();
+    service.artifactStore.close();
+    await fs.rm(runtimeDir, { recursive: true, force: true });
+  }
 });
 
 test("build-only worker rejects USB, OTA and FlashBox execution but accepts normal builds", async () => {

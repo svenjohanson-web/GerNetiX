@@ -9,7 +9,7 @@ const path = require("node:path");
 const { Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const zlib = require("node:zlib");
-const { artifactPolicy, contentType, sanitizeJobId } = require("./artifact-contract");
+const { DEFAULT_ARTIFACT_POLICY_SOURCE, contentType, sanitizeJobId } = require("./artifact-contract");
 
 class HttpArtifactStore {
   constructor(options = {}) {
@@ -20,6 +20,7 @@ class HttpArtifactStore {
     this.timeoutMs = options.timeoutMs || 120000;
     this.request = options.request || request;
     this.reportMetrics = options.reportMetrics || (() => {});
+    this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
     if (!this.baseUrl || !this.token || !this.tempDir) {
       throw new Error("HTTP-ArtifactStore braucht Base-URL, Token und Temp-Verzeichnis.");
     }
@@ -34,7 +35,7 @@ class HttpArtifactStore {
     try {
       for (const artifactName of Object.keys(buildOutput.artifacts).sort()) {
         const sourcePath = buildOutput.artifacts[artifactName];
-        const policy = artifactPolicy(artifactName);
+        const policy = this.artifactPolicySource.get(artifactName);
         if (!sourcePath || !policy) continue;
         prepared.push(await this.prepareArtifact(safeJobId, artifactName, sourcePath, policy));
       }

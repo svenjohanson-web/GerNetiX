@@ -274,6 +274,13 @@ test("sqlite identity persistence keeps local accounts across repository reloads
     { user_id: "acct-persisted" },
   );
   await first.verify_email(extractToken(firstEmailService.sentMessages[0].link));
+  await first.update_subscription_plan(registered.account.user_id, "premium", {
+    plan_valid_until: "2099-12-31T23:59:59.000Z",
+  });
+  await first.transition_account_lifecycle(registered.account.user_id, {
+    to_state: "inactive_grace",
+    grace_until: "2099-01-15T00:00:00.000Z",
+  });
 
   const second = createDefaultIdentityModule({
     emailService: new MockEmailService({ log() {} }),
@@ -287,6 +294,10 @@ test("sqlite identity persistence keeps local accounts across repository reloads
   assert.equal(registered.account.user_id, "acct-persisted");
   assert.equal(login.account.user_id, "acct-persisted");
   assert.equal(resolved.account.user_id, "acct-persisted");
+  assert.equal(resolved.account.subscription_plan, "premium");
+  assert.equal(resolved.account.plan_valid_until, "2099-12-31T23:59:59.000Z");
+  assert.equal(resolved.account.lifecycle_state, "inactive_grace");
+  assert.equal(resolved.account.grace_until, "2099-01-15T00:00:00.000Z");
 });
 
 test("sqlite persistence retains only the offline recovery set hash", async () => {

@@ -4,6 +4,14 @@
 
 Der Identity Server ermittelt die Account-Entitlements fuer jede Plattform-Antwort. Die Entwicklungsplattform sperrt KI-Eingaben und nicht freigegebene Projekttemplates sichtbar. Unabhaengig davon prueft der Identity Server KI-Chat-Anfragen und die Anlage eines Templates erneut; die Client-Sperre ist damit keine alleinige Sicherheitsgrenze.
 
+Identity bleibt Wahrheit fuer Plan, Plangueltigkeit und Account-Lifecycle. Beim
+Billing-/Account-Abgleich uebergibt Identity nur den serverseitig wirksamen
+`plan_id` an den internen Project Server. Dieser wendet seine aktuelle
+versionierte Ressourcen-Policy an, aktualisiert die Planbindung der Projekte
+und setzt nicht mehr auswaehlbare Projekte auf `plan_locked`. Die
+Kundenantwort enthaelt nur die Usage des angemeldeten Accounts; der Browser
+kann Plan, Grenzwerte und Projektstatus nicht selbst setzen.
+
 Diese Sicht zeigt die aktuell erkennbaren lokalen Serverprozesse, Benutzer-Applikationen und Service-Abhaengigkeiten. Sie ist als UML-nahes Komponentendiagramm in Mermaid gepflegt.
 
 Bildartefakt: [system-process-application-uml.svg](system-process-application-uml.svg)
@@ -307,7 +315,7 @@ flowchart LR
 
 | Quelle | Ziel | Grund |
 | --- | --- | --- |
-| GerNetiX Plattform UI / Identity Server | Project Server | Projekte, commitgebundene Quellen, sessiongeschuetzte Repository-Karte mit Dateibaum/Historie/Diffs, agentische KI-Such-/Lesewerkzeuge statt pauschaler Dateiuebergabe, persistierte Project-Device-Allocation und Build-Jobs |
+| GerNetiX Plattform UI / Identity Server | Project Server | Projekte, commitgebundene Quellen, sessiongeschuetzte Repository-Karte mit Dateibaum/Historie/Diffs, agentische KI-Such-/Lesewerkzeuge statt pauschaler Dateiuebergabe, persistierte Project-Device-Allocation, Build-Jobs sowie interner Abgleich von wirksamem Accountplan, Policy-Version, Nutzung und `plan_locked` |
 | Project Server | Forgejo | Private Repositorys provisionieren, Dateibaeume an festem Commit lesen und bestaetigte Mehrdatei-Aenderungen atomar mit erwartetem Head-SHA committen |
 | Forgejo | PostgreSQL-Datenbank `forgejo` und `forgejo_data` | Forgejo-eigene Verwaltungsdaten getrennt von `gernetix_runtime` sowie Git-Objekte und Repository-Historie persistent speichern |
 | GerNetiX Plattform UI / Identity Server | Project Server | Aktuelle Lesson, aktueller Step und abgeschlossene Steps eines accountgebundenen Lernprojekts laden und speichern |

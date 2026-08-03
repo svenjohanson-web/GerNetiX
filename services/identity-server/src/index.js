@@ -3,6 +3,10 @@ const { MockEmailService } = require("./services/mock-email-service");
 const { InMemoryIdentityRepository } = require("./repositories/in-memory-identity-repository");
 const { SqliteBackedIdentityRepository } = require("./repositories/sqlite-backed-identity-repository");
 const {
+  ACCOUNT_LIFECYCLE_STATE,
+  effectiveSubscriptionPlan,
+} = require("./services/account-lifecycle");
+const {
   MockGoogleProvider,
   MockAppleProvider,
   MockMicrosoftProvider,
@@ -31,6 +35,7 @@ function createAuthService(options, repository) {
     emailService,
     providers,
     appBaseUrl: options.appBaseUrl,
+    clock: options.clock,
   });
 }
 
@@ -52,6 +57,8 @@ function createRepository(options) {
 
 module.exports = {
   AuthService,
+  ACCOUNT_LIFECYCLE_STATE,
+  effectiveSubscriptionPlan,
   InMemoryIdentityRepository,
   SqliteBackedIdentityRepository,
   MockEmailService,

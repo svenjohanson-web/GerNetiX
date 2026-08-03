@@ -4,6 +4,8 @@ const { ArtifactStore } = require("./modules/artifact-store");
 const { PostgresArtifactStore } = require("./modules/postgres-artifact-store");
 const { HttpArtifactStore } = require("./modules/http-artifact-store");
 const { ArtifactUploadIngress } = require("./modules/artifact-upload-ingress");
+const { ArtifactRetentionScheduler } = require("./modules/artifact-retention-scheduler");
+const { createArtifactPolicySource } = require("./modules/artifact-contract");
 const { FirmwareBuildJobRunner } = require("./modules/firmware-build-job-runner");
 const { DeployJobOrchestrator } = require("./modules/deploy-job-orchestrator");
 const { MqttTransport } = require("./modules/mqtt-transport");
@@ -20,7 +22,8 @@ const { createHttpApp } = require("./http-app");
 const { SqliteStateStore } = require("../../shared");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 
-function createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination = null }) {
+function createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination = null, artifactPolicySource = null }) {
+  artifactPolicySource = artifactPolicySource || createArtifactPolicySource(config.artifactPolicyOverrides || {});
   const authorizationSigner = new PemOtaCommandSigner({
     privateKeyPath: config.otaSigningPrivateKeyPath,
     keyId: config.otaSigningKeyId,
@@ -38,11 +41,13 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
     telemetry: interfaceTelemetry,
   }) : null;
   mqttTransport?.start().catch((error) => console.error(`MQTT-Verbindung fehlgeschlagen: ${error.message}`));
-  return new BuildDeployService({
+  const service = new BuildDeployService({
     cache: new BuildCache({ cacheDir: config.cacheDir }),
     packageStore: new BuildPackageStore({
       tempDir: config.tempDir,
       incrementalCacheDir: config.incrementalCacheDir,
+      incrementalCacheTtlMs: config.incrementalCacheTtlMs,
+      incrementalCachePruneIntervalMs: config.incrementalCachePruneIntervalMs,
     }),
     runner: new FirmwareBuildJobRunner({
       runner: config.runner,
@@ -51,6 +56,7 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
       allowMockRunner: config.allowMockRunner,
     }),
     artifactStore,
+    artifactPolicySource,
     elfSymbolizer: new ElfSymbolizer({ commands: config.addr2lineCommands }),
     deployOrchestrator: new DeployJobOrchestrator({
       publicBaseUrl: config.publicBaseUrl,
@@ -70,9 +76,18 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
       })
       : null,
   });
+  if (typeof artifactStore.pruneExpired === "function") {
+    service.artifactRetentionScheduler = new ArtifactRetentionScheduler({
+      artifactStore,
+      intervalMs: config.artifactRetentionPruneIntervalMs,
+      onError: (error) => console.error(`Artefakt-Retention fehlgeschlagen: ${error.message}`),
+    }).start();
+  }
+  return service;
 }
 
 function createDefaultBuildDeployService(config = createConfig()) {
+  const artifactPolicySource = createArtifactPolicySource(config.artifactPolicyOverrides || {});
   if (config.artifactPersistenceBackend === "postgres" || config.coordinationBackend === "postgres") {
     const { Pool } = require("pg");
     const poolOptions = config.postgres.connectionString
@@ -85,6 +100,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
         publicBaseUrl: config.publicBaseUrl,
         manageSchema: config.databaseSchemaManagement,
         reportMetrics: (metrics) => console.log(`[artifact-store-metrics] ${JSON.stringify(metrics)}`),
+        artifactPolicySource,
       })
       : config.artifactPersistenceBackend === "http"
         ? Promise.resolve(new HttpArtifactStore({
@@ -94,11 +110,13 @@ function createDefaultBuildDeployService(config = createConfig()) {
           tempDir: config.tempDir,
           timeoutMs: config.artifactUploadTimeoutMs,
           reportMetrics: (metrics) => console.log(`[artifact-store-metrics] ${JSON.stringify(metrics)}`),
+          artifactPolicySource,
         }))
         : Promise.resolve(new ArtifactStore({
           artifactDir: config.artifactDir,
           sqlitePath: config.artifactSqlitePath,
           publicBaseUrl: config.publicBaseUrl,
+          artifactPolicySource,
         }));
     return Promise.all([
       PostgresOtaAcknowledgementStore.create(runtimePool, { manageSchema: config.databaseSchemaManagement }),
@@ -114,7 +132,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
         })
         : null,
     ]).then(([acknowledgementStore, artifactStore, buildCoordination]) => {
-      const service = createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination });
+      const service = createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination, artifactPolicySource });
       if (config.artifactPersistenceBackend === "postgres" && config.artifactUploadToken) {
         if (config.artifactUploadToken.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
         service.artifactUploadToken = config.artifactUploadToken;
@@ -124,6 +142,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
           maxStoredBytes: config.artifactUploadMaxStoredBytes,
           maxOriginalBytes: config.artifactUploadMaxOriginalBytes,
           staleMs: config.artifactUploadStaleMs,
+          artifactPolicySource,
         });
       }
       return service;
@@ -135,7 +154,9 @@ function createDefaultBuildDeployService(config = createConfig()) {
       artifactDir: config.artifactDir,
       sqlitePath: config.artifactSqlitePath,
       publicBaseUrl: config.publicBaseUrl,
+      artifactPolicySource,
     }),
+    artifactPolicySource,
   });
 }
 
@@ -146,6 +167,8 @@ module.exports = {
   PostgresArtifactStore,
   HttpArtifactStore,
   ArtifactUploadIngress,
+  ArtifactRetentionScheduler,
+  createArtifactPolicySource,
   FirmwareBuildJobRunner,
   ElfSymbolizer,
   DeployJobOrchestrator,

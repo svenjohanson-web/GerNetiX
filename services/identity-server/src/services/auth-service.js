@@ -1,6 +1,14 @@
 const { AuthError } = require("../errors");
 const { PasswordHasher } = require("../security/password-hasher");
 const { TokenService } = require("../security/token-service");
+const {
+  ACCOUNT_LIFECYCLE_STATE,
+  effectiveSubscriptionPlan,
+  lifecycleTransitionPatch,
+  normalizeLifecycleState,
+  normalizeSubscriptionPlan,
+  optionalTimestamp,
+} = require("./account-lifecycle");
 const crypto = require("node:crypto");
 
 const USER_STATUS = {
@@ -17,12 +25,14 @@ class AuthService {
     passwordHasher = new PasswordHasher(),
     tokenService = new TokenService(),
     appBaseUrl = "http://localhost:3000",
+    clock = () => new Date(),
   }) {
     this.repository = repository;
     this.emailService = emailService;
     this.passwordHasher = passwordHasher;
     this.tokenService = tokenService;
     this.appBaseUrl = appBaseUrl.replace(/\/$/, "");
+    this.clock = clock;
     this.providers = new Map(providers.map((provider) => [provider.providerName, provider]));
   }
 
@@ -46,6 +56,7 @@ class AuthService {
         status: USER_STATUS.PENDING_VERIFICATION,
         preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
         subscriptionPlan: normalizeSubscriptionPlan(options.subscription_plan || options.subscriptionPlan),
+        planValidUntil: optionalTimestamp(options.plan_valid_until ?? options.planValidUntil, "plan_valid_until"),
       });
       await this.repository.createLocalCredential({
         userId: account.id,
@@ -59,7 +70,7 @@ class AuthService {
       );
 
       return {
-        account: toPublicAccount(account),
+        account: toPublicAccount(account, this.clock()),
       };
     } catch (error) {
       if (error.message === "USERNAME_ALREADY_EXISTS") {
@@ -87,7 +98,7 @@ class AuthService {
       status: USER_STATUS.VERIFIED,
     });
 
-    return { account: toPublicAccount(verifiedAccount) };
+    return { account: toPublicAccount(verifiedAccount, this.clock()) };
   }
 
   async create_guest(options = {}) {
@@ -114,6 +125,7 @@ class AuthService {
         passkeyCounter: Number(passkey.counter || 0), passkeyTransports: passkey.transports || [],
         preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
         subscriptionPlan: normalizeSubscriptionPlan(options.subscription_plan || options.subscriptionPlan),
+        planValidUntil: optionalTimestamp(options.plan_valid_until ?? options.planValidUntil, "plan_valid_until"),
       });
       return this.createSessionResponse(account);
     } catch (error) {
@@ -132,15 +144,44 @@ class AuthService {
     if (!preferredLocale) throw new AuthError("invalid_locale", "Locale is not supported.", 400);
     const account = await this.repository.updateUserAccount(userId, { preferred_locale: preferredLocale });
     if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
-    return toPublicAccount(account);
+    return toPublicAccount(account, this.clock());
   }
 
-  async update_subscription_plan(userId, plan) {
+  async update_subscription_plan(userId, plan, options = {}) {
     const subscriptionPlan = normalizeSubscriptionPlan(plan, "");
     if (!subscriptionPlan) throw new AuthError("invalid_subscription_plan", "Subscription plan is not supported.", 400);
-    const account = await this.repository.updateUserAccount(userId, { subscription_plan: subscriptionPlan });
+    const current = await this.repository.findUserById(userId);
+    if (!current) throw new AuthError("account_not_found", "Account does not exist.", 404);
+    const hasValidity = Object.hasOwn(options, "plan_valid_until") || Object.hasOwn(options, "planValidUntil");
+    const planValidUntil = subscriptionPlan === "free"
+      ? null
+      : hasValidity
+        ? optionalTimestamp(options.plan_valid_until ?? options.planValidUntil, "plan_valid_until")
+        : current.plan_valid_until || null;
+    const account = await this.repository.updateUserAccount(userId, {
+      subscription_plan: subscriptionPlan,
+      plan_valid_until: planValidUntil,
+    });
     if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
-    return toPublicAccount(account);
+    return toPublicAccount(account, this.clock());
+  }
+
+  async record_meaningful_activity(userId) {
+    const account = await this.repository.findUserById(userId);
+    if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
+    const activityAt = this.clock().toISOString();
+    const previous = Date.parse(account.last_meaningful_activity_at || "");
+    if (Number.isFinite(previous) && previous >= Date.parse(activityAt)) return toPublicAccount(account, this.clock());
+    return toPublicAccount(await this.repository.updateUserAccount(userId, {
+      last_meaningful_activity_at: activityAt,
+    }), this.clock());
+  }
+
+  async transition_account_lifecycle(userId, transition) {
+    const account = await this.repository.findUserById(userId);
+    if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
+    const patch = lifecycleTransitionPatch(account, transition, this.clock());
+    return toPublicAccount(await this.repository.updateUserAccount(userId, patch), this.clock());
   }
 
   async get_passkey_login_candidate_by_credential_id(credentialId) {
@@ -186,7 +227,7 @@ class AuthService {
           offline_recovery_set_hash: offline_recovery_set_confirmed === true ? this.passwordHasher.hash(offlineRecoverySet) : null,
       });
       await this.repository.createLocalCredential({ userId: account.id, passwordHash: this.passwordHasher.hash(password) });
-      return { account: toPublicAccount(upgraded) };
+      return { account: toPublicAccount(upgraded, this.clock()) };
     } catch (error) {
       if (error.message === "USERNAME_ALREADY_EXISTS") throw new AuthError("username_already_exists", "Username is already in use.", 409);
       throw error;
@@ -200,14 +241,14 @@ class AuthService {
     if (!boardId) throw new AuthError("invalid_board_id", "A board id is required.", 400);
     const boardIds = Array.from(new Set([...(account.recovery_board_ids || []), boardId]));
     if (boardIds.length > 3) throw new AuthError("recovery_board_limit", "At most three recovery boards are allowed.", 409);
-    return { account: toPublicAccount(await this.repository.updateUserAccount(account.id, { account_type: "esp32", recovery_board_ids: boardIds })) };
+    return { account: toPublicAccount(await this.repository.updateUserAccount(account.id, { account_type: "esp32", recovery_board_ids: boardIds }), this.clock()) };
   }
 
   async remove_esp32_recovery_token(userId, board_id) {
     const account = await this.repository.findUserById(userId);
     if (!account || account.account_type !== "esp32") throw new AuthError("esp32_account_required", "An ESP32 account is required.", 400);
     const boardIds = (account.recovery_board_ids || []).filter((id) => id !== String(board_id || "").trim());
-    return { account: toPublicAccount(await this.repository.updateUserAccount(account.id, { account_type: boardIds.length ? "esp32" : "base", recovery_board_ids: boardIds })) };
+    return { account: toPublicAccount(await this.repository.updateUserAccount(account.id, { account_type: boardIds.length ? "esp32" : "base", recovery_board_ids: boardIds }), this.clock()) };
   }
 
   async create_offline_recovery_set(userId) {
@@ -218,7 +259,7 @@ class AuthService {
       offline_recovery_set_confirmed_at: new Date().toISOString(),
       offline_recovery_set_hash: this.passwordHasher.hash(recoverySet),
     });
-    return { account: toPublicAccount(updated), recovery_set: recoverySet };
+    return { account: toPublicAccount(updated, this.clock()), recovery_set: recoverySet };
   }
 
   async start_offline_recovery(username, recoverySet) {
@@ -331,7 +372,7 @@ class AuthService {
 
     if (account.status !== USER_STATUS.VERIFIED) {
       return {
-        account: toPublicAccount(account),
+        account: toPublicAccount(account, this.clock()),
         session: null,
         requires_email_verification: true,
       };
@@ -357,9 +398,9 @@ class AuthService {
     const session = await this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
     if (!session || session.revoked_at || isExpired(session.expires_at)) return null;
     const account = await this.repository.findUserById(session.user_id);
-    if (!account || isGuestExpired(account)) return null;
+    if (!account || account.status !== USER_STATUS.VERIFIED || isGuestExpired(account)) return null;
     return {
-      account: toPublicAccount(account),
+      account: toPublicAccount(account, this.clock()),
       session: {
         id: session.id,
         user_id: session.user_id,
@@ -441,8 +482,12 @@ class AuthService {
   }
 
   async createSessionResponse(account) {
+    const activityAt = this.clock().toISOString();
+    account = await this.repository.updateUserAccount(account.id, {
+      last_meaningful_activity_at: activityAt,
+    });
     const rawToken = this.tokenService.createRawToken();
-    const now = Date.now();
+    const now = this.clock().getTime();
     const expiresAt = new Date(now + 12 * 60 * 60 * 1000).toISOString();
     const session = await this.repository.createSession({
       userId: account.id,
@@ -451,7 +496,7 @@ class AuthService {
     });
 
     return {
-      account: toPublicAccount(account),
+      account: toPublicAccount(account, this.clock()),
       session: {
         id: session.id,
         user_id: session.user_id,
@@ -547,7 +592,7 @@ function sanitizeUsername(value) {
   return cleaned.length >= 3 ? cleaned : `user${cleaned}`;
 }
 
-function toPublicAccount(account) {
+function toPublicAccount(account, now = new Date()) {
   return {
     user_id: account.id,
     username: account.username,
@@ -559,6 +604,14 @@ function toPublicAccount(account) {
     subscription_plan: account.subscription_plan
       ? normalizeSubscriptionPlan(account.subscription_plan)
       : undefined,
+    effective_subscription_plan: effectiveSubscriptionPlan(account, now),
+    plan_valid_until: account.plan_valid_until || null,
+    last_meaningful_activity_at: account.last_meaningful_activity_at || account.created_at,
+    lifecycle_state: normalizeLifecycleState(account.lifecycle_state),
+    lifecycle_state_changed_at: account.lifecycle_state_changed_at || account.created_at,
+    grace_until: account.grace_until || null,
+    cold_archive_at: account.cold_archive_at || null,
+    delete_after: account.delete_after || null,
     offline_recovery_set_configured: Boolean(account.offline_recovery_set_confirmed_at && account.offline_recovery_set_hash),
     recovery_board_count: (account.recovery_board_ids || []).length,
   };
@@ -569,16 +622,12 @@ function normalizePreferredLocale(value, fallback = "de") {
   return ["de", "en", "nl"].includes(locale) ? locale : fallback;
 }
 
-function normalizeSubscriptionPlan(value, fallback = "free") {
-  const plan = String(value || "").trim().toLowerCase().replace(/-/g, "_");
-  return ["free", "premium", "premium_demo"].includes(plan) ? plan : fallback;
-}
-
 function formatOfflineRecoverySet(value) {
   return String(value).match(/.{1,4}/g).join("-");
 }
 
 module.exports = {
   AuthService,
+  ACCOUNT_LIFECYCLE_STATE,
   USER_STATUS,
 };

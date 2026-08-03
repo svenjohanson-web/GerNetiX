@@ -6,6 +6,7 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { Pool } = require("pg");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
+const { effectiveSubscriptionPlan } = require("./services/account-lifecycle");
 const { createSmtpConfigStore } = require("./services/smtp-config-store");
 const { SmtpEmailService } = require("./services/smtp-email-service");
 const { ConfigurableEmailService } = require("./services/configurable-email-service");
@@ -349,6 +350,7 @@ registerPlatformRoutes({
   handleBootstrap: handlePlatformBootstrap,
   updateWorkspaceState,
   updateLearningProgress,
+  updateResourceSelection: updateAccountProjectSelection,
 });
 registerAuthRoutes({
   registry: routeRegistry,
@@ -2624,6 +2626,7 @@ async function handleUserIdeBuildJob(req, res) {
     method: "POST",
     body: {
       mode,
+      build_profile: body.build_profile || "standard",
       device_id: device?.device_id || null,
       software_unit_id: softwareUnit?.software_unit_id || "",
       build_config: resolvedBuildConfig,
@@ -2638,6 +2641,7 @@ async function handleUserIdeBuildJob(req, res) {
     body: {
       job_id: projectServerJob.build_job_id,
       mode,
+      build_profile: projectServerJob.build_profile || body.build_profile || "standard",
       project_id: project.project_server_id,
       software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || null,
@@ -2870,9 +2874,11 @@ function recoveryCheckItem(checkId, ok, message) {
 
 async function loadUserIdeProjects(session) {
   const userId = projectServerUserId(session);
+  await ensureAccountResourcePlan(session);
   scheduleProjectServerDemoProjects(session);
   const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
   const synchronizedItems = await Promise.all(response.items.map(async (project) => {
+    if (project.status === "plan_locked") return project;
     const definition = userIdeState.projectDefinitions
       .find((item) => item.learning_project_id === project.learning_project_id);
     const canonicalManifest = definition
@@ -3438,13 +3444,44 @@ function toPlatformLearningProgress(progress, project) {
 async function loadBillingSummary(session, existingAiUsage = null) {
   const aiUsage = existingAiUsage || await loadAiUsageSummary(session);
   const subscription = accountSubscription(session);
+  const accountId = projectServerUserId(session);
+  const resources = await ensureAccountResourcePlan(session)
+    .catch((error) => ({ available: false, error: error.message || String(error) }));
   return {
-    account_id: projectServerUserId(session),
+    account_id: accountId,
     plan: subscription.plan,
+    plan_id: subscription.plan_id,
+    configured_plan_id: session.account?.subscription_plan || "free",
+    plan_valid_until: session.account?.plan_valid_until || null,
+    lifecycle_state: session.account?.lifecycle_state || "active",
+    grace_until: session.account?.grace_until || null,
     entitlements: subscription.entitlements,
+    resources,
     ai_credits: aiUsage.credits,
     ai_credit_packages: aiUsage.credit_packages || [],
   };
+}
+
+async function ensureAccountResourcePlan(session) {
+  const subscription = accountSubscription(session);
+  const accountId = projectServerUserId(session);
+  return projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
+    method: "PUT",
+    body: { plan_id: subscription.plan_id },
+  });
+}
+
+async function updateAccountProjectSelection(session, input = {}) {
+  const subscription = accountSubscription(session);
+  const accountId = projectServerUserId(session);
+  const activeProjectIds = Array.from(new Set((input.active_project_ids || []).map(String).filter(Boolean)));
+  return projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
+    method: "PUT",
+    body: {
+      plan_id: subscription.plan_id,
+      active_project_ids: activeProjectIds,
+    },
+  });
 }
 
 function catalogProjectIdForDefinition(definition) {
@@ -3470,7 +3507,11 @@ async function assignFirstEsp32AsRecoveryToken(req, session, deviceId, hardwareP
 }
 
 function accountSubscription(session) {
-  const configuredPlan = String(session?.account?.subscription_plan || session?.account?.plan || defaultAccountPlan).trim().toLowerCase();
+  const account = session?.account || {};
+  const configuredPlan = effectiveSubscriptionPlan({
+    subscription_plan: account.subscription_plan || account.plan || defaultAccountPlan,
+    plan_valid_until: account.plan_valid_until || null,
+  });
   const premium = ["premium", "premium_demo", "premium-demo"].includes(configuredPlan);
   return {
     plan_id: premium ? configuredPlan.replace("-", "_") : "free",

@@ -82,7 +82,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     this.store.replaceCollection?.("sessions", state.sessions, "id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("identity_user_accounts", state.userAccounts, identityColumns([
-        "id", "username", "email", "status", "account_type", "guest_expires_at", "passkey_credential_id", "passkey_public_key", "passkey_counter", "passkey_transports", "offline_recovery_set_confirmed_at", "offline_recovery_set_hash", "recovery_board_ids", "preferred_locale", "subscription_plan", "created_at", "updated_at",
+        "id", "username", "email", "status", "account_type", "guest_expires_at", "passkey_credential_id", "passkey_public_key", "passkey_counter", "passkey_transports", "offline_recovery_set_confirmed_at", "offline_recovery_set_hash", "recovery_board_ids", "preferred_locale", "subscription_plan", "plan_valid_until", "last_meaningful_activity_at", "lifecycle_state", "lifecycle_state_changed_at", "grace_until", "cold_archive_at", "delete_after", "created_at", "updated_at",
       ]));
       this.store.replaceTable("identity_local_credentials", state.localCredentials, identityColumns([
         "id", "user_id", "password_hash", "created_at", "updated_at",
@@ -108,7 +108,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
 
 function identitySchema() {
   return [
-    `CREATE TABLE IF NOT EXISTS identity_user_accounts (id TEXT PRIMARY KEY, username TEXT, email TEXT, status TEXT, account_type TEXT, guest_expires_at TEXT, passkey_credential_id TEXT, passkey_public_key TEXT, passkey_counter INTEGER, passkey_transports TEXT, offline_recovery_set_confirmed_at TEXT, offline_recovery_set_hash TEXT, recovery_board_ids TEXT, preferred_locale TEXT, subscription_plan TEXT, created_at TEXT, updated_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_user_accounts (id TEXT PRIMARY KEY, username TEXT, email TEXT, status TEXT, account_type TEXT, guest_expires_at TEXT, passkey_credential_id TEXT, passkey_public_key TEXT, passkey_counter INTEGER, passkey_transports TEXT, offline_recovery_set_confirmed_at TEXT, offline_recovery_set_hash TEXT, recovery_board_ids TEXT, preferred_locale TEXT, subscription_plan TEXT, plan_valid_until TEXT, last_meaningful_activity_at TEXT, lifecycle_state TEXT, lifecycle_state_changed_at TEXT, grace_until TEXT, cold_archive_at TEXT, delete_after TEXT, created_at TEXT, updated_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_local_credentials (id TEXT PRIMARY KEY, user_id TEXT, password_hash TEXT, created_at TEXT, updated_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_external_identities (id TEXT PRIMARY KEY, user_id TEXT, provider TEXT, provider_user_id TEXT, provider_email TEXT, linked_at TEXT, last_login_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_verification_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
@@ -133,7 +133,9 @@ function ensureIdentityUserAccountColumns(store) {
     account_type: "TEXT", guest_expires_at: "TEXT", passkey_credential_id: "TEXT",
     passkey_public_key: "TEXT", passkey_counter: "INTEGER", passkey_transports: "TEXT",
     offline_recovery_set_confirmed_at: "TEXT", offline_recovery_set_hash: "TEXT", recovery_board_ids: "TEXT",
-    preferred_locale: "TEXT", subscription_plan: "TEXT",
+    preferred_locale: "TEXT", subscription_plan: "TEXT", plan_valid_until: "TEXT",
+    last_meaningful_activity_at: "TEXT", lifecycle_state: "TEXT", lifecycle_state_changed_at: "TEXT",
+    grace_until: "TEXT", cold_archive_at: "TEXT", delete_after: "TEXT",
   };
   for (const [name, type] of Object.entries(columns)) {
     if (!existing.has(name)) store.db.exec(`ALTER TABLE identity_user_accounts ADD COLUMN ${name} ${type}`);

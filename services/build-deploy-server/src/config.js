@@ -23,6 +23,8 @@ function createConfig(env = process.env) {
     runtimeRoot,
     tempDir: path.join(runtimeRoot, "tmp"),
     incrementalCacheDir: path.join(runtimeRoot, "incremental-build-cache"),
+    incrementalCacheTtlMs: Number(env.BUILD_INCREMENTAL_CACHE_TTL_MS || 7 * 24 * 60 * 60 * 1000),
+    incrementalCachePruneIntervalMs: Number(env.BUILD_INCREMENTAL_CACHE_PRUNE_INTERVAL_MS || 60 * 60 * 1000),
     cacheDir: env.BUILD_CACHE_DIR === "platformio-default"
       ? null
       : env.BUILD_CACHE_DIR
@@ -46,6 +48,8 @@ function createConfig(env = process.env) {
     artifactUploadMaxStoredBytes: Number(env.BUILD_ARTIFACT_UPLOAD_MAX_STORED_BYTES || 64 * 1024 * 1024),
     artifactUploadMaxOriginalBytes: Number(env.BUILD_ARTIFACT_UPLOAD_MAX_ORIGINAL_BYTES || 128 * 1024 * 1024),
     artifactUploadStaleMs: Number(env.BUILD_ARTIFACT_UPLOAD_STALE_MS || 60 * 60 * 1000),
+    artifactRetentionPruneIntervalMs: Number(env.BUILD_ARTIFACT_RETENTION_PRUNE_INTERVAL_MS || 60 * 60 * 1000),
+    artifactPolicyOverrides: parseJsonObject(env.BUILD_ARTIFACT_POLICY_JSON, "BUILD_ARTIFACT_POLICY_JSON"),
     coordinationBackend: env.BUILD_COORDINATION_BACKEND
       || ((env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite") === "postgres" ? "postgres" : "memory"),
     workerId: env.BUILD_WORKER_ID || os.hostname(),
@@ -73,6 +77,14 @@ function createConfig(env = process.env) {
     otaSigningPrivateKeyPath: env.OTA_SIGNING_PRIVATE_KEY_PATH ? path.resolve(env.OTA_SIGNING_PRIVATE_KEY_PATH) : "",
     otaSigningKeyId: env.OTA_SIGNING_KEY_ID || "",
   };
+}
+
+function parseJsonObject(value, name) {
+  if (!value) return {};
+  let parsed;
+  try { parsed = JSON.parse(value); } catch { throw new Error(`${name} muss gueltiges JSON enthalten.`); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error(`${name} muss ein JSON-Objekt enthalten.`);
+  return parsed;
 }
 
 function defaultAddr2lineCommands(env) {

@@ -27,6 +27,21 @@ function createHttpApp(options) {
       sendJson(res, 200, await service.resourceSummary());
       return;
     }
+    const accountResourcePolicy = path.match(/^\/api\/internal\/accounts\/([^/]+)\/resource-plan$/);
+    if (req.method === "GET" && accountResourcePolicy) {
+      sendJson(res, 200, await service.accountResourceSummary(
+        decodeURIComponent(accountResourcePolicy[1]),
+        url.searchParams.get("plan_id") || "free",
+      ));
+      return;
+    }
+    if (req.method === "PUT" && accountResourcePolicy) {
+      sendJson(res, 200, await service.applyAccountResourcePlan(
+        decodeURIComponent(accountResourcePolicy[1]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
     const resourcePolicy = path.match(/^\/api\/resource-policies\/([^/]+)$/);
     if (req.method === "PUT" && resourcePolicy) {
       sendJson(res, 200, await service.updateResourcePolicy(decodeURIComponent(resourcePolicy[1]), await readJsonBody(req)));

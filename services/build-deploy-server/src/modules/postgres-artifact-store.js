@@ -3,7 +3,7 @@ const { performance } = require("node:perf_hooks");
 const { promisify } = require("node:util");
 const zlib = require("node:zlib");
 const { describeContent } = require("./artifact-store");
-const { artifactPolicy, contentType, sanitizeJobId } = require("./artifact-contract");
+const { DEFAULT_ARTIFACT_POLICY_SOURCE, contentType, sanitizeJobId } = require("./artifact-contract");
 const gunzip = promisify(zlib.gunzip);
 
 class PostgresArtifactStore {
@@ -19,6 +19,7 @@ class PostgresArtifactStore {
     this.readFile = options.readFile || fs.readFile;
     this.clock = options.clock || (() => performance.now());
     this.reportMetrics = options.reportMetrics || (() => {});
+    this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
   }
   async migrate() {
     await this.pool.query(`
@@ -40,6 +41,11 @@ class PostgresArtifactStore {
       CREATE INDEX IF NOT EXISTS idx_build_artifacts_retention ON build_artifacts(retention_until);
       UPDATE build_artifacts SET stored_size_bytes=size_bytes WHERE stored_size_bytes IS NULL;
     `);
+    for (const [name, policy] of Object.entries(this.artifactPolicySource.policies)) {
+      await this.pool.query(`UPDATE build_artifacts
+        SET artifact_class=$1, retention_until=created_at + ($2 * INTERVAL '1 day')
+        WHERE artifact_name=$3 AND retention_until IS NULL`, [policy.artifactClass, policy.retentionDays, name]);
+    }
   }
   async saveBuildArtifacts(jobId, buildOutput) {
     const startedAt = this.clock();
@@ -72,7 +78,8 @@ class PostgresArtifactStore {
         phases.read_ms += readMs;
         phases.hash_ms += hashMs;
         itemMetrics.push({ artifact_name: artifactName, size_bytes: metadata.size_bytes, read_ms: readMs, hash_ms: hashMs });
-        const policy = artifactPolicy(artifactName) || { artifactClass: "deployable", retentionDays: 90 };
+        const policy = this.artifactPolicySource.get(artifactName);
+        if (!policy) throw new Error(`Artefakt ${artifactName} ist serverseitig nicht erlaubt.`);
         rows.push({ artifactName, content, metadata, encoding: "identity", storedSizeBytes: content.length, policy });
         artifacts[artifactName] = {
           file_name: artifactName, size_bytes: metadata.size_bytes, sha256: metadata.sha256,
@@ -128,6 +135,10 @@ class PostgresArtifactStore {
     const rows = [];
     const artifacts = {};
     for (const upload of uploads) {
+      const serverPolicy = this.artifactPolicySource.get(upload.artifactName);
+      if (!serverPolicy || serverPolicy.artifactClass !== upload.artifactClass || serverPolicy.retentionDays !== upload.retentionDays) {
+        throw new Error(`Artefakt-Policy fuer ${upload.artifactName} stimmt nicht mit der Server-Policy ueberein.`);
+      }
       const content = await this.readFile(upload.payloadPath);
       if (content.length !== upload.storedSizeBytes) throw new Error("Staged artifact size changed before publication.");
       rows.push({
@@ -201,6 +212,10 @@ class PostgresArtifactStore {
     const stored = Buffer.from(row.content_blob);
     const content = row.storage_encoding === "gzip" ? await gunzip(stored) : stored;
     return {...row,size_bytes:Number(row.size_bytes),content_blob:content};
+  }
+  async pruneExpired() {
+    const result = await this.pool.query("DELETE FROM build_artifacts WHERE retention_until IS NOT NULL AND retention_until <= NOW()");
+    return { deleted_count: Number(result.rowCount || 0) };
   }
   async close(){await this.pool.end();}
 }

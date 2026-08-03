@@ -21,6 +21,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/policy") {
+      sendJson(res, 200, service.policySummary());
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/build-jobs") {
       const body = await readJsonBody(req);
       const job = await service.submitJob(body);

@@ -39,6 +39,9 @@ test("postgres identity repository writes normalized lookup values and JSON docu
   assert.equal(pool.calls[0].values[2], "maker@example.com");
   assert.equal(pool.calls[0].values[4].preferred_locale, "nl");
   assert.equal(pool.calls[0].values[4].subscription_plan, "free");
+  assert.equal(pool.calls[0].values[4].plan_valid_until, null);
+  assert.equal(pool.calls[0].values[4].last_meaningful_activity_at, "2026-07-23T10:00:00.000Z");
+  assert.equal(pool.calls[0].values[4].lifecycle_state, "active");
   assert.equal(pool.calls[1].values[1], "acct-1");
   assert.equal(pool.calls[1].values[2], "hashed-token");
   assert.equal(session.user_id, "acct-1");

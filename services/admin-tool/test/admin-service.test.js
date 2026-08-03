@@ -688,6 +688,48 @@ test("community support access is capability-gated, audited and uses the separat
   await assert.rejects(service.communitySupportThreads({}, adminContext({ actor: { actor_id: "admin-none", role: "community_moderator", capabilities: [] } })), /nicht freigegeben/);
 });
 
+test("resource policy updates require a reason, forward the actor and create an audit trail", async () => {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({
+    repository,
+    accessPolicy: new AdminAccessPolicy({ repository }),
+    llmConfigStore: { publicConfig: () => ({}), getConfig: () => ({}), updateConfig: () => ({}) },
+    serviceClients: { projectServerBaseUrl: "http://project.test" },
+  });
+  let updateRequest = null;
+  service.httpJson = async (_baseUrl, pathname, options = {}) => {
+    if (pathname === "/api/resource-policies") return { policies: [{ plan_id: "free", policy_version: 1, max_projects: 5 }] };
+    updateRequest = { pathname, options };
+    return { plan_id: "free", policy_id: "account-resource:free", policy_version: 2, max_projects: 4 };
+  };
+  const context = adminContext();
+  await assert.rejects(service.updateResourcePolicy("free", { max_projects: 4 }, context), /change_reason/);
+  const updated = await service.updateResourcePolicy("free", { max_projects: 4, change_reason: "Kostenmodell angepasst" }, context);
+  assert.equal(updated.policy_version, 2);
+  assert.equal(updateRequest.pathname, "/api/resource-policies/free");
+  assert.equal(updateRequest.options.body.changed_by, "admin-1");
+  assert.ok((await repository.listAuditEvents()).some((event) => event.policy_version === 2 && event.reason === "Kostenmodell angepasst"));
+});
+
+test("resource summary combines account quotas with the effective build retention policy", async () => {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({
+    repository,
+    accessPolicy: new AdminAccessPolicy({ repository }),
+    llmConfigStore: { publicConfig: () => ({}), getConfig: () => ({}), updateConfig: () => ({}) },
+    serviceClients: { projectServerBaseUrl: "http://project.test", buildDeployBaseUrl: "http://build.test" },
+  });
+  service.httpJson = async (baseUrl, pathname) => {
+    if (baseUrl === "http://project.test") return { policies: [{ plan_id: "free" }], accounts: [] };
+    assert.equal(pathname, "/api/policy");
+    return { policy_id: "build_artifact_and_cache_policy", artifacts: [{ file_name: "firmware.elf", retention_days: 5 }] };
+  };
+  const result = await service.resourceSummary(adminContext());
+  assert.equal(result.policies[0].plan_id, "free");
+  assert.equal(result.build_policy.policy_id, "build_artifact_and_cache_policy");
+  assert.equal(result.build_policy.artifacts[0].retention_days, 5);
+});
+
 function createAdminServiceWithHttpJson(routes, error = null) {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({

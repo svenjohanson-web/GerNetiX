@@ -87,7 +87,7 @@ class PostgresIdentityRepository {
     passkeyCredentialId = null, passkeyPublicKey = null, passkeyCounter = 0,
     passkeyTransports = [], offlineRecoverySetConfirmedAt = null,
     offlineRecoverySetHash = null, recoveryBoardIds = [], preferredLocale = "de",
-    subscriptionPlan = "free",
+    subscriptionPlan = "free", planValidUntil = null, lifecycleState = "active",
   }) {
     const now = this.nowIso();
     const account = {
@@ -106,6 +106,13 @@ class PostgresIdentityRepository {
       recovery_board_ids: [...recoveryBoardIds],
       preferred_locale: preferredLocale,
       subscription_plan: subscriptionPlan,
+      plan_valid_until: planValidUntil,
+      last_meaningful_activity_at: now,
+      lifecycle_state: lifecycleState,
+      lifecycle_state_changed_at: now,
+      grace_until: null,
+      cold_archive_at: null,
+      delete_after: null,
       created_at: now,
       updated_at: now,
     };

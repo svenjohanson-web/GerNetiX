@@ -67,7 +67,7 @@ test("executes the headless Flashbox build-job chain from Project Server package
   assert.equal(recorded.result.build.primary_firmware.file_name, "firmware.bin");
 
   const artifacts = await request("GET", `${projectServer.url}/api/firmware-artifacts?build_job_id=${created.build_job_id}`);
-  assert.deepEqual(artifacts.items.map((artifact) => artifact.file_name).sort(), ["build.log", "firmware.bin", "firmware.elf", "firmware.hex", "firmware.map"]);
+  assert.deepEqual(artifacts.items.map((artifact) => artifact.file_name).sort(), ["firmware.bin", "firmware.hex"]);
 });
 
 function buildResultForProject(completed) {

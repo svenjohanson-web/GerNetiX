@@ -1120,7 +1120,7 @@ test("sqlite repository persists projects, template feedback, learning progress,
 
 test("enforces centrally configurable free resource limits", async () => {
   const service = createMemoryProjectServer();
-  await service.updateResourcePolicy("free", { max_projects: 2, max_storage_bytes: 200, max_monthly_traffic_bytes: 1024 });
+  await service.updateResourcePolicy("free", { max_projects: 2, max_storage_bytes: 100_000, max_monthly_traffic_bytes: 1024, change_reason: "Testlimit" });
   await service.createProject({ user_id: "free-user", plan_id: "free", title: "Eins" });
   await service.createProject({ user_id: "free-user", plan_id: "free", title: "Zwei" });
   await assert.rejects(
@@ -1151,6 +1151,7 @@ test("treats zero resource limits as unlimited", async () => {
     max_projects: 0,
     max_storage_bytes: 0,
     max_monthly_traffic_bytes: 0,
+    change_reason: "Unbegrenzten Testplan prüfen",
   });
   assert.equal(policy.max_projects, null);
   assert.equal(policy.max_storage_bytes, null);
