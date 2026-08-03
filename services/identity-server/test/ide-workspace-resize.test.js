@@ -10,10 +10,10 @@ const app = readPlatformAppSource();
 
 test("IDE exposes one accessible splitter for editor frame and terminal", () => {
   assert.match(html, /id="ideWorkspaceResizeHandle"[\s\S]*role="separator"[\s\S]*aria-orientation="horizontal"/);
-  assert.match(html, /app\.css\?v=20260802-debug-workspace-feedback-rating/);
-  assert.match(html, /app\.js\?v=20260802-debug-workspace/);
+  assert.match(html, /app\.css\?v=20260803-forgejo-repository-card/);
+  assert.match(html, /app\.js\?v=20260803-forgejo-repository-card/);
   assert.match(html, /app-ide-controller\.js\?v=20260802-debug-workspace/);
-  assert.match(html, /app-event-bindings\.js\?v=20260802-debug-workspace/);
+  assert.match(html, /app-event-bindings\.js\?v=20260802-dashboard-community-messages/);
   assert.match(app, /function initializeIdeWorkspaceResize\(\)/);
   assert.match(app, /startHeight - \(moveEvent\.clientY - startY\)/);
   assert.match(app, /workbench\.style\.setProperty\("--ide-console-height"/);

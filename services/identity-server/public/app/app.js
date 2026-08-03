@@ -111,6 +111,7 @@ if (isPublicInformationPage) document.body.classList.add("public-help-page");
 let deviceOnboardingController = null;
 let guidedProjectViewController = null;
 let developmentPlatformController = null;
+let projectRepositoryCardController = null;
 let learningProjectController = null;
 let quizController = null;
 let lastRenderedRoute = "";
@@ -173,7 +174,15 @@ function developmentPlatform() {
       escapeHtml,
       escapeAttribute,
       openHelpTopic: InformationView.openDialog,
+      repositoryCard: projectRepositoryCard(),
     });
   }
   return developmentPlatformController;
+}
+
+function projectRepositoryCard() {
+  if (!projectRepositoryCardController) {
+    projectRepositoryCardController = ProjectRepositoryCard.create({ getJson, escapeHtml, escapeAttribute });
+  }
+  return projectRepositoryCardController;
 }
