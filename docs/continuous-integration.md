@@ -11,9 +11,11 @@ benötigt keine Secrets.
 
 Die Jobs sind nach Fehlerdomäne getrennt:
 
-- `Project Server` und `Identity Server` installieren jeweils ausschließlich
-  ihre gelockten npm-Abhängigkeiten und führen Syntax- sowie die in einem
-  frischen Checkout reproduzierbaren Servicetests aus. Ephemere
+- `Project Server`, `Identity Server` und `Build and Deploy Server` installieren
+  jeweils ausschließlich ihre gelockten npm-Abhängigkeiten und führen Syntax-
+  sowie die in einem frischen Checkout reproduzierbaren Servicetests aus.
+  Damit bleiben auch Artifact-Store, Flash-/OTA-Auslieferung, Downloads und
+  ELF-Symbolisierung bei Änderungen am Buildpfad abgesichert. Ephemere
   `.runtime/`-Verzeichnisse liegen nur im Runner-Checkout.
 - `Forgejo and migration contracts` prüft die gezielten Project-/Identity-
   Verträge, die gehärtete Forgejo-Compose-Konfiguration und den ausschließlich
@@ -54,6 +56,7 @@ Repository-Stamm aus entsprechen diese Befehle den CI-Nachweisen:
 mkdir -p .runtime services/build-deploy-server/.runtime
 (cd services/project-server && npm ci --ignore-scripts --no-audit --no-fund && npm run check && node --test --test-skip-pattern="loads the protected ESP32 basis and overlays only the project user main")
 (cd services/identity-server && npm ci --ignore-scripts --no-audit --no-fund && npm run check && node --test)
+(cd services/build-deploy-server && npm ci --ignore-scripts --no-audit --no-fund && npm run check && node --test)
 
 node --test \
   tools/forgejo-ops-contract.test.js \

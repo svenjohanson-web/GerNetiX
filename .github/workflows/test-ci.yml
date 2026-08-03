@@ -32,6 +32,9 @@ jobs:
           - label: Identity Server
             workspace: services/identity-server
             test_skip_pattern: ""
+          - label: Build and Deploy Server
+            workspace: services/build-deploy-server
+            test_skip_pattern: ""
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -120,4 +120,4 @@ function sanitizeName(value) {
   return String(value || "").replace(/[^a-zA-Z0-9_.-]/g, "_");
 }
 
-module.exports = { ArtifactStore, describeFile };
+module.exports = { ArtifactStore, describeContent, describeFile };

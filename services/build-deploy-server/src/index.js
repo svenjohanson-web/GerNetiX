@@ -79,7 +79,12 @@ function createDefaultBuildDeployService(config = createConfig()) {
     const runtimePool = new Pool(poolOptions);
     return Promise.all([
       PostgresOtaAcknowledgementStore.create(runtimePool, { manageSchema: config.databaseSchemaManagement }),
-      PostgresArtifactStore.create({ poolOptions, publicBaseUrl: config.publicBaseUrl, manageSchema: config.databaseSchemaManagement }),
+      PostgresArtifactStore.create({
+        poolOptions,
+        publicBaseUrl: config.publicBaseUrl,
+        manageSchema: config.databaseSchemaManagement,
+        reportMetrics: (metrics) => console.log(`[artifact-store-metrics] ${JSON.stringify(metrics)}`),
+      }),
       config.coordinationBackend === "postgres"
         ? PostgresBuildCoordination.create({
           poolOptions,
