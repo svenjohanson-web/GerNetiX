@@ -1,0 +1,136 @@
+name: Test CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  service-tests:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Project Server
+            workspace: services/project-server
+            test_skip_pattern: "loads the protected ESP32 basis and overlays only the project user main"
+          - label: Identity Server
+            workspace: services/identity-server
+            test_skip_pattern: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ matrix.workspace }}/package-lock.json
+      - name: Install locked dependencies
+        working-directory: ${{ matrix.workspace }}
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run syntax entrypoint check
+        working-directory: ${{ matrix.workspace }}
+        run: npm run check
+      - name: Prepare ephemeral test runtime
+        run: mkdir -p .runtime services/build-deploy-server/.runtime
+      - name: Run service tests
+        working-directory: ${{ matrix.workspace }}
+        env:
+          TEST_SKIP_PATTERN: ${{ matrix.test_skip_pattern }}
+        run: |
+          if [ -n "$TEST_SKIP_PATTERN" ]; then
+            node --test --test-skip-pattern="$TEST_SKIP_PATTERN"
+          else
+            node --test
+          fi
+
+  forgejo-contracts:
+    name: Forgejo and migration contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            services/project-server/package-lock.json
+            services/identity-server/package-lock.json
+      - name: Install Project Server dependencies
+        working-directory: services/project-server
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Identity Server dependencies
+        working-directory: services/identity-server
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run Forgejo contracts
+        run: >-
+          node --test
+          tools/forgejo-ops-contract.test.js
+          services/project-server/test/forgejo-client.test.js
+          services/project-server/test/git-project-repository-store.test.js
+          services/project-server/test/project-repository-api.test.js
+          services/identity-server/test/project-repository-contract-stub.test.js
+          services/identity-server/test/project-repository-routes.test.js
+          services/identity-server/test/project-git-light.test.js
+      - name: Run migration dry-run contracts
+        run: node --test tools/forgejo-migration-dry-run.test.js
+
+  repository-quality:
+    name: Syntax and Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check tracked JavaScript syntax
+        run: node tools/ci/check-javascript-syntax.js
+      - name: Validate Compose models
+        run: node tools/ci/check-compose.js
+      - name: Check committed diff
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_BASE: ${{ github.event.pull_request.base.sha }}
+          PULL_REQUEST_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git diff --check "$PULL_REQUEST_BASE...$PULL_REQUEST_HEAD"
+          else
+            git show --check --oneline HEAD
+          fi
+
+  architecture-and-graph:
+    name: Architecture docs and graph baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test architecture documentation builder
+        run: node --test tools/architecture-docs/test/build.test.js
+      - name: Rebuild architecture documentation
+        run: node tools/architecture-docs/build.js
+      - name: Verify generated documentation diff
+        run: git diff --exit-code -- tools/architecture-docs/dist
+      - name: Verify canonical graph baseline
+        run: node tools/ci/check-graph-baseline.js

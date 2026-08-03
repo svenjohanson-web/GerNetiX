@@ -1,0 +1,11 @@
+{
+  "sha256": "89d24c171b244dd379f1e1367b70ac1f6e4dfd96784c52fe6943d114d959ab09",
+  "artifacts": 1169,
+  "relationships": 2884,
+  "graph_authored_artifacts": 480,
+  "graph_authored_relationships": 627,
+  "validation_errors": {
+    "error": 6,
+    "warning": 4
+  }
+}
