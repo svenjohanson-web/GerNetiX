@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { projectConfigurationSources } = require("../src/modules/project-configuration-projection");
+const { loadProjectFileSet } = require("../src/repository-store/project-file-schema");
 
 test("materializes every development configuration as deterministic visible project files", () => {
   const sources = projectConfigurationSources(representativeProject());
@@ -32,6 +33,7 @@ test("materializes every development configuration as deterministic visible proj
   assert.match(byPath.get("gernetix/configuration/communication.json").content, /<runtime-secret>/);
   assert.equal(byPath.get("gernetix/project.json").content.includes("updated_at"), false);
   assert.equal(byPath.get("gernetix/hardware/boards/iot_device_1.json").content.includes("snapshot_at"), false);
+  assert.equal(loadProjectFileSet(sources).manifest.project_id, "project-projection");
 });
 
 test("changes meaningful dialog values but ignores volatile timestamps", () => {

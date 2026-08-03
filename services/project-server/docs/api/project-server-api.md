@@ -2,11 +2,12 @@
 
 MVP-Implementierungskontrakt fuer den lokalen Project Server.
 
-Die hier beschriebenen Quellen- und Snapshot-Endpunkte bilden den aktuellen
-SQL-Altvertrag. Beim Forgejo-Cutover bleibt die fachliche Identity-/Project-
-Server-Grenze erhalten. Der optionale Forgejo-Adapter und der atomare
-Mehrdatei-Schreibvertrag sind bereits lokal vorhanden; der vollstaendige
-Lese-/Build-Cutover bleibt offen. Ziel und
+Projekte ohne aktive Forgejo-Bindung verwenden bis zum kontrollierten Cutover
+weiter den SQL-Altvertrag. Bei `provider: forgejo` und `state: active` kommen
+Dateiliste, Datei, Suche, Schreiben, Historie, Diff und Restore ausschliesslich
+aus Git. PostgreSQL fuehrt dann Bindung und bestaetigten Head; der
+Quellenbestand ist nur ein nicht fuehrender Uebergangscache. Der
+commitgebundene Build-Cutover bleibt offen. Ziel und
 Migration stehen in
 [`docs/forgejo-project-repository-work-packages.md`](../../../../docs/forgejo-project-repository-work-packages.md).
 
@@ -27,8 +28,14 @@ Migration stehen in
 `changed_paths`, `unchanged_paths` und `removed_paths`. Der heutige SQL-Pfad
 materialisiert damit die spaetere Git-Aenderung bereits als deterministische
 Projektdateien. Bei aktiver Forgejo-Bindung enthaelt `PATCH` zusaetzlich
-`repository_commit`; ein mitgesendetes `expected_head_sha` wird vor der
+`repository_commit`; `expected_head_sha` ist verpflichtend und wird vor der
 Aenderung gegen die gespeicherte Bindung geprueft.
+
+Repository-Provisionierung ist bei Teilfehlern wiederaufnehmbar: Ein bereits
+angelegtes leeres Repository wird initialisiert; ein bereits initialisiertes
+Repository wird nur dann als derselbe Vorgang akzeptiert, wenn Head-Baum und
+geforderter Initialdateisatz bytegleich sind. Ein abweichender Baum liefert
+`repository_already_provisioned` und wird nie ueberschrieben.
 
 Ein Projekt kann optional `view_manifest` enthalten. Dieses Manifest beschreibt die projektgebundenen IDE-/Lernansichten, z. B.:
 
@@ -45,16 +52,25 @@ Manifest-Views koennen zusaetzlich `source_lines`, `editable_lines`, `completion
 ## Quellen
 
 - `GET /api/projects/{projectId}/sources`
-- `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&limit=6` (bedarfsgesteuerte Quellensuche; liefert Inhalte nur fuer die relevantesten Treffer)
+- `GET /api/projects/{projectId}/sources?commit_sha={fullSha}`
+- `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&limit=6&commit_sha={fullSha}`
 - `PUT /api/projects/{projectId}/sources`
-- `GET /api/projects/{projectId}/sources/{relativePath}`
+- `GET /api/projects/{projectId}/sources/{relativePath}?commit_sha={fullSha}`
+- `POST /api/projects/{projectId}/sources/rename`
+- `DELETE /api/projects/{projectId}/sources/{relativePath}`
 
-Quellpfade muessen relativ sein und duerfen keine `..`-Segmente enthalten.
+GET liest den angegebenen unveraenderlichen Commit oder den bestaetigten Head.
+Listen liefern Commit, Blob, MIME, Rolle, Hash und Groesse; die Einzeldatei
+liefert zusaetzlich UTF-8-Inhalt. Rename verlangt `expected_head_sha`,
+`from_path` und `to_path`; Delete verlangt `expected_head_sha` im JSON-Body.
 
 ### Atomarer Repository-Vertrag
 
 - `POST /api/projects/{projectId}/repository/commits`
 - `GET /api/projects/{projectId}/repository/tree?commit_sha={fullSha}`
+- `GET /api/projects/{projectId}/repository/history?commit_sha={fullSha}&limit=30`
+- `GET /api/projects/{projectId}/repository/commits/{fullSha}/diff`
+- `POST /api/projects/{projectId}/repository/restores`
 
 Der POST-Endpunkt verlangt einen vollstaendigen `expected_head_sha`, eine
 Commitnachricht und bis zu 100 `changes`. Jede Aenderung besitzt `path`,
@@ -65,12 +81,30 @@ ohne neuen Commit. Einzeldateien sind auf 1 MiB, ein Textcommit auf 5 MiB
 begrenzt. Absolute Pfade, `..`, `.git`, doppelte Pfade und symbolische
 Linkdurchstiche werden abgewiesen.
 
+Inhalte sind gueltiger UTF-8-Text; leere Dateien und Unicode sind erlaubt.
+NUL/Binaerinhalt, ungueltiges UTF-8, Symlinks, Nicht-Blobs, mehr als 1.000
+Dateien und ein Leseumfang ueber 5 MiB werden abgewiesen. MIME wird aus dem
+Pfad abgeleitet. Historie liefert Commitmetadaten; Diff kennzeichnet Add,
+Modify, Delete, Rename und Typwechsel. Restore verlangt `expected_head_sha`
+und `restore_commit_sha`. Der Zielcommit muss Vorfahr des Heads sein. Restore
+erzeugt einen neuen Commit; identischer Baum ist ein No-op.
+
+Zentrale Fehlercodes sind `repository_head_conflict` (409),
+`repository_commit_not_found` und `repository_file_not_found` (404),
+`repository_restore_commit_invalid` und `repository_symlink_forbidden` (409),
+`repository_binary_forbidden` und `repository_encoding_invalid` (415),
+`repository_file_too_large` und `repository_read_too_large` (413) sowie
+`project_schema_version_unsupported` (409).
+
 Repository-Bindungen geben nur Provider, Status, Organisation,
 Repositorykennung, Default-Branch und Head-SHA aus. Clone-URL und
 Diensttokens bleiben serverintern.
 
 Automatisch materialisierte Entwicklungs-Konfigurationen liegen unter
-`gernetix/`. Der Project Server verwendet dafuer die Rollen
+`gernetix/`. Der Dateivertrag steht in
+[`project-file-schema.md`](project-file-schema.md), die Feldwirkung in
+[`project-configuration-projection-matrix.md`](project-configuration-projection-matrix.md).
+Der Project Server verwendet dafuer die Rollen
 `project_configuration` und `generated_configuration_header`. Generierte
 Header sind keine frei editierbare zweite Konfigurationsquelle. Volatile
 Zeitstempel werden nicht projiziert; Secrets erscheinen ausschliesslich als
@@ -94,6 +128,18 @@ SQL/SQLite wird nicht als eigener Komponentenordner modelliert. Es ist eine Soft
 - `GET /api/firmware-artifacts?project_id=...`
 
 Der Project Server kompiliert nicht selbst. `build-package` liefert einen reproduzierbaren Snapshot fuer den Build-&-Deploy-Server. Das Paket enthaelt neben `build-job.json`, `platformio.ini` und Projektquellen auch `project-view-manifest.json`.
+
+## Benannte Versionen
+
+- `GET /api/projects/{projectId}/versions`
+- `POST /api/projects/{projectId}/versions`
+- `POST /api/projects/{projectId}/versions/{versionId}/restore`
+
+Bei aktiver Forgejo-Bindung speichert eine benannte Version nur `commit_sha`
+und Metadaten, niemals Quellen oder Vollsnapshots. Restore verlangt
+`expected_head_sha` und erzeugt einen neuen Git-Commit. Der SQL-Snapshotvertrag
+bleibt nur fuer nicht migrierte Projekte. Eine Binary-Version ist nur erlaubt,
+wenn erfolgreicher Build und Version denselben Commit referenzieren.
 
 ## Projekt- und Template-Feedback
 

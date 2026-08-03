@@ -11,7 +11,8 @@ const { normalizeProjectCommunicationSetup } = require("../../../shared/project-
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
 const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-software-ownership");
 const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
-const { normalizeChanges, validateSha } = require("../repository-store/git-project-repository-store");
+const { validateSha } = require("../repository-store/git-project-repository-store");
+const { loadProjectFileSet, mimeTypeForPath, validateProjectChanges } = require("../repository-store/project-file-schema");
 
 const RESERVED_PLATFORMIO_OPTIONS = new Set([
   "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
@@ -33,7 +34,10 @@ class ProjectService {
     if (template && template.status !== "template") throw new ProjectServerError("project_template_required", "Die Projektquelle ist kein unveränderliches Template.", 409);
     if (input.status !== "template") await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
     const now = new Date().toISOString();
-    const templateSources = template ? await this.repository.listSources(template.project_id) : [];
+    const templateBinding = template ? this.activeRepositoryBinding(template) : null;
+    const templateSources = template
+      ? templateBinding ? await this.repositoryFiles(template, templateBinding.head_sha) : await this.repository.listSources(template.project_id)
+      : [];
     const templateHash = template ? projectVersionHash(sanitizeProject(template), templateSources) : "";
     const inheritedManifest = template ? structuredClone(template.view_manifest || {}) : {};
     const inheritedBuildConfig = Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined;
@@ -45,7 +49,12 @@ class ProjectService {
     const normalizedManifest = normalizeViewManifest({
       ...inheritedManifest,
       ...(input.view_manifest || input.project_view_manifest || {}),
-      ...(template ? { template_ref: { project_id: template.project_id, version: template.view_manifest?.template_ref?.version || 1, source_sha256: templateHash } } : {}),
+      ...(template ? { template_id: inheritedManifest.template_id || template.project_id, template_ref: {
+        project_id: template.project_id,
+        version: template.view_manifest?.template_ref?.version || 1,
+        source_sha256: templateHash,
+        ...(templateBinding ? { commit_sha: templateBinding.head_sha } : {}),
+      } } : {}),
     });
     const softwareUnits = filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(
       Object.hasOwn(input, "software_units") ? input.software_units : template?.software_units,
@@ -88,7 +97,7 @@ class ProjectService {
       } else await this.upsertSource(project.project_id, source);
     }
     let configurationProjection = emptyProjectionResult();
-    if (project.status !== "template") {
+    if (project.status !== "template" || this.projectRepositoryStore) {
       const platformioProjection = await this.syncPlatformioSources(project);
       const projectProjection = await this.syncProjectConfigurationSources(project);
       configurationProjection = mergeProjectionResults(platformioProjection, projectProjection);
@@ -96,10 +105,12 @@ class ProjectService {
     let persistedProject = project;
     if (this.projectRepositoryStore) {
       try {
+        const repositorySources = await this.repository.listSources(project.project_id);
+        loadProjectFileSet(repositorySources);
         const binding = await this.projectRepositoryStore.provisionProject({
           project_id: project.project_id,
           message: `Projekt ${project.title} angelegt`,
-          changes: (await this.repository.listSources(project.project_id)).map((source) => ({ path: source.path, content: source.content })),
+          changes: repositorySources.map((source) => ({ path: source.path, content: source.content })),
         });
         persistedProject = await this.repository.saveProject({ ...project, repository_binding: { ...binding, provisioned_at: now } });
       } catch (error) {
@@ -136,6 +147,7 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
+    if (this.activeRepositoryBinding(project)) validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, input.expected_head_sha);
     const rollbackSources = this.activeRepositoryBinding(project) ? await this.repository.listSources(projectId) : null;
     const nextViewManifest = input.view_manifest || input.project_view_manifest
@@ -280,22 +292,26 @@ class ProjectService {
     return source;
   }
 
-  async listSources(projectId) {
+  async listSources(projectId, input = {}) {
     await this.ready;
-    await this.requireProject(projectId);
+    const project = await this.requireProject(projectId);
+    const binding = this.activeRepositoryBinding(project);
+    if (binding) return (await this.repositoryFiles(project, input.commit_sha)).map(maskSourceContent);
     return (await this.repository.listSources(projectId)).map(maskSourceContent);
   }
 
   async searchSources(projectId, input = {}) {
     await this.ready;
-    await this.requireProject(projectId);
+    const project = await this.requireProject(projectId);
     const query = String(input.query || "").toLocaleLowerCase("de-DE");
     const currentPath = String(input.current_path || "");
     const sourceKind = normalizeSourceKind(input.source_kind);
     const limit = Math.max(1, Math.min(8, Number(input.limit) || 6));
     const terms = [...new Set(query.match(/[\p{L}\p{N}_-]{3,}/gu) || [])]
       .filter((term) => !SOURCE_SEARCH_STOP_WORDS.has(term));
-    return (await this.repository.listSources(projectId))
+    const binding = this.activeRepositoryBinding(project);
+    const sources = binding ? await this.repositoryFiles(project, input.commit_sha) : await this.repository.listSources(projectId);
+    return sources
       .filter((source) => !sourceKind || sourceMatchesKind(source.path, sourceKind))
       .map((source) => ({ source, score: sourceSearchScore(source, terms, currentPath) }))
       .filter((item) => item.score > 0)
@@ -304,9 +320,15 @@ class ProjectService {
       .map((item) => item.source);
   }
 
-  async getSource(projectId, sourcePath) {
+  async getSource(projectId, sourcePath, input = {}) {
     await this.ready;
-    await this.requireProject(projectId);
+    const project = await this.requireProject(projectId);
+    const binding = this.activeRepositoryBinding(project);
+    if (binding) {
+      const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
+      const file = await this.projectRepositoryStore.readFile(binding, commitSha, normalizeSourcePath(sourcePath));
+      return repositoryFileSource(projectId, file, commitSha);
+    }
     const source = await this.repository.findSource(projectId, sourcePath);
     if (!source) throw new ProjectServerError("source_not_found", "Projektquelle wurde nicht gefunden.", 404);
     return source;
@@ -333,8 +355,10 @@ class ProjectService {
     let repositoryCommit = null;
     const binding = this.activeRepositoryBinding(project);
     if (binding) {
+      validateSha(input.expected_head_sha, "expected_head_sha");
+      await this.assertValidProjectFileChangeSet(project, binding, input.expected_head_sha, [{ path, content }]);
       repositoryCommit = await this.projectRepositoryStore.commitChanges(binding, {
-        expected_head_sha: input.expected_head_sha || binding.head_sha,
+        expected_head_sha: input.expected_head_sha,
         message: input.message || `Datei ${path} aktualisiert`,
         changes: [{ path, content }],
       });
@@ -358,7 +382,8 @@ class ProjectService {
     if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
     const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, expectedHeadSha);
-    const changes = normalizeChanges(input.changes, { allowEmpty: false });
+    const changes = validateProjectChanges(input.changes);
+    await this.assertValidProjectFileChangeSet(project, binding, expectedHeadSha, changes);
     const commit = await this.projectRepositoryStore.commitChanges(binding, {
       expected_head_sha: expectedHeadSha,
       message: input.message,
@@ -388,6 +413,53 @@ class ProjectService {
     return { project_id: projectId, repository_binding: publicRepositoryBinding(saved.repository_binding), commit };
   }
 
+  async renameSource(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) throw new ProjectServerError("repository_not_active", "Umbenennen erfordert ein aktives Forgejo-Repository.", 409);
+    const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
+    this.assertExpectedRepositoryHead(project, expectedHeadSha);
+    const fromPath = normalizeSourcePath(required(input.from_path, "from_path"));
+    const toPath = normalizeSourcePath(required(input.to_path, "to_path"));
+    if (fromPath === toPath) throw new ProjectServerError("repository_rename_no_change", "Quell- und Zielpfad sind identisch.", 409);
+    const source = await this.projectRepositoryStore.readFile(binding, expectedHeadSha, fromPath);
+    try {
+      await this.projectRepositoryStore.readFile(binding, expectedHeadSha, toPath);
+      throw new ProjectServerError("repository_rename_target_exists", "Der Zielpfad existiert bereits.", 409, { path: toPath });
+    } catch (error) {
+      if (error.code !== "repository_file_not_found") throw error;
+    }
+    return this.commitRepositoryChanges(projectId, {
+      expected_head_sha: expectedHeadSha,
+      message: input.message || `Datei ${fromPath} nach ${toPath} umbenannt`,
+      changes: [{ path: fromPath, operation: "delete" }, { path: toPath, content: source.content }],
+    });
+  }
+
+  async deleteSource(projectId, sourcePath, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) {
+      const path = normalizeSourcePath(sourcePath);
+      const deleted = await this.repository.deleteSource(projectId, path);
+      if (!deleted) throw new ProjectServerError("source_not_found", "Projektquelle wurde nicht gefunden.", 404);
+      return { project_id: projectId, path, deleted: true, repository_commit: null };
+    }
+    const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
+    const path = normalizeSourcePath(sourcePath);
+    await this.projectRepositoryStore.readFile(binding, expectedHeadSha, path);
+    const result = await this.commitRepositoryChanges(projectId, {
+      expected_head_sha: expectedHeadSha,
+      message: input.message || `Datei ${path} gelöscht`,
+      changes: [{ path, operation: "delete" }],
+    });
+    return { ...result, path, deleted: true };
+  }
+
   async repositoryTree(projectId, commitSha = "") {
     await this.ready;
     const project = await this.requireProject(projectId);
@@ -395,6 +467,64 @@ class ProjectService {
     if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
     const resolvedCommitSha = validateSha(commitSha || binding.head_sha, "commit_sha");
     return { commit_sha: resolvedCommitSha, paths: await this.projectRepositoryStore.tree(binding, resolvedCommitSha) };
+  }
+
+  async repositoryHistory(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
+    const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
+    return { commit_sha: commitSha, items: await this.projectRepositoryStore.history(binding, { commit_sha: commitSha, limit: input.limit }) };
+  }
+
+  async repositoryDiff(projectId, commitSha) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
+    return this.projectRepositoryStore.diff(binding, validateSha(commitSha, "commit_sha"));
+  }
+
+  async restoreRepository(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht wiederhergestellt werden.", 409);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
+    const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
+    this.assertExpectedRepositoryHead(project, expectedHeadSha);
+    const restoreCommitSha = validateSha(input.restore_commit_sha, "restore_commit_sha");
+    const commit = await this.projectRepositoryStore.restore(binding, {
+      expected_head_sha: expectedHeadSha,
+      restore_commit_sha: restoreCommitSha,
+      message: input.message,
+    });
+    const now = new Date().toISOString();
+    const saved = await this.repository.saveProject({
+      ...project,
+      repository_binding: { ...binding, head_sha: commit.head_sha, updated_at: now },
+      updated_at: now,
+    });
+    return { project_id: projectId, repository_binding: publicRepositoryBinding(saved.repository_binding), commit };
+  }
+
+  async repositoryFiles(project, commitSha = "") {
+    const binding = this.activeRepositoryBinding(project);
+    const resolvedCommitSha = validateSha(commitSha || binding.head_sha, "commit_sha");
+    return (await this.projectRepositoryStore.readFiles(binding, resolvedCommitSha))
+      .map((file) => repositoryFileSource(project.project_id, file, resolvedCommitSha));
+  }
+
+  async assertValidProjectFileChangeSet(project, binding, commitSha, changes) {
+    if (!changes.some((change) => change.path.startsWith("gernetix/"))) return;
+    const files = await this.projectRepositoryStore.readFiles(binding, validateSha(commitSha, "expected_head_sha"));
+    const byPath = new Map(files.map((file) => [file.path, { path: file.path, content: file.content }]));
+    for (const change of changes) {
+      if (change.operation === "delete") byPath.delete(change.path);
+      else byPath.set(change.path, { path: change.path, content: change.content });
+    }
+    loadProjectFileSet([...byPath.values()]);
   }
 
   activeRepositoryBinding(project) {
@@ -666,6 +796,29 @@ class ProjectService {
     const project = await this.requireProject(projectId);
     const versions = await this.repository.listVersions({ project_id: projectId });
     const now = new Date().toISOString();
+    const binding = this.activeRepositoryBinding(project);
+    if (binding) {
+      const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
+      if (commitSha !== binding.head_sha) throw new ProjectServerError("repository_head_conflict", "Eine benannte Version kann nur den bestaetigten Repository-Head referenzieren.", 409, {
+        expected_head_sha: commitSha, actual_head_sha: binding.head_sha,
+      });
+      if (input.include_binary === true) {
+        const buildJob = await this.repository.findBuildJob(required(input.build_job_id, "build_job_id"));
+        if (!buildJob || buildJob.project_id !== projectId || buildJob.status !== "succeeded" || buildJob.commit_sha !== commitSha) {
+          throw new ProjectServerError("version_binary_commit_mismatch", "Binary und benannte Version müssen denselben erfolgreichen Commit referenzieren.", 409);
+        }
+      }
+      return this.repository.saveVersion({
+        version_id: createId("project_version"), project_id: projectId,
+        parent_version_id: internal.parent_version_id || versions[0]?.version_id || null,
+        created_by_user_id: required(input.user_id, "user_id"),
+        message: String(input.message || "Projektstand gespeichert").trim().slice(0, 240),
+        commit_kind: internal.commit_kind || "named_version",
+        restored_from_version_id: internal.restored_from_version_id || null,
+        state: "saved", commit_sha: commitSha, includes_binary: input.include_binary === true,
+        build_job_id: input.build_job_id || null, created_at: now,
+      });
+    }
     let projectSnapshot = sanitizeProject(project);
     let sources = await this.repository.listSources(project.project_id);
     let buildJob = null;
@@ -717,6 +870,19 @@ class ProjectService {
     const project = await this.requireProject(projectId);
     const version = await this.repository.findVersion(versionId);
     if (!version || version.project_id !== project.project_id) throw new ProjectServerError("project_version_not_found", "Projektversion wurde nicht gefunden.", 404);
+    const binding = this.activeRepositoryBinding(project);
+    if (binding) {
+      if (!version.commit_sha) throw new ProjectServerError("project_version_commit_missing", "Projektversion besitzt keinen Git-Commit.", 409);
+      const restored = await this.restoreRepository(projectId, {
+        expected_head_sha: input.expected_head_sha,
+        restore_commit_sha: version.commit_sha,
+        message: input.message || `Wiederhergestellt aus ${version.message || version.version_id}`,
+      });
+      return this.createVersionRecord(projectId, {
+        user_id: required(input.user_id, "user_id"), message: input.message || `Wiederhergestellt aus ${version.message || version.version_id}`,
+        commit_sha: restored.commit.head_sha,
+      }, { commit_kind: "restore", restored_from_version_id: versionId });
+    }
     let versions = await this.repository.listVersions({ project_id: projectId });
     const currentSources = await this.repository.listSources(project.project_id);
     const currentHash = projectVersionHash(sanitizeProject(project), currentSources);
@@ -1469,6 +1635,7 @@ function normalizeViewManifest(input = {}) {
         ...(templateRef.project_id ? { project_id: String(templateRef.project_id) } : {}),
         ...(templateRef.version ? { version: Number(templateRef.version) } : {}),
         ...(templateRef.source_sha256 ? { source_sha256: String(templateRef.source_sha256) } : {}),
+        ...(templateRef.commit_sha ? { commit_sha: String(templateRef.commit_sha) } : {}),
       },
     } : {}),
     ...(architectureDialog && typeof architectureDialog === "object" ? { architecture_dialog: architectureDialog } : {}),
@@ -1659,7 +1826,25 @@ function maskSourceContent(source) {
     content_sha256: source.content_sha256,
     content_type: source.content_type,
     role: source.role,
+    size_bytes: source.size_bytes,
+    blob_sha: source.blob_sha,
+    commit_sha: source.commit_sha,
     updated_at: source.updated_at,
+  };
+}
+
+function repositoryFileSource(projectId, file, commitSha) {
+  return {
+    project_id: projectId,
+    path: file.path,
+    content: file.content,
+    content_sha256: sha256(file.content),
+    content_type: mimeTypeForPath(file.path),
+    role: inferSourceRole(file.path),
+    size_bytes: file.size_bytes,
+    blob_sha: file.blob_sha,
+    commit_sha: commitSha,
+    updated_at: "",
   };
 }
 
@@ -1736,7 +1921,9 @@ function contentType(sourcePath) {
 }
 
 function inferSourceRole(sourcePath) {
-  if (sourcePath === "platformio.ini") return "build_config";
+  if (/(^|\/)platformio\.ini$/.test(sourcePath)) return "build_config";
+  if (sourcePath.startsWith("gernetix/")) return PROJECT_CONFIGURATION_ROLE;
+  if (/(^|\/)gernetix_[^/]*configuration\.h$/i.test(sourcePath)) return GENERATED_CONFIGURATION_ROLE;
   if (/(?:^|\/)include\//i.test(sourcePath) || /\.(?:h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(sourcePath)) return "header";
   if (sourcePath.startsWith("lib/")) return "library";
   if (sourcePath.startsWith("assets/")) return "asset";

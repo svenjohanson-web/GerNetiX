@@ -27,6 +27,7 @@ function projectConfigurationSources(project = {}) {
 
   sources.push(jsonSource("gernetix/project.json", {
     schema_version: 1,
+    schema_id: "gernetix.project",
     project_id: project.project_id || "",
     title: project.title || "",
     description: project.description || "",
@@ -46,13 +47,15 @@ function projectConfigurationSources(project = {}) {
   if (hardware?.payload && typeof hardware.payload === "object") {
     const components = Array.isArray(hardware.payload.components) ? hardware.payload.components : [];
     sources.push(jsonSource("gernetix/hardware/allocation.json", {
-      ...withoutKeys(hardware.payload, ["components"]),
+      schema_version: 1,
+      model_schema_version: Number(hardware.payload.schema_version) || 1,
+      ...withoutKeys(hardware.payload, ["components", "schema_version"]),
       components: components.map(hardwareAllocationComponent),
     }));
     for (const component of components) {
       if (component?.abstract_type !== "iot_device" || !component.board_configuration) continue;
       const componentId = safePathSegment(component.component_id || component.label || "board");
-      sources.push(jsonSource(`gernetix/hardware/boards/${componentId}.json`, component.board_configuration));
+      sources.push(jsonSource(`gernetix/hardware/boards/${componentId}.json`, versioned(component.board_configuration)));
     }
   }
 
@@ -89,19 +92,19 @@ function projectConfigurationSources(project = {}) {
     if (buildConfig.firmware_basis_id) {
       sources.push(jsonSource(
         `gernetix/configuration/basissoftware/${unitId}.json`,
-        buildConfig.basissoftware_configuration || {},
+        versioned(buildConfig.basissoftware_configuration),
       ));
     }
     if (buildConfig.component_features) {
       sources.push(jsonSource(
         `gernetix/configuration/software-features/${unitId}.json`,
-        buildConfig.component_features,
+        versioned(buildConfig.component_features),
       ));
     }
     for (const [componentId, configuration] of Object.entries(objectValue(buildConfig.component_hardware_features))) {
       sources.push(jsonSource(
         `gernetix/configuration/board-peripherals/${safePathSegment(componentId)}.json`,
-        configuration,
+        versioned(configuration),
       ));
     }
     if (sourceRoot && buildConfig.board_configuration) {
@@ -131,7 +134,11 @@ function hardwareAllocationComponent(component = {}) {
 
 function addManifestConfiguration(sources, manifest, key, path) {
   if (!manifest[key] || typeof manifest[key] !== "object") return;
-  sources.push(jsonSource(path, manifest[key]));
+  sources.push(jsonSource(path, versioned(manifest[key])));
+}
+
+function versioned(value) {
+  return { ...objectValue(value), schema_version: Number(value?.schema_version) || 1 };
 }
 
 function manifestView(manifest, id) {

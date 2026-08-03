@@ -23,7 +23,12 @@ class ForgejoProjectRepositoryStore {
     const repository = ensured.repository || {};
     const remoteUrl = trustedCloneUrl(repository.clone_url, this.client.baseUrl);
     if (!ensured.created && !repository.empty) {
-      throw new ProjectServerError("repository_already_provisioned", "Das Projekt-Repository ist bereits initialisiert.", 409);
+      const existingHead = await this.git.head({ remote_url: remoteUrl, branch: this.defaultBranch });
+      const existingFiles = await this.git.readFiles({ remote_url: remoteUrl, commit_sha: existingHead.head_sha });
+      if (!sameInitialTree(existingFiles, input.changes)) {
+        throw new ProjectServerError("repository_already_provisioned", "Das Projekt-Repository ist bereits mit einem abweichenden Stand initialisiert.", 409);
+      }
+      return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, existingHead.head_sha);
     }
     const commit = await this.git.initialize({
       remote_url: remoteUrl,
@@ -31,21 +36,11 @@ class ForgejoProjectRepositoryStore {
       message: input.message || "GerNetiX Projekt angelegt",
       changes: input.changes,
     });
-    return {
-      provider: "forgejo",
-      organization: this.organization,
-      repository_name: repositoryName,
-      repository_id: repository.id === undefined ? "" : String(repository.id),
-      clone_url: remoteUrl,
-      default_branch: this.defaultBranch,
-      head_sha: commit.head_sha,
-      state: "active",
-    };
+    return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, commit.head_sha);
   }
 
   async commitChanges(binding = {}, input = {}) {
-    requireActiveBinding(binding);
-    if (binding.organization !== this.organization) throw new ProjectServerError("repository_binding_invalid", "Repository-Bindung gehört nicht zur konfigurierten Organisation.", 500);
+    requireConfiguredBinding(binding, this.organization);
     return this.git.commit({
       remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
       branch: binding.default_branch || this.defaultBranch,
@@ -56,15 +51,79 @@ class ForgejoProjectRepositoryStore {
   }
 
   async tree(binding = {}, commitSha) {
-    requireActiveBinding(binding);
+    requireConfiguredBinding(binding, this.organization);
     return this.git.tree({ remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl), commit_sha: commitSha });
   }
 
+  async readFile(binding = {}, commitSha, repositoryPath) {
+    requireConfiguredBinding(binding, this.organization);
+    return this.git.readFile({
+      remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
+      commit_sha: commitSha,
+      path: repositoryPath,
+    });
+  }
+
+  async readFiles(binding = {}, commitSha) {
+    requireConfiguredBinding(binding, this.organization);
+    return this.git.readFiles({ remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl), commit_sha: commitSha });
+  }
+
+  async history(binding = {}, input = {}) {
+    requireConfiguredBinding(binding, this.organization);
+    return this.git.history({
+      remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
+      branch: binding.default_branch || this.defaultBranch,
+      commit_sha: input.commit_sha || binding.head_sha,
+      limit: input.limit,
+    });
+  }
+
+  async diff(binding = {}, commitSha) {
+    requireConfiguredBinding(binding, this.organization);
+    return this.git.diff({
+      remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
+      branch: binding.default_branch || this.defaultBranch,
+      commit_sha: commitSha,
+    });
+  }
+
+  async restore(binding = {}, input = {}) {
+    requireConfiguredBinding(binding, this.organization);
+    return this.git.restore({
+      remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
+      branch: binding.default_branch || this.defaultBranch,
+      expected_head_sha: input.expected_head_sha,
+      restore_commit_sha: input.restore_commit_sha,
+      message: input.message,
+    });
+  }
+
   async archive(binding = {}) {
-    requireActiveBinding(binding);
+    requireConfiguredBinding(binding, this.organization);
     await this.client.archiveRepository(binding.organization, binding.repository_name);
     return { ...binding, state: "archived" };
   }
+}
+
+function repositoryBinding(organization, repositoryName, repository, remoteUrl, defaultBranch, headSha) {
+  return {
+    provider: "forgejo",
+    organization,
+    repository_name: repositoryName,
+    repository_id: repository.id === undefined ? "" : String(repository.id),
+    clone_url: remoteUrl,
+    default_branch: defaultBranch,
+    head_sha: headSha,
+    state: "active",
+  };
+}
+
+function sameInitialTree(files, changes) {
+  if (!Array.isArray(changes) || changes.some((change) => change?.operation === "delete")) return false;
+  const expected = new Map(changes.map((change) => [String(change?.path || ""), String(change?.content ?? "")]));
+  if (expected.size !== changes.length || expected.size !== files.length) return false;
+  return files.every((file) => expected.get(file.path) === file.content);
 }
 
 function repositoryNameForProject(projectId) {
@@ -94,6 +153,11 @@ function trustedCloneUrl(value, baseUrl) {
 
 function requireActiveBinding(binding) {
   if (binding?.provider !== "forgejo" || binding?.state !== "active") throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
+}
+
+function requireConfiguredBinding(binding, organization) {
+  requireActiveBinding(binding);
+  if (binding.organization !== organization) throw new ProjectServerError("repository_binding_invalid", "Repository-Bindung gehört nicht zur konfigurierten Organisation.", 500);
 }
 
 function required(value, field) {

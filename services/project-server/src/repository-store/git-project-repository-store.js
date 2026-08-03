@@ -8,6 +8,9 @@ const { createGitCommandRunner } = require("./git-command-runner");
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const BRANCH_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,119}$/;
+const MAX_FILE_BYTES = 1024 * 1024;
+const MAX_READ_BYTES = 5 * 1024 * 1024;
+const MAX_TREE_ENTRIES = 1000;
 
 class GitProjectRepositoryStore {
   constructor(options = {}) {
@@ -78,6 +81,14 @@ class GitProjectRepositoryStore {
     });
   }
 
+  async head(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const branch = validateBranch(input.branch || "main");
+    return this.withFetchedBranch(remoteUrl, branch, async (workspace) => ({
+      head_sha: await this.revParse(workspace, "FETCH_HEAD"), branch,
+    }));
+  }
+
   async tree(input = {}) {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const commitSha = validateSha(input.commit_sha, "commit_sha");
@@ -92,9 +103,156 @@ class GitProjectRepositoryStore {
         throw new ProjectServerError("repository_commit_not_found", "Git-Commit wurde nicht gefunden.", 404);
       }
       if (fetchedSha !== commitSha) throw new ProjectServerError("repository_commit_not_found", "Git-Commit wurde nicht gefunden.", 404);
-      const result = await this.git(["ls-tree", "-r", "--name-only", commitSha], workspace);
-      return result.stdout.split(/\r?\n/).filter(Boolean).map(normalizeRepositoryPath).sort();
+      return (await this.readTreeEntries(workspace, await this.treeEntries(workspace, commitSha))).map((entry) => entry.path);
     });
+  }
+
+  async readFile(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const commitSha = validateSha(input.commit_sha, "commit_sha");
+    const repositoryPath = normalizeRepositoryPath(input.path);
+    return this.withFetchedCommit(remoteUrl, commitSha, async (workspace) => {
+      const entry = (await this.treeEntries(workspace, commitSha)).find((item) => item.path === repositoryPath);
+      if (!entry) throw new ProjectServerError("repository_file_not_found", "Projektdatei wurde nicht gefunden.", 404);
+      return this.readTreeEntry(workspace, entry);
+    });
+  }
+
+  async readFiles(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const commitSha = validateSha(input.commit_sha, "commit_sha");
+    return this.withFetchedCommit(remoteUrl, commitSha, async (workspace) => {
+      return this.readTreeEntries(workspace, await this.treeEntries(workspace, commitSha));
+    });
+  }
+
+  async history(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const branch = validateBranch(input.branch || "main");
+    const commitSha = validateSha(input.commit_sha, "commit_sha");
+    const limit = Math.max(1, Math.min(100, Number(input.limit) || 30));
+    return this.withFetchedBranch(remoteUrl, branch, async (workspace) => {
+      await this.assertCommit(workspace, commitSha);
+      const result = await this.git([
+        "log", `--max-count=${limit}`, "--date=iso-strict",
+        "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1e", commitSha,
+      ], workspace, { maxOutputBytes: 128 * 1024 });
+      return result.stdout.split("\x1e").map((record) => record.trim()).filter(Boolean).map((record) => {
+        const [sha, parents, authorName, authorEmail, authoredAt, subject] = record.split("\x1f");
+        return {
+          commit_sha: validateSha(sha, "commit_sha"),
+          parent_shas: String(parents || "").split(" ").filter(Boolean).map((parent) => validateSha(parent, "parent_sha")),
+          author_name: authorName || "",
+          author_email: authorEmail || "",
+          authored_at: authoredAt || "",
+          message: subject || "",
+        };
+      });
+    });
+  }
+
+  async diff(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const branch = validateBranch(input.branch || "main");
+    const commitSha = validateSha(input.commit_sha, "commit_sha");
+    return this.withFetchedBranch(remoteUrl, branch, async (workspace) => {
+      await this.assertCommit(workspace, commitSha);
+      const parentResult = await this.git(["rev-list", "--parents", "-n", "1", commitSha], workspace);
+      const parentSha = parentResult.stdout.trim().split(" ")[1] || "";
+      const args = parentSha
+        ? ["diff", "--find-renames", "--name-status", "-z", parentSha, commitSha]
+        : ["diff-tree", "--root", "--no-commit-id", "--name-status", "-r", "-z", commitSha];
+      const result = await this.git(args, workspace, { maxOutputBytes: 1024 * 1024 });
+      return { commit_sha: commitSha, parent_sha: parentSha, changes: parseNameStatus(result.stdout) };
+    });
+  }
+
+  async restore(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const branch = validateBranch(input.branch || "main");
+    const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
+    const restoreCommitSha = validateSha(input.restore_commit_sha, "restore_commit_sha");
+    return this.withFetchedBranch(remoteUrl, branch, async (workspace) => {
+      const actualHeadSha = await this.revParse(workspace, "FETCH_HEAD");
+      if (actualHeadSha !== expectedHeadSha) throw new ProjectServerError("repository_head_conflict", "Der Repository-Stand wurde zwischenzeitlich geändert.", 409, {
+        expected_head_sha: expectedHeadSha, actual_head_sha: actualHeadSha,
+      });
+      await this.assertCommit(workspace, restoreCommitSha);
+      try {
+        await this.git(["merge-base", "--is-ancestor", restoreCommitSha, expectedHeadSha], workspace);
+      } catch {
+        throw new ProjectServerError("repository_restore_commit_invalid", "Wiederherstellung ist nur aus der linearen Historie dieses Branches zulässig.", 409);
+      }
+      await this.readTreeEntries(workspace, await this.treeEntries(workspace, restoreCommitSha));
+      const currentTree = await this.revParse(workspace, `${expectedHeadSha}^{tree}`);
+      const restoredTree = await this.revParse(workspace, `${restoreCommitSha}^{tree}`);
+      if (currentTree === restoredTree) return { head_sha: actualHeadSha, branch, changed_paths: [], no_change: true, restored_from_commit_sha: restoreCommitSha };
+      await this.git(["checkout", "--detach", expectedHeadSha], workspace);
+      await this.configureIdentity(workspace);
+      await this.git(["read-tree", restoreCommitSha], workspace);
+      const diffResult = await this.git(["diff", "--cached", "--name-only", "-z", expectedHeadSha], workspace, { maxOutputBytes: 1024 * 1024 });
+      const changedPaths = diffResult.stdout.split("\0").filter(Boolean).map(normalizeRepositoryPath).sort();
+      await this.git(["commit", "--message", commitMessage(input.message, `Projektstand ${restoreCommitSha.slice(0, 12)} wiederhergestellt`)], workspace);
+      const headSha = await this.revParse(workspace, "HEAD");
+      try {
+        await this.git(["push", `--force-with-lease=refs/heads/${branch}:${expectedHeadSha}`, "origin", `HEAD:refs/heads/${branch}`], workspace);
+      } catch (error) {
+        throw gitConflict(error, "repository_head_conflict", "Der Repository-Stand wurde gleichzeitig geändert.", expectedHeadSha);
+      }
+      return { head_sha: headSha, branch, changed_paths: changedPaths, no_change: false, restored_from_commit_sha: restoreCommitSha };
+    });
+  }
+
+  async treeEntries(workspace, commitSha) {
+    const result = await this.git(["ls-tree", "-r", "-z", "--long", commitSha], workspace, { binaryOutput: true, maxOutputBytes: 1024 * 1024 });
+    const entries = decodeUtf8Buffer(result.stdout, "repository_tree_encoding_invalid").split("\0").filter(Boolean).map(parseTreeEntry).sort((left, right) => left.path.localeCompare(right.path));
+    if (entries.length > MAX_TREE_ENTRIES) throw new ProjectServerError("repository_tree_too_large", "Ein Projekt darf höchstens 1000 Dateien enthalten.", 413);
+    return entries;
+  }
+
+  async readTreeEntry(workspace, entry) {
+    if (entry.mode === "120000") throw new ProjectServerError("repository_symlink_forbidden", "Symbolische Links sind in Projekt-Repositories nicht erlaubt.", 409, { path: entry.path });
+    if (entry.type !== "blob") throw new ProjectServerError("repository_entry_type_forbidden", "Nur reguläre Projektdateien sind zulässig.", 409, { path: entry.path });
+    if (entry.size_bytes > MAX_FILE_BYTES) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413, { path: entry.path });
+    const result = await this.git(["cat-file", "blob", entry.blob_sha], workspace, { binaryOutput: true, maxOutputBytes: MAX_FILE_BYTES + 1 });
+    const content = decodeUtf8Text(result.stdout, entry.path);
+    return { ...entry, content };
+  }
+
+  async readTreeEntries(workspace, entries) {
+    let totalBytes = 0;
+    const files = [];
+    for (const entry of entries) {
+      totalBytes += entry.size_bytes;
+      if (totalBytes > MAX_READ_BYTES) throw new ProjectServerError("repository_read_too_large", "Der gelesene Projektstand überschreitet 5 MiB Text.", 413);
+      files.push(await this.readTreeEntry(workspace, entry));
+    }
+    return files;
+  }
+
+  async withFetchedCommit(remoteUrl, commitSha, callback) {
+    return this.withWorkspace(async (workspace) => {
+      await this.git(["init"], workspace);
+      await this.git(["remote", "add", "origin", remoteUrl], workspace);
+      await this.git(["fetch", "--no-tags", "origin"], workspace);
+      await this.assertCommit(workspace, commitSha);
+      return callback(workspace);
+    });
+  }
+
+  async withFetchedBranch(remoteUrl, branch, callback) {
+    return this.withWorkspace(async (workspace) => {
+      await this.git(["init"], workspace);
+      await this.git(["remote", "add", "origin", remoteUrl], workspace);
+      await this.git(["fetch", "--no-tags", "origin", `refs/heads/${branch}`], workspace);
+      return callback(workspace);
+    });
+  }
+
+  async assertCommit(workspace, commitSha) {
+    let fetchedSha;
+    try { fetchedSha = await this.revParse(workspace, `${commitSha}^{commit}`); } catch { throw new ProjectServerError("repository_commit_not_found", "Git-Commit wurde nicht gefunden.", 404); }
+    if (fetchedSha !== commitSha) throw new ProjectServerError("repository_commit_not_found", "Git-Commit wurde nicht gefunden.", 404);
   }
 
   async configureIdentity(workspace) {
@@ -117,8 +275,8 @@ class GitProjectRepositoryStore {
     return validateSha(result.stdout.trim(), "git_head_sha");
   }
 
-  git(args, cwd) {
-    return this.runGit(args, { cwd, authToken: this.authToken });
+  git(args, cwd, options = {}) {
+    return this.runGit(args, { cwd, authToken: this.authToken, ...options });
   }
 
   async withWorkspace(callback) {
@@ -129,6 +287,48 @@ class GitProjectRepositoryStore {
       await fs.rm(workspace, { recursive: true, force: true });
     }
   }
+}
+
+function parseTreeEntry(value) {
+  const match = String(value).match(/^(\d{6}) ([^ ]+) ([a-f0-9]{40}) +(-|\d+)\t([\s\S]+)$/);
+  if (!match) throw new ProjectServerError("repository_tree_invalid", "Git lieferte einen ungültigen Projektbaum.", 502);
+  const [, mode, type, blobSha, rawSize, rawPath] = match;
+  const repositoryPath = normalizeRepositoryPath(rawPath);
+  if (mode === "120000") throw new ProjectServerError("repository_symlink_forbidden", "Symbolische Links sind in Projekt-Repositories nicht erlaubt.", 409, { path: repositoryPath });
+  if (type !== "blob" || rawSize === "-") throw new ProjectServerError("repository_entry_type_forbidden", "Nur reguläre Projektdateien sind zulässig.", 409, { path: repositoryPath });
+  const sizeBytes = Number(rawSize);
+  if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 0) throw new ProjectServerError("repository_tree_invalid", "Git lieferte eine ungültige Dateigröße.", 502);
+  if (sizeBytes > MAX_FILE_BYTES) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413, { path: repositoryPath });
+  return { path: repositoryPath, mode, type, blob_sha: blobSha, size_bytes: sizeBytes };
+}
+
+function decodeUtf8Text(buffer, repositoryPath) {
+  if (!Buffer.isBuffer(buffer)) buffer = Buffer.from(buffer || "");
+  if (buffer.includes(0)) throw new ProjectServerError("repository_binary_forbidden", "Binärdateien sind im Projektquellen-Repository nicht zulässig.", 415, { path: repositoryPath });
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buffer); } catch {
+    throw new ProjectServerError("repository_encoding_invalid", "Projektdateien müssen gültiges UTF-8 enthalten.", 415, { path: repositoryPath });
+  }
+}
+
+function decodeUtf8Buffer(buffer, code) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buffer); } catch {
+    throw new ProjectServerError(code, "Repository-Pfade müssen gültiges UTF-8 enthalten.", 415);
+  }
+}
+
+function parseNameStatus(value) {
+  const parts = String(value || "").split("\0").filter(Boolean);
+  const changes = [];
+  for (let index = 0; index < parts.length;) {
+    const status = parts[index++];
+    if (/^R\d+$/.test(status)) {
+      changes.push({ status: "renamed", old_path: normalizeRepositoryPath(parts[index++]), path: normalizeRepositoryPath(parts[index++]) });
+    } else {
+      const statusMap = { A: "added", M: "modified", D: "deleted", T: "type_changed" };
+      changes.push({ status: statusMap[status] || status.toLowerCase(), path: normalizeRepositoryPath(parts[index++]) });
+    }
+  }
+  return changes;
 }
 
 async function applyChanges(workspace, changes) {
@@ -169,11 +369,15 @@ function normalizeChanges(input, options = {}) {
   let totalBytes = 0;
   const paths = new Set();
   return input.map((raw) => {
+    if (raw?.operation !== undefined && !["upsert", "delete"].includes(raw.operation)) {
+      throw new ProjectServerError("repository_operation_invalid", "Dateioperation muss upsert oder delete sein.");
+    }
     const operation = raw?.operation === "delete" ? "delete" : "upsert";
     const repositoryPath = normalizeRepositoryPath(raw?.path);
     if (paths.has(repositoryPath)) throw new ProjectServerError("duplicate_repository_path", "Ein Pfad darf pro Commit nur einmal vorkommen.");
     paths.add(repositoryPath);
     const content = operation === "upsert" ? String(raw?.content ?? "") : "";
+    if (content.includes("\0")) throw new ProjectServerError("repository_binary_forbidden", "Binärdateien sind im Projektquellen-Repository nicht zulässig.", 415, { path: repositoryPath });
     const bytes = Buffer.byteLength(content);
     if (bytes > 1024 * 1024) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413);
     totalBytes += bytes;

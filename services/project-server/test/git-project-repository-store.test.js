@@ -27,10 +27,15 @@ test("creates and updates a real repository atomically with an expected head", a
     changes: [
       { path: "README.md", content: "# Projekt\n" },
       { path: "src/main.cpp", content: "void setup() {}\n" },
+      { path: "docs/Grüße.md", content: "Grüße 🌍\n" },
+      { path: "docs/empty.txt", content: "" },
     ],
   });
   assert.match(initialized.head_sha, /^[a-f0-9]{40}$/);
+  assert.equal((await store.head({ remote_url: fakeRemote, branch: "main" })).head_sha, initialized.head_sha);
   assert.equal(fs.readFileSync(path.join(remote, "src/main.cpp"), "utf8"), "void setup() {}\n");
+  assert.equal((await store.readFile({ remote_url: fakeRemote, commit_sha: initialized.head_sha, path: "docs/Grüße.md" })).content, "Grüße 🌍\n");
+  assert.equal((await store.readFile({ remote_url: fakeRemote, commit_sha: initialized.head_sha, path: "docs/empty.txt" })).content, "");
 
   const committed = await store.commit({
     remote_url: fakeRemote,
@@ -44,26 +49,59 @@ test("creates and updates a real repository atomically with an expected head", a
   assert.notEqual(committed.head_sha, initialized.head_sha);
   assert.equal(fs.existsSync(path.join(remote, "README.md")), false);
   assert.equal(fs.readFileSync(path.join(remote, "src/main.cpp"), "utf8"), "void setup() { /* neu */ }\n");
-  assert.deepEqual(await store.tree({ remote_url: fakeRemote, commit_sha: committed.head_sha }), ["src/main.cpp"]);
+  assert.deepEqual(await store.tree({ remote_url: fakeRemote, commit_sha: committed.head_sha }), ["docs/empty.txt", "docs/Grüße.md", "src/main.cpp"]);
+
+  const renamed = await store.commit({
+    remote_url: fakeRemote,
+    expected_head_sha: committed.head_sha,
+    message: "Main umbenennen",
+    changes: [
+      { path: "src/main.cpp", operation: "delete" },
+      { path: "src/application.cpp", content: "void setup() { /* neu */ }\n" },
+    ],
+  });
+  const history = await store.history({ remote_url: fakeRemote, branch: "main", commit_sha: renamed.head_sha });
+  assert.equal(history[0].message, "Main umbenennen");
+  const diff = await store.diff({ remote_url: fakeRemote, branch: "main", commit_sha: renamed.head_sha });
+  assert.deepEqual(diff.changes, [{ status: "renamed", old_path: "src/main.cpp", path: "src/application.cpp" }]);
+
+  const restored = await store.restore({
+    remote_url: fakeRemote,
+    branch: "main",
+    expected_head_sha: renamed.head_sha,
+    restore_commit_sha: initialized.head_sha,
+    message: "Initialstand wiederherstellen",
+  });
+  assert.notEqual(restored.head_sha, initialized.head_sha);
+  assert.equal(fs.readFileSync(path.join(remote, "README.md"), "utf8"), "# Projekt\n");
+  assert.equal(fs.readFileSync(path.join(remote, "src/main.cpp"), "utf8"), "void setup() {}\n");
 
   const noChange = await store.commit({
     remote_url: fakeRemote,
-    expected_head_sha: committed.head_sha,
-    changes: [{ path: "src/main.cpp", content: "void setup() { /* neu */ }\n" }],
+    expected_head_sha: restored.head_sha,
+    changes: [{ path: "src/main.cpp", content: "void setup() {}\n" }],
   });
   assert.equal(noChange.no_change, true);
-  assert.equal(noChange.head_sha, committed.head_sha);
+  assert.equal(noChange.head_sha, restored.head_sha);
 
   await assert.rejects(store.commit({
     remote_url: fakeRemote,
     expected_head_sha: initialized.head_sha,
     changes: [{ path: "src/main.cpp", content: "stale\n" }],
-  }), (error) => error.code === "repository_head_conflict" && error.details.actual_head_sha === committed.head_sha);
+  }), (error) => error.code === "repository_head_conflict" && error.details.actual_head_sha === restored.head_sha);
+
+  fs.writeFileSync(path.join(remote, "invalid-utf8.txt"), Buffer.from([0xff]));
+  fs.writeFileSync(path.join(remote, "binary.dat"), Buffer.from([0x00, 0x01]));
+  run(["-C", remote, "config", "user.name", "Test"]);
+  run(["-C", remote, "config", "user.email", "test@example.invalid"]);
+  run(["-C", remote, "add", "invalid-utf8.txt", "binary.dat"]);
+  run(["-C", remote, "commit", "-m", "invalid content fixture"]);
+  const invalidContentHead = run(["-C", remote, "rev-parse", "HEAD"]).trim();
+  await assert.rejects(store.readFile({ remote_url: fakeRemote, commit_sha: invalidContentHead, path: "invalid-utf8.txt" }), (error) => error.code === "repository_encoding_invalid");
+  await assert.rejects(store.tree({ remote_url: fakeRemote, commit_sha: invalidContentHead }), (error) => ["repository_binary_forbidden", "repository_encoding_invalid"].includes(error.code));
 
   fs.mkdirSync(path.join(root, "outside"));
   fs.symlinkSync(path.join(root, "outside"), path.join(remote, "linked"));
-  run(["-C", remote, "config", "user.name", "Test"]);
-  run(["-C", remote, "config", "user.email", "test@example.invalid"]);
   run(["-C", remote, "add", "linked"]);
   run(["-C", remote, "commit", "-m", "symlink fixture"]);
   const symlinkHead = run(["-C", remote, "rev-parse", "HEAD"]).trim();
@@ -80,6 +118,7 @@ test("rejects traversal duplicate paths and oversized files before invoking Git"
   await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "../secret", content: "x" }] }), /Pfad/);
   await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "a.txt", content: "x" }, { path: "a.txt", operation: "delete" }] }), /nur einmal/);
   await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "a.txt", content: "x".repeat(1024 * 1024 + 1) }] }), /1 MiB/);
+  await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "a.bin", content: "text\0binary" }] }), (error) => error.code === "repository_binary_forbidden");
   await assert.rejects(store.commit({ remote_url: "https://user:secret@forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "a.txt", content: "x" }] }), /Remote/);
   await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: ".GIT/config", content: "x" }] }), /Pfad/);
 });

@@ -51,6 +51,25 @@ test("retries safe reads once but never retries repository creation", async () =
   await assert.rejects(client.createOrganizationRepository("org", { name: "repo" }), (error) => error.code === "forgejo_unavailable");
 });
 
+test("resumes provisioning idempotently when the exact initial tree already exists", async () => {
+  const client = {
+    baseUrl: "http://forgejo:3000",
+    ensureOrganizationRepository: async () => ({
+      created: false,
+      repository: { id: 42, clone_url: "http://forgejo:3000/gernetix-projects/project.git", empty: false },
+    }),
+  };
+  const git = {
+    head: async () => ({ head_sha: "a".repeat(40), branch: "main" }),
+    readFiles: async () => [{ path: "README.md", content: "Hallo", size_bytes: 5, blob_sha: "b".repeat(40) }],
+    initialize: async () => { throw new Error("must_not_initialize_twice"); },
+  };
+  const store = new ForgejoProjectRepositoryStore({ client, git, organization: "gernetix-projects" });
+  const binding = await store.provisionProject({ project_id: "project-1", changes: [{ path: "README.md", content: "Hallo" }] });
+  assert.equal(binding.head_sha, "a".repeat(40));
+  await assert.rejects(store.provisionProject({ project_id: "project-1", changes: [{ path: "README.md", content: "Anders" }] }), (error) => error.code === "repository_already_provisioned");
+});
+
 function response(status, payload) {
   return { status, ok: status >= 200 && status < 300, json: async () => payload };
 }
