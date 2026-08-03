@@ -202,8 +202,9 @@ Der vollstaendige Ablauf fuehrt weiterhin automatisch aus:
 9. Containerstatus ausgeben.
 
 Persistente Docker-Volumes und vorhandene Werte in `.env.vps` werden nicht geloescht
-oder ueberschrieben. Fehlende Compute-Secrets erzeugt der Staging-Ablauf einmalig
-direkt auf dem VPS, setzt die Env-Datei auf Modus `0600` und gibt die Werte nicht aus.
+oder ueberschrieben. Fehlende Compute-, Artifact-Upload- und Forgejo-Secrets erzeugt
+der Staging-Ablauf einmalig direkt auf dem VPS, setzt die Env-Datei auf Modus `0600`
+und gibt die Werte nicht aus.
 Der Bootstrap stellt vor dem Anhaengen ein korrektes Zeilenende sicher und kann
 einen bereits ohne Trennzeile angehaengten 64-stelligen Compute-Token reparieren.
 Die paketabhaengigen Docker-Layer liegen vor den Quellcode-Layern. Ein normaler
