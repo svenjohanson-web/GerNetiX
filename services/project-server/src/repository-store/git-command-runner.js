@@ -37,10 +37,12 @@ function createGitCommandRunner(options = {}) {
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
       });
-      let stdout = "";
+      const binaryOutput = runOptions.binaryOutput === true;
+      const maxOutputBytes = positiveOutputLimit(runOptions.maxOutputBytes, binaryOutput ? 1024 * 1024 + 1 : 16_384);
+      let stdout = binaryOutput ? Buffer.alloc(0) : "";
       let stderr = "";
       const timer = setTimeout(() => child.kill("SIGKILL"), positiveTimeout(runOptions.timeoutMs, timeoutMs));
-      child.stdout.on("data", (chunk) => { stdout = appendBounded(stdout, chunk); });
+      child.stdout.on("data", (chunk) => { stdout = appendBounded(stdout, chunk, maxOutputBytes, binaryOutput); });
       child.stderr.on("data", (chunk) => { stderr = appendBounded(stderr, chunk); });
       child.once("error", (error) => {
         clearTimeout(timer);
@@ -62,8 +64,12 @@ function createGitCommandRunner(options = {}) {
   };
 }
 
-function appendBounded(current, chunk) {
-  return `${current}${String(chunk)}`.slice(-16_384);
+function appendBounded(current, chunk, maxBytes = 16_384, binary = false) {
+  if (binary) {
+    const next = Buffer.concat([current, Buffer.from(chunk)]);
+    return next.length > maxBytes ? next.subarray(next.length - maxBytes) : next;
+  }
+  return `${current}${String(chunk)}`.slice(-maxBytes);
 }
 
 function redactGitOutput(value) {
@@ -75,6 +81,11 @@ function redactGitOutput(value) {
 function positiveTimeout(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function positiveOutputLimit(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 module.exports = { GitCommandError, createGitCommandRunner };

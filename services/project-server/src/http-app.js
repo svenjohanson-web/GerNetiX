@@ -49,7 +49,9 @@ function createHttpApp(options) {
 
     const sources = path.match(new RegExp(`^${prefix}/([^/]+)/sources$`));
     if (req.method === "GET" && sources) {
-      sendJson(res, 200, { items: await service.listSources(decodeURIComponent(sources[1])) });
+      sendJson(res, 200, { items: await service.listSources(decodeURIComponent(sources[1]), {
+        commit_sha: url.searchParams.get("commit_sha") || "",
+      }) });
       return;
     }
     if (req.method === "PUT" && sources) {
@@ -70,6 +72,28 @@ function createHttpApp(options) {
       sendJson(res, 200, await service.repositoryTree(
         decodeURIComponent(repositoryTree[1]),
         url.searchParams.get("commit_sha") || "",
+      ));
+      return;
+    }
+    const repositoryHistory = path.match(new RegExp(`^${prefix}/([^/]+)/repository/history$`));
+    if (req.method === "GET" && repositoryHistory) {
+      sendJson(res, 200, await service.repositoryHistory(decodeURIComponent(repositoryHistory[1]), {
+        commit_sha: url.searchParams.get("commit_sha") || "",
+        limit: url.searchParams.get("limit") || 30,
+      }));
+      return;
+    }
+    const repositoryDiff = path.match(new RegExp(`^${prefix}/([^/]+)/repository/commits/([^/]+)/diff$`));
+    if (req.method === "GET" && repositoryDiff) {
+      sendJson(res, 200, await service.repositoryDiff(
+        decodeURIComponent(repositoryDiff[1]), decodeURIComponent(repositoryDiff[2]),
+      ));
+      return;
+    }
+    const repositoryRestore = path.match(new RegExp(`^${prefix}/([^/]+)/repository/restores$`));
+    if (req.method === "POST" && repositoryRestore) {
+      sendJson(res, 201, await service.restoreRepository(
+        decodeURIComponent(repositoryRestore[1]), await readJsonBody(req),
       ));
       return;
     }
@@ -111,14 +135,29 @@ function createHttpApp(options) {
         query: url.searchParams.get("q") || "",
         current_path: url.searchParams.get("current_path") || "",
         source_kind: url.searchParams.get("source_kind") || "",
+        commit_sha: url.searchParams.get("commit_sha") || "",
         limit: url.searchParams.get("limit") || 6,
       }) });
       return;
     }
 
+    const sourceRename = path.match(new RegExp(`^${prefix}/([^/]+)/sources/rename$`));
+    if (req.method === "POST" && sourceRename) {
+      sendJson(res, 200, await service.renameSource(decodeURIComponent(sourceRename[1]), await readJsonBody(req)));
+      return;
+    }
+
     const source = path.match(new RegExp(`^${prefix}/([^/]+)/sources/(.+)$`));
     if (req.method === "GET" && source) {
-      sendJson(res, 200, await service.getSource(decodeURIComponent(source[1]), decodeURIComponent(source[2])));
+      sendJson(res, 200, await service.getSource(decodeURIComponent(source[1]), decodeURIComponent(source[2]), {
+        commit_sha: url.searchParams.get("commit_sha") || "",
+      }));
+      return;
+    }
+    if (req.method === "DELETE" && source) {
+      sendJson(res, 200, await service.deleteSource(
+        decodeURIComponent(source[1]), decodeURIComponent(source[2]), await readJsonBody(req),
+      ));
       return;
     }
 
