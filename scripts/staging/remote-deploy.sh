@@ -200,10 +200,12 @@ if [ "$deploy_mode" = "incremental" ]; then
 
   case " $incremental_services " in
     *" identity-server "*)
-      echo "==> Nginx nach Identity-Wechsel kurz neu binden"
-      compose up -d --no-deps --force-recreate nginx
+      echo "==> HTTP- und HTTPS-Nginx nach Identity-Wechsel kurz neu binden"
+      compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls
       nginx_container=$(compose ps -q nginx)
+      nginx_tls_container=$(compose --profile tls ps -q nginx-tls)
       docker exec "$nginx_container" nginx -t >/dev/null
+      docker exec "$nginx_tls_container" nginx -t >/dev/null
       wait_for_private_pwa
       ;;
   esac

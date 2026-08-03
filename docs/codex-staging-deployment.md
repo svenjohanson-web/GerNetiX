@@ -196,7 +196,8 @@ mit dem neuen Ziel-Commit und waehlt den kleinsten sicheren Ablauf:
 - Aenderungen innerhalb eines oder mehrerer Domaenendienste bauen das gemeinsame
   Node-Image genau einmal, erstellen nur die betroffenen Container neu und
   pruefen nur deren direkten Healthcheck. Bei Identity-Aenderungen werden
-  zusaetzlich Nginx neu gebunden und der private PWA-Endpunkt geprueft.
+  zusaetzlich der HTTP-Diagnoseproxy und der private HTTPS-Nginx neu gebunden,
+  syntaktisch geprueft und der private PWA-Endpunkt getestet.
 - Infrastruktur-, Compose-, Dockerfile-, Migrations- oder nicht eindeutig
   zuordenbare Aenderungen verwenden immer den vollstaendigen Sicherheitslauf.
 - Fehlt der vorherige Commit oder ist die Commit-Historie nicht linear, gilt

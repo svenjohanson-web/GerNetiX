@@ -23,6 +23,8 @@ test("uses targeted health checks for incremental changes and keeps the full saf
   assert.match(remoteDeploy, /docker exec "\$container_id" node \/app\/docker\/healthcheck\.js/);
   assert.match(remoteDeploy, /GERNETIX_STAGING_INCREMENTAL_WAIT_TIMEOUT:-45/);
   assert.match(remoteDeploy, /\*" identity-server "\*\)[\s\S]*wait_for_private_pwa/);
+  assert.match(remoteDeploy, /compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls/);
+  assert.match(remoteDeploy, /docker exec "\$nginx_tls_container" nginx -t/);
   assert.match(remoteDeploy, /nft -c -f infra\/vps\/security\/firewall\.nft/);
   assert.match(remoteDeploy, /up -d --wait --wait-timeout "\$wait_timeout"/);
   assert.match(remoteDeploy, /postgres-consolidation-migration/);
