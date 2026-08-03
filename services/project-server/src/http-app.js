@@ -57,6 +57,23 @@ function createHttpApp(options) {
       return;
     }
 
+    const repositoryCommits = path.match(new RegExp(`^${prefix}/([^/]+)/repository/commits$`));
+    if (req.method === "POST" && repositoryCommits) {
+      sendJson(res, 201, await service.commitRepositoryChanges(
+        decodeURIComponent(repositoryCommits[1]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
+    const repositoryTree = path.match(new RegExp(`^${prefix}/([^/]+)/repository/tree$`));
+    if (req.method === "GET" && repositoryTree) {
+      sendJson(res, 200, await service.repositoryTree(
+        decodeURIComponent(repositoryTree[1]),
+        url.searchParams.get("commit_sha") || "",
+      ));
+      return;
+    }
+
     const versions = path.match(new RegExp(`^${prefix}/([^/]+)/versions$`));
     if (req.method === "GET" && versions) {
       sendJson(res, 200, { items: await service.listVersions(decodeURIComponent(versions[1])) });

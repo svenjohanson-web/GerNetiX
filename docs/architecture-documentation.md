@@ -32,6 +32,11 @@ Fachliche Entscheidungen werden weiterhin im SQLite-Graphen gepflegt. Lesbare Ko
 
 Die Zuordnung von SQL-Datenbanken, Docker-Volumes, Downloadklassen, Firmware-BLOBs, Account-Assets, Community-Inhalten und technischen Caches steht im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
 
+Die beschlossene Ablösung der PostgreSQL-Projektquellen durch private
+Forgejo-Repositories, die Speichergrenze zu PostgreSQL und Artifact Store sowie
+die testbaren Migrationsschritte stehen in
+[Forgejo-Projektrepositories und lesbare Projektdateien](forgejo-project-repository-work-packages.md).
+
 Die providerneutrale Trennung von dauerhafter Control Plane, System- und
 Kunden-Workern, Grundlast-/Burst-Messung, privaten Rechnern, Cloud-Burst und
 Kubernetes steht in der

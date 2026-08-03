@@ -4,7 +4,11 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 
 ## Verbindliche Regeln
 
-- Fachliche Daten und dauerhaft benoetigte Binaerartefakte liegen ausschliesslich in SQL: SQLite oder PostgreSQL. Lose Dateien, JSON, Browser-State und Prozessspeicher sind keine Quelle der Wahrheit.
+- Fachliche Laufzeitdaten liegen in SQL. Nutzerbearbeitete Projektdateien und
+  ihre Historie liegen nach dem Forgejo-Cutover in privaten Git-Repositories;
+  dauerhaft benoetigte Binaerartefakte liegen im Artifact Store. Lose Dateien
+  ausserhalb eines verwalteten Repository- oder Artifact-Store-Vertrags,
+  Browser-State und Prozessspeicher sind keine Quelle der Wahrheit.
 - Zugriff wird serverseitig aus Route, Sitzung, Besitz, Projektzuordnung und Freigabeklasse abgeleitet. Ein Client darf keine fremde `account_id` als Berechtigung setzen.
 - Oeffentliche, angemeldete, berechtigte, kontoeigene, projektgebundene und interne Daten sind getrennte Schutzklassen.
 - Veroeffentlichte Releases sind unveraenderlich. Eine neue Fassung erhaelt eine neue Version; Widerruf ersetzt kein Artefakt stillschweigend.
@@ -19,7 +23,7 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 | `authenticated_release` | MaxSerial/GerNetiX Serial Service, allgemeine Downloads | angemeldeter Account | nur Release-Publishing |
 | `entitled_release` | spaetere Kauf-, Kurs- oder Lizenzdownloads | Sitzung plus serverseitiges Entitlement | nur Release-Publishing |
 | `account_asset` | persoenlicher QR-Code, eigenes Bild, Bildstil, Export | ausschliesslich Eigentuemer | Eigentuemer ueber Account-API |
-| `project_asset` | Projektquellen, Diagramme, Build-Konfiguration | Account plus Projektbesitz | Account plus Projektbesitz |
+| `project_asset` | Projektquellen, Diagramme, Build-Konfiguration im privaten Forgejo-Repository | Account plus Projektbesitz ueber Project Server | Account plus Projektbesitz ueber Project Server |
 | `build_artifact` | `firmware.bin`, `firmware.hex`, ELF, Map, Build-Log | Account plus Build-/Projektzuordnung | Build-&-Deploy-Server |
 | `community_content` | oeffentliche Frage oder private Projektbegleitung | explizite Community-Sichtbarkeit | angemeldeter Autor/Operator |
 | `factory_internal` | Provisioning-Artefakt, Recovery- und Factory-State | interner Servicevertrag | Provisioning/Operator |
@@ -31,18 +35,21 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 
 ## Zentrale fuehrende Laufzeitdatenbank auf dem VPS
 
-Der laufende VPS verwendet genau einen PostgreSQL-17-Prozess mit pgvector, eine
-Datenbank `gernetix_runtime` und ein persistentes Volume
-`runtime_postgres_data`. Die Services bleiben fachlich getrennte Schreiber; ihre
-Tabellen tragen stabile Domaenenpraefixe. Die frueher getrennten PostgreSQL-
-Container und produktiven SQLite-Dateien sind damit keine Laufzeitkomponenten
-mehr.
+Der laufende VPS verwendet genau einen PostgreSQL-17-Prozess mit pgvector. Die
+GerNetiX-Domaenen verwenden die Datenbank `gernetix_runtime` und das persistente
+Volume `runtime_postgres_data`; ihre Tabellen tragen stabile
+Domaenenpraefixe. Forgejo verwendet im selben PostgreSQL-Prozess die technisch
+getrennte Datenbank `forgejo` mit eigenem Login und ohne Zugriff auf
+`gernetix_runtime`. Die Trennung verhindert, dass fremdverwaltete
+Forgejo-Tabellen mit dem GerNetiX-Domaenenmodell vermischt werden.
 
 | Fachbereich | Fuehrender Speicherpfad | Compose-Volume | Inhalt |
 |---|---|---|---|
 | Identity | PostgreSQL `gernetix_runtime`, Tabellen `identity_*` | `runtime_postgres_data` | Accounts einschliesslich bevorzugter Oberflaechensprache, Credentials, Passkeys, Recovery-Transaktionen, Sessions, Push-/SMTP-State, Plattform-Releases, Account-Assets und Wissenskapitel-Lesestaende |
 | Identity-Altbestand | `/var/lib/gernetix/identity/gernetix-identity.sqlite` | `identity_state` | einmalige, idempotente Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
-| Projekte | PostgreSQL `gernetix_runtime`, Tabellen `project_*`, insbesondere `project_learning_progress`, `project_learning_feedback` und `project_template_feedback` | `runtime_postgres_data` | Projekte, Quellen, Build-Jobs, aktuelle Lesson und aktueller Step, abgeschlossene Steps je Lesson, Projekt-/Template-Feedback und Ressourcenprofile |
+| Projekte | PostgreSQL `gernetix_runtime`, Tabellen `project_*`, insbesondere Repository-Bindung, `project_learning_progress`, `project_learning_feedback` und `project_template_feedback` | `runtime_postgres_data` | Projektidentitaet, Owner, Rechte, Forgejo-Repository- und Commitreferenzen, Build-Jobs, aktuelle Lesson und aktueller Step, abgeschlossene Steps je Lesson, Projekt-/Template-Feedback und Ressourcenprofile; nach Cutover keine Projektdateiinhalte |
+| Projektdateien und Historie | Forgejo, private Git-Repositories | `forgejo_data` | Quellcode, Header, Tests, Projektmanifest, Architekturdateien, Software-Einheiten, Buildkonfiguration und aufgeloeste projektbezogene Board-/Pin-Konfiguration als echte Dateien und Commits |
+| Forgejo-Verwaltungsdaten | PostgreSQL-Datenbank `forgejo`, eigener Login | `runtime_postgres_data` | Forgejo-eigene Repository-, Organisations-, Token- und Betriebsmetadaten; kein GerNetiX-Domaenenmodell |
 | Projekt-Altbestand | `/var/lib/gernetix/projects/gernetix-projects.sqlite` beziehungsweise fruehere `gernetix-services.sqlite` | `project_state` / `service_state` | einmalige, read-only Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
 | Build und OTA | PostgreSQL `gernetix_runtime`, Tabellen `build_*` | `runtime_postgres_data` | Firmware-, ELF-, HEX-, Map- und Log-BLOBs sowie OTA-Bestaetigungen |
 | Telemetrie | PostgreSQL `gernetix_runtime`, Tabellen `telemetry_*` | `runtime_postgres_data` | partitionierte Messwerte, Ereignisse und Retention |
@@ -74,7 +81,7 @@ Accounts, Credentials und Sessions liegen ausschliesslich in `gernetix_runtime` 
 
 | Bereich | Beispiel | Rolle |
 |---|---|---|
-| versionierte Website-Assets | `services/identity-server/public/` | Git-/Deployment-Inhalt, keine Nutzerablage |
+| versionierte Website-Assets | `services/identity-server/public/` | GerNetiX-Repository-/Deployment-Inhalt, keine Nutzerablage |
 | lokaler Paket-Fallback | `tools/usb-serial-helper/dist/` | Entwicklungsfallback; auf dem VPS ist SQL fuehrend |
 | Build-Workspace und Cache | `/var/lib/gernetix/build/tmp`, Cache-/Toolchain-Verzeichnisse | loesch- und wiederherstellbarer technischer Cache |
 | fuer Flashwerkzeuge materialisierte Firmware | Provisioning-Runtimepfad | temporaere Ableitung eines SQL-BLOBs |
@@ -92,6 +99,9 @@ Neue Worker verwenden folgende Grenze:
 
 - Ein Worker besitzt keinen fachlichen lokalen Zustand. Workspace, Toolchain-,
   Objekt- und Modellcache sind jederzeit loeschbar.
+- Ein Build-Worker erhaelt ein vom Project Server aus einem festen Git-Commit
+  materialisiertes BuildPackage. Er erhaelt weder Forgejo-Administrationsrechte
+  noch allgemeinen Repositoryzugriff.
 - Kurzlebige Cloud-, Kubernetes- und Kunden-Worker greifen nicht direkt auf
   PostgreSQL zu. Sie beziehen Lease und Input ueber das Worker Gateway und geben
   Ergebnisse dort zurueck.
@@ -126,16 +136,31 @@ Damit kann dasselbe Release auf mehreren Rechnern verwendet werden, ohne lokal e
 
 ## Bekannte Abweichungen und naechste Migrationen
 
-- Alle dauerhaften VPS-Laufzeitdaten sind auf die zentrale PostgreSQL-Datenbank `gernetix_runtime` umgestellt.
+- Alle heutigen fachlichen VPS-Laufzeitdaten sind auf die zentrale
+  PostgreSQL-Datenbank `gernetix_runtime` umgestellt. Die beschlossene
+  Forgejo-Zielarchitektur fuegt fuer Projektdateien die getrennte
+  Forgejo-Datenbank und das Repository-Volume hinzu.
+- Projektquellen und SQL-Git-Light-Versionen liegen heute noch in
+  `project_sources`, `project_versions.raw_json` und BuildJob-Snapshots. Die
+  beschlossene Forgejo-Migration ist in
+  [Forgejo-Projektrepositories und lesbare Projektdateien](forgejo-project-repository-work-packages.md)
+  in projektweise abnehmbaren Arbeitspaketen beschrieben. Bis zum Cutover
+  bleibt SQL fuehrend; danach bleiben diese Bestaende nur read-only fuer
+  Migration und kontrollierten Rollback erhalten.
 - `gernetix-services.sqlite` bleibt nur als read-only Altquelle der idempotenten Migrationen erhalten. Kein produktiver Compose-Dienst schreibt weiter hinein.
 - Provisioning, Recovery, Context Manager und Community AI halten kurzlebigen Workflow-State im Prozessspeicher. Dauerhafte Ergebnisse werden ueber Device Management, Community, AI Context oder `build_artifacts` uebernommen.
 - Die lokale JSON-Datei der LLM-Routing-Konfiguration ist nur noch Altimport; produktiv liegt die Konfiguration verschluesselt in PostgreSQL.
 - Provisioning besitzt weiterhin explizite Entwicklungsfallbacks fuer lokale Firmwarepfade. Im VPS-Betrieb muss das SQL-Artefakt fuehrend bleiben.
 - Account-Assets verwenden derzeit JSON/Base64 bis 16 MiB. Fuer groessere Bilder ist spaeter ein streamingfaehiger Uploadvertrag sinnvoll; Eigentumspruefung und SQL-Wahrheit bleiben unveraendert.
-- Backup-, Restore- und Retention-Zeiten muessen pro Volume beziehungsweise Datenbank operational getestet und protokolliert werden.
+- Backup-, Restore- und Retention-Zeiten muessen pro Volume beziehungsweise Datenbank operational getestet und protokolliert werden. Forgejo-Datenbank und `forgejo_data` benoetigen dabei einen gemeinsamen konsistenten Sicherungspunkt.
 
 ## Inventarisierung und Betrieb
 
-Eine Speicherinventur erfasst mindestens Datenbank/Volume, Schutzklasse, fachlichen Owner, Tabellen, Groesse, Anzahl aktiver/verworfener Objekte, aeltestes/neuestes Objekt, Backup-Zeitpunkt und letzten Restore-Test. Inhalte, Passkeys, Tokens und private Metadaten werden dabei nicht in Logs oder Monitoring kopiert. Hash, Groesse, Status und technische ID reichen fuer Artefaktinventare aus.
+Eine Speicherinventur erfasst mindestens Datenbank/Volume, Schutzklasse,
+fachlichen Owner, Tabellen beziehungsweise Repositoryanzahl, Groesse, Anzahl
+aktiver/verworfener Objekte, aeltestes/neuestes Objekt, Backup-Zeitpunkt und
+letzten Restore-Test. Inhalte, Commitnachrichten, Passkeys, Tokens und private
+Metadaten werden dabei nicht in Logs oder Monitoring kopiert. Hash, Groesse,
+Status und technische ID reichen fuer Artefaktinventare aus.
 
 Für die Community setzt das Admin Tool diese Grenze über `GET /api/community/operations-summary` um. Der interne, token-geschützte Aufruf liefert nur aggregierte Zahlen und liest weder Titel und Texte noch Account- oder Projektkennungen aus.

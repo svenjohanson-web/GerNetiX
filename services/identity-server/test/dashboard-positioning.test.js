@@ -23,6 +23,11 @@ test("uses the existing GerNetiX design tokens for the dashboard", () => {
   assert.doesNotMatch(css, /\.homepage-copy-box/);
 });
 
+test("keeps the platform topbar and its menu visible while the dashboard scrolls", () => {
+  assert.match(css, /\.topbar \{[\s\S]*position: sticky;[\s\S]*top: 10px;[\s\S]*z-index: 40;[\s\S]*backdrop-filter: blur\(14px\);/);
+  assert.match(css, /\.app-menu \{[\s\S]*position: fixed;[\s\S]*top: 74px;/);
+});
+
 test("groups dashboard destinations into scannable categories with at most three cards per row", () => {
   assert.match(html, /Entwickeln &amp; verwalten[\s\S]*\/app\/development-platform\/[\s\S]*\/app\/device-management\//);
   assert.match(html, /Lernen &amp; verstehen[\s\S]*\/app\/learn\/[\s\S]*\/wissen\/[\s\S]*\/app\/quiz\//);

@@ -62,8 +62,11 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 - Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export ausfuehren.
 - Graph-Import oder Graph-Validierung nur einmal am Ende eines fachlichen Blocks oder direkt vor Commit ausfuehren.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
-- Der VPS betreibt genau einen PostgreSQL-17/pgvector-Prozess und die Datenbank `gernetix_runtime`; fachliche Trennung erfolgt ueber Tabellenpraefixe und Service-APIs, nicht ueber weitere Datenbankprozesse oder Laufzeit-SQLite-Dateien.
-- Project Server ist innerhalb dieser Datenbank die PostgreSQL-Wahrheit fuer accountgebundene Projekte.
+- Der VPS betreibt genau einen PostgreSQL-17/pgvector-Prozess. GerNetiX-Domaenen verwenden `gernetix_runtime`; die beschlossene Forgejo-Zielarchitektur verwendet im selben Prozess die getrennte Datenbank `forgejo` mit eigenem Login. Weitere Datenbankprozesse oder produktive Laufzeit-SQLite-Dateien sind nicht vorgesehen.
+- Project Server ist in PostgreSQL die Wahrheit fuer Projektidentitaet, Besitz,
+  Rechte, Repository-Bindung und Build-Prozesszustand. Nach dem kontrollierten
+  Cutover sind private Forgejo-Repositories die Wahrheit fuer Projektdateien
+  und Git-Historie; bis dahin bleibt die SQL-Altimplementierung fuehrend.
 - Telemetry Server ist die PostgreSQL-Wahrheit fuer konto- und projektgebundene Telemetrie.
 - Community Platform ist die PostgreSQL-Wahrheit fuer oeffentliche Fragen und private Projektbegleitung.
 - AI Usage Server ist die PostgreSQL-Wahrheit fuer Credit-Konten, Ledger, KI-Nutzungsereignisse, Cost-Control-Policy und Audit.
@@ -71,7 +74,12 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 - Hardware Shop ist die PostgreSQL-Wahrheit fuer Angebote, Warenkoerbe, Bestellungen und Purchase Contexts.
 - Operations-PostgreSQL ist die Wahrheit fuer Admin-Consents, Admin-Audit, Systemereignisse und zentrale Schnittstellenstatistik.
 - AI Context Server ist die PostgreSQL-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
-- Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
+- Dauerhafte fachliche Laufzeitdaten liegen in SQL/SQLite. Versionierte
+  Projektdateien liegen nach dem Cutover ausschliesslich in den gebundenen
+  Forgejo-Repositories, Binaries im Artifact Store. Lose JSON-Dateien,
+  Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind
+  nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche
+  Quelle der Wahrheit sein.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
 - Abschlussnachweis nicht kuenstlich verlaengern: keine Runtime-, Graph- oder Live-Daten-Schritte ergaenzen, wenn sie fuer die konkrete Aenderung nicht erforderlich sind.
 

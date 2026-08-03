@@ -2,6 +2,14 @@
 
 MVP-Implementierungskontrakt fuer den lokalen Project Server.
 
+Die hier beschriebenen Quellen- und Snapshot-Endpunkte bilden den aktuellen
+SQL-Altvertrag. Beim Forgejo-Cutover bleibt die fachliche Identity-/Project-
+Server-Grenze erhalten. Der optionale Forgejo-Adapter und der atomare
+Mehrdatei-Schreibvertrag sind bereits lokal vorhanden; der vollstaendige
+Lese-/Build-Cutover bleibt offen. Ziel und
+Migration stehen in
+[`docs/forgejo-project-repository-work-packages.md`](../../../../docs/forgejo-project-repository-work-packages.md).
+
 ## Basis
 
 - Health: `GET /health`
@@ -14,6 +22,13 @@ MVP-Implementierungskontrakt fuer den lokalen Project Server.
 - `POST /api/projects`
 - `GET /api/projects/{projectId}`
 - `PATCH /api/projects/{projectId}`
+
+`POST` und `PATCH` liefern zusaetzlich `configuration_projection` mit
+`changed_paths`, `unchanged_paths` und `removed_paths`. Der heutige SQL-Pfad
+materialisiert damit die spaetere Git-Aenderung bereits als deterministische
+Projektdateien. Bei aktiver Forgejo-Bindung enthaelt `PATCH` zusaetzlich
+`repository_commit`; ein mitgesendetes `expected_head_sha` wird vor der
+Aenderung gegen die gespeicherte Bindung geprueft.
 
 Ein Projekt kann optional `view_manifest` enthalten. Dieses Manifest beschreibt die projektgebundenen IDE-/Lernansichten, z. B.:
 
@@ -35,6 +50,31 @@ Manifest-Views koennen zusaetzlich `source_lines`, `editable_lines`, `completion
 - `GET /api/projects/{projectId}/sources/{relativePath}`
 
 Quellpfade muessen relativ sein und duerfen keine `..`-Segmente enthalten.
+
+### Atomarer Repository-Vertrag
+
+- `POST /api/projects/{projectId}/repository/commits`
+- `GET /api/projects/{projectId}/repository/tree?commit_sha={fullSha}`
+
+Der POST-Endpunkt verlangt einen vollstaendigen `expected_head_sha`, eine
+Commitnachricht und bis zu 100 `changes`. Jede Aenderung besitzt `path`,
+optional `operation: "delete"` und bei Upserts `content`. Alle Pfade werden in
+einem Git-Commit geschrieben. Ein veralteter Head liefert
+`repository_head_conflict` mit HTTP 409; gleicher Inhalt liefert einen No-op
+ohne neuen Commit. Einzeldateien sind auf 1 MiB, ein Textcommit auf 5 MiB
+begrenzt. Absolute Pfade, `..`, `.git`, doppelte Pfade und symbolische
+Linkdurchstiche werden abgewiesen.
+
+Repository-Bindungen geben nur Provider, Status, Organisation,
+Repositorykennung, Default-Branch und Head-SHA aus. Clone-URL und
+Diensttokens bleiben serverintern.
+
+Automatisch materialisierte Entwicklungs-Konfigurationen liegen unter
+`gernetix/`. Der Project Server verwendet dafuer die Rollen
+`project_configuration` und `generated_configuration_header`. Generierte
+Header sind keine frei editierbare zweite Konfigurationsquelle. Volatile
+Zeitstempel werden nicht projiziert; Secrets erscheinen ausschliesslich als
+`<runtime-secret>`.
 
 KI-abgeleitete Entwicklungsprojekte koennen Architekturquellen unter `Architektur/statische-architektur/`, `Architektur/informationsfluss/` und `Architektur/systemverhalten/` speichern. `Systemverhalten` beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen, die spaeter in Komponentenverhalten dekomponiert werden koennen.
 

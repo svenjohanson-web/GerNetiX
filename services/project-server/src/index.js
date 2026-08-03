@@ -9,12 +9,36 @@ function createDefaultProjectServer(config = createConfig()) {
   const repository = createRepository(config);
   if (repository && typeof repository.then === "function") {
     return repository.then(async (resolvedRepository) => {
-      const service = new ProjectService({ repository: resolvedRepository });
+      const service = new ProjectService({ repository: resolvedRepository, projectRepositoryStore: createProjectRepositoryStore(config) });
       await service.ready;
       return service;
     });
   }
-  return new ProjectService({ repository });
+  return new ProjectService({ repository, projectRepositoryStore: createProjectRepositoryStore(config) });
+}
+
+function createProjectRepositoryStore(config) {
+  if (config.repositoryStoreBackend !== "forgejo") return null;
+  if (!config.forgejo?.baseUrl || !config.forgejo?.provisionToken || !config.forgejo?.runtimeToken) {
+    throw new Error("forgejo_repository_store_configuration_incomplete");
+  }
+  const { ForgejoClient } = require("./repository-store/forgejo-client");
+  const { ForgejoProjectRepositoryStore } = require("./repository-store/forgejo-project-repository-store");
+  const { GitProjectRepositoryStore } = require("./repository-store/git-project-repository-store");
+  return new ForgejoProjectRepositoryStore({
+    organization: config.forgejo.organization,
+    defaultBranch: config.forgejo.defaultBranch,
+    client: new ForgejoClient({
+      baseUrl: config.forgejo.baseUrl,
+      token: config.forgejo.provisionToken,
+      timeoutMs: config.forgejo.timeoutMs,
+    }),
+    git: new GitProjectRepositoryStore({
+      gitBinary: config.forgejo.gitBinary,
+      authToken: config.forgejo.runtimeToken,
+      timeoutMs: config.forgejo.gitTimeoutMs,
+    }),
+  });
 }
 
 function createRepository(config) {
@@ -43,5 +67,6 @@ module.exports = {
   SqliteBackedProjectRepository,
   PostgresProjectRepository: require("./repositories/postgres-project-repository").PostgresProjectRepository,
   ProjectService,
+  createProjectRepositoryStore,
   createDefaultProjectServer,
 };

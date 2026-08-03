@@ -541,6 +541,21 @@ async function loadProjectSources(project) {
   return state.projectSourcesByProjectId[project.id];
 }
 
+async function refreshProjectedProjectSources(project) {
+  if (!project?.id) return [];
+  delete state.projectSourcesByProjectId[project.id];
+  const sources = await loadProjectSources(project);
+  if (project.id === state.activeProjectId) renderIdeProjectBrowser(project, sources);
+  return sources;
+}
+
+function configurationProjectionStatus(response, changedText = "Gespeichert.") {
+  const projection = response?.configuration_projection || {};
+  const changedPaths = [...new Set([...(projection.changed_paths || []), ...(projection.removed_paths || [])])];
+  if (!changedPaths.length) return "Keine Projektdatei geändert.";
+  return `${changedText} ${changedPaths.length} Projektdatei${changedPaths.length === 1 ? "" : "en"} aktualisiert.`;
+}
+
 function selectedIdeSourcePath(project, sources) {
   const current = state.sourcePath;
   if (current && sources.some((source) => source.path === current)) return current;
@@ -760,8 +775,10 @@ function isArchitectureBaselinePath(sourcePath) {
 }
 
 function ideSourceIsEditable(project, sourcePath) {
+  const source = (state.projectSourcesByProjectId[project?.id] || []).find((item) => item.path === sourcePath);
   return projectNeedsSourceEditing(project)
     && !isArchitectureBaselinePath(sourcePath)
+    && source?.role !== "generated_configuration_header"
     && String(sourcePath || "").replace(/\\/g, "/") !== "platformio.ini";
 }
 
@@ -954,8 +971,9 @@ async function saveEventConfiguration(event) {
       push_enabled: data.get("push_enabled") === "on",
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project);
     renderEventConfiguration(form.dataset.eventConfigurationKind);
-    document.querySelector("[data-event-configuration-status]").textContent = "Gespeichert.";
+    document.querySelector("[data-event-configuration-status]").textContent = configurationProjectionStatus(response);
   } catch (error) {
     status.textContent = error.message || "Die Konfiguration konnte nicht gespeichert werden.";
   }
@@ -1150,8 +1168,9 @@ async function saveMotorDriverAssignment(event) {
   try {
     const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`, { hardware_configuration: configuration });
     if (response.project) state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project || project);
     renderDriverManagement(response.project || project);
-    document.querySelector(`[data-motor-driver-component="${CSS.escape(component.component_id)}"] [data-motor-driver-status]`).textContent = "Gespeichert.";
+    document.querySelector(`[data-motor-driver-component="${CSS.escape(component.component_id)}"] [data-motor-driver-status]`).textContent = configurationProjectionStatus(response);
   } catch (error) {
     status.textContent = error.message || "Treiberkonfiguration konnte nicht gespeichert werden.";
   }
@@ -1417,8 +1436,9 @@ async function savePwaDashboard(event) {
       visible_cards: data.getAll("pwa_dashboard_card").map(String),
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project);
     renderPwaDashboardView(response.project);
-    status.textContent = "Gespeichert.";
+    status.textContent = configurationProjectionStatus(response);
   } catch (error) {
     status.textContent = error.message;
   }
@@ -1851,14 +1871,16 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
     });
     const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`, { hardware_configuration: hardwareConfiguration });
     if (response.project) state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project || project);
     if (saveAsAccount) await loadProcessorBoardCatalog({ force: true });
     const savedProject = response.project || project;
     const savedDevice = projectHardwareComponents(savedProject).find((item) => item.abstract_type === "iot_device");
     if (savedDevice) state.activeIdeComponentId = savedDevice.component_id;
     renderBoardProperties(savedProject);
-    target.querySelector("[data-ide-board-configuration-status]").textContent = saveAsAccount
-      ? "Eigenes Account-Board und Projektsnapshot gespeichert."
-      : "Board als fester Projektsnapshot gespeichert.";
+    target.querySelector("[data-ide-board-configuration-status]").textContent = configurationProjectionStatus(
+      response,
+      saveAsAccount ? "Eigenes Account-Board und Projektsnapshot gespeichert." : "Board als fester Projektsnapshot gespeichert.",
+    );
   } catch (error) {
     status.textContent = error.message || "Boardkonfiguration konnte nicht gespeichert werden.";
   }
@@ -1904,9 +1926,10 @@ async function saveComponentFeatures(event) {
       },
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project);
     if (webserverOnly) renderWebInterface(response.project);
     else renderComponentFeatures(response.project);
-    document.querySelector("[data-component-feature-status]").textContent = "Gespeichert.";
+    document.querySelector("[data-component-feature-status]").textContent = configurationProjectionStatus(response);
   } catch (error) {
     status.textContent = error.message;
   }
@@ -1942,8 +1965,9 @@ async function saveCommunicationSetup(event) {
       },
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project);
     renderCommunicationSetup(response.project);
-    document.querySelector("[data-communication-setup-status]").textContent = "Gespeichert. Die Basissoftware-Konfigurationen wurden neu abgeleitet.";
+    document.querySelector("[data-communication-setup-status]").textContent = configurationProjectionStatus(response, "Gespeichert. Die Basissoftware-Konfigurationen wurden neu abgeleitet.");
   } catch (error) {
     status.textContent = error.message;
   }
@@ -1992,9 +2016,10 @@ async function saveBasissoftwareConfiguration(event) {
       },
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    await refreshProjectedProjectSources(response.project);
     state.activeSoftwareUnitIds[response.project.id] = softwareUnitId;
     renderComponentFeatures(response.project);
-    document.querySelector("[data-basissoftware-configuration-status]").textContent = "Gespeichert und für den nächsten Build übernommen.";
+    document.querySelector("[data-basissoftware-configuration-status]").textContent = configurationProjectionStatus(response, "Gespeichert und für den nächsten Build übernommen.");
   } catch (error) {
     status.textContent = error.message;
   }

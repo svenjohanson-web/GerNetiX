@@ -358,6 +358,103 @@ const KnowledgeArticlesEmbedded = {
         "glossary-basics",
       ],
     },
+    "esp32-gotchas": {
+      title: "ESP32-Besonderheiten und Stolperfallen",
+      summary: "Viele ESP32-Fehler entstehen nicht im Programm, sondern durch geteilte Hardware-Ressourcen, besondere Pins, kurze Stromspitzen oder Unterschiede zwischen den Chipfamilien.",
+      access: "premium",
+      sections: [
+        {
+          id: "esp32-gotchas-family-first",
+          heading: "ESP32 ist eine Familie, kein einzelner Chip",
+          paragraphs: [
+            "Eine Pin-Regel für den klassischen ESP32 gilt nicht automatisch für ESP32-S3, C3 oder C6. Sogar zwei Boards mit demselben Chip können Pins anders belegen, weil Flash, PSRAM, USB, Display oder Kamera bereits fest angeschlossen sind. Prüfe deshalb immer drei Ebenen: das Datenblatt des Chips, das Datenblatt des Moduls und den Schaltplan des konkreten Boards.",
+            "Pinout-Bilder aus dem Internet sind nur eine Orientierung. Maßgeblich sind die exakte Boardrevision und das tatsächlich bestückte Modul. Ein GPIO kann im Chip vorhanden, am Modul aber intern belegt oder am Board gar nicht herausgeführt sein.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-adc-wifi",
+          heading: "ADC1, ADC2 und WLAN teilen sich Hardware",
+          paragraphs: [
+            "Beim klassischen ESP32 wird ADC2 auch vom WLAN-Treiber verwendet. Eine analoge Messung an ADC2 kann deshalb während aktivem WLAN fehlschlagen oder zeitweise nicht verfügbar sein. Für gleichzeitig messende WLAN-Projekte ist ADC1 die robuste erste Wahl. Diese konkrete Einschränkung darf aber nicht ungeprüft auf jede neuere ESP32-Variante übertragen werden.",
+            "Auch ein ADC1-Rohwert ist noch keine präzise Spannung. Referenzspannung und Kennlinie unterscheiden sich zwischen Chips, hohe Dämpfung erweitert zwar den Messbereich, verschlechtert aber nicht automatisch alle anderen Fehler. Für belastbare Messwerte gehören Kalibrierung, mehrere Messungen, eine ruhige Versorgung und gegebenenfalls ein kleiner Kondensator am ADC-Eingang zum Messkonzept.",
+          ],
+          list: [
+            "Vor der Pinwahl prüfen: ADC-Einheit, Kanal, zulässiger Spannungsbereich und Boardbeschaltung.",
+            "Batteriespannungen niemals direkt anlegen, wenn sie den zulässigen Eingang überschreiten; dafür einen passend dimensionierten Spannungsteiler verwenden.",
+            "Ein stabiler Zahlenwert ist nicht automatisch ein genauer Messwert – gegen ein bekanntes Multimeter oder eine Referenzspannung prüfen.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-boot-pins",
+          heading: "Strapping-Pins entscheiden schon beim Einschalten",
+          paragraphs: [
+            "Einige Pins werden beim Reset abgetastet und legen den Startmodus oder andere Chipoptionen fest. Ein Taster, Sensor oder Treiber an einem solchen Strapping-Pin kann den Pegel im falschen Moment verändern: Das Programm ist korrekt, aber das Board startet nicht oder landet im Download-Modus.",
+            "Das Problem zeigt sich oft nur mit angeschlossener Peripherie oder nur beim Einschalten, nicht bei jedem Software-Reset. Verwende Strapping-Pins möglichst nicht für Schaltungen mit starkem Pull-up, Pull-down oder aktivem Ausgang. Wenn es nicht anders geht, muss die externe Beschaltung den vorgeschriebenen Startpegel sicher zulassen.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-gpio",
+          heading: "Nicht jeder herausgeführte GPIO ist frei und gleichwertig",
+          paragraphs: [
+            "Beim klassischen ESP32 sind GPIO34 bis GPIO39 reine Eingänge und besitzen keine per Software zuschaltbaren Pull-up- oder Pull-down-Widerstände. Andere Pins werden auf vielen Modulen für Flash oder PSRAM verwendet. UART-, JTAG-, Kamera-, Display- oder SD-Signale können auf einem Board ebenfalls bereits angeschlossen sein.",
+            "Die flexible GPIO-Matrix bedeutet daher nicht, dass jede Funktion ohne Nebenwirkung auf jeden Pin gelegt werden kann. Prüfe vor dem Verdrahten Eingabe oder Ausgabe, interne Pull-Widerstände, Startfunktion, ADC- und Touch-Funktion, Wake-up-Fähigkeit sowie vorhandene Boardverbindungen. Pins niemals mit 5-Volt-Toleranz gleichsetzen, nur weil ein Entwicklungsboard über USB mit 5 Volt versorgt wird.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-power",
+          heading: "WLAN-Start kann einen Brownout auslösen",
+          paragraphs: [
+            "Funk, Displaybeleuchtung, Kamera oder Servo erzeugen kurze Lastspitzen. Ein Multimeter kann trotzdem scheinbar stabile 3,3 Volt anzeigen, weil es den kurzen Einbruch nicht sichtbar macht. Der ESP32-Brownout-Detektor setzt den Chip bei zu niedriger Versorgung zurück; im seriellen Log erscheint häufig ein Brownout-Hinweis, bei einem sehr schnellen Einbruch manchmal nur ein Teil davon.",
+            "Dann ist das Abschalten des Brownout-Schutzes keine Reparatur. Prüfe Spannungsregler, USB-Kabel, Leiterbahnen, gemeinsame Masse und Abblockkondensatoren und miss den Verlauf möglichst mit dem Oszilloskop. Motoren, Servos und Relais brauchen eine geeignete Treiber- und Versorgungsauslegung; sie gehören nicht direkt an einen GPIO oder gedankenlos an denselben schwachen 3,3-Volt-Regler.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-sleep",
+          heading: "Deep Sleep ist fast ein Neustart",
+          paragraphs: [
+            "Im Deep Sleep werden die CPUs, die meisten RAM-Bereiche und die normalen Digitalperipherien abgeschaltet. Beim Aufwachen läuft die Anwendung wieder durch ihren Startpfad. Nur bewusst gewählte RTC-Bereiche und unterstützte Wake-up-Quellen überleben beziehungsweise bleiben aktiv.",
+            "Variablen im normalen RAM, offene Netzwerkverbindungen und gewöhnliche GPIO-Zustände dürfen deshalb nicht als erhalten vorausgesetzt werden. Wake-up-Pins und mögliche Kombinationen unterscheiden sich zwischen den ESP32-Familien. Zusätzlich muss ein Pegel so beschaltet sein, dass er nicht sofort erneut weckt oder dauerhaft unnötigen Strom zieht.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-psram",
+          heading: "PSRAM ist groß, aber nicht gleich internem RAM",
+          paragraphs: [
+            "PSRAM schafft Platz für Bilder, große Puffer oder Modelle, ist aber extern angebunden und wird über einen Cache erreicht. Manche Speicherarten und DMA-Puffer müssen weiterhin im internen RAM liegen. Wird der Flash-Cache etwa beim Schreiben oder Löschen von Flash vorübergehend deaktiviert, kann je nach Chip und Konfiguration auch PSRAM zeitweise nicht zugreifbar sein.",
+            "Ein Projekt kann deshalb trotz vieler freier PSRAM-Bytes an knappem internem, DMA-fähigem oder zusammenhängendem Speicher scheitern. Beim Debuggen nicht nur den gesamten freien Heap betrachten, sondern die benötigte Speicherklasse, die größte zusammenhängende Allokation und den Zeitpunkt des Fehlers.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-usb-pwm",
+          heading: "USB- und PWM-Funktionen belegen reale Ressourcen",
+          paragraphs: [
+            "Beim ESP32-S3 liegen die internen USB-Datenleitungen auf GPIO19 und GPIO20. Wer diese Pins gleichzeitig als normale Ein- oder Ausgänge verwendet, kann Flashen, serielles USB-Debugging oder eine eigene USB-Gerätefunktion verlieren. USB-OTG und USB-Serial/JTAG teilen sich außerdem den internen USB-PHY; für manche gleichzeitigen Betriebsarten ist zusätzliche Hardware nötig.",
+            "Auch PWM-Kanäle sind nicht unbegrenzt unabhängig. Mehrere Ausgänge können Timer teilen, und PWM-Frequenz sowie Tastgradauflösung stehen in einem Zielkonflikt: Eine höhere Frequenz lässt weniger Auflösungsstufen übrig. Wenn eine Bibliothek einen Timer oder Kanal bereits nutzt, kann eine zweite Funktion dessen Einstellung verändern. Ressourcen deshalb zentral planen statt nur freie GPIO-Nummern zu zählen.",
+          ],
+        },
+        {
+          id: "esp32-gotchas-debugging",
+          heading: "Eine kurze Diagnose-Reihenfolge",
+          table: {
+            headers: ["Fehlerbild", "Zuerst prüfen"],
+            rows: [
+              ["Startet nur ohne Sensor oder Taster", "Strapping-Pin, externer Pull-Widerstand und Boardbeschaltung"],
+              ["Analogwert verschwindet bei WLAN", "Beim klassischen ESP32 ADC2 gegen ADC1 tauschen"],
+              ["Reset beim Funken, Display oder Motor", "Versorgungseinbruch und Brownout-Log"],
+              ["Wacht sofort wieder auf", "Wake-up-Pegel, Pull-Widerstand und gespeicherte Wake-up-Ursache"],
+              ["USB-Gerät verschwindet", "USB-Pins, USB-Modus und geteilten PHY prüfen"],
+              ["Großer Puffer passt trotz freiem Speicher nicht", "Internen, DMA-fähigen und zusammenhängenden Speicher getrennt betrachten"],
+            ],
+          },
+        },
+      ],
+      relatedTopics: [
+        "processor-overview",
+        "microcontroller-basics",
+        "embedded-measurement-debugging",
+        "embedded-safety",
+      ],
+    },
     "bus-systems": {
       title: "Bussysteme",
       summary: "Ein Bussystem überträgt Daten zwischen elektronischen Teilnehmern. Die passende Wahl hängt vor allem davon ab, ob Chips auf einer Platine oder Geräte über längere Strecken verbunden werden.",

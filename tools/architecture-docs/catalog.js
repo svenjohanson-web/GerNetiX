@@ -35,7 +35,8 @@ const curatedDocuments = {
   "docs/elastic-worker-capacity-architecture.md": { category: "system", status: "maintained", order: 6 },
   "docs/project-background-worker-specification.md": { category: "system", status: "maintained", order: 7 },
   "docs/persistence-and-asset-storage.md": { category: "system", status: "maintained", order: 8 },
-  "docs/generated/architecture-view.md": { category: "system", status: "generated", order: 9 },
+  "docs/forgejo-project-repository-work-packages.md": { category: "system", status: "maintained", order: 9 },
+  "docs/generated/architecture-view.md": { category: "system", status: "generated", order: 10 },
 
   "docs/metamodel.md": { category: "model", status: "maintained", order: 1 },
   "docs/metamodel-learning-platform.md": { category: "model", status: "maintained", order: 2 },

@@ -4,9 +4,11 @@
 
 Accountgebundene Kundendaten duerfen weder durch ein fehlerhaftes Deployment noch durch versehentliches Loeschen dauerhaft verloren gehen. Dazu gehoeren insbesondere Accounts und Berechtigungen, Projekte und Projektquellen, Hardware-Inventar und Pairings, Lernfortschritt, Bestellungen und Ansprueche, Consents sowie kundenbezogener KI-Kontext.
 
-Fuehrende Quelle ist eine zentrale PostgreSQL-17/pgvector-Datenbank
-`gernetix_runtime`. Ein konsistenter Datenbank-Dump umfasst damit alle
-Domaenentabellen, Runtime-Konfigurationen und BYTEA-Artefakte.
+Fuehrende Quellen sind die GerNetiX-Domaenendatenbank `gernetix_runtime`, nach
+dem Projekt-Cutover die Forgejo-Datenbank `forgejo` samt Repository-Volume und
+der Artifact Store. Ein PostgreSQL-Dump allein umfasst dann nicht mehr alle
+Projektdateien. Forgejo-Datenbank und Git-Repositories muessen als
+konsistenter gemeinsamer Sicherungspunkt behandelt werden.
 
 Ein persistentes Docker-Volume allein ist keine Datensicherung. Es schuetzt vor einem normalen Container-Austausch, aber nicht vor logischem Loeschen, `down -v`, defekten Volumes, Fehlbedienung, kompromittierten Zugangsdaten oder dem Ausfall des VPS.
 
@@ -32,6 +34,7 @@ Die Sicherung wird aus den fachlichen Quellen der Wahrheit abgeleitet und nicht 
 | Datenbereich | Fuehrende Persistenz | Beispiele |
 | --- | --- | --- |
 | Alle Laufzeitdomaenen | PostgreSQL `gernetix_runtime` in `runtime_postgres_data` | `identity_*`, `project_*`, `telemetry_*`, `community_*`, `device_management_*`, `ai_usage_*`, `hardware_catalog_*`, `hardware_shop_*`, `operations_*`, `ai_context_*`, weitere Domaenentabellen und verschluesselter Runtime-State |
+| Projektdateien und Historie | Forgejo-Datenbank `forgejo` plus `forgejo_data` | private Projektrepositories, Commits, Baeume, Tags und Forgejo-Verwaltungsmetadaten |
 | Wiederaufbau-relevante Artefakte | PostgreSQL `gernetix_runtime` | Plattform-Releases, Account-Assets, Public-Demo-Releases und Build-Artefakte, die nicht deterministisch neu erzeugt werden koennen |
 
 Jeder neue Service mit dauerhafter SQL-Persistenz muss vor Produktivsetzung entweder in diesen Sicherungsumfang aufgenommen oder ausdruecklich als vollstaendig reproduzierbar klassifiziert werden.
@@ -40,16 +43,17 @@ Jeder neue Service mit dauerhafter SQL-Persistenz muss vor Produktivsetzung entw
 
 1. SQLite wird transaktionskonsistent ueber die SQLite-Backup-API oder einen gleichwertigen konsistenten Snapshot gesichert. Eine rohe Dateikopie waehrend Schreibzugriffen ist nicht ausreichend.
 2. PostgreSQL wird mit einem konsistenten logischen oder physischen Backup-Verfahren gesichert. Datenbank und erforderliche Rollen-/Schema-Informationen muessen gemeinsam wiederherstellbar sein.
-3. Jeder Sicherungssatz enthaelt Manifest, Erstellungszeit, Quellinstanz, Schema-/Anwendungsversion, enthaltene Datenbereiche, Groesse und kryptografische Pruefsumme.
-4. Sicherungen werden bei Transport und Speicherung verschluesselt. Entschluesselungsschluessel werden getrennt vom Backup-Speicher und vom normalen Deployment-Zugang verwaltet.
-5. Vor einem Deployment mit Persistenzmigration oder erhoehtem Datenrisiko wird ein frischer, erfolgreich gepruefter Wiederherstellungspunkt verlangt. Das Deployment darf keine Volumes loeschen oder neu initialisieren.
-6. Aufbewahrungsloeschungen erfolgen ausschliesslich ueber die definierte Retention. Ein kompromittierter Service- oder Deployment-Zugang darf vorhandene Sicherungen nicht unmittelbar entfernen koennen.
-7. Datenschutzrechtliche Loeschpflichten werden durch eine dokumentierte Backup-Retention und kontrollierte Wiederherstellung beruecksichtigt. Ein Restore darf bereits wirksam geloeschte Datensaetze nicht unkontrolliert wieder produktiv sichtbar machen.
-8. Das Backup-Ziel wird ueber einen providerneutralen, versionierten Vertrag
+3. Forgejo wird in der ersten Betriebsstufe fuer den Sicherungspunkt kontrolliert gestoppt; danach werden seine Datenbank und `forgejo_data` gemeinsam gesichert. Ein spaeteres Online-Backup benoetigt einen ausdruecklich nachgewiesenen konsistenten Snapshotvertrag.
+4. Jeder Sicherungssatz enthaelt Manifest, Erstellungszeit, Quellinstanz, Schema-/Anwendungsversion, enthaltene Datenbereiche, Groesse und kryptografische Pruefsumme.
+5. Sicherungen werden bei Transport und Speicherung verschluesselt. Entschluesselungsschluessel werden getrennt vom Backup-Speicher und vom normalen Deployment-Zugang verwaltet.
+6. Vor einem Deployment mit Persistenzmigration oder erhoehtem Datenrisiko wird ein frischer, erfolgreich gepruefter Wiederherstellungspunkt verlangt. Das Deployment darf keine Volumes loeschen oder neu initialisieren.
+7. Aufbewahrungsloeschungen erfolgen ausschliesslich ueber die definierte Retention. Ein kompromittierter Service- oder Deployment-Zugang darf vorhandene Sicherungen nicht unmittelbar entfernen koennen.
+8. Datenschutzrechtliche Loeschpflichten werden durch eine dokumentierte Backup-Retention und kontrollierte Wiederherstellung beruecksichtigt. Ein Restore darf bereits wirksam geloeschte Datensaetze nicht unkontrolliert wieder produktiv sichtbar machen.
+9. Das Backup-Ziel wird ueber einen providerneutralen, versionierten Vertrag
    angesprochen. Ein S3-kompatibles Ziel ist zulaessig, sofern Verschluesselung,
    getrennte Credentials, Retention beziehungsweise Object Lock, Pruefsummen
    und ein getesteter vollstaendiger Restore nachgewiesen sind.
-9. Cloud-Burst-, Worker- und Deployment-Credentials erhalten keine Loesch- oder
+10. Cloud-Burst-, Worker- und Deployment-Credentials erhalten keine Loesch- oder
    Retention-Rechte auf dem Backup-Ziel. Der Capacity Controller kann
    Backup-Alarme lesen, aber keine Sicherungen administrieren.
 
@@ -59,7 +63,9 @@ Jeder neue Service mit dauerhafter SQL-Persistenz muss vor Produktivsetzung entw
 2. Gewuenschten Wiederherstellungspunkt anhand Manifest, Zeit und Pruefsumme auswaehlen.
 3. Sicherung zuerst in eine isolierte Umgebung einspielen; nie ungeprueft direkt ueber den produktiven Stand schreiben.
 4. Datenbankintegritaet, Migrationen und fachliche Referenzen pruefen, insbesondere `user_id`, Projektzuordnung, AccountDevice-/Pairing-Beziehungen und kundenbezogene Grants.
-5. Stichproben oder automatisierte Abgleiche fuer Account, Projekt, Projektquelle und Hardware-Inventar ausfuehren.
+5. Stichproben oder automatisierte Abgleiche fuer Account, Projekt,
+   Repository-Bindung, erwarteten Commit, Projektdatei, benannte Version,
+   Build-Artefaktreferenz und Hardware-Inventar ausfuehren.
 6. Freigabe und Verantwortlichen dokumentieren, danach kontrolliert umschalten.
 7. Vorfall, Datenluecke, verwendeten Sicherungspunkt und Nachweis auditieren und den Kunden transparent informieren, falls Daten betroffen waren.
 
@@ -81,7 +87,9 @@ Diese Datei definiert die verbindliche fachliche und betriebliche Zielsetzung. B
 **Customer-Data-Backup und Restore technisch umsetzen und nachweisen.**
 
 - externen, verschluesselten und gegen den Deployment-Zugang geschuetzten Backup-Speicher auswaehlen und einrichten
-- konsistente Sicherung der einen Datenbank `gernetix_runtime` inklusive aller Domaenentabellen, BYTEA-Artefakte und pgvector-Daten automatisieren
+- konsistente Sicherung von `gernetix_runtime`, Forgejo-Datenbank,
+  `forgejo_data` und Artifact Store inklusive gemeinsamer Manifestreferenzen
+  automatisieren
 - Retention, Pruefsummen, Backup-Alter und Fehler alarmieren
 - isolierte Restore-Automation und fachliche Contract-Checks fuer Accounts, Projekte und Hardware-Inventar implementieren
 - ersten vollstaendigen Restore-Test innerhalb von RPO und RTO protokollieren

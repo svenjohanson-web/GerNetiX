@@ -17,6 +17,17 @@ function createConfig(env = process.env) {
     persistenceBackend: env.PERSISTENCE_BACKEND || env.PROJECT_SERVER_PERSISTENCE_BACKEND || "sqlite",
     runtimeRoot,
     sqlitePath,
+    repositoryStoreBackend: env.PROJECT_REPOSITORY_STORE || "sql",
+    forgejo: {
+      baseUrl: env.FORGEJO_INTERNAL_URL || "",
+      organization: env.FORGEJO_PROJECT_ORGANIZATION || "gernetix-projects",
+      defaultBranch: env.FORGEJO_PROJECT_DEFAULT_BRANCH || "main",
+      provisionToken: env.FORGEJO_PROVISION_TOKEN || "",
+      runtimeToken: env.FORGEJO_RUNTIME_TOKEN || "",
+      gitBinary: env.GIT_BINARY || "git",
+      timeoutMs: Number(env.FORGEJO_TIMEOUT_MS || 10_000),
+      gitTimeoutMs: Number(env.PROJECT_GIT_TIMEOUT_MS || 30_000),
+    },
     postgres: {
       connectionString: env.PROJECT_POSTGRES_URL || "",
       host: env.PROJECT_POSTGRES_HOST || "127.0.0.1",

@@ -80,8 +80,8 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /title: "Informatik und Software"[\s\S]*"software-basics-introduction"[\s\S]*"workers-and-queues"/);
   assert.match(helpContent, /title: "Lexikon"[\s\S]*"glossary-basics"/);
   assert.match(helpContent, /title: "Elektrotechnik"[\s\S]*"electrical-basics-and-component-protection"[\s\S]*"digital-signals-data-and-protocols"[\s\S]*"physical-limits"[\s\S]*"sampling-rate"[\s\S]*"embedded-safety"[\s\S]*title: "Sensorik und Aktorik"[\s\S]*"sensors"[\s\S]*"actuators"/);
-  assert.match(helpContent, /title: "Mikrocontroller und Embedded"[\s\S]*"hardware-landscape"[\s\S]*"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"bus-systems"[\s\S]*"embedded-measurement-debugging"/);
-  assert.match(helpContent, /"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"microcontroller-flashing"[\s\S]*"microcontroller-pwm"[\s\S]*"embedded-measurement-debugging"/);
+  assert.match(helpContent, /title: "Mikrocontroller und Embedded"[\s\S]*"hardware-landscape"[\s\S]*"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"esp32-gotchas"[\s\S]*"bus-systems"[\s\S]*"embedded-measurement-debugging"/);
+  assert.match(helpContent, /"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"microcontroller-flashing"[\s\S]*"microcontroller-pwm"[\s\S]*"esp32-gotchas"[\s\S]*"embedded-measurement-debugging"/);
   assert.match(helpContent, /"microcontroller-basics": \{[\s\S]*Wie Software in einen Mikrocontroller kommt[\s\S]*Speicherorganisation[\s\S]*Register[\s\S]*GPIO[\s\S]*ADC[\s\S]*Timer[\s\S]*PWM/);
   assert.match(helpContent, /Der Name kommt vom Flash-Speicher selbst[\s\S]*älteren, einzeln löschbaren EEPROMs/);
   assert.match(helpContent, /Aus Quelltext wird eine Firmware-Datei[\s\S]*Der Bootloader öffnet den Programmierweg[\s\S]*Löschen, schreiben und prüfen[\s\S]*Start nach dem Flashen/);
@@ -174,6 +174,37 @@ test("keeps a public processor-family overview separate from concrete supported 
   assert.match(helpContent, /Kein WLAN/);
   assert.match(helpContent, /keine ESP32-S6-Familie/);
   assert.match(helpContent, /Unterstuetzte Boards ansehen/);
+});
+
+test("teaches ESP32-specific gotchas without applying classic-chip rules to every family", () => {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
+
+  const embeddedTopic = context.content.topics.find((topic) => topic.id === "microcontrollers-and-embedded");
+  const article = context.content.articles["esp32-gotchas"];
+
+  assert.ok(embeddedTopic.children.some((chapter) => chapter.articleId === "esp32-gotchas"));
+  assert.equal(article.access, "premium");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(article.sections.map((section) => section.id))),
+    [
+      "esp32-gotchas-family-first",
+      "esp32-gotchas-adc-wifi",
+      "esp32-gotchas-boot-pins",
+      "esp32-gotchas-gpio",
+      "esp32-gotchas-power",
+      "esp32-gotchas-sleep",
+      "esp32-gotchas-psram",
+      "esp32-gotchas-usb-pwm",
+      "esp32-gotchas-debugging",
+    ],
+  );
+  assert.match(JSON.stringify(article), /Beim klassischen ESP32 wird ADC2 auch vom WLAN-Treiber verwendet/);
+  assert.match(JSON.stringify(article), /nicht ungeprüft auf jede neuere ESP32-Variante/);
+  assert.match(JSON.stringify(article), /Strapping-Pins/);
+  assert.match(JSON.stringify(article), /Brownout/);
+  assert.match(JSON.stringify(article), /GPIO19 und GPIO20/);
 });
 
 test("keeps the hardware landscape as a public page in the common help model", () => {
@@ -523,19 +554,22 @@ test("links account setup to the personal offline recovery set", () => {
   assert.match(app, /Recovery-Set erstellen/);
 });
 
-test("keeps development processes in a dedicated public knowledge chapter", () => {
+test("groups development processes and version management under public working methods", () => {
   const context = {};
   vm.createContext(context);
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
 
-  const processTopic = context.content.topics.find((topic) => topic.id === "development-processes");
+  const processTopic = context.content.topics.find((topic) => topic.id === "working-methods");
   const processArticle = context.content.articles["development-processes-overview"];
+  const versionArticle = context.content.articles["version-control-and-variants"];
   const engineeringArticle = context.content.articles["from-problem-to-system"];
 
-  assert.equal(processTopic.title, "Entwicklungsprozesse");
+  assert.equal(processTopic.title, "Arbeitsmethodiken");
   assert.equal(processTopic.access, "public");
   assert.equal(processTopic.children[0].articleId, "development-processes-overview");
+  assert.equal(processTopic.children[1].articleId, "version-control-and-variants");
   assert.equal(processArticle.access, "public");
+  assert.equal(versionArticle.access, "public");
   assert.deepEqual(
     JSON.parse(JSON.stringify(processArticle.sections.map((section) => section.id))),
     ["development-processes-dimensions", "engineering-thinking-models", "development-processes-next-steps"],
@@ -547,6 +581,24 @@ test("keeps development processes in a dedicated public knowledge chapter", () =
   assert.match(JSON.stringify(processArticle), /hybrides Vorgehen/);
   assert.ok(engineeringArticle.relatedTopics.includes("development-processes-overview"));
   assert.ok(!engineeringArticle.sections.some((section) => section.id === "engineering-thinking-models"));
+  assert.match(JSON.stringify(versionArticle), /Ordnerkopien/);
+  assert.match(JSON.stringify(versionArticle), /CVS/);
+  assert.match(JSON.stringify(versionArticle), /Subversion/);
+  assert.match(JSON.stringify(versionArticle), /Git/);
+  assert.match(JSON.stringify(versionArticle), /Variantenmanagement/);
+  assert.match(JSON.stringify(versionArticle), /3-2-1-Regel/);
+  assert.equal(versionArticle.sections.find((section) => section.id === "versioning-history").illustrationSeries.length, 4);
+  assert.match(informationView, /section\.illustrationSeriesWide \? " is-wide"/);
+  [
+    "versioning-file-copies.svg",
+    "versioning-stage-1-local.svg",
+    "versioning-stage-2-cvs.svg",
+    "versioning-stage-3-svn.svg",
+    "versioning-stage-4-git.svg",
+    "versioning-git-objects.svg",
+    "versioning-variants.svg",
+    "versioning-backup.svg",
+  ].forEach((asset) => assert.equal(fs.existsSync(path.join(appRoot, "..", "assets", asset)), true, asset));
 });
 
 test("keeps help and knowledge models physically disjoint", () => {
@@ -660,12 +712,13 @@ test("keeps explicitly public knowledge chapters open and gates the remaining ch
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
   const chapters = context.content.topics.flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 33);
+  assert.equal(chapters.length, 35);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.equal(context.content.articles["development-processes-overview"].access, "public");
+  assert.equal(context.content.articles["version-control-and-variants"].access, "public");
   assert.equal(context.content.articles["browser-pwa-mobile-app"].access, "public");
   assert.ok(chapters
-    .filter((chapter) => !["from-problem-to-system", "development-processes-overview", "browser-pwa-mobile-app"].includes(chapter.id))
+    .filter((chapter) => !["from-problem-to-system", "development-processes-overview", "version-control-and-variants", "browser-pwa-mobile-app"].includes(chapter.id))
     .every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
   assert.match(informationView, /article\.sections\.slice\(0, 1\)/);
   assert.match(informationView, /knowledge-chapter-preview/);

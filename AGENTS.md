@@ -44,11 +44,19 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export nutzen. Neue Graph-Regeln per `tools/yaml-graph-sqlite/import-yaml-graph.js upsert-artifact` und `upsert-relationship` schreiben.
 - Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Validierung oder Legacy-Import, falls noetig. Graph-Schritte nicht bei reinen Arbeitsanweisungs-, Kommentar- oder UI-Textaenderungen ausfuehren.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
-- Project Server ist die PostgreSQL-Wahrheit fuer accountgebundene Projekte.
+- Project Server ist die PostgreSQL-Wahrheit fuer Projektidentitaet, Besitz,
+  Rechte, Repository-Bindung und Build-Prozesszustand. Nach dem kontrollierten
+  Forgejo-Cutover sind private Forgejo-Repositories die Wahrheit fuer
+  Projektdateien und Git-Historie; bis dahin bleibt der SQL-Altpfad fuehrend.
 - Telemetry Server ist die PostgreSQL-Wahrheit fuer konto- und projektgebundene Telemetrie.
 - Community Platform ist die PostgreSQL-Wahrheit fuer oeffentliche Fragen und private Projektbegleitung.
 - AI Context Server ist die PostgreSQL-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
-- Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
+- Dauerhafte fachliche Laufzeitdaten liegen in SQL/SQLite. Versionierte
+  Projektdateien duerfen ausschliesslich in den vom Project Server gebundenen
+  Forgejo-Repositories fuehrend sein; erzeugte Binaries liegen im Artifact
+  Store. Lose JSON-Dateien, Prozessspeicher, localStorage, Browser-State,
+  Temp-Dateien und Caches sind nur Logic/Control/View- oder
+  Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
 - Basissoftware bleibt ein eigenstaendiger, stabiler Runtime-Kern. Projekt- und kundenspezifische Erweiterungen duerfen ihre Schnittstellen, ihren Provisioning-/SSID-Setup-Ablauf, ihre Sicherheitsfunktionen oder ihr Verhalten nicht veraendern; sie werden ausschliesslich ueber klar abgegrenzte Erweiterungspunkte integriert.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
 - Abschlussnachweis nicht kuenstlich verlaengern: keine Runtime-, Graph- oder Live-Daten-Schritte ergaenzen, wenn sie fuer die konkrete Aenderung nicht erforderlich sind.

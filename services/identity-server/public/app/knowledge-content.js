@@ -16,15 +16,21 @@ const KnowledgeContent = (() => {
       ],
     },
     {
-      id: "development-processes",
-      title: "Entwicklungsprozesse",
-      description: "Entwicklungsphasen und Vorgehensmodelle passend zu Klarheit, Risiko und Veränderung auswählen.",
+      id: "working-methods",
+      title: "Arbeitsmethodiken",
+      description: "Entwicklungsprozesse, Versionierung und Varianten so organisieren, dass Entscheidungen und Änderungen nachvollziehbar bleiben.",
       access: "public",
       children: [
         {
           id: "development-processes-overview",
-          title: "Phasen und Vorgehensmodelle",
+          title: "Entwicklungsprozesse und Vorgehensmodelle",
           articleId: "development-processes-overview",
+          access: "public",
+        },
+        {
+          id: "version-control-and-variants",
+          title: "Versionierung und Variantenmanagement",
+          articleId: "version-control-and-variants",
           access: "public",
         },
       ],
@@ -100,6 +106,11 @@ const KnowledgeContent = (() => {
           id: "microcontroller-basics",
           title: "Grundlagen Mikrocontroller",
           articleId: "microcontroller-basics",
+        },
+        {
+          id: "esp32-gotchas",
+          title: "ESP32-Besonderheiten und Stolperfallen",
+          articleId: "esp32-gotchas",
         },
         {
           id: "bus-systems",

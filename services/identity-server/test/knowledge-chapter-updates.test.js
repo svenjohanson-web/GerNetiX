@@ -27,8 +27,24 @@ test("offers a chapter update only to accounts that may read the chapter", () =>
   assert.deepEqual(unreadKnowledgeChapterReleases([], []), []);
   assert.deepEqual(
     unreadKnowledgeChapterReleases([], ["learn_guided_projects"]).map((item) => item.chapter_id),
-    ["radio-technologies-understand", "security-basics", "home-server-internet-security", "yaml-basics"],
+    ["esp32-gotchas", "version-control-and-variants", "radio-technologies-understand", "security-basics", "home-server-internet-security", "yaml-basics"],
   );
+});
+
+test("publishes ESP32 gotchas as a new embedded knowledge chapter", () => {
+  const release = findKnowledgeChapterRelease("esp32-gotchas");
+  assert.equal(release.version, "2026-08-03.1");
+  assert.match(release.summary, /ADC und WLAN/);
+  assert.equal(canReadKnowledgeChapter(release, []), false);
+  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+});
+
+test("publishes version control and variants as a new working-methods chapter", () => {
+  const release = findKnowledgeChapterRelease("version-control-and-variants");
+  assert.equal(release.version, "2026-08-02.1");
+  assert.match(release.summary, /CVS, Subversion und Git/);
+  assert.equal(canReadKnowledgeChapter(release, []), false);
+  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
 });
 
 test("publishes the home-server security chapter with an entitlement-gated read receipt", () => {
@@ -61,26 +77,28 @@ test("a read receipt suppresses only the matching chapter version", () => {
     chapter_id: current.chapter_id,
     chapter_version: current.version,
     seen_at: "2026-07-24T19:00:00.000Z",
-  }], entitlements).length, 3);
+  }], entitlements).length, 5);
   assert.equal(unreadKnowledgeChapterReleases([{
     account_id: "acct-1",
     chapter_id: current.chapter_id,
     chapter_version: "older-version",
     seen_at: "2026-07-24T19:00:00.000Z",
-  }], entitlements).length, 4);
+  }], entitlements).length, 6);
 });
 
 test("builds an entitlement-filtered knowledge history with publication and read state", () => {
   const current = findKnowledgeChapterRelease("yaml-basics");
   assert.deepEqual(knowledgeChapterHistory([], []).map((item) => item.chapter_id), []);
   const unread = knowledgeChapterHistory([], ["learn_guided_projects"]);
-  assert.equal(unread[0].chapter_id, "radio-technologies-understand");
-  assert.equal(unread[1].chapter_id, "security-basics");
-  assert.equal(unread[2].chapter_id, "home-server-internet-security");
-  assert.equal(unread[3].version, current.version);
-  assert.equal(unread[3].is_current, true);
-  assert.equal(unread[3].is_new, true);
-  assert.equal(unread[3].seen_at, null);
+  assert.equal(unread[0].chapter_id, "esp32-gotchas");
+  assert.equal(unread[1].chapter_id, "version-control-and-variants");
+  assert.equal(unread[2].chapter_id, "radio-technologies-understand");
+  assert.equal(unread[3].chapter_id, "security-basics");
+  assert.equal(unread[4].chapter_id, "home-server-internet-security");
+  assert.equal(unread[5].version, current.version);
+  assert.equal(unread[5].is_current, true);
+  assert.equal(unread[5].is_new, true);
+  assert.equal(unread[5].seen_at, null);
 
   const seenAt = "2026-07-24T19:00:00.000Z";
   const read = knowledgeChapterHistory([{

@@ -31,6 +31,22 @@ const releases = Object.freeze([
     published_at: "2026-07-30T12:00:00.000Z",
     required_entitlements: Object.freeze(["learn_guided_projects"]),
   }),
+  Object.freeze({
+    chapter_id: "version-control-and-variants",
+    version: "2026-08-02.1",
+    title: "Versionierung und Variantenmanagement: von Ordnerkopien zu Git",
+    summary: "Dateikopien, CVS, Subversion und Git mit Speicherprinzipien, Variantenstrategien und belastbaren Backups vergleichen.",
+    published_at: "2026-08-02T18:00:00.000Z",
+    required_entitlements: Object.freeze(["learn_guided_projects"]),
+  }),
+  Object.freeze({
+    chapter_id: "esp32-gotchas",
+    version: "2026-08-03.1",
+    title: "ESP32-Besonderheiten und Stolperfallen",
+    summary: "ADC und WLAN, Strapping-Pins, GPIO-Grenzen, Brownouts, Deep Sleep, PSRAM, USB und PWM-Ressourcen praxisnah einordnen.",
+    published_at: "2026-08-03T12:00:00.000Z",
+    required_entitlements: Object.freeze(["learn_guided_projects"]),
+  }),
 ]);
 
 function knowledgeChapterReleases() {

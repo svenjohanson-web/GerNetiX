@@ -1,6 +1,18 @@
 # GerNetiX VPS Deployment mit Docker Compose
 
-Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Genau ein Container `runtime-postgres` stellt PostgreSQL 17 mit pgvector und die Datenbank `gernetix_runtime` bereit. Alle dauerhaften Laufzeitdaten, Konfigurationen und BLOB-Artefakte liegen dort in fachlich praefigierten Tabellen. SQLite-Dateien und fruehere PostgreSQL-Volumes sind nur noch read-only Quellen der einmaligen Migration und werden von keinem laufenden Fachservice gemountet.
+Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS.
+Aktuell stellt genau ein Container `runtime-postgres` PostgreSQL 17 mit
+pgvector und die GerNetiX-Domaenendatenbank `gernetix_runtime` bereit. Die
+heutige Implementierung speichert darin auch Projektquellen und dauerhafte
+BLOB-Artefakte. Die beschlossene Forgejo-Migration ist noch nicht Bestandteil
+dieses Deployments: Nach ihrem Cutover liegen menschenbearbeitete
+Projektdateien und ihre Historie in privaten Forgejo-Repositories; PostgreSQL
+enthaelt nur die fachlichen Projektmetadaten und Repository-Referenzen.
+SQLite-Dateien und fruehere PostgreSQL-Volumes sind nur noch read-only Quellen
+der einmaligen Migration und werden von keinem laufenden Fachservice
+gemountet. Der Zielbetrieb ist in
+[Forgejo-Projektrepositories und lesbare Projektdateien](forgejo-project-repository-work-packages.md)
+beschrieben.
 
 Der einmalige Container `runtime-postgres-migration` uebernimmt Admin-Zugang,
 Plattform-Downloads, Account-Assets, Build-/OTA-Artefakte, oeffentliche Demo-
@@ -144,7 +156,13 @@ http://127.0.0.1:4600/admin/
 
 Compose legt benannte Volumes an:
 
-- `runtime_postgres_data`: einzige fuehrende PostgreSQL-/pgvector-Laufzeitdatenbank `gernetix_runtime` fuer alle praefixierten Domaenentabellen, Runtime-Konfigurationen und dauerhaften BLOB-Artefakte
+- `runtime_postgres_data`: fuehrende GerNetiX-Domaenendatenbank
+  `gernetix_runtime` fuer alle praefixierten Domaenentabellen,
+  Runtime-Konfigurationen und in der heutigen Implementierung auch dauerhafte
+  BLOB-Artefakte; nach FG-02 enthaelt derselbe PostgreSQL-Prozess zusaetzlich
+  die strikt getrennte Forgejo-Datenbank `forgejo`
+- `forgejo_data`: geplantes Repository- und Forgejo-Anwendungsvolume ab FG-02;
+  im heutigen Compose-Stand noch nicht vorhanden
 - `identity_state`, `project_state`, `telemetry_state`, `community_state`, `service_state`, `admin_access_state` und `public_demo_state`: read-only Altbestaende fuer die einmaligen SQLite-Migrationen; keine laufenden Fachschreiber
 - `build_state`: temporaere Build-Arbeitsbereiche, materialisierte Ausgaben und Caches; dauerhafte Build-Artefakte liegen in PostgreSQL
 - `mqtt_data` und `mqtt_log`: Mosquitto
@@ -166,6 +184,11 @@ Die Alt-SQLite bleibt als Rueckfallkopie erhalten, ist danach aber nicht mehr fu
 ### Einmalige Project-Migration nach PostgreSQL
 
 Vor dem Start des Project Servers wartet Compose auf `project-postgres-migration`. Der einmalige Container liest zuerst `project_state/gernetix-projects.sqlite` read-only. Ist diese getrennte Datei noch leer, liest er als Upgrade-Fallback die bisherigen `project-server`-Tabellen aus `service_state/gernetix-services.sqlite`. Projekte, Quellen, Build-Jobs, Artefaktmetadaten, Lernfeedback, Einwilligungen und Ressourcenprofile werden in einer Transaktion importiert; danach wird der Marker `project-sqlite-v1` gesetzt.
+
+Diese Konsolidierung beschreibt den vorhandenen SQL-Altpfad und bleibt fuer
+den Bestand erforderlich. Sie ist nicht der spaetere SQL-zu-Git-Cutover: Der
+erfolgt projektweise ueber FG-09 und FG-10 und entfernt erst nach
+Restore-Nachweis die fuehrenden Quellinhalte aus SQL.
 
 Ein bereits belegtes PostgreSQL-Ziel ohne Marker fuehrt zum Abbruch statt zu einer unkontrollierten Zusammenfuehrung. Bei weiteren Starts endet die Migration mit `already_applied`. Beide SQLite-Volumes bleiben erhalten, sind fuer den Migrationscontainer aber nur read-only und nach erfolgreicher Uebernahme nicht mehr fuehrend. Vor dem Rollout sind `project_state`, `service_state`, das bisherige `project_postgres_data` und das neue `runtime_postgres_data` konsistent zu sichern; der Restore der neuen Datenbank ist gesondert nachzuweisen.
 

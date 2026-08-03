@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1140" viewBox="0 0 1680 1140" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur: Alle dauerhaften GerNetiX-Laufzeitdaten liegen in einer zentralen PostgreSQL-17/pgvector-Datenbank gernetix_runtime auf dem privaten VPS. Eine providerneutrale Compute Control Plane trennt typisierte Jobs, Grundlast- und Burst-Steuerung von austauschbaren VPS-, privaten, Cloud- und Kubernetes-Workern. Vertrauenswuerdige System-Jobs und isolierte Kunden-Projektregeln besitzen getrennte Rechte und Ausfuehrungsgrenzen.</desc>
+  <desc id="desc">Remote-first Architektur: Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories. Nutzer sehen ihr gebundenes Repository ueber eine sessiongeschuetzte Karte im Entwicklungsbereich, ohne Forgejo-Token im Browser. Jede bestaetigte Konfigurations-Schablone materialisiert ihre Wirkung als deterministische Projektdatei-Aenderung im selben Commit. Eine providerneutrale Compute Control Plane trennt typisierte Jobs, Grundlast- und Burst-Steuerung von austauschbaren VPS-, privaten, Cloud- und Kubernetes-Workern. Vertrauenswuerdige System-Jobs und isolierte Kunden-Projektregeln besitzen getrennte Rechte und Ausfuehrungsgrenzen.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -26,7 +26,7 @@
 
   <rect class="bg" width="1680" height="1140"/>
   <text x="40" y="42" class="titleText" style="font-size:24px">GerNetiX Serverprozesse und Applikationen</text>
-  <text x="40" y="67" class="smallText">Eine PostgreSQL-Laufzeitdatenbank · dauerhafter Compute Control Plane · providerneutrale VPS-/Private-/Cloud-/Kubernetes-Worker</text>
+  <text x="40" y="67" class="smallText">PostgreSQL fuer Fachzustand · Forgejo/Git fuer Projektdateien · Artifact Store fuer Builds · providerneutrale Worker</text>
 
   <g id="actors">
     <rect class="node actor" x="40" y="110" width="150" height="62" rx="10"/>
@@ -47,7 +47,7 @@
 
     <rect class="node app" x="265" y="150" width="260" height="92" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">Discovery - Hardware-PUML - IDE</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">IDE · Repo-Karte · Konfiguration → Projektdateien</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">Build → lokaler Serial Service / OTA :4300</text>
 
     <text class="smallText" x="395" y="234" text-anchor="middle">Provisioning: lokaler WLAN-Scan + USB-Transfer</text>
@@ -147,6 +147,10 @@
     <rect class="node domain" x="1385" y="505" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="529" text-anchor="middle">IONOS Mail</text>
     <text class="smallText" x="1480" y="548" text-anchor="middle">SMTP/TLS</text>
+
+    <rect class="node tool" x="965" y="505" width="180" height="54" rx="10"/>
+    <text class="titleText" x="1055" y="529" text-anchor="middle">Forgejo · Adapter lokal</text>
+    <text class="smallText" x="1055" y="548" text-anchor="middle">private Projekt-Git-Repositories</text>
   </g>
 
   <g id="tools">
@@ -194,7 +198,7 @@
 
     <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="992" y="807" text-anchor="middle">Dasselbe PostgreSQL / Project + Build</text>
-    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte · Jobs · Worker · Locks · Build-Artefakte</text>
+    <text class="smallText" x="992" y="826" text-anchor="middle">Owner · Rechte · Commitrefs · Jobs · Build-Artefakte</text>
 
     <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
     <text class="titleText" x="1250" y="807" text-anchor="middle">Weitere Domaenen-PostgreSQL</text>
@@ -205,8 +209,8 @@
     <text class="smallText" x="742" y="899" text-anchor="middle">immutable Demo-Firmware als BYTEA</text>
 
     <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
-    <text class="titleText" x="992" y="880" text-anchor="middle">Legacy Runtime SQLite</text>
-    <text class="smallText" x="992" y="899" text-anchor="middle">nur am Migrationscontainer read-only</text>
+    <text class="titleText" x="992" y="880" text-anchor="middle">Forgejo DB + Repository-Volume</text>
+    <text class="smallText" x="992" y="899" text-anchor="middle">DB forgejo · forgejo_data · Dateien + Historie</text>
 
     <rect class="node store" x="1125" y="858" width="250" height="52" rx="10"/>
     <text class="titleText" x="1250" y="880" text-anchor="middle">Dasselbe PostgreSQL + pgvector</text>
@@ -253,6 +257,12 @@
   <path class="line" d="M 855 339 L 1385 432"/>
   <path class="line" d="M 855 415 L 1155 826"/>
   <path class="line" d="M 855 415 L 1005 826"/>
+
+  <path class="line" d="M 1055 204 L 1055 505"/>
+  <text class="label" x="1065" y="485">Repo + Commit</text>
+  <path class="line" d="M 1055 559 L 1005 858"/>
+  <path class="line dashed" d="M 1480 289 L 1145 532"/>
+  <text class="label" x="1230" y="420">Board-Support-Release</text>
 
   <path class="line" d="M 1145 347 L 1385 262"/>
   <text class="label" x="1200" y="326">liest Hardwaredaten</text>

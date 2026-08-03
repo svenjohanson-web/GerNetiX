@@ -6,11 +6,26 @@ const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
 const { migrateRuntimeStorage } = require("../../../tools/migrate-runtime-storage");
 const { createConfig: projectConfig } = require("../src/config");
+const { createProjectRepositoryStore } = require("../src");
 const { createConfig: telemetryConfig } = require("../../telemetry-server/src/config");
 
 test("uses separate default SQLite files for projects and telemetry", () => {
   assert.match(projectConfig({}).sqlitePath, /gernetix-projects\.sqlite$/);
   assert.match(telemetryConfig({}).sqlitePath, /gernetix-telemetry\.sqlite$/);
+});
+
+test("keeps SQL sources as the default and requires separated Forgejo credentials when enabled", () => {
+  assert.equal(projectConfig({}).repositoryStoreBackend, "sql");
+  const config = projectConfig({
+    PROJECT_REPOSITORY_STORE: "forgejo",
+    FORGEJO_INTERNAL_URL: "http://forgejo:3000",
+    FORGEJO_PROVISION_TOKEN: "provision-token",
+    FORGEJO_RUNTIME_TOKEN: "runtime-token",
+  });
+  assert.equal(config.forgejo.provisionToken, "provision-token");
+  assert.equal(config.forgejo.runtimeToken, "runtime-token");
+  assert.ok(createProjectRepositoryStore(config));
+  assert.throws(() => createProjectRepositoryStore({ repositoryStoreBackend: "forgejo", forgejo: {} }), /configuration_incomplete/);
 });
 
 test("migrates only project and telemetry tables out of shared runtime storage", () => {

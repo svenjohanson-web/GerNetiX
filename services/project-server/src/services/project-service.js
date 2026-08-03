@@ -1,11 +1,17 @@
 const crypto = require("node:crypto");
 const { ProjectServerError } = require("../errors");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../modules/esp32-basissoftware-package");
+const {
+  GENERATED_CONFIGURATION_ROLE,
+  PROJECT_CONFIGURATION_ROLE,
+  projectConfigurationSources,
+} = require("../modules/project-configuration-projection");
 const { normalizeBasissoftwareConfiguration } = require("../../../shared/basissoftware-configuration");
 const { normalizeProjectCommunicationSetup } = require("../../../shared/project-communication-setup");
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
 const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-software-ownership");
 const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
+const { normalizeChanges, validateSha } = require("../repository-store/git-project-repository-store");
 
 const RESERVED_PLATFORMIO_OPTIONS = new Set([
   "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
@@ -16,6 +22,7 @@ const RESERVED_PLATFORMIO_OPTIONS = new Set([
 class ProjectService {
   constructor(options) {
     this.repository = options.repository;
+    this.projectRepositoryStore = options.projectRepositoryStore || null;
     this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
     this.ready = this.ensureResourcePolicies();
   }
@@ -80,8 +87,30 @@ class ProjectService {
         await this.repository.saveSource({ project_id: project.project_id, path: sourcePath, content, content_sha256: sha256(content), content_type: source.content_type || contentType(sourcePath), role: source.role || inferSourceRole(sourcePath), updated_at: now });
       } else await this.upsertSource(project.project_id, source);
     }
-    if (project.status !== "template") await this.syncPlatformioSources(project);
-    return this.projectWithSummary(project);
+    let configurationProjection = emptyProjectionResult();
+    if (project.status !== "template") {
+      const platformioProjection = await this.syncPlatformioSources(project);
+      const projectProjection = await this.syncProjectConfigurationSources(project);
+      configurationProjection = mergeProjectionResults(platformioProjection, projectProjection);
+    }
+    let persistedProject = project;
+    if (this.projectRepositoryStore) {
+      try {
+        const binding = await this.projectRepositoryStore.provisionProject({
+          project_id: project.project_id,
+          message: `Projekt ${project.title} angelegt`,
+          changes: (await this.repository.listSources(project.project_id)).map((source) => ({ path: source.path, content: source.content })),
+        });
+        persistedProject = await this.repository.saveProject({ ...project, repository_binding: { ...binding, provisioned_at: now } });
+      } catch (error) {
+        await this.repository.saveProject({
+          ...project,
+          repository_binding: { provider: "forgejo", state: "failed", error_code: error.code || "repository_provision_failed", failed_at: new Date().toISOString() },
+        });
+        throw error;
+      }
+    }
+    return { ...await this.projectWithSummary(persistedProject), configuration_projection: configurationProjection };
   }
 
   async getProject(projectId) {
@@ -107,6 +136,8 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
+    this.assertExpectedRepositoryHead(project, input.expected_head_sha);
+    const rollbackSources = this.activeRepositoryBinding(project) ? await this.repository.listSources(projectId) : null;
     const nextViewManifest = input.view_manifest || input.project_view_manifest
       ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
       : project.view_manifest;
@@ -146,12 +177,42 @@ class ProjectService {
       status: input.status || project.status,
       updated_at: new Date().toISOString(),
     };
-    const saved = await this.repository.saveProject(next);
-    await this.syncPlatformioSources(saved);
-    return this.projectWithSummary(saved);
+    let saved = await this.repository.saveProject(next);
+    let platformioProjection;
+    let projectProjection;
+    let repositoryCommit = null;
+    let repositoryCommitPushed = false;
+    try {
+      platformioProjection = await this.syncPlatformioSources(saved);
+      projectProjection = await this.syncProjectConfigurationSources(saved);
+      const projection = mergeProjectionResults(platformioProjection, projectProjection);
+      repositoryCommit = await this.commitProjectedChanges(saved, projection, input.expected_head_sha, "Entwicklungskonfiguration aktualisiert");
+      repositoryCommitPushed = Boolean(repositoryCommit && !repositoryCommit.no_change);
+      if (repositoryCommit && !repositoryCommit.no_change) {
+        saved = await this.repository.saveProject({
+          ...saved,
+          repository_binding: { ...saved.repository_binding, head_sha: repositoryCommit.head_sha, updated_at: new Date().toISOString() },
+        });
+      }
+    } catch (error) {
+      if (rollbackSources && !repositoryCommitPushed) await this.restoreSqlSourceCache(project, rollbackSources);
+      if (repositoryCommitPushed) throw new ProjectServerError(
+        "repository_metadata_sync_failed",
+        "Git-Commit wurde geschrieben, aber seine SQL-Referenz konnte nicht aktualisiert werden.",
+        503,
+        { committed_head_sha: repositoryCommit.head_sha, cause: error.code || "sql_update_failed" },
+      );
+      throw error;
+    }
+    return {
+      ...await this.projectWithSummary(saved),
+      configuration_projection: mergeProjectionResults(platformioProjection, projectProjection),
+      repository_commit: repositoryCommit,
+    };
   }
 
   async syncPlatformioSources(project) {
+    const result = emptyProjectionResult();
     const units = softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit);
     const expectedPaths = new Set(units.map((unit) => [unit.source_root, "platformio.ini"].filter(Boolean).join("/")));
     const activeRoots = units.map((unit) => String(unit.source_root || "").replace(/\/$/, "")).filter(Boolean);
@@ -161,13 +222,16 @@ class ProjectService {
       const belongsToActiveRoot = activeRoots.some((root) => source.path === root || source.path.startsWith(`${root}/`));
       const stalePlatformio = source.role === "build_config" && /(^|\/)platformio\.ini$/.test(source.path) && !expectedPaths.has(source.path);
       const staleGeneratedComponentSource = generatedRoles.has(source.role) && source.path.startsWith("Komponenten/") && !belongsToActiveRoot;
-      if (stalePlatformio || staleGeneratedComponentSource) await this.repository.deleteSource(project.project_id, source.path);
+      if (stalePlatformio || staleGeneratedComponentSource) {
+        await this.repository.deleteSource(project.project_id, source.path);
+        result.removed_paths.push(source.path);
+      }
     }
     for (const unit of units) {
       const content = renderPlatformioIni(unit.build_config);
       const now = new Date().toISOString();
       const sourcePath = [unit.source_root, "platformio.ini"].filter(Boolean).join("/");
-      await this.repository.saveSource({
+      await this.saveProjectedSource(project.project_id, {
         project_id: project.project_id,
         path: sourcePath,
         content,
@@ -175,8 +239,45 @@ class ProjectService {
         content_type: "text/plain",
         role: "build_config",
         updated_at: now,
-      });
+      }, result);
     }
+    return result;
+  }
+
+  async syncProjectConfigurationSources(project) {
+    const result = emptyProjectionResult();
+    const expectedSources = projectConfigurationSources(project);
+    const expectedPaths = new Set(expectedSources.map((source) => source.path));
+    const existingSources = await this.repository.listSources(project.project_id);
+    for (const source of existingSources) {
+      if (![PROJECT_CONFIGURATION_ROLE, GENERATED_CONFIGURATION_ROLE].includes(source.role)) continue;
+      if (expectedPaths.has(source.path)) continue;
+      await this.repository.deleteSource(project.project_id, source.path);
+      result.removed_paths.push(source.path);
+    }
+    for (const source of expectedSources) {
+      await this.saveProjectedSource(project.project_id, {
+        ...source,
+        project_id: project.project_id,
+        content_sha256: sha256(source.content),
+        updated_at: new Date().toISOString(),
+      }, result);
+    }
+    return result;
+  }
+
+  async saveProjectedSource(projectId, source, result) {
+    const existing = await this.repository.findSource(projectId, source.path);
+    if (existing
+      && existing.content_sha256 === source.content_sha256
+      && existing.content_type === source.content_type
+      && existing.role === source.role) {
+      result.unchanged_paths.push(source.path);
+      return existing;
+    }
+    await this.repository.saveSource(source);
+    result.changed_paths.push(source.path);
+    return source;
   }
 
   async listSources(projectId) {
@@ -215,6 +316,7 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    this.assertExpectedRepositoryHead(project, input.expected_head_sha);
     const requestedPath = normalizeSourcePath(required(input.path, "path"));
     const path = remapSoftwareSourcePath(requestedPath, softwareLayoutMappings([], project.software_units || []));
     const now = new Date().toISOString();
@@ -228,9 +330,115 @@ class ProjectService {
       role: input.role || inferSourceRole(path),
       updated_at: now,
     };
+    let repositoryCommit = null;
+    const binding = this.activeRepositoryBinding(project);
+    if (binding) {
+      repositoryCommit = await this.projectRepositoryStore.commitChanges(binding, {
+        expected_head_sha: input.expected_head_sha || binding.head_sha,
+        message: input.message || `Datei ${path} aktualisiert`,
+        changes: [{ path, content }],
+      });
+    }
     await this.repository.saveSource(source);
-    await this.touchProject(projectId);
-    return source;
+    await this.repository.saveProject({
+      ...project,
+      ...(repositoryCommit && !repositoryCommit.no_change ? {
+        repository_binding: { ...binding, head_sha: repositoryCommit.head_sha, updated_at: now },
+      } : {}),
+      updated_at: now,
+    });
+    return { ...source, repository_commit: repositoryCommit };
+  }
+
+  async commitRepositoryChanges(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
+    const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
+    this.assertExpectedRepositoryHead(project, expectedHeadSha);
+    const changes = normalizeChanges(input.changes, { allowEmpty: false });
+    const commit = await this.projectRepositoryStore.commitChanges(binding, {
+      expected_head_sha: expectedHeadSha,
+      message: input.message,
+      changes,
+    });
+    const now = new Date().toISOString();
+    for (const change of changes) {
+      if (change.operation === "delete") {
+        await this.repository.deleteSource(projectId, change.path);
+        continue;
+      }
+      await this.repository.saveSource({
+        project_id: projectId,
+        path: change.path,
+        content: change.content,
+        content_sha256: sha256(change.content),
+        content_type: contentType(change.path),
+        role: inferSourceRole(change.path),
+        updated_at: now,
+      });
+    }
+    const saved = await this.repository.saveProject({
+      ...project,
+      repository_binding: { ...binding, head_sha: commit.head_sha, updated_at: now },
+      updated_at: now,
+    });
+    return { project_id: projectId, repository_binding: publicRepositoryBinding(saved.repository_binding), commit };
+  }
+
+  async repositoryTree(projectId, commitSha = "") {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) throw new ProjectServerError("repository_not_active", "Projekt besitzt kein aktives Forgejo-Repository.", 409);
+    const resolvedCommitSha = validateSha(commitSha || binding.head_sha, "commit_sha");
+    return { commit_sha: resolvedCommitSha, paths: await this.projectRepositoryStore.tree(binding, resolvedCommitSha) };
+  }
+
+  activeRepositoryBinding(project) {
+    return this.projectRepositoryStore && project?.repository_binding?.provider === "forgejo" && project.repository_binding.state === "active"
+      ? project.repository_binding
+      : null;
+  }
+
+  assertExpectedRepositoryHead(project, expectedHeadSha) {
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding || !expectedHeadSha) return;
+    const expected = validateSha(expectedHeadSha, "expected_head_sha");
+    if (expected !== binding.head_sha) throw new ProjectServerError("repository_head_conflict", "Der Repository-Stand wurde zwischenzeitlich geändert.", 409, {
+      expected_head_sha: expected,
+      actual_head_sha: binding.head_sha,
+    });
+  }
+
+  async commitProjectedChanges(project, projection, expectedHeadSha, message) {
+    const binding = this.activeRepositoryBinding(project);
+    if (!binding) return null;
+    const changedPaths = uniqueSorted(projection.changed_paths || []);
+    const removedPaths = uniqueSorted(projection.removed_paths || []);
+    if (!changedPaths.length && !removedPaths.length) return { head_sha: binding.head_sha, branch: binding.default_branch, changed_paths: [], no_change: true };
+    const changes = [];
+    for (const sourcePath of changedPaths) {
+      const source = await this.repository.findSource(project.project_id, sourcePath);
+      if (source) changes.push({ path: sourcePath, content: source.content });
+    }
+    for (const sourcePath of removedPaths) changes.push({ path: sourcePath, operation: "delete" });
+    return this.projectRepositoryStore.commitChanges(binding, {
+      expected_head_sha: expectedHeadSha || binding.head_sha,
+      message,
+      changes,
+    });
+  }
+
+  async restoreSqlSourceCache(project, sources) {
+    const expectedPaths = new Set(sources.map((source) => source.path));
+    for (const source of await this.repository.listSources(project.project_id)) {
+      if (!expectedPaths.has(source.path)) await this.repository.deleteSource(project.project_id, source.path);
+    }
+    for (const source of sources) await this.repository.saveSource(source);
+    await this.repository.saveProject(project);
   }
 
   async createBuildJob(projectId, input = {}) {
@@ -746,6 +954,7 @@ class ProjectService {
   async projectWithSummary(project) {
     return {
       ...sanitizeProject(project),
+      repository_binding: publicRepositoryBinding(project.repository_binding),
       source_count: (await this.repository.listSources(project.project_id)).length,
       build_count: (await this.repository.listBuildJobs({ project_id: project.project_id })).length,
     };
@@ -1546,6 +1755,38 @@ function sha256(value) {
 
 function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function emptyProjectionResult() {
+  return { changed_paths: [], unchanged_paths: [], removed_paths: [] };
+}
+
+function mergeProjectionResults(...results) {
+  return {
+    changed_paths: uniqueSorted(results.flatMap((result) => result?.changed_paths || [])),
+    unchanged_paths: uniqueSorted(results.flatMap((result) => result?.unchanged_paths || [])),
+    removed_paths: uniqueSorted(results.flatMap((result) => result?.removed_paths || [])),
+  };
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function publicRepositoryBinding(binding) {
+  if (!binding || typeof binding !== "object") return null;
+  return {
+    provider: String(binding.provider || ""),
+    state: String(binding.state || ""),
+    organization: String(binding.organization || ""),
+    repository_name: String(binding.repository_name || ""),
+    repository_id: String(binding.repository_id || ""),
+    default_branch: String(binding.default_branch || ""),
+    head_sha: String(binding.head_sha || ""),
+    provisioned_at: String(binding.provisioned_at || ""),
+    updated_at: String(binding.updated_at || ""),
+    error_code: String(binding.error_code || ""),
+  };
 }
 
 module.exports = { ProjectService };

@@ -20,11 +20,26 @@ class PostgresProjectRepository {
         project_id text PRIMARY KEY,
         user_id text NOT NULL,
         status text NOT NULL,
+        repository_provider text,
+        repository_name text,
+        repository_id text,
+        repository_state text,
+        default_branch text,
+        head_sha text,
         raw_json jsonb NOT NULL,
         updated_at timestamptz NOT NULL
       );
+      ALTER TABLE project_projects ADD COLUMN IF NOT EXISTS repository_provider text;
+      ALTER TABLE project_projects ADD COLUMN IF NOT EXISTS repository_name text;
+      ALTER TABLE project_projects ADD COLUMN IF NOT EXISTS repository_id text;
+      ALTER TABLE project_projects ADD COLUMN IF NOT EXISTS repository_state text;
+      ALTER TABLE project_projects ADD COLUMN IF NOT EXISTS default_branch text;
+      ALTER TABLE project_projects ADD COLUMN IF NOT EXISTS head_sha text;
       CREATE INDEX IF NOT EXISTS idx_project_projects_user_id
         ON project_projects (user_id, updated_at DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_project_projects_repository
+        ON project_projects (repository_provider, repository_name)
+        WHERE repository_provider IS NOT NULL AND repository_name IS NOT NULL;
 
       CREATE TABLE IF NOT EXISTS project_sources (
         project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
@@ -141,15 +156,36 @@ class PostgresProjectRepository {
   }
 
   async saveProject(project) {
+    const binding = project.repository_binding || {};
     await this.pool.query(`
-      INSERT INTO project_projects (project_id, user_id, status, raw_json, updated_at)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO project_projects
+        (project_id, user_id, status, repository_provider, repository_name,
+         repository_id, repository_state, default_branch, head_sha, raw_json, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ON CONFLICT (project_id) DO UPDATE SET
         user_id=EXCLUDED.user_id,
         status=EXCLUDED.status,
+        repository_provider=EXCLUDED.repository_provider,
+        repository_name=EXCLUDED.repository_name,
+        repository_id=EXCLUDED.repository_id,
+        repository_state=EXCLUDED.repository_state,
+        default_branch=EXCLUDED.default_branch,
+        head_sha=EXCLUDED.head_sha,
         raw_json=EXCLUDED.raw_json,
         updated_at=EXCLUDED.updated_at
-    `, [project.project_id, project.user_id, project.status, project, project.updated_at]);
+    `, [
+      project.project_id,
+      project.user_id,
+      project.status,
+      binding.provider || null,
+      binding.repository_name || null,
+      binding.repository_id || null,
+      binding.state || null,
+      binding.default_branch || null,
+      binding.head_sha || null,
+      project,
+      project.updated_at,
+    ]);
     return clone(project);
   }
 

@@ -1556,7 +1556,7 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
       method: "PUT",
       body: source,
     })));
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       title,
@@ -1584,7 +1584,7 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
-  sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+  sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString(), configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleLearningProjectStart(res, session, catalogProjectId) {
@@ -1860,7 +1860,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   const activeSoftwareUnitId = softwareUnits.some((unit) => unit.software_unit_id === project.active_software_unit_id)
     ? project.active_software_unit_id
     : softwareUnits[0]?.software_unit_id || "";
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       ...(selectedBoard ? { hardware_profile_id: selectedBoard.base_board_profile_id || selectedBoard.hardware_item_id } : {}),
@@ -1879,7 +1879,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
-  sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+  sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString(), configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleDevelopmentProjectHardwareSave(req, res, session, projectId) {
@@ -1990,7 +1990,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
     method: "PUT",
     body: source,
   })));
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       hardware_profile_id: selectedBaseBoardId || project.hardware_profile_id,
@@ -2022,6 +2022,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, {
     project: toPlatformProject(updated),
+    configuration_projection: persistedProject.configuration_projection || null,
     hardware_configuration: hardwareConfiguration,
     hardware_architecture: {
       source: hardwareWiringPlantUml(hardwareConfiguration, project.title),
@@ -2043,7 +2044,7 @@ async function handleProjectComponentFeatures(req, res, session, projectId) {
   const enabled = Array.isArray(body.enabled) ? body.enabled.map(String).filter((item) => allowed.has(item)) : [];
   const current = project.build_config.component_features || {};
   const webserver = body.webserver && typeof body.webserver === "object" ? body.webserver : {};
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       build_config: {
@@ -2065,7 +2066,7 @@ async function handleProjectComponentFeatures(req, res, session, projectId) {
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
-  sendJson(res, 200, { project: toPlatformProject(updated) });
+  sendJson(res, 200, { project: toPlatformProject(updated), configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleProjectBasissoftwareConfiguration(req, res, session, projectId) {
@@ -2085,14 +2086,14 @@ async function handleProjectBasissoftwareConfiguration(req, res, session, projec
   if (project.view_manifest?.communication_setup) {
     updatedUnits = applyProjectCommunicationSetup(updatedUnits, project.view_manifest.communication_setup).software_units;
   }
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: { software_units: updatedUnits, active_software_unit_id: softwareUnitId },
   });
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
-  sendJson(res, 200, { project: toPlatformProject(updated), software_unit_id: softwareUnitId, configuration: basissoftwareConfiguration });
+  sendJson(res, 200, { project: toPlatformProject(updated), software_unit_id: softwareUnitId, configuration: basissoftwareConfiguration, configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleProjectCommunicationSetup(req, res, session, projectId) {
@@ -2105,7 +2106,7 @@ async function handleProjectCommunicationSetup(req, res, session, projectId) {
   }
   const setup = normalizeProjectCommunicationSetup(await readJsonBody(req), softwareUnits);
   const derived = applyProjectCommunicationSetup(softwareUnits, setup);
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       view_manifest: { ...project.view_manifest, communication_setup: derived.setup },
@@ -2116,7 +2117,7 @@ async function handleProjectCommunicationSetup(req, res, session, projectId) {
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
-  sendJson(res, 200, { project: toPlatformProject(updated), communication_setup: derived.setup });
+  sendJson(res, 200, { project: toPlatformProject(updated), communication_setup: derived.setup, configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleProjectComponentHardwareFeatures(req, res, session, projectId) {
@@ -2162,7 +2163,7 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
     return;
   }
   const current = project.build_config.component_hardware_features || {};
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       build_config: {
@@ -2177,7 +2178,7 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
-  sendJson(res, 200, { project: toPlatformProject(updated) });
+  sendJson(res, 200, { project: toPlatformProject(updated), configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleProjectPwaDashboard(req, res, session, projectId) {
@@ -2188,7 +2189,7 @@ async function handleProjectPwaDashboard(req, res, session, projectId) {
   }
   const body = await readJsonBody(req);
   const pwaDashboard = normalizePwaDashboardConfiguration(body);
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       view_manifest: {
@@ -2200,7 +2201,7 @@ async function handleProjectPwaDashboard(req, res, session, projectId) {
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
-  sendJson(res, 200, { project: toPlatformProject(updated) });
+  sendJson(res, 200, { project: toPlatformProject(updated), configuration_projection: persistedProject.configuration_projection || null });
 }
 
 async function handleProjectEventConfiguration(req, res, session, projectId) {
@@ -2210,7 +2211,7 @@ async function handleProjectEventConfiguration(req, res, session, projectId) {
     return;
   }
   const configuration = normalizeEventConfiguration(await readJsonBody(req), project.view_manifest);
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+  const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       view_manifest: {
@@ -2225,7 +2226,7 @@ async function handleProjectEventConfiguration(req, res, session, projectId) {
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
-  sendJson(res, 200, { project: toPlatformProject(updated) });
+  sendJson(res, 200, { project: toPlatformProject(updated), configuration_projection: persistedProject.configuration_projection || null });
 }
 
 function normalizeEventConfiguration(input = {}, manifest = {}) {
