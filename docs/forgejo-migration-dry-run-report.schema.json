@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gernetix.invalid/schemas/forgejo-migration-dry-run-report-v1.json",
+  "title": "GerNetiX Forgejo migration dry-run report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "source_kind",
+    "source_fingerprint_sha256",
+    "summary",
+    "write_gate",
+    "projects",
+    "issues"
+  ],
+  "properties": {
+    "schema_version": { "const": "gernetix.forgejo-migration-dry-run/v1" },
+    "mode": { "const": "dry_run_read_only" },
+    "source_kind": { "type": "string", "minLength": 1 },
+    "source_fingerprint_sha256": { "$ref": "#/$defs/sha256" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "project_count", "source_file_count", "planned_commit_count", "error_count", "warning_count"],
+      "properties": {
+        "status": { "enum": ["ready", "blocked"] },
+        "project_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "source_file_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "planned_commit_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "error_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "warning_count": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "write_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "report_sha256_required", "note"],
+      "properties": {
+        "allowed": { "type": "boolean" },
+        "report_sha256_required": { "const": true },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/project" }
+    },
+    "issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/globalIssue" }
+    }
+  },
+  "$defs": {
+    "sha1": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "nullableString": { "type": ["string", "null"] },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "classification", "disposition", "origin"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "$ref": "#/$defs/nonNegativeInteger" },
+        "classification": { "enum": ["text", "secret", "binary", "oversized"] },
+        "disposition": { "enum": ["repository", "runtime_secret_required", "artifact_store_required", "manual_resolution_required"] },
+        "origin": { "enum": ["sql_source", "project_projection"] }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "code", "location", "detail"],
+      "properties": {
+        "severity": { "enum": ["error", "warning"] },
+        "code": { "type": "string", "minLength": 1 },
+        "location": { "type": "string" },
+        "detail": { "type": "string" }
+      }
+    },
+    "globalIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "code", "location", "detail"],
+      "properties": {
+        "severity": { "enum": ["error", "warning"] },
+        "code": { "type": "string", "minLength": 1 },
+        "location": { "type": "string" },
+        "detail": { "type": "string" },
+        "project_id": { "type": "string" }
+      }
+    },
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "file_name_sha256", "sha256", "size_bytes"],
+      "properties": {
+        "artifact_id": { "type": "string" },
+        "file_name_sha256": { "$ref": "#/$defs/sha256" },
+        "sha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "" }] },
+        "size_bytes": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_kind", "source_version_id", "source_parent_version_id", "parent_commit_oid",
+        "tree_oid", "commit_oid", "created_at", "creator_ref_sha256", "message_sha256",
+        "includes_binary", "binary_artifact_references", "file_count"
+      ],
+      "properties": {
+        "source_kind": { "enum": ["sql_version", "current_sql_state"] },
+        "source_version_id": { "$ref": "#/$defs/nullableString" },
+        "source_parent_version_id": { "$ref": "#/$defs/nullableString" },
+        "parent_commit_oid": { "anyOf": [{ "$ref": "#/$defs/sha1" }, { "type": "null" }] },
+        "tree_oid": { "$ref": "#/$defs/sha1" },
+        "commit_oid": { "$ref": "#/$defs/sha1" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "creator_ref_sha256": { "$ref": "#/$defs/sha256" },
+        "message_sha256": { "$ref": "#/$defs/sha256" },
+        "includes_binary": { "type": "boolean" },
+        "binary_artifact_references": { "type": "array", "items": { "$ref": "#/$defs/artifactReference" } },
+        "file_count": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_file_count", "repository_file_count", "tree_oid", "source_path_set_sha256",
+        "repository_path_set_sha256", "repository_file_set_sha256", "project_manifest",
+        "source_comparison", "classifications", "files", "projected_files"
+      ],
+      "properties": {
+        "source_file_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "repository_file_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "tree_oid": { "$ref": "#/$defs/sha1" },
+        "source_path_set_sha256": { "$ref": "#/$defs/sha256" },
+        "repository_path_set_sha256": { "$ref": "#/$defs/sha256" },
+        "repository_file_set_sha256": { "$ref": "#/$defs/sha256" },
+        "project_manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "present", "sha256", "origin"],
+          "properties": {
+            "path": { "const": "gernetix/project.json" },
+            "present": { "type": "boolean" },
+            "sha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+            "origin": { "anyOf": [{ "enum": ["sql_source", "project_projection"] }, { "type": "null" }] }
+          }
+        },
+        "source_comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["eligible_source_path_count", "eligible_paths_preserved", "eligible_contents_preserved", "missing_path_sha256", "mismatched_path_sha256"],
+          "properties": {
+            "eligible_source_path_count": { "$ref": "#/$defs/nonNegativeInteger" },
+            "eligible_paths_preserved": { "type": "boolean" },
+            "eligible_contents_preserved": { "type": "boolean" },
+            "missing_path_sha256": { "$ref": "#/$defs/sha256" },
+            "mismatched_path_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "classifications": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "secret", "binary", "oversized"],
+          "properties": {
+            "text": { "$ref": "#/$defs/nonNegativeInteger" },
+            "secret": { "$ref": "#/$defs/nonNegativeInteger" },
+            "binary": { "$ref": "#/$defs/nonNegativeInteger" },
+            "oversized": { "$ref": "#/$defs/nonNegativeInteger" }
+          }
+        },
+        "files": { "type": "array", "items": { "$ref": "#/$defs/file" } },
+        "projected_files": { "type": "array", "items": { "$ref": "#/$defs/file" } }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id", "source_project_sha256", "current", "version_count", "version_comparison",
+        "commits", "target_head_commit_oid", "ledger_preview", "issues"
+      ],
+      "properties": {
+        "project_id": { "type": "string", "minLength": 1 },
+        "source_project_sha256": { "$ref": "#/$defs/sha256" },
+        "current": { "$ref": "#/$defs/tree" },
+        "version_count": { "$ref": "#/$defs/nonNegativeInteger" },
+        "version_comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_version_count", "planned_version_commit_count", "matches"],
+          "properties": {
+            "source_version_count": { "$ref": "#/$defs/nonNegativeInteger" },
+            "planned_version_commit_count": { "$ref": "#/$defs/nonNegativeInteger" },
+            "matches": { "type": "boolean" }
+          }
+        },
+        "commits": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/commit" } },
+        "target_head_commit_oid": { "$ref": "#/$defs/sha1" },
+        "ledger_preview": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_sha256", "target_commit_oid", "file_count", "status"],
+          "properties": {
+            "source_sha256": { "$ref": "#/$defs/sha256" },
+            "target_commit_oid": { "$ref": "#/$defs/sha1" },
+            "file_count": { "$ref": "#/$defs/nonNegativeInteger" },
+            "status": { "enum": ["blocked", "dry_run_ready"] }
+          }
+        },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } }
+      }
+    }
+  }
+}
