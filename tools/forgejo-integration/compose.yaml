@@ -1,0 +1,139 @@
+name: gernetix-forgejo-integration
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: gernetix_runtime
+      POSTGRES_USER: gernetix_runtime
+      POSTGRES_PASSWORD: integration-runtime-only
+    expose: ["5432"]
+    networks:
+      - integration
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/10-forgejo-integration.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_runtime -d gernetix_runtime"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.6-rootless
+    user: "1000:1000"
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: postgres:5432
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: forgejo
+      FORGEJO__database__PASSWD: integration-forgejo-only
+      FORGEJO__database__SSL_MODE: disable
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__security__SECRET_KEY: ${FORGEJO_INTEGRATION_SECRET_KEY:?synthetischer Testschluessel fehlt}
+      FORGEJO__security__INTERNAL_TOKEN: ${FORGEJO_INTEGRATION_INTERNAL_TOKEN:?synthetischer Testtoken fehlt}
+      FORGEJO__server__DOMAIN: forgejo
+      FORGEJO__server__ROOT_URL: http://forgejo:3000/
+      FORGEJO__server__HTTP_PORT: 3000
+      FORGEJO__server__PROTOCOL: http
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__server__START_SSH_SERVER: "false"
+      FORGEJO__server__LFS_START_SERVER: "false"
+      FORGEJO__server__OFFLINE_MODE: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__service__SHOW_REGISTRATION_BUTTON: "false"
+      FORGEJO__service__REQUIRE_SIGNIN_VIEW: "true"
+      FORGEJO__service__DEFAULT_ALLOW_CREATE_ORGANIZATION: "false"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_USER: "false"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_ORG: "false"
+      FORGEJO__repository__DISABLED_REPO_UNITS: repo.issues,repo.ext_issues,repo.pulls,repo.wiki,repo.ext_wiki,repo.projects,repo.packages,repo.actions
+      FORGEJO__repository__DEFAULT_REPO_UNITS: repo.code,repo.releases
+      FORGEJO__admin__DISABLE_REGULAR_ORG_CREATION: "true"
+      FORGEJO__actions__ENABLED: "false"
+      FORGEJO__packages__ENABLED: "false"
+      FORGEJO__openid__ENABLE_OPENID_SIGNIN: "false"
+      FORGEJO__openid__ENABLE_OPENID_SIGNUP: "false"
+      FORGEJO__oauth2_client__ENABLE_AUTO_REGISTRATION: "false"
+      FORGEJO__mailer__ENABLED: "false"
+      FORGEJO__federation__ENABLED: "false"
+      FORGEJO__cron.update_checker__ENABLED: "false"
+      FORGEJO__api__ENABLE_SWAGGER: "false"
+      FORGEJO__metrics__ENABLED: "false"
+    expose: ["3000"]
+    networks:
+      - integration
+    volumes:
+      - forgejo_data:/var/lib/gitea
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  adapter-test:
+    build:
+      context: ../..
+      dockerfile: tools/forgejo-integration/tester.Dockerfile
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      FORGEJO_BASE_URL: http://forgejo:3000
+      FORGEJO_TOKEN: ${FORGEJO_INTEGRATION_ACCESS_TOKEN:-}
+      TEST_PHASE: ${FORGEJO_INTEGRATION_TEST_PHASE:-initial}
+      TEST_STATE_PATH: /state/result.json
+    networks:
+      - integration
+    volumes:
+      - test_state:/state
+    tmpfs:
+      - /tmp
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    profiles: ["test"]
+
+  test-state-init:
+    build:
+      context: ../..
+      dockerfile: tools/forgejo-integration/tester.Dockerfile
+    user: "0:0"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    network_mode: none
+    command: ["chown", "1000:1000", "/state"]
+    volumes:
+      - test_state:/state
+    profiles: ["test"]
+
+networks:
+  integration:
+    internal: true
+
+volumes:
+  postgres_data:
+  forgejo_data:
+  test_state:
