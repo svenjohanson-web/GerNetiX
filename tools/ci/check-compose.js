@@ -11,6 +11,8 @@ const composeModels = [
   { file: "compose.public-demo.vps.yaml", envFile: ".env.public-demo.vps.example" },
   { file: "compose.flashbox-build-test.yaml" },
   { file: "infra/dev/docker-compose.yml" },
+  { file: "tools/forgejo-integration/compose.yaml" },
+  { file: "tools/forgejo-backup-restore-test.compose.yaml" },
 ];
 
 function requiredVariables(source) {

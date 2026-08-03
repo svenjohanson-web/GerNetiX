@@ -81,6 +81,8 @@ jobs:
         run: >-
           node --test
           tools/forgejo-ops-contract.test.js
+          tools/forgejo-integration/contract.test.js
+          tools/forgejo-backup-restore-contract.test.js
           services/project-server/test/forgejo-client.test.js
           services/project-server/test/git-project-repository-store.test.js
           services/project-server/test/project-repository-api.test.js
@@ -88,7 +90,21 @@ jobs:
           services/identity-server/test/project-repository-routes.test.js
           services/identity-server/test/project-git-light.test.js
       - name: Run migration dry-run contracts
-        run: node --test tools/forgejo-migration-dry-run.test.js
+        run: >-
+          node --test
+          tools/forgejo-migration-dry-run.test.js
+          tools/forgejo-migration-dry-run-fixtures.test.js
+
+  forgejo-container-e2e:
+    name: Forgejo container and restore E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated Forgejo container integration
+        run: tools/forgejo-integration/run.sh
+      - name: Run isolated Forgejo backup and restore
+        run: tools/forgejo-backup-restore-e2e.sh
 
   repository-quality:
     name: Syntax and Compose

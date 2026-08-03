@@ -168,9 +168,9 @@ umgeschaltet.
 - Strang B besteht unveraendert gegen diesen Dienst.
 - Provisionierungs- und Runtime-Credentials sind getrennt.
 
-**Status:** lokal vorbereitet, aber noch nicht erreicht. Dienstvertrag,
-Datenbanktrennung und Credentials sind implementiert; der unveraenderte
-Adaptertest gegen einen real gestarteten, gepinnten Forgejo-Container fehlt.
+**Status:** lokal erreicht. Der gepinnte Forgejo-Container besteht privaten
+Repository-Lifecycle, Initialcommit, CRUD/Rename/Delete, erwarteten Head,
+Neustartpersistenz und die negative Datenbankgrenze zu `gernetix_runtime`.
 
 ### Gate 2 - Nutzerfluss und Migration sind trocken nachgewiesen
 
@@ -179,9 +179,11 @@ Adaptertest gegen einen real gestarteten, gepinnten Forgejo-Container fehlt.
 - Backup und isolierter Restore des Forgejo-Teststands bestehen.
 
 **Status:** teilweise lokal erreicht. Die Karte verwendet fuer aktive
-Bindings reale Project-Server-Endpunkte, und der deterministische Dry-run ist
-automatisiert getestet. Ein repraesentativer Datenbanklauf sowie der isolierte
-Backup-/Restore-Nachweis stehen noch aus.
+Bindings reale Project-Server-Endpunkte, der deterministische Dry-run ist mit
+synthetischen Projektfaellen automatisiert getestet und der isolierte
+Backup-/Restore-Nachweis an einem realen Forgejo-Teststand besteht. Ein
+repraesentativer Bestandsdatenbanklauf und der UI-Nachweis gegen denselben
+realen Testdienst stehen noch aus.
 
 ### Gate 3 - Commitgebundener Build
 
@@ -219,8 +221,13 @@ Forgejo-/Staging-Nachweis bleibt Gate 4 vorbehalten.
 
 | Strang | Integrationsstatus | Noch offener Gate-Nachweis |
 | --- | --- | --- |
-| A | lokal integriert | realer Container-, Neustart- und Restore-Test |
-| B | lokal integriert | End-to-End-Test gegen den Forgejo-Testdienst |
+| A | lokal integriert und real getestet | Upgrade-, Monitoring- und externer Backupnachweis |
+| B | lokal integriert und real getestet | gemeinsamer UI-End-to-End-Nachweis gegen denselben Testdienst |
 | C | lokal integriert | UI-Nachweis gegen denselben realen Testdienst |
-| D | lokal integriert | Dry-run mit repraesentativer Bestandsdatenbank |
+| D | lokal integriert; synthetische Fixtures bestehen | Dry-run mit repraesentativer Bestandsdatenbank |
 | E | lokal integriert | echter Forgejo-/Staging-Build und projektweiser Cutover |
+
+Die gemeinsame GitHub-Test-CI führt Service-, Forgejo-, Migrations-, Syntax-,
+Compose-, Dokumentations- und Graphprüfungen aus. Der Container- und
+Restore-Nachweis läuft dabei ausschließlich in kurzlebigen, aufgeräumten
+Testumgebungen und löst weder Deployment noch Cutover aus.

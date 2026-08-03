@@ -1,9 +1,11 @@
 # Reine Test-CI
 
 GerNetiX verwendet GitHub Actions ausschließlich als Test-CI für Pull Requests
-und Änderungen auf `main`. Der Workflow `.github/workflows/test-ci.yml` baut
-keine Images, veröffentlicht keine Artefakte und führt weder Deployment,
-Staging, Cutover noch Forgejo Actions aus. Er benötigt keine Secrets.
+und Änderungen auf `main`. Der Workflow `.github/workflows/test-ci.yml`
+veröffentlicht keine Images oder Artefakte und führt weder Deployment, Staging,
+Cutover noch Forgejo Actions aus. Ausschließlich die isolierten
+End-to-End-Nachweise bauen kurzlebige lokale Testimages im Runner. Der Workflow
+benötigt keine Secrets.
 
 ## Nachweise
 
@@ -15,7 +17,14 @@ Die Jobs sind nach Fehlerdomäne getrennt:
   `.runtime/`-Verzeichnisse liegen nur im Runner-Checkout.
 - `Forgejo and migration contracts` prüft die gezielten Project-/Identity-
   Verträge, die gehärtete Forgejo-Compose-Konfiguration und den ausschließlich
-  lesenden, deterministischen Migrations-Dry-run.
+  lesenden, deterministischen Migrations-Dry-run einschließlich synthetischer
+  Projektfälle und Backup-/Restore-Fehlerverträge.
+- `Forgejo container and restore E2E` startet zwei voneinander isolierte
+  Compose-Projekte ohne dauerhafte Daten: zuerst den echten Forgejo-Adapter mit
+  Neustart- und Datenbankgrenzentest, danach einen gemeinsamen Datenbank-/Volume-
+  Backup- und Leerstand-Restore mit Baum-, Inhalts-, Branch-, HEAD- und
+  Historienvergleich. Beide Skripte räumen Container, Volumes, Netzwerke und
+  lokale Testimages auch bei Fehlern auf.
 - `Syntax and Compose` parst alle versionierten JavaScript-Dateien, validiert
   alle projektrelevanten Compose-Modelle mit Platzhaltern für erforderliche
   Variablen und lehnt Whitespace-Fehler ab. Die Platzhalter sind keine
@@ -48,13 +57,20 @@ mkdir -p .runtime services/build-deploy-server/.runtime
 
 node --test \
   tools/forgejo-ops-contract.test.js \
+  tools/forgejo-integration/contract.test.js \
+  tools/forgejo-backup-restore-contract.test.js \
   services/project-server/test/forgejo-client.test.js \
   services/project-server/test/git-project-repository-store.test.js \
   services/project-server/test/project-repository-api.test.js \
   services/identity-server/test/project-repository-contract-stub.test.js \
   services/identity-server/test/project-repository-routes.test.js \
   services/identity-server/test/project-git-light.test.js
-node --test tools/forgejo-migration-dry-run.test.js
+node --test \
+  tools/forgejo-migration-dry-run.test.js \
+  tools/forgejo-migration-dry-run-fixtures.test.js
+
+tools/forgejo-integration/run.sh
+tools/forgejo-backup-restore-e2e.sh
 
 node tools/ci/check-javascript-syntax.js
 node tools/ci/check-compose.js

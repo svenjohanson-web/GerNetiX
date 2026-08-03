@@ -522,8 +522,12 @@ Abnahme:
 ## FG-13 - Backup, Restore und Upgrade
 
 Lokal umgesetzt sind der konsistente Backupvertrag fuer Forgejo-Datenbank und
-`forgejo_data` sowie die dokumentierte Betriebsreihenfolge. Der isolierte
-Restore- und Upgrade-Nachweis an einem realen Teststand bleibt offen.
+`forgejo_data`, die dokumentierte Betriebsreihenfolge sowie ein automatisierter
+isolierter Restore an einem realen Forgejo-Teststand. Der Restore vergleicht
+Dateibaum, Inhalte, Branch, HEAD und Zwei-Commit-Historie und weist falsche
+Pruefsummen sowie unvollstaendige Sicherungssaetze vor der Volume-Anlage ab.
+Upgrade-, externer Verschluesselungs- und RPO/RTO-Betriebsnachweis bleiben
+offen.
 
 Ziel:
 
