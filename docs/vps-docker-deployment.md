@@ -2,12 +2,15 @@
 
 Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS.
 Aktuell stellt genau ein Container `runtime-postgres` PostgreSQL 17 mit
-pgvector und die GerNetiX-Domaenendatenbank `gernetix_runtime` bereit. Die
-heutige Implementierung speichert darin auch Projektquellen und dauerhafte
-BLOB-Artefakte. Die beschlossene Forgejo-Migration ist noch nicht Bestandteil
-dieses Deployments: Nach ihrem Cutover liegen menschenbearbeitete
-Projektdateien und ihre Historie in privaten Forgejo-Repositories; PostgreSQL
-enthaelt nur die fachlichen Projektmetadaten und Repository-Referenzen.
+pgvector bereit. Darin bleiben die GerNetiX-Domaenendatenbank
+`gernetix_runtime` und die vom eigenen Login gefuehrte Forgejo-Datenbank
+`forgejo` strikt getrennt. Der gepinnte Forgejo-LTS-Dienst ist nur im internen
+Backend-Netz vorbereitet. Das ist noch kein Cutover: Die heutige
+Implementierung speichert Projektquellen und dauerhafte BLOB-Artefakte weiter
+in `gernetix_runtime`. Erst nach dem kontrollierten Cutover liegen
+menschenbearbeitete Projektdateien und ihre Historie fuehrend in privaten
+Forgejo-Repositories; PostgreSQL enthaelt dann nur die fachlichen
+Projektmetadaten und Repository-Referenzen.
 SQLite-Dateien und fruehere PostgreSQL-Volumes sind nur noch read-only Quellen
 der einmaligen Migration und werden von keinem laufenden Fachservice
 gemountet. Der Zielbetrieb ist in
@@ -29,6 +32,10 @@ Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassn
   und leiten weder Plattform noch Login weiter.
 - SSH ist durch die Host-Firewall ausschliesslich ueber das WireGuard-Interface erreichbar. Es gibt keinen oeffentlichen administrativen Netzwerkzugang.
 - Identity und alle Domaenenservices bleiben im internen Docker-Netz.
+- Forgejo laeuft rootless ausschliesslich im internen Docker-Netz. Es besitzt
+  weder Host-Port noch Nginx-Route; nur interne Services koennen Port 3000
+  erreichen. SSH, Registrierung, Push-to-create, Actions, Packages und
+  Webhooks sind deaktiviert.
 - Runtime-PostgreSQL und die Remote-Dev-Domaenenports sind auf dem VPS nur an `127.0.0.1` gebunden. Ein Entwicklungsrechner erreicht sie ausschliesslich per SSH-Tunnel innerhalb WireGuard.
 - Das Admin Tool bindet nur an `127.0.0.1` des VPS und ist per SSH-Tunnel innerhalb des WireGuard-VPN erreichbar.
 - Mosquitto behaelt die anonymen internen Listener `1883` und `9001` ausschliesslich im privaten Docker-Netz. Der WireGuard-gebundene Device-Listener `8883` verlangt zusaetzlich mTLS mit einem registrierten Device-Zertifikat und geraetespezifische Topic-ACLs.
@@ -61,6 +68,10 @@ OTA_SIGNING_PRIVATE_KEY_PATH=/etc/gernetix/pki/ota-signing-key.pem
 OTA_SIGNING_PUBLIC_KEY_PATH=/etc/gernetix/pki/ota-signing-public.pem
 OTA_SIGNING_KEY_ID=ota-p256-2026-01
 IDENTITY_APP_BASE_URL=https://pwa.gernetix.com
+RUNTIME_POSTGRES_PASSWORD=<langer-zufaelliger-eigener-wert>
+FORGEJO_POSTGRES_PASSWORD=<getrennter-langer-zufaelliger-wert>
+FORGEJO_SECRET_KEY=<getrennter-dauerhaft-gesicherter-zufaelliger-wert>
+FORGEJO_INTERNAL_TOKEN=<getrennter-langer-zufaelliger-wert>
 IDENTITY_POSTGRES_PASSWORD=<langer-zufaelliger-eigener-wert>
 PROJECT_POSTGRES_PASSWORD=<anderer-langer-zufaelliger-eigener-wert>
 TELEMETRY_POSTGRES_PASSWORD=<weiterer-langer-zufaelliger-eigener-wert>
@@ -115,6 +126,18 @@ docker compose --env-file .env.vps -f compose.vps.yaml up -d
 docker compose --env-file .env.vps -f compose.vps.yaml ps
 ```
 
+Die Datei `.env.vps` muss ausserhalb des Repositories bleiben und nur fuer den
+Betreiber lesbar sein (`chmod 0600 .env.vps`). Die drei Forgejo-Werte duerfen
+weder untereinander noch mit `RUNTIME_POSTGRES_PASSWORD` oder Service-Tokens
+geteilt werden. `FORGEJO_SECRET_KEY` ist dauerhaft zusammen mit dem Backup zu
+sichern; sein Verlust macht damit verschluesselte Forgejo-Daten unlesbar.
+
+Vor jedem Forgejo-Start legt `forgejo-postgres-provisioning` Datenbank und
+Login idempotent an, rotiert das getrennte Datenbankpasswort und entzieht dem
+Login Datenbank-, Schema-, Tabellen-, Sequenz- und Funktionsrechte auf
+`gernetix_runtime`. Der Forgejo-Container startet erst nach erfolgreichem
+Abschluss dieser Schranke.
+
 Der normale Staging-Deploy validiert zuerst die versionierte
 nftables-Host-Firewall. Erst nach erfolgreicher Compose-Pruefung und
 erfolgreichem Image-Build wird sie installiert und neu geladen. Danach fordert
@@ -128,6 +151,7 @@ Healthcheck auf dem VPS:
 ```bash
 curl http://127.0.0.1:8080/health
 curl --resolve pwa.gernetix.com:443:10.77.0.1 https://pwa.gernetix.com/health
+docker compose --env-file .env.vps -f compose.vps.yaml ps forgejo
 ```
 
 ## Admin Tool sicher erreichen
@@ -159,10 +183,11 @@ Compose legt benannte Volumes an:
 - `runtime_postgres_data`: fuehrende GerNetiX-Domaenendatenbank
   `gernetix_runtime` fuer alle praefixierten Domaenentabellen,
   Runtime-Konfigurationen und in der heutigen Implementierung auch dauerhafte
-  BLOB-Artefakte; nach FG-02 enthaelt derselbe PostgreSQL-Prozess zusaetzlich
-  die strikt getrennte Forgejo-Datenbank `forgejo`
-- `forgejo_data`: geplantes Repository- und Forgejo-Anwendungsvolume ab FG-02;
-  im heutigen Compose-Stand noch nicht vorhanden
+  BLOB-Artefakte; derselbe PostgreSQL-Prozess enthaelt zusaetzlich die strikt
+  getrennte Forgejo-Datenbank `forgejo`
+- `forgejo_data`: Repository- und Forgejo-Anwendungsdaten; das Volume wird nur
+  in den rootless Forgejo-Dienst beziehungsweise in den kontrollierten
+  Backup-Lauf eingebunden
 - `identity_state`, `project_state`, `telemetry_state`, `community_state`, `service_state`, `admin_access_state` und `public_demo_state`: read-only Altbestaende fuer die einmaligen SQLite-Migrationen; keine laufenden Fachschreiber
 - `build_state`: temporaere Build-Arbeitsbereiche, materialisierte Ausgaben und Caches; dauerhafte Build-Artefakte liegen in PostgreSQL
 - `mqtt_data` und `mqtt_log`: Mosquitto
@@ -219,6 +244,42 @@ Vor dem Start des Hardware Shop wartet Compose auf `hardware-shop-postgres-migra
 ### Einmalige Operations-Migration nach PostgreSQL
 
 Vor dem Start des Admin Tool wartet Compose auf `operations-postgres-migration`. Der einmalige Container importiert Admin-Consents, Audit-, Aktions- und Systemereignisse sowie die bisherige Schnittstellenstatistik transaktional aus `gernetix-services.sqlite`. Der Marker `operations-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker fuehrt zum Abbruch. Identity und Build & Deploy senden neue Schnittstellenmessungen danach token-geschuetzt an das interne Admin-/Operations-API. Die Legacy-SQLite bleibt read-only erhalten.
+
+## Forgejo-Backup, Restore und Upgrade
+
+Der erste konsistente Sicherungsvertrag stoppt nur Forgejo kontrolliert. Die
+gemeinsame PostgreSQL-Instanz und die GerNetiX-Domaenendienste laufen weiter.
+Danach werden die Datenbank `forgejo` und `forgejo_data` in dasselbe neue,
+zugriffsgeschuetzte Ziel geschrieben und gemeinsam mit Version und
+SHA-256-Pruefsummen abgeschlossen:
+
+```bash
+tools/backup-forgejo.sh /gesicherter/pfad/forgejo-2026-08-03T120000Z
+```
+
+Das Werkzeug ueberschreibt kein vorhandenes Ziel, startet einen zuvor
+laufenden Forgejo-Dienst auch bei einem Fehler wieder und verwendet weder
+`down -v` noch eine Volume-Loeschung. Das Ziel muss danach verschluesselt und
+getrennt vom VPS aufbewahrt werden. Zusaetzlich gehoeren die nicht im Dump
+enthaltenen Runtime-Secrets, insbesondere `FORGEJO_SECRET_KEY`, in die
+getrennte Secret-Sicherung.
+
+Ein Restore erfolgt nie ueber den laufenden Stand. Er wird in einer isolierten
+Compose-Umgebung mit leerer Datenbank und leerem `forgejo_data` durchgefuehrt:
+
+1. `SHA256SUMS`, Forgejo-Version und gesicherte Secrets pruefen.
+2. Exakt das gesicherte Patchimage starten, Forgejo dabei gestoppt lassen.
+3. `forgejo-database.dump` mit `pg_restore` in die leere Datenbank `forgejo`
+   und `forgejo-data.tar.gz` in das leere Volume einspielen.
+4. Forgejo starten, Healthcheck abwarten und ein privates Testrepository samt
+   Commit-Historie lesen und klonen.
+5. RPO, RTO, Imageversion, Pruefsummen und Ergebnis dokumentieren; erst danach
+   darf ein Wiederanlauf des Zielstands freigegeben werden.
+
+Vor einem Upgrade wird dieser Sicherungslauf ausgefuehrt. Das Image bleibt auf
+eine vollstaendige LTS-Patchversion gepinnt. Major-Upgrades erfolgen einzeln
+nach den Forgejo-Upgradehinweisen; danach werden Healthcheck, Repositorylesen,
+Clone/Push und `forgejo doctor check --all` in der isolierten Abnahme geprueft.
 
 ## Update
 

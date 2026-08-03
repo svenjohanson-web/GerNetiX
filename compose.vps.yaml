@@ -43,6 +43,92 @@ services:
       retries: 10
       start_period: 10s
 
+  forgejo-postgres-provisioning:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/provision-forgejo-postgres.js"]
+    environment:
+      RUNTIME_POSTGRES_HOST: runtime-postgres
+      RUNTIME_POSTGRES_PORT: 5432
+      RUNTIME_POSTGRES_USER: gernetix_runtime
+      RUNTIME_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
+      FORGEJO_POSTGRES_PASSWORD: ${FORGEJO_POSTGRES_PASSWORD:?FORGEJO_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - ./tools/provision-forgejo-postgres.js:/app/tools/provision-forgejo-postgres.js:ro
+    depends_on:
+      runtime-postgres: { condition: service_healthy }
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.6-rootless
+    user: "1000:1000"
+    init: true
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 60s
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: runtime-postgres:5432
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: forgejo
+      FORGEJO__database__PASSWD: ${FORGEJO_POSTGRES_PASSWORD:?FORGEJO_POSTGRES_PASSWORD muss gesetzt sein}
+      FORGEJO__database__SSL_MODE: disable
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__security__SECRET_KEY: ${FORGEJO_SECRET_KEY:?FORGEJO_SECRET_KEY muss gesetzt sein}
+      FORGEJO__security__INTERNAL_TOKEN: ${FORGEJO_INTERNAL_TOKEN:?FORGEJO_INTERNAL_TOKEN muss gesetzt sein}
+      FORGEJO__security__REVERSE_PROXY_TRUSTED_PROXIES: 127.0.0.0/8,::1/128
+      FORGEJO__security__DISABLE_GIT_HOOKS: "true"
+      FORGEJO__security__DISABLE_WEBHOOKS: "true"
+      FORGEJO__server__DOMAIN: forgejo
+      FORGEJO__server__ROOT_URL: http://forgejo:3000/
+      FORGEJO__server__HTTP_PORT: 3000
+      FORGEJO__server__PROTOCOL: http
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__server__START_SSH_SERVER: "false"
+      FORGEJO__server__LFS_START_SERVER: "false"
+      FORGEJO__server__OFFLINE_MODE: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__service__SHOW_REGISTRATION_BUTTON: "false"
+      FORGEJO__service__REQUIRE_SIGNIN_VIEW: "true"
+      FORGEJO__service__DEFAULT_ALLOW_CREATE_ORGANIZATION: "false"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_USER: "false"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_ORG: "false"
+      FORGEJO__repository__DISABLED_REPO_UNITS: repo.issues,repo.ext_issues,repo.pulls,repo.wiki,repo.ext_wiki,repo.projects,repo.packages,repo.actions
+      FORGEJO__repository__DEFAULT_REPO_UNITS: repo.code,repo.releases
+      FORGEJO__admin__DISABLE_REGULAR_ORG_CREATION: "true"
+      FORGEJO__actions__ENABLED: "false"
+      FORGEJO__packages__ENABLED: "false"
+      FORGEJO__openid__ENABLE_OPENID_SIGNIN: "false"
+      FORGEJO__openid__ENABLE_OPENID_SIGNUP: "false"
+      FORGEJO__oauth2_client__ENABLE_AUTO_REGISTRATION: "false"
+      FORGEJO__mailer__ENABLED: "false"
+      FORGEJO__federation__ENABLED: "false"
+      FORGEJO__cron.update_checker__ENABLED: "false"
+      FORGEJO__api__ENABLE_SWAGGER: "false"
+      FORGEJO__metrics__ENABLED: "false"
+    expose: ["3000"]
+    networks:
+      - backend
+    volumes:
+      - forgejo_data:/var/lib/gitea
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      forgejo-postgres-provisioning: { condition: service_completed_successfully }
+
   identity-postgres-migration:
     <<: *node-service
     restart: "no"
@@ -851,6 +937,7 @@ networks:
 volumes:
   identity_state:
   runtime_postgres_data:
+  forgejo_data:
   service_state:
   project_state:
   telemetry_state:
