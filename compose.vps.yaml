@@ -873,6 +873,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     ports:
       - "${PRIVATE_VPS_BIND_ADDRESS:-10.77.0.1}:${PRIVATE_DNS_PORT:-53}:53/udp"
       - "${PRIVATE_VPS_BIND_ADDRESS:-10.77.0.1}:${PRIVATE_DNS_PORT:-53}:53/tcp"

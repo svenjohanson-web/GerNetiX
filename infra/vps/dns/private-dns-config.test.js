@@ -14,6 +14,7 @@ test("private DNS is bound only to the WireGuard address", () => {
   assert.match(compose, /PRIVATE_VPS_BIND_ADDRESS:-10\.77\.0\.1\}:\$\{PRIVATE_DNS_PORT:-53\}:53\/udp/);
   assert.match(compose, /PRIVATE_VPS_BIND_ADDRESS:-10\.77\.0\.1\}:\$\{PRIVATE_DNS_PORT:-53\}:53\/tcp/);
   assert.match(compose, /private-dns:[\s\S]*cap_drop:[\s\S]*- ALL/);
+  assert.match(compose, /private-dns:[\s\S]*cap_add:[\s\S]*- NET_BIND_SERVICE/);
   assert.match(envExample, /^PRIVATE_DNS_PORT=53$/m);
 });
 
