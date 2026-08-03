@@ -73,8 +73,8 @@ function flashboxBuildConfig() {
     flash_size_mb: 16,
     partition_file: "partitions_16mb_flashbox.csv",
     build_flags: [
-      '-DGERNETIX_FLASHBOX_FIRMWARE_VERSION="0.1.0-dev"',
-      '-DGERNETIX_FLASHBOX_HARDWARE_PROFILE_ID="hardware.flashbox.esp32_s3_usb_helper"',
+      '-DGERNETIX_FLASHBOX_FIRMWARE_VERSION=\\"0.1.0-dev\\"',
+      '-DGERNETIX_FLASHBOX_HARDWARE_PROFILE_ID=\\"hardware.flashbox.esp32_s3_usb_helper\\"',
       "-DGERNETIX_FLASHBOX_DISPLAY_ENABLED=0",
       "-DGERNETIX_FLASHBOX_DISPLAY_DRIVER_ILI9341=0",
       "-DGERNETIX_FLASHBOX_USB_OTG_DETECTION_ENABLED=1",

@@ -40,7 +40,10 @@ test("executes the headless Flashbox build-job chain from Project Server package
   assert.ok(buildPackage.files.some((file) => file.path === "include/gernetix_flashbox_config.h"));
   assert.ok(buildPackage.files.some((file) => file.path === "lib/gernetix-runtime-core/library.json"));
   assert.ok(buildPackage.files.some((file) => file.path === "platformio.ini"));
-  assert.match(toBuildDeployPackage(buildPackage).files["platformio.ini"], /lib_extra_dirs = lib/);
+  const platformioIni = toBuildDeployPackage(buildPackage).files["platformio.ini"];
+  assert.match(platformioIni, /lib_extra_dirs = lib/);
+  assert.ok(platformioIni.includes('-DGERNETIX_FLASHBOX_FIRMWARE_VERSION=\\"0.1.0-dev\\"'));
+  assert.ok(platformioIni.includes('-DGERNETIX_FLASHBOX_HARDWARE_PROFILE_ID=\\"hardware.flashbox.esp32_s3_usb_helper\\"'));
 
   const accepted = await request("POST", `${buildServer.url}/api/build-jobs`, {
     job_id: created.build_job_id,
