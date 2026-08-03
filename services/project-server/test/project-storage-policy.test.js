@@ -117,6 +117,7 @@ test("versions resource policies and requires an auditable change reason", async
   assert.equal(initial.policy_id, "resource_policy.free");
   assert.equal(initial.policy_version, 1);
   assert.equal(initial.status, "active");
+  assert.equal(initial.storage_warning_threshold_percent, 80);
 
   await assert.rejects(
     service.updateResourcePolicy("free", { max_projects: initial.max_projects }),
@@ -124,6 +125,7 @@ test("versions resource policies and requires an auditable change reason", async
   );
   const changed = await service.updateResourcePolicy("free", {
     max_projects: initial.max_projects,
+    storage_warning_threshold_percent: 75,
     changed_by: "admin-test",
     change_reason: "Versionierung prüfen",
   });
@@ -131,6 +133,7 @@ test("versions resource policies and requires an auditable change reason", async
   assert.equal(changed.changed_by, "admin-test");
   assert.equal(changed.change_reason, "Versionierung prüfen");
   assert.equal(changed.status, "active");
+  assert.equal(changed.storage_warning_threshold_percent, 75);
   assert.match(changed.effective_from, /^\d{4}-\d{2}-\d{2}T/);
 });
 

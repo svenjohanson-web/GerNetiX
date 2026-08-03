@@ -1032,6 +1032,14 @@ button.danger:hover {
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .summary-item { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fff; }
 .summary-item strong { display: block; overflow-wrap: anywhere; }
+.storage-quota-card { grid-column: span 2; display: grid; gap: 8px; align-content: start; }
+.storage-quota-card small { line-height: 1.4; }
+.storage-quota-card .usage-bar { margin-top: 2px; }
+.storage-quota-card.is-warning { border-color: #d97706; background: #fffbeb; }
+.storage-quota-card.is-warning .usage-bar i { background: #d97706; }
+.storage-quota-card.is-over { border-color: #dc2626; background: #fef2f2; }
+.storage-quota-card.is-over .usage-bar i { background: #dc2626; }
+@media (max-width: 560px) { .storage-quota-card { grid-column: span 1; } }
 .ai-rating-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -5759,6 +5767,10 @@ textarea,
 .development-requirements-text .empty { color: #e5e7eb; }
 .usage-bar { background: #334155; }
 .usage-bar i { background: #22d3ee; }
+.storage-quota-card.is-warning,
+.storage-quota-card.is-over { background: #111827; }
+.storage-quota-card.is-warning { border-color: #f59e0b; }
+.storage-quota-card.is-over { border-color: #ef4444; }
 .ide-ai-rating,
 .development-project-header,
 .manifest-head { border-color: #334155; }

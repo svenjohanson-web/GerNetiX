@@ -8,6 +8,7 @@ const client = fs.readFileSync(path.join(__dirname, "..", "public", "admin-confi
 
 test("resource limits show understandable units and explain zero", () => {
   assert.match(html, /Speicher <span class="table-unit">\(MiB\)<\/span>/);
+  assert.match(html, /Warnung <span class="table-unit">\(%\)<\/span>/);
   assert.match(html, /Monatlicher Traffic <span class="table-unit">\(MiB\)<\/span>/);
   assert.match(html, /0 bedeutet bei Speicher und Traffic: unbegrenzt/);
   assert.match(client, /bytesToMebibytes\(policy\.max_storage_bytes\)/);
@@ -19,4 +20,8 @@ test("resource limits show understandable units and explain zero", () => {
   assert.match(client, /build_policy/);
   assert.match(client, /artifact\.retention_days/);
   assert.match(client, /incremental_cache\?\.ttl_ms/);
+  assert.match(client, /storage_warning_threshold_percent/);
+  assert.match(client, /renderResourceAccountRow/);
+  assert.match(client, /über Kontingent/);
+  assert.match(html, /<th>Limit<\/th><th>Auslastung<\/th><th>Status<\/th>/);
 });

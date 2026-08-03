@@ -19,9 +19,11 @@ function renderBilling() {
     ["Gekaufte KI-Credits", state.billing.ai_credits.purchased_available_credits ?? 0],
     ["Verbrauchte Credits", state.billing.ai_credits.consumed_credits ?? 0],
   ].map(summaryItem).join("")
+    + renderStorageQuotaStatus(resources)
     + renderProjectSelection(policy)
     + `<article class="summary-item ai-credit-purchase-card"><span>KI-Guthaben</span><strong>Mehr KI-Credits kaufen</strong><small>Gekaufte Credits verfallen nicht.</small><div class="ai-credit-package-list">${packages.map(renderAiCreditPackage).join("")}</div><button class="primary" type="button" data-buy-ai-credits>KI-Credits kaufen</button></article>`;
   target.querySelector("[data-buy-ai-credits]")?.addEventListener("click", () => openAiCreditPurchaseDialog());
+  target.querySelector("[data-storage-projects]")?.addEventListener("click", () => navigate("/app/development-platform/"));
   target.querySelector("[data-save-project-selection]")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     const activeProjectIds = [...target.querySelectorAll("[data-project-selection]:checked")].map((input) => input.value);
@@ -36,6 +38,32 @@ function renderBilling() {
       button.disabled = false;
     }
   });
+}
+
+function renderStorageQuotaStatus(resources) {
+  const usage = resources.usage || {};
+  const policy = resources.policy || {};
+  const used = Math.max(0, Number(usage.storage_bytes || 0));
+  const limit = policy.max_storage_bytes;
+  if (limit === null || limit === undefined) {
+    return `<article class="summary-item storage-quota-card is-unlimited"><span>Speicherstatus</span><strong>Unbegrenzt</strong><small>Aktuell belegt: ${escapeHtml(formatBytes(used))}. Für diesen Plan ist keine feste Speicherobergrenze gesetzt.</small></article>`;
+  }
+  const normalizedLimit = Math.max(1, Number(limit));
+  const percent = (used / normalizedLimit) * 100;
+  const threshold = Math.max(1, Math.min(100, Number(policy.storage_warning_threshold_percent || 80)));
+  const overQuota = Boolean(resources.over_quota?.storage) || used > normalizedLimit;
+  const atLimit = used >= normalizedLimit;
+  const warning = !atLimit && percent >= threshold;
+  const stateClass = overQuota || atLimit ? "is-over" : (warning ? "is-warning" : "is-ok");
+  const title = overQuota ? "Kontingent überschritten" : (atLimit ? "Speicherlimit erreicht" : (warning ? "Speicher wird knapp" : "Speicher im grünen Bereich"));
+  const remaining = Math.max(0, normalizedLimit - used);
+  const consequence = overQuota || atLimit
+    ? "Weiteres dauerhaftes Wachstum ist gesperrt. Lesen, Exportieren und Löschen bleiben möglich."
+    : `Noch ${formatBytes(remaining)} verfügbar. Die Warnschwelle liegt bei ${formatMetric(threshold)} %.`;
+  const remedy = overQuota || atLimit || warning
+    ? "Du kannst nicht mehr benötigte Projekte oder Projektdateien löschen. Sobald Speicheroptionen angeboten werden, kannst du außerdem Reduktionsregeln wählen oder dein Kontingent erweitern."
+    : "Bei wachsendem Bedarf kannst du später Speicherregeln anpassen oder dein Kontingent erweitern.";
+  return `<article class="summary-item storage-quota-card ${stateClass}"><span>Speicherstatus</span><strong>${escapeHtml(title)} · ${escapeHtml(formatMetric(percent))} %</strong>${usageBar(percent)}<small>${escapeHtml(consequence)}</small><small>${escapeHtml(remedy)}</small><button type="button" data-storage-projects>Projekte verwalten</button></article>`;
 }
 
 function renderProjectSelection(policy) {

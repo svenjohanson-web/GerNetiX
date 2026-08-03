@@ -19,6 +19,10 @@ test("billing reconciles the effective plan and exposes only the current account
   assert.match(billing, /Projekt-\/Git-Speicher/);
   assert.match(billing, /Davon gesperrt/);
   assert.match(billing, /measurement_source/);
+  assert.match(billing, /storage_warning_threshold_percent/);
+  assert.match(billing, /Speicher wird knapp/);
+  assert.match(billing, /Weiteres dauerhaftes Wachstum ist gesperrt/);
+  assert.match(billing, /data-storage-projects/);
   assert.match(billing, /\/api\/platform\/billing\/project-selection/);
   assert.match(billing, /data-project-selection/);
   assert.match(server, /active_project_ids: activeProjectIds/);

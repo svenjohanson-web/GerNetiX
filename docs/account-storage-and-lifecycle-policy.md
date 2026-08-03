@@ -125,3 +125,13 @@ Grund, Policy-Version, Zeitpunkt und verantwortlichen Akteur. Admin Tool und
 Kundenansicht verwenden eine gemeinsame effektive Policy- und Usage-API. Die
 Kundenansicht erklaert Grenzwert, aktuelle Nutzung, Auswirkung und moegliche
 Abhilfe, statt nur einen generischen Sperrstatus zu zeigen.
+
+Die Kundenansicht zeigt diese Angaben zentral unter `Billing`: belegten und
+maximalen Projekt-/Git-Speicher, prozentuale Auslastung, Warnstatus,
+Policy-Version, Messgrundlage sowie die bei Erreichen der Grenze verbleibenden
+Handlungen. Die Warnschwelle ist Teil der versionierten Tarifpolicy und wird im
+Admin Tool pro Profil konfiguriert. Dort werden fuer jeden Account dieselbe
+effektive Speichergrenze, Auslastung und der daraus abgeleitete Status
+angezeigt. Solange optionale Komfortregeln zur Speicherreduktion noch nicht
+technisch angeboten werden, kennzeichnet die Kundenansicht sie als kuenftige
+Option und verweist fuer sofortige Bereinigung auf Projekte und Projektdateien.

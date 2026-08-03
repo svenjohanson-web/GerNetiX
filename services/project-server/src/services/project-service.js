@@ -1334,6 +1334,7 @@ class ProjectService {
       change_reason: required(input.change_reason, "change_reason"),
       max_projects: unlimitedOrPositiveLimit(input.max_projects, current.max_projects),
       max_storage_bytes: unlimitedOrPositiveLimit(input.max_storage_bytes, current.max_storage_bytes),
+      storage_warning_threshold_percent: percentageLimit(input.storage_warning_threshold_percent, current.storage_warning_threshold_percent),
       max_monthly_traffic_bytes: unlimitedOrPositiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
       updated_at: now,
     };
@@ -1885,12 +1886,19 @@ function unlimitedOrPositiveLimit(value, fallback) {
   return positiveLimit(value, fallback);
 }
 
+function percentageLimit(value, fallback = 80) {
+  const number = Number(value);
+  if (Number.isFinite(number) && number >= 1 && number <= 100) return number;
+  const fallbackNumber = Number(fallback);
+  return Number.isFinite(fallbackNumber) && fallbackNumber >= 1 && fallbackNumber <= 100 ? fallbackNumber : 80;
+}
+
 function defaultResourcePolicies() {
   const now = new Date().toISOString();
   return [
-    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, max_monthly_traffic_bytes: 25 * 1024 * 1024 },
-    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
-    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
+    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 25 * 1024 * 1024 },
+    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
+    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
   ].map((policy) => ({
     ...policy,
     policy_id: resourcePolicyId(policy.plan_id),
@@ -1912,6 +1920,7 @@ function normalizePersistedResourcePolicy(policy) {
     status: "active",
     changed_by: policy.changed_by || "system",
     change_reason: policy.change_reason || "legacy_policy_migration",
+    storage_warning_threshold_percent: percentageLimit(policy.storage_warning_threshold_percent, 80),
   };
 }
 
