@@ -25,7 +25,7 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { createHelpAssistant } = require("./dev/help-assistant");
-const { createProjectRepositoryContractStub } = require("./dev/project-repository-contract-stub");
+const { createProjectRepositoryRead } = require("./dev/project-repository-read");
 const { developmentProjectSources } = require("./dev/development-project-structure");
 const {
   migrateCameraTemplateDisplayGpioTypes,
@@ -232,7 +232,7 @@ const {
   telemetryInternalToken,
   interfaceTelemetry,
 });
-const projectRepositoryRead = createProjectRepositoryContractStub({ projectServerJson });
+const projectRepositoryRead = createProjectRepositoryRead({ projectServerJson });
 const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
   aiContextBaseUrl,
   aiUsageBaseUrl,

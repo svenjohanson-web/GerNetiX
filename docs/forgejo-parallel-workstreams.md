@@ -92,9 +92,10 @@ sessiongeschuetzten Project-Server-Vertrag.
 **Nicht in diesem Strang:** Direkter Forgejo-Zugriff, Tokens im Browser,
 Compose, Repository-Provisionierung oder SQL-Migration.
 
-**Arbeitsweise:** Bis Strang B alle Leseendpunkte liefert, arbeitet die Karte
-gegen einen festen Contract-Stub. Der Stub verwendet exakt die dokumentierten
-Project-Server-Antworten und wird beim Integrationsgate entfernt.
+**Arbeitsweise:** Bei aktiver Forgejo-Bindung arbeitet die Karte gegen die
+echten Leseendpunkte aus Strang B. Fuer noch nicht migrierte Bestandsprojekte
+bleibt der feste SQL-/Git-Light-Contract als sichtbar gekennzeichneter,
+read-only Uebergangs-Fallback erhalten.
 
 **Abnahme:** Eigenes Projekt ist sichtbar, fremdes Projekt wird abgewiesen,
 Tokens und interne Clone-URL fehlen in HTML und JSON, Konflikte werden
@@ -167,11 +168,20 @@ umgeschaltet.
 - Strang B besteht unveraendert gegen diesen Dienst.
 - Provisionierungs- und Runtime-Credentials sind getrennt.
 
+**Status:** lokal vorbereitet, aber noch nicht erreicht. Dienstvertrag,
+Datenbanktrennung und Credentials sind implementiert; der unveraenderte
+Adaptertest gegen einen real gestarteten, gepinnten Forgejo-Container fehlt.
+
 ### Gate 2 - Nutzerfluss und Migration sind trocken nachgewiesen
 
 - Strang C verwendet reale Project-Server-Leseendpunkte ohne Stub.
 - Strang D erzeugt fuer repräsentative Projekte einen fehlerfreien Dry-run.
 - Backup und isolierter Restore des Forgejo-Teststands bestehen.
+
+**Status:** teilweise lokal erreicht. Die Karte verwendet fuer aktive
+Bindings reale Project-Server-Endpunkte, und der deterministische Dry-run ist
+automatisiert getestet. Ein repraesentativer Datenbanklauf sowie der isolierte
+Backup-/Restore-Nachweis stehen noch aus.
 
 ### Gate 3 - Commitgebundener Build
 
@@ -198,12 +208,12 @@ umgeschaltet.
 6. Erst danach beginnt Strang E. Ein produktiver oder Staging-Cutover benoetigt
    weiterhin einen ausdruecklichen Auftrag.
 
-## Aktueller Startstand
+## Integrierter Stand
 
-| Strang | Startstatus | Naechste konkrete Lieferung |
+| Strang | Integrationsstatus | Noch offener Gate-Nachweis |
 | --- | --- | --- |
-| A | bereit | FG-02 Container-, Datenbank- und Security-Contract |
-| B | aktiv, Adapterkern vorhanden | FG-01 Schema und restliche Git-Leserouten |
-| C | bereit | Repository-Karte gegen Contract-Stub |
-| D | bereit | read-only SQL-Inventur und deterministischer Dry-run-Bericht |
+| A | lokal integriert | realer Container-, Neustart- und Restore-Test |
+| B | lokal integriert | End-to-End-Test gegen den Forgejo-Testdienst |
+| C | lokal integriert | UI-Nachweis gegen denselben realen Testdienst |
+| D | lokal integriert | Dry-run mit repraesentativer Bestandsdatenbank |
 | E | blockiert bis Gate 2 | Commit-SHA im BuildJob und BuildPackage |

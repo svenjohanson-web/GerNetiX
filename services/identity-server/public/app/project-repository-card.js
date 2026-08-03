@@ -160,7 +160,7 @@ const ProjectRepositoryCard = (() => {
     function diffMarkup(diff) {
       const files = diff.files || [];
       return `<header><div><p class="eyebrow">Commit-Diff</p><h3>${escapeHtml(shortSha(diff.commit_sha))}</h3></div><span>${files.length} Änderung${files.length === 1 ? "" : "en"}</span></header>${files.length
-        ? files.map((file) => `<article class="repository-diff-file"><h4><span>${escapeHtml(diffStatusLabel(file.status))}</span> ${escapeHtml(file.previous_path ? `${file.previous_path} → ${file.path}` : file.path)}</h4>${file.binary ? `<p>Binärdatei geändert.</p>` : `<pre><code>${escapeHtml(file.patch || "Kein Textdiff verfügbar.")}</code></pre>`}</article>`).join("")
+        ? files.map((file) => `<article class="repository-diff-file"><h4><span>${escapeHtml(diffStatusLabel(file.status))}</span> ${escapeHtml(file.previous_path ? `${file.previous_path} → ${file.path}` : file.path)}</h4>${file.binary ? `<p>Binärdatei geändert.</p>` : file.truncated && !file.patch ? `<p>Der Project Server liefert für diesen Commit nur die geänderten Pfade.</p>` : `<pre><code>${escapeHtml(file.patch || "Kein Textdiff verfügbar.")}</code></pre>`}</article>`).join("")
         : `<p class="empty">Dieser Stand enthält gegenüber seinem Vorgänger keine Dateiänderung.</p>`}`;
     }
 

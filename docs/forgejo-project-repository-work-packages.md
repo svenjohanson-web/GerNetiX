@@ -198,22 +198,22 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | ID | Ergebnis | Status | Hauptnachweis |
 | --- | --- | --- | --- |
 | FG-00 | Architektur- und Speichergrenze | dokumentiert | Graph- und Doku-Konsistenz |
-| FG-01 | Projektdatei- und Schemakontrakt | offen | Schema-/Roundtrip-Tests |
-| FG-02 | Abgesicherter Forgejo-Betrieb | offen | Compose-/Security-Contract |
+| FG-01 | Projektdatei- und Schemakontrakt | lokal umgesetzt | Schema-/Roundtrip-Tests |
+| FG-02 | Abgesicherter Forgejo-Betrieb | lokal umgesetzt, Betriebstest offen | Compose-/Security-Contract |
 | FG-03 | Forgejo- und Git-Adapter | teilweise umgesetzt | Adapter-Integrationstest |
 | FG-04 | Repository-Provisionierung | teilweise umgesetzt | Projekt-/Template-Contract |
-| FG-05 | Git-basiertes Quellen-API | teilweise umgesetzt | CRUD-/Konflikt-/Pfadtests |
-| FG-06 | Echte Commit-Historie und Restore | offen | Historien-/Restore-Tests |
+| FG-05 | Git-basiertes Quellen-API | lokal umgesetzt, Cutover offen | CRUD-/Konflikt-/Pfadtests |
+| FG-06 | Echte Commit-Historie und Restore | lokal umgesetzt, Cutover offen | Historien-/Restore-Tests |
 | FG-07 | Commitgebundener Build | offen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
-| FG-09 | SQL-zu-Git-Migrationswerkzeug | offen | deterministischer Dry-run |
+| FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
 | FG-10 | Projektweiser Cutover und Rollback | offen | Staging-Migration |
 | FG-11 | SQL-Quelltabellen stilllegen | offen | Negativtests und Schemaaudit |
 | FG-12 | Board-Support-Repositories | offen | Katalog-/Commit-Vertrag |
-| FG-13 | Backup, Restore und Upgrade | offen | isolierter Restore-Test |
-| FG-14 | Monitoring, Quoten und Betrieb | offen | Operations-Sicht und Alarme |
+| FG-13 | Backup, Restore und Upgrade | Backupvertrag lokal, Restore offen | isolierter Restore-Test |
+| FG-14 | Monitoring, Quoten und Betrieb | Health lokal, Operations-Sicht offen | Operations-Sicht und Alarme |
 | FG-15 | Externer Git-Zugang und Zusammenarbeit | spaeter | eigene Produktentscheidung |
-| FG-16 | Repository-Karte im Entwicklungsbereich | offen | UI-/Autorisierungs-Contract |
+| FG-16 | Repository-Karte im Entwicklungsbereich | lokal umgesetzt | UI-/Autorisierungs-Contract |
 | FG-17 | Schablonen materialisieren Projektdateien | teilweise umgesetzt | Projektions-/Wirkungs-Contract |
 
 ## FG-00 - Architektur- und Speichergrenze
@@ -232,6 +232,10 @@ Abnahme:
 
 ## FG-01 - Projektdatei- und Schemakontrakt
 
+Lokal umgesetzt sind das versionierte Dateischema, die Projektionsmatrix und
+Validierungen fuer Pfad, UTF-8, Groesse, Binaerinhalt und Symlinks. Die
+Project-Server-Contract-Tests decken den Roundtrip der kanonischen Dateien ab.
+
 Ziel:
 
 - Versioniertes Schema fuer `gernetix/project.json`, Software-Einheiten,
@@ -249,6 +253,11 @@ Abnahme:
   Binaerdatei werden abgewiesen.
 
 ## FG-02 - Abgesicherter Forgejo-Betrieb
+
+Lokal umgesetzt sind der gepinnte interne Forgejo-Dienst, eigene Datenbank
+und Rolle, persistentes Volume, Healthcheck, deaktivierte Registrierung,
+Actions, SSH und Push-to-create sowie getrennte Runtime-Secrets. Offen bleibt
+der Nachweis mit einem real gestarteten Container inklusive Neustartpersistenz.
 
 Ziel:
 
@@ -337,9 +346,10 @@ Konfigurationsprojektion schreibt bei aktiver Forgejo-Bindung ebenfalls genau
 einen Git-Commit und setzt den SQL-Altstand bei einem fehlgeschlagenen Push
 zurueck.
 
-Noch offen sind die vollstaendige Umstellung aller IDE-Lese-, Such-, Rename-
-und Delete-Routen auf Git, Unicode-/Binaervertraege und der kontrollierte
-Cutover ohne SQL-Quellwahrheit.
+Liste, Lesen, Suche, Rename und Delete verwenden bei aktiver Forgejo-Bindung
+Git und sind einschliesslich Unicode-, Leerdatei-, Binaer-, Pfad- und
+Head-Konfliktfaellen getestet. Noch offen ist der kontrollierte Cutover ohne
+SQL-Quellwahrheit.
 
 Ziel:
 
@@ -358,6 +368,11 @@ Abnahme:
   Mehrdatei-Atomaritaet, konkurrierende Autoren und groessenbegrenzte Inhalte.
 
 ## FG-06 - Echte Commit-Historie und Restore
+
+Lokal umgesetzt sind echte Git-Historie und Diff-Metadaten, benannte
+Versionen als Commitreferenzen ohne Quellkopie sowie Restore als neuer
+linearer Commit. Offen bleiben der Container-End-to-End-Nachweis und der
+spaetere Cutover der SQL-Vollsnapshots.
 
 Ziel:
 
@@ -411,6 +426,12 @@ Abnahme:
   Mehrdatei-Commit und Konflikt ohne Datenverlust nach.
 
 ## FG-09 - SQL-zu-Git-Migrationswerkzeug
+
+Lokal umgesetzt ist ein strikt read-only arbeitender Dry-run fuer PostgreSQL
+und Legacy-SQLite. Er erzeugt deterministische Baum- und Commitkennungen sowie
+einen schema-validierbaren Bericht und blockiert Secrets, unzulaessige
+Binaerdateien, Pfadkonflikte und mehrdeutige Historien. Schreibmodus,
+Migrationsledger und Cutover sind bewusst nicht enthalten.
 
 Ziel:
 
@@ -486,6 +507,10 @@ Abnahme:
 
 ## FG-13 - Backup, Restore und Upgrade
 
+Lokal umgesetzt sind der konsistente Backupvertrag fuer Forgejo-Datenbank und
+`forgejo_data` sowie die dokumentierte Betriebsreihenfolge. Der isolierte
+Restore- und Upgrade-Nachweis an einem realen Teststand bleibt offen.
+
 Ziel:
 
 - Gemeinsamen Sicherungspunkt fuer Forgejo-Datenbank und `forgejo_data`
@@ -538,6 +563,13 @@ Sicherheitsentscheidung erforderlich. Die interne Forgejo-Einfuehrung darf
 nicht stillschweigend einen neuen oeffentlichen Endpunkt schaffen.
 
 ## FG-16 - Repository-Karte im Entwicklungsbereich
+
+Lokal umgesetzt ist die session- und projektgebundene, read-only Karte mit
+Status, Branch, Head, Baum, Datei, Historie und Diff. Aktive Forgejo-Projekte
+verwenden die echten Project-Server-Endpunkte; nur noch nicht migrierte
+Bestandsprojekte verwenden einen sichtbar gekennzeichneten Uebergangsvertrag.
+Autorisierung, Secret-Grenze sowie mobile und iPad-taugliche Darstellung sind
+durch Contract-Tests abgedeckt.
 
 Ziel:
 

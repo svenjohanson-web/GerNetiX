@@ -1,23 +1,26 @@
-# Vorlaeufiger Repository-Lesevertrag v1
+# Repository-Lesevertrag v1
 
-Dieser Vertrag ist der feste Strang-C-Stub fuer FG-16 und die UI-Anteile von
-FG-08. Er wird entfernt, sobald der Project Server die vollstaendigen
-Leseendpunkte fuer Datei, Historie und Diff liefert. Die Identity-Routen
-bleiben dabei als session- und projektgebundene Browsergrenze erhalten.
+Dieser Vertrag verbindet FG-16 und die UI-Anteile von FG-08 mit den echten
+Repository-Endpunkten des Project Servers. Die Identity-Routen bleiben als
+session- und projektgebundene Browsergrenze erhalten. Der Browser spricht
+weder Forgejo direkt an noch erhaelt er Clone-URLs oder Zugangsdaten.
 
-Der Stub liest ausschliesslich dokumentierte Project-Server-Antworten:
+Bei einer aktiven Forgejo-Bindung liest der Adapter ausschliesslich:
 
 - `GET /api/projects/{projectId}` mit der oeffentlichen
   `repository_binding`,
-- `GET /api/projects/{projectId}/sources`,
-- `GET /api/projects/{projectId}/sources/{relativePath}`,
-- `GET /api/projects/{projectId}/versions`.
+- `GET /api/projects/{projectId}/repository/tree`,
+- `GET /api/projects/{projectId}/repository/history`,
+- `GET /api/projects/{projectId}/repository/commits/{sha}/diff`,
+- `GET /api/projects/{projectId}/sources/{relativePath}?commit_sha={sha}`.
 
-Der Stub gibt fuer den Baum exakt den bereits dokumentierten Project-Server-
-Vertrag `{ commit_sha, paths }` aus.
+Solange ein Bestandsprojekt noch keine aktive Forgejo-Bindung besitzt, bleibt
+der vorhandene SQL-/Git-Light-Lesevertrag als klar gekennzeichneter
+Uebergangs-Fallback aktiv. Er liest dann zusaetzlich `sources` und `versions`.
+Dieser Fallback ist keine neue fachliche Wahrheit und schreibt keine Daten.
 
-Die SQL-Quellen und Git-Light-Versionen dienen nur als vorlaeufige Lesebasis.
-Der Stub schreibt keine Daten und greift nicht direkt auf Forgejo zu.
+Der Adapter gibt fuer den Baum exakt den Project-Server-Vertrag
+`{ commit_sha, paths }` aus.
 
 ## Identity-Routen
 
@@ -32,7 +35,7 @@ Repository-, Commit- oder Dateikennungen abgewiesen.
 ```json
 {
   "contract_version": "project-repository-read-v1",
-  "contract_stub": true,
+  "contract_stub": false,
   "project_id": "project-id",
   "repository": {
     "state": "active",
@@ -89,9 +92,10 @@ Pfade, leere Segmente, `..` und `.git` werden abgewiesen.
 }
 ```
 
-`working_head` bezeichnet den aktuellen technischen Arbeitsstand.
-Git-Light-Snapshots werden als benannte GerNetiX-Versionen gekennzeichnet und
-nicht als echte Forgejo-Commits ausgegeben.
+Echte Forgejo-Staende werden als `git_commit` ausgegeben. Nur beim
+Uebergangs-Fallback bezeichnet `working_head` den aktuellen technischen
+Arbeitsstand; dort werden Git-Light-Snapshots als benannte GerNetiX-Versionen
+gekennzeichnet und nicht als echte Forgejo-Commits ausgegeben.
 
 ### Diff
 
@@ -107,14 +111,17 @@ nicht als echte Forgejo-Commits ausgegeben.
     "previous_path": "README.old.md",
     "status": "renamed",
     "binary": false,
-    "truncated": false,
-    "patch": "--- vorher\n+++ nachher"
+    "truncated": true,
+    "patch": ""
   }]
 }
 ```
 
 Erlaubte Dateizustaende sind `added`, `modified`, `deleted` und `renamed`.
-Der vorlaeufige Textdiff ist auf 800 Zeilen begrenzt.
+Der echte Project-Server-Endpunkt liefert derzeit sichere Pfadmetadaten statt
+eines Text-Patches; die UI kennzeichnet das mit `truncated: true`. Der
+Uebergangs-Fallback erzeugt weiterhin einen auf 800 Zeilen begrenzten
+Textvergleich.
 
 ## Sicherheitsgrenze
 
