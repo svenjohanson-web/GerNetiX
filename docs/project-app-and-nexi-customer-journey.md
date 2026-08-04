@@ -28,6 +28,20 @@ klar getrennten Wegen waehlen:
 4. **Nexi weiterentwickeln**: Eine eigene, versionierte Projektkopie anlegen
    und Firmware, Assistentendefinition sowie Projekt-App erweitern.
 
+Der oeffentliche Einstieg liegt im Nachbaukatalog unter
+`/nachbauprojekte/nexi-sprachassistent/`. Er beschreibt Hardware, sechs
+Arbeitsschritte, die lokale Produktstufe und die Grenze zur noch optionalen KI.
+Nach der Anmeldung fuehrt er gezielt zum Nachbau-Einstieg; die Projektuebersicht
+zeigt danach alle vier Wege getrennt. `Verwenden` wird erst aktiv, wenn eine
+persoenliche Nexi-Instanz existiert.
+
+| Einstieg | Ziel | Abnahmekriterium |
+| --- | --- | --- |
+| Verwenden | Projekt-App der persoenlichen Instanz | kein Katalog-Dummy und keine fremde Instanz |
+| Nachbauen | Schritt `nexi-build` | Material, Build, Flash und Hardwaretest sichtbar |
+| Verstehen | Schritt `nexi-local` | lokaler Produktkern vor optionaler KI erklaert |
+| Weiterentwickeln | eigene IDE-Projektkopie | Waveshare-Profil, Voice-Lab-Code und Projekt-App vorhanden |
+
 Nexi Basic ist bereits ohne externen KI-Provider ein ehrliches nutzbares
 Produkt. Aufnahme, Wiedergabe und lokale Stimmeffekte bleiben offline. Sprach-
 und Internet-KI sind getrennte, spaeter aktivierbare Projektfaehigkeiten und
@@ -47,13 +61,14 @@ Der umgesetzte Vertrag `gernetix.project-app/v1` unterstuetzt:
 - Status- und Messwertkarten,
 - Schalter und Auswahlfelder,
 - Zeitfenster,
+- typisierte Text- und Zahleneingaben mit serverseitigen Wertebereichen,
 - einfache Verlaufsdiagramme,
 - typisierte Aktionsbuttons,
 - sichtbare Lade-, Offline-, Fehler- und Berechtigungszustaende.
 
-Zahlen- und Texteingaben mit Wertebereichen sind als naechste Erweiterung des
-versionierten Vertrags vorgesehen. Bis dahin duerfen Projekte solche
-Einstellungen nicht als interaktive Widgets deklarieren.
+Die Eingabefelder duerfen nur an deklarierte Einstellungen gleichen Typs
+gebunden sein. Zahlenbereiche werden im Manifest, im Renderer und beim
+serverseitigen Speichern geprueft.
 
 ## Trennung der Wahrheiten
 
@@ -115,6 +130,15 @@ Nexi definiert auf der allgemeinen Projekt-App-Plattform unter anderem:
 Diese Felder sind Bestandteil des Nexi-Projekts und kein globales
 GerNetiX-Kundendatenmodell. Eine andere Projekt-App darf ein vollstaendig
 anderes Schema besitzen.
+
+Das materialisierte Nexi-Projekt enthaelt nicht nur diese Oberflaeche, sondern
+auch das reale Ziel `hardware.processor_board.waveshare_esp32_s3_audio_board`,
+das PlatformIO-Environment `waveshare_esp32_s3_audio_board`, 16 MB Flash, die
+geschuetzte GerNetiX-Basissoftware und die Voice-Lab-Erweiterung als
+`Komponenten/IoT-Device 1/src/user_main.cpp`. Bereits angelegte Nexi-Projekte
+mit dem frueheren generischen ESP32-Profil werden beim erneuten Einstieg
+gezielt auf diesen Nexi-Vertrag angehoben; andere Lernprojekte oder bereits
+vollstaendige Nexi-Quellen werden dabei nicht ueberschrieben.
 
 ## Sicherheits- und Abnahmeregeln
 

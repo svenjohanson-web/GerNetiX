@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Nexi Basic auf dem Waveshare ESP32-S3 AI Smart Speaker Board nachbauen: Hardware, Lautsprecher, Firmware, Tasten, LEDs und Funktionstest." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+  <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
+  <title>Nexi Sprachassistent nachbauen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260804-nexi-rebuild-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/support/">Support</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>Nexi</span>
+    </nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Nachbauprojekt · ESP32-S3 · Audio</p>
+        <h1 id="project-title">Baue Nexi – dein eigenes lokales Stimmenstudio.</h1>
+        <p class="lead">Nexi Basic nimmt deine Stimme nur während des Tastendrucks auf, verändert sie lokal und spielt sie über den angeschlossenen Lautsprecher wieder ab. Die lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="equipment-title">
+      <p class="eyebrow">Was du brauchst</p>
+      <h2 id="equipment-title">Board, Lautsprecher und ein USB-Datenkabel.</h2>
+      <ul>
+        <li>Waveshare ESP32-S3 AI Smart Speaker Development Board mit 16 MB Flash</li>
+        <li>Geeigneter passiver Lautsprecher am vorgesehenen Lautsprecheranschluss</li>
+        <li>USB-Datenkabel und Computer für Build, Flash und seriellen Funktionstest</li>
+      </ul>
+      <p><strong>Auf dem Board vorhanden:</strong> zwei Mikrofone, ES7210-Aufnahmecodec, ES8311-Wiedergabecodec, NS4150B-Verstärker, drei Funktionstasten und sieben RGB-LEDs.</p>
+      <p><strong>Lautstärkehinweis:</strong> Beginne beim ersten Test mit Abstand zum Lautsprecher. Der Hardwaretest kann den Codec-Ausgang bis 100&nbsp;% ansteuern.</p>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="steps-title">
+      <h2 id="steps-title">Der Nachbau in sechs prüfbaren Schritten</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile"><h3>1. Hardware anschließen</h3><p>Lautsprecher spannungsfrei anschließen, Board per USB verbinden und keine BOOT- oder RESET-Taste gedrückt halten.</p></article>
+        <article class="panel maker-project-tile"><h3>2. Audiobausteine prüfen</h3><p>Der serielle Starttest muss ES8311, TCA9555, ES7210 und PCF85063 erkennen. Fehlende Bausteine werden nicht übergangen.</p></article>
+        <article class="panel maker-project-tile"><h3>3. Firmware bauen und flashen</h3><p>Das GerNetiX-Lernprojekt erzeugt eine eigene Nexi-Projektinstanz. Build und USB-Flash verwenden das Waveshare-Audioboardprofil und die geschützte Basissoftware.</p></article>
+        <article class="panel maker-project-tile"><h3>4. Push-to-talk testen</h3><p>KEY2 gedrückt halten, sprechen und loslassen. Während der Aufnahme leuchten die LEDs rot, bei der Wiedergabe blau.</p></article>
+        <article class="panel maker-project-tile"><h3>5. Effekte und Lautstärke prüfen</h3><p>KEY1 wechselt Normal, Roboter, Monster, Helium und Echo. KEY3 schaltet durch fünf Lautstärkestufen; langes Drücken schaltet stumm.</p></article>
+        <article class="panel maker-project-tile"><h3>6. Datenschutz kontrollieren</h3><p>Die letzte Aufnahme bleibt nur flüchtig im PSRAM. Sie wird beim Überschreiben oder Ausschalten verworfen und nicht hochgeladen.</p></article>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="controls-title">
+      <p class="eyebrow">Bedienung</p>
+      <h2 id="controls-title">Drei Tasten, eindeutige Zustände.</h2>
+      <ul>
+        <li><strong>KEY1:</strong> nächsten Stimmeffekt wählen; lang drücken, um zur Modusauswahl zurückzukehren.</li>
+        <li><strong>KEY2:</strong> Auswahl bestätigen; im Stimmenstudio nur während des Gedrückthaltens aufnehmen.</li>
+        <li><strong>KEY3:</strong> nächste Lautstärkestufe; lang drücken für stumm beziehungsweise wieder hörbar.</li>
+      </ul>
+      <p>Grün bedeutet bereit, Rot Aufnahme, Blau Wiedergabe und Violett einen noch nicht freigegebenen KI-Modus. Ohne aktiven Provider sendet Nexi keine Aufnahme.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="status-title">
+      <p class="eyebrow">Ehrlicher Softwarestand</p>
+      <h2 id="status-title">Nexi Basic ist lokal funktionsfähig; Cloud-KI bleibt getrennt.</h2>
+      <p>Der lokale Audiopfad, fünf Effekte, LED-Rückmeldung, Push-to-talk und fünf Lautstärkestufen sind implementiert. Ein produktiver KI-Sprachmodus wird erst angeboten, wenn Provider, Kinderschutzprüfung, Kontingent und Betreiberfreigabe gemeinsam aktiv sind.</p>
+    </section>
+
+    <section class="panel product-cta maker-download-cta">
+      <div><p class="eyebrow">Jetzt nachbauen</p><h2>Starte mit dem geführten Nexi-Nachbau.</h2><p>Nach der Anmeldung wird eine eigene Projektinstanz erzeugt. Dort kannst du bauen, flashen, die Funktionen abhaken und später in Lernen oder Weiterentwickeln wechseln.</p></div>
+      <a class="primary-action" href="/app/learning-project-overview/?catalog=nexi-voice-assistant&amp;entry=build">Nexi-Nachbau starten →</a>
+    </section>
+
+    <section class="panel product-cta maker-download-cta">
+      <div><p class="eyebrow">Andere Perspektive</p><h2>Nexi verstehen oder selbst weiterentwickeln.</h2><p>Der Lernweg beginnt bei Audio und Datenschutz. Der Entwicklungsweg öffnet deine eigene versionierte Projektkopie in der GerNetiX-IDE.</p></div>
+      <a class="primary-action" href="/app/learning-project-overview/?catalog=nexi-voice-assistant">Alle Nexi-Einstiege →</a>
+    </section>
+  </main>
+  <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav></footer>
+  <script src="/landing.js?v=20260731-about-us-1"></script>
+</body>
+</html>

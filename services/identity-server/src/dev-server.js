@@ -1761,7 +1761,9 @@ async function handleDevelopmentLessonStart(res, session, catalogProjectId, less
 
 async function synchronizeLearningProjectStructure(project, definition) {
   const projectId = project.project_id;
-  const needsBuildConfig = !project.build_config?.user_source_path;
+  const isLegacyNexiBuild = definition.slug === nexiCourseModel.slug
+    && project.build_config?.environment !== definition.build_config?.environment;
+  const needsBuildConfig = !project.build_config?.user_source_path || isLegacyNexiBuild;
   const canonicalManifest = learningProjectManifestForPersistedProject(project, definition);
   const updated = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}`, {
     method: "PATCH",
@@ -1774,13 +1776,16 @@ async function synchronizeLearningProjectStructure(project, definition) {
     ? canonicalManifest.lesson_focus_id
     : "";
   for (const source of demoProjectSources(definition, { lessonId, projectId })) {
-    const present = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(source.path)}`)
-      .then(() => true)
+    const persistedSource = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(source.path)}`)
       .catch((error) => {
-        if (error.status === 404) return false;
+        if (error.status === 404) return null;
         throw error;
       });
-    if (!present) {
+    const isLegacyNexiManifest = definition.slug === nexiCourseModel.slug
+      && source.path === "project-app/manifest.json"
+      && persistedSource?.content?.includes('"app_id": "nexi"')
+      && !persistedSource.content.includes('"child_first_name"');
+    if (!persistedSource || isLegacyNexiManifest) {
       await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, { method: "PUT", body: source });
     }
   }

@@ -103,14 +103,7 @@ function renderLearningProjectOverview() {
             <p>Das fertige Produkt, der Nachbau, das Lernprojekt und deine eigene Weiterentwicklung bleiben klar getrennt.</p>
           </header>
           <div class="learning-product-entry-grid">
-            ${project.customerEntries.map((entry) => `
-              <article class="learning-product-entry is-${escapeAttribute(entry.availability || "preparing")}">
-                <div><span>${escapeHtml(customerEntryAvailabilityLabel(entry.availability))}</span><h4>${escapeHtml(entry.title)}</h4><p>${escapeHtml(entry.summary)}</p></div>
-                ${entry.availability === "available"
-                  ? `<button type="button" data-start-learning-entry="${escapeAttribute(project.id)}" data-learning-entry-kind="${escapeAttribute(entry.id)}">${escapeHtml(entry.id === "build" ? "Nachbau starten" : "Lernprojekt starten")}</button>`
-                  : `<button type="button" disabled>${escapeHtml(entry.availability === "requires_instance" ? "Nach Einrichtung verfügbar" : "Wird vorbereitet")}</button>`}
-              </article>
-            `).join("")}
+            ${project.customerEntries.map((entry) => renderCustomerEntry(project, entry)).join("")}
           </div>
         </section>
       ` : ""}
@@ -118,7 +111,7 @@ function renderLearningProjectOverview() {
         <header>
           <p class="eyebrow">${escapeHtml(learningText("structureEyebrow", "Projektaufbau"))}</p>
           <h3>${escapeHtml(learningText("structureTitle", "So ist das Projekt aufgebaut"))}</h3>
-          <p>${escapeHtml(learningText("structureText", "Fünf Etappen führen dich von einfachen Daten im Arbeitsspeicher bis zur durchsuchbaren Datenbank und zum Dateiarchiv."))}</p>
+          <p>${escapeHtml(learningText("structureText", "Die Etappen führen dich vom Einstieg bis zum praktisch geprüften Projektergebnis."))}</p>
         </header>
         ${lessons.length ? `
           <ol>
@@ -148,8 +141,46 @@ function renderLearningProjectOverview() {
     learningProject().open(event.currentTarget.dataset.startLearningProject);
   });
   target.querySelectorAll("[data-start-learning-entry]").forEach((button) => {
-    button.addEventListener("click", () => learningProject().open(button.dataset.startLearningEntry));
+    button.addEventListener("click", () => {
+      const kind = button.dataset.learningEntryKind;
+      if (kind === "develop") { learningProject().openDevelopment(button.dataset.startLearningEntry); return; }
+      learningProject().open(button.dataset.startLearningEntry, {
+        startViewId: kind === "build" ? "nexi-build" : "nexi-local",
+      });
+    });
   });
+  target.querySelectorAll("[data-open-customer-project-app]").forEach((button) => {
+    button.addEventListener("click", () => navigate(`/app/project-app/?project=${encodeURIComponent(button.dataset.openCustomerProjectApp)}`));
+  });
+  const requestedEntry = project ? query.get("entry") : "";
+  const requestedButton = requestedEntry
+    ? target.querySelector(`[data-learning-entry-kind="${CSS.escape(requestedEntry)}"]`)
+    : null;
+  if (requestedButton) {
+    query.delete("entry");
+    window.history.replaceState({}, "", `${window.location.pathname}${query.size ? `?${query}` : ""}`);
+    requestedButton.click();
+  }
+}
+
+function renderCustomerEntry(catalogProject, entry) {
+  const instance = state.projects.find((project) => (
+    project.projectOrigin === "account_project" && project.slug === catalogProject.slug
+  ));
+  const availability = entry.id === "use" && instance ? "available" : entry.availability;
+  let action = `<button type="button" disabled>${escapeHtml(availability === "requires_instance" ? "Nach Einrichtung verfügbar" : "Wird vorbereitet")}</button>`;
+  if (availability === "available" && entry.id === "use") {
+    action = `<button type="button" data-open-customer-project-app="${escapeAttribute(instance.id)}">Nexi öffnen</button>`;
+  } else if (availability === "available") {
+    const label = ({ build: "Nachbau starten", learn: "Lernprojekt starten", develop: "In der IDE weiterentwickeln" })[entry.id] || "Öffnen";
+    action = `<button type="button" data-start-learning-entry="${escapeAttribute(catalogProject.id)}" data-learning-entry-kind="${escapeAttribute(entry.id)}">${escapeHtml(label)}</button>`;
+  }
+  return `
+    <article class="learning-product-entry is-${escapeAttribute(availability || "preparing")}">
+      <div><span>${escapeHtml(customerEntryAvailabilityLabel(availability))}</span><h4>${escapeHtml(entry.title)}</h4><p>${escapeHtml(entry.summary)}</p></div>
+      ${action}
+    </article>
+  `;
 }
 
 function customerEntryAvailabilityLabel(availability) {

@@ -6,7 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
-const nexiCourse = require("../../identity-server/src/dev/project-models/nexi-course.json");
+const { createNexiCourseModel } = require("../../identity-server/src/dev/project-models/nexi-course");
 const { FileBackedProjectRepository } = require("../src/repositories/file-backed-project-repository");
 const { ProjectService } = require("../src/services/project-service");
 
@@ -15,18 +15,29 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
   try {
     const accountId = "account-nexi-e2e";
     const projectId = "learning-nexi-e2e";
+    const model = createNexiCourseModel();
+    const definition = model.createProject(
+      (slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }),
+      (title, text, insight) => ({ title, text, insight }),
+    );
     const service = new ProjectService({ repository: FileBackedProjectRepository.create(runtimeRoot) });
     const created = await service.createProject({
       project_id: projectId,
       user_id: accountId,
-      title: nexiCourse.project.title,
-      description: nexiCourse.project.summary,
+      title: definition.title,
+      description: definition.summary,
       learning_project_id: "learning_project.nexi_voice_assistant",
-      hardware_profile_id: nexiCourse.project.hardware_profile_id,
-      sources: nexiCourse.sources,
+      hardware_profile_id: definition.hardware_profile_id,
+      build_config: definition.build_config,
+      sources: model.createSources(),
     });
 
     assert.ok(created.source_files.some((source) => source.path === "project-app/manifest.json"));
+    assert.ok(created.source_files.some((source) => source.path === definition.build_config.user_source_path));
+    assert.equal(created.build_config.environment, "waveshare_esp32_s3_audio_board");
+    assert.equal(created.build_config.flash_size_mb, 16);
+    assert.equal(created.build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
+    assert.match((await service.getSource(projectId, definition.build_config.user_source_path)).content, /VoiceEffect::Echo/);
     const initial = await service.getProjectAppSettings(projectId, accountId);
     assert.equal(initial.manifest.app_id, "nexi");
     assert.equal(initial.values.cloud_enabled, false);

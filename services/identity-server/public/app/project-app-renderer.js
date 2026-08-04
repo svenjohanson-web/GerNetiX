@@ -3,7 +3,7 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.ProjectAppRenderer = api;
 })(typeof globalThis === "object" ? globalThis : this, function createProjectAppRenderer() {
-  const WIDGET_TYPES = new Set(["text", "status", "metric", "chart", "toggle", "select", "schedule", "button"]);
+  const WIDGET_TYPES = new Set(["text", "status", "metric", "chart", "toggle", "select", "input", "schedule", "button"]);
   const DISPLAY_TYPES = new Set(["default", "compact", "prominent"]);
 
   function render(options = {}) {
@@ -63,6 +63,7 @@
     if (widget.type === "chart") return renderChart(context.value);
     if (widget.type === "toggle") return renderToggle(widget, context);
     if (widget.type === "select") return renderSelect(widget, context);
+    if (widget.type === "input") return renderInput(widget, context);
     if (widget.type === "schedule") return renderSchedule(widget, context);
     return renderButton(widget, context);
   }
@@ -84,6 +85,16 @@
   function renderSelect(widget, { action, setting, value }) {
     assertSettingAction(widget, action, setting);
     return `<label class="project-app-control"><span>${escapeHtml(setting.label)}</span><select data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}">${(setting.options || []).map((option) => `<option value="${escapeAttribute(option.value)}"${String(option.value) === String(value) ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
+  }
+
+  function renderInput(widget, { action, setting, value }) {
+    assertSettingAction(widget, action, setting);
+    if (!["string", "number", "integer"].includes(setting.type)) throw new Error(`Project app input ${widget.id} requires text or number setting.`);
+    const numeric = setting.type === "number" || setting.type === "integer";
+    const constraints = numeric
+      ? `${setting.min !== undefined ? ` min="${escapeAttribute(String(setting.min))}"` : ""}${setting.max !== undefined ? ` max="${escapeAttribute(String(setting.max))}"` : ""} step="${setting.type === "integer" ? "1" : "any"}"`
+      : ' maxlength="500"';
+    return `<label class="project-app-control"><span>${escapeHtml(setting.label)}</span><input type="${numeric ? "number" : "text"}" value="${escapeAttribute(value ?? "")}" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}" data-project-app-setting-type="${escapeAttribute(setting.type)}"${constraints}></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
   }
 
   function renderSchedule(widget, { action, setting, value }) {
@@ -121,6 +132,10 @@
 
   function readControlValue(target, control, settingKey) {
     if (control.matches("input[type=checkbox]")) return control.checked;
+    if (control.matches("input[type=number]")) {
+      const numeric = Number(control.value);
+      return control.dataset.projectAppSettingType === "integer" ? Math.trunc(numeric) : numeric;
+    }
     if (control.matches("select,input:not([type=time])")) return control.value;
     if (settingKey) {
       const schedule = control.closest("[data-project-app-schedule-timezone]");

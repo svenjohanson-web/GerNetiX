@@ -1,0 +1,84 @@
+{
+  "schema": "gernetix.project-app/v1",
+  "manifest_version": 1,
+  "app_id": "nexi",
+  "title": "Nexi Elternbereich",
+  "description": "Lege fest, wie Nexi in diesem Projekt verwendet werden darf.",
+  "settings": [
+    { "key": "child_first_name", "type": "string", "label": "Vorname", "description": "Nur der gewünschte Vorname; keine weiteren persönlichen Daten.", "default": "" },
+    { "key": "child_age", "type": "integer", "label": "Alter", "description": "Wird für altersgerechte Antworten verwendet.", "min": 6, "max": 17, "default": 8 },
+    { "key": "languages", "type": "string", "label": "Sprachen", "description": "Zum Beispiel Deutsch oder Deutsch, Englisch.", "default": "Deutsch" },
+    { "key": "interests", "type": "string", "label": "Interessen", "description": "Themen, die Nexi bei Erklärungen und Geschichten bevorzugen darf.", "default": "" },
+    { "key": "cloud_enabled", "type": "boolean", "label": "KI-Funktionen", "description": "Sprachaufnahmen dürfen nur für freigegebene Anfragen verarbeitet werden.", "default": false },
+    { "key": "web_search_enabled", "type": "boolean", "label": "Internetsuche", "description": "Nexi darf aktuelle Informationen im Internet suchen.", "default": true },
+    { "key": "excluded_topics", "type": "string", "label": "Ausgeschlossene Themen", "description": "Kommagetrennte Themen, die Nexi zusätzlich meiden soll.", "default": "" },
+    { "key": "assistant_mode", "type": "select", "label": "Standardmodus", "default": "learn", "options": [{ "value": "learn", "label": "Lernen und Fragen" }, { "value": "story", "label": "Geschichten" }, { "value": "play", "label": "Sprachspiele" }] },
+    { "key": "voice", "type": "select", "label": "Stimme", "default": "warm", "options": [{ "value": "warm", "label": "Warm" }, { "value": "lively", "label": "Lebhaft" }, { "value": "calm", "label": "Ruhig" }] },
+    { "key": "max_volume", "type": "integer", "label": "Maximale Lautstärke", "description": "Begrenzt die vom Kind wählbare Lautstärkestufe.", "min": 1, "max": 5, "default": 5 },
+    { "key": "daily_minutes", "type": "integer", "label": "Minuten pro Tag", "description": "Maximale tägliche Nutzungszeit für Komfort- und KI-Modi.", "min": 5, "max": 240, "default": 60 },
+    { "key": "max_session_minutes", "type": "integer", "label": "Minuten je Sitzung", "description": "Eine einzelne Sitzung endet spätestens nach dieser Dauer.", "min": 5, "max": 60, "default": 20 },
+    { "key": "quiet_hours", "type": "schedule", "label": "Ruhezeit", "default": { "enabled": true, "start": "20:00", "end": "07:00", "timezone": "Europe/Berlin" } }
+  ],
+  "bindings": [
+    { "id": "child_name", "type": "setting", "key": "child_first_name" },
+    { "id": "child_age_value", "type": "setting", "key": "child_age" },
+    { "id": "language_list", "type": "setting", "key": "languages" },
+    { "id": "interest_list", "type": "setting", "key": "interests" },
+    { "id": "cloud", "type": "setting", "key": "cloud_enabled" },
+    { "id": "web_search", "type": "setting", "key": "web_search_enabled" },
+    { "id": "excluded", "type": "setting", "key": "excluded_topics" },
+    { "id": "mode", "type": "setting", "key": "assistant_mode" },
+    { "id": "voice_choice", "type": "setting", "key": "voice" },
+    { "id": "volume_limit", "type": "setting", "key": "max_volume" },
+    { "id": "daily_limit", "type": "setting", "key": "daily_minutes" },
+    { "id": "session_limit", "type": "setting", "key": "max_session_minutes" },
+    { "id": "quiet", "type": "setting", "key": "quiet_hours" },
+    { "id": "connection", "type": "device_status", "field": "connection_state" },
+    { "id": "firmware", "type": "device_status", "field": "firmware_version" },
+    { "id": "usage", "type": "ai_usage", "field": "monthly_requests" },
+    { "id": "budget", "type": "ai_usage", "field": "remaining_budget" }
+  ],
+  "actions": [
+    { "id": "save_child_name", "type": "update_setting", "setting_key": "child_first_name" },
+    { "id": "save_child_age", "type": "update_setting", "setting_key": "child_age" },
+    { "id": "save_languages", "type": "update_setting", "setting_key": "languages" },
+    { "id": "save_interests", "type": "update_setting", "setting_key": "interests" },
+    { "id": "save_cloud", "type": "update_setting", "setting_key": "cloud_enabled" },
+    { "id": "save_web_search", "type": "update_setting", "setting_key": "web_search_enabled" },
+    { "id": "save_excluded", "type": "update_setting", "setting_key": "excluded_topics" },
+    { "id": "save_mode", "type": "update_setting", "setting_key": "assistant_mode" },
+    { "id": "save_voice", "type": "update_setting", "setting_key": "voice" },
+    { "id": "save_volume", "type": "update_setting", "setting_key": "max_volume" },
+    { "id": "save_daily_limit", "type": "update_setting", "setting_key": "daily_minutes" },
+    { "id": "save_session_limit", "type": "update_setting", "setting_key": "max_session_minutes" },
+    { "id": "save_quiet", "type": "update_setting", "setting_key": "quiet_hours" }
+  ],
+  "pages": [
+    { "id": "overview", "title": "Übersicht", "widgets": [
+      { "id": "intro", "type": "text", "text": "Nexi Basic arbeitet lokal. KI wird erst nach deiner Freigabe aktiv." },
+      { "id": "online", "type": "status", "title": "Gerät", "binding_id": "connection" },
+      { "id": "firmware_state", "type": "status", "title": "Firmware", "binding_id": "firmware" },
+      { "id": "ai_usage", "type": "metric", "title": "KI-Anfragen im Monat", "binding_id": "usage" },
+      { "id": "ai_budget", "type": "metric", "title": "Verfügbares KI-Kontingent", "binding_id": "budget" }
+    ] },
+    { "id": "child", "title": "Kind", "description": "Nur Angaben speichern, die Nexi wirklich für passende Antworten benötigt.", "widgets": [
+      { "id": "child_name_input", "type": "input", "binding_id": "child_name", "action_id": "save_child_name" },
+      { "id": "child_age_input", "type": "input", "binding_id": "child_age_value", "action_id": "save_child_age" },
+      { "id": "languages_input", "type": "input", "binding_id": "language_list", "action_id": "save_languages" },
+      { "id": "interests_input", "type": "input", "binding_id": "interest_list", "action_id": "save_interests" }
+    ] },
+    { "id": "assistant", "title": "Assistent", "widgets": [
+      { "id": "cloud_toggle", "type": "toggle", "binding_id": "cloud", "action_id": "save_cloud" },
+      { "id": "search_toggle", "type": "toggle", "binding_id": "web_search", "action_id": "save_web_search" },
+      { "id": "excluded_input", "type": "input", "binding_id": "excluded", "action_id": "save_excluded" },
+      { "id": "mode_select", "type": "select", "binding_id": "mode", "action_id": "save_mode" },
+      { "id": "voice_select", "type": "select", "binding_id": "voice_choice", "action_id": "save_voice" },
+      { "id": "volume_input", "type": "input", "binding_id": "volume_limit", "action_id": "save_volume" }
+    ] },
+    { "id": "times", "title": "Zeiten und Limits", "widgets": [
+      { "id": "daily_input", "type": "input", "binding_id": "daily_limit", "action_id": "save_daily_limit" },
+      { "id": "session_input", "type": "input", "binding_id": "session_limit", "action_id": "save_session_limit" },
+      { "id": "quiet_schedule", "type": "schedule", "binding_id": "quiet", "action_id": "save_quiet" }
+    ] }
+  ]
+}

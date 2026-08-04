@@ -44,6 +44,7 @@ RUN npm ci --omit=dev --prefix services/public-demo-server
 
 COPY --chown=node:node services ./services
 COPY --chown=node:node basissoftware ./basissoftware
+COPY --chown=node:node projects/waveshare-voice-lab ./projects/waveshare-voice-lab
 COPY --chown=node:node firmware/gernetix-flashbox ./firmware/gernetix-flashbox
 COPY --chown=node:node firmware/shared/gernetix-runtime-core ./firmware/shared/gernetix-runtime-core
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js

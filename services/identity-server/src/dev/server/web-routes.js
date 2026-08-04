@@ -90,6 +90,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/druckmotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/druckmotoren/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung", handler: ({ res }) => redirect(res, "/nachbauprojekte/hw364a-spielesammlung/") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/hw364a-spielesammlung/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/index.html") });
   for (const routePath of ["/community", "/community/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/community/index.html") });
   for (const routePath of ["/support", "/support/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/support/index.html") });
   registry.register({ method: "*", pattern: /^\/community\/questions\/[^/]+\/?$/, handler: ({ res }) => serveStatic(res, publicDir, "/community/question.html") });

@@ -65,7 +65,7 @@ test("creates an account-bound project from the catalog before opening it", () =
 });
 
 test("opens the learning workspace before saving initial progress", () => {
-  const openMethod = learningController.match(/async function open\(projectId\) \{[\s\S]*?\n    \}/)?.[0] || "";
+  const openMethod = learningController.match(/async function open\(projectId, options = \{\}\) \{[\s\S]*?\n    \}/)?.[0] || "";
   assert.ok(openMethod.indexOf("navigate(") < openMethod.indexOf("saveStep("));
   assert.match(openMethod, /\.catch\(\(error\) => showError\(error\)\)/);
 });
@@ -435,7 +435,7 @@ test("models the storage story as one development project with reusable standalo
   assert.match(overviewRenderer, /Was du lernst/);
   assert.match(overviewRenderer, /So arbeitest du/);
   assert.match(overviewRenderer, /Ohne zusätzliche Hardware/);
-  assert.match(overviewRenderer, /Fünf Etappen führen dich/);
+  assert.match(overviewRenderer, /Die Etappen führen dich vom Einstieg bis zum praktisch geprüften Projektergebnis/);
   assert.match(overviewRenderer, /Zurück/);
   assert.match(overviewRenderer, /Lernprojekt starten/);
   assert.doesNotMatch(overviewRenderer, /step_ids|Schrittanzahl|Lernschritte/);

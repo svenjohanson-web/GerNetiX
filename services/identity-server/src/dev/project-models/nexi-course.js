@@ -1,4 +1,12 @@
+const fs = require("node:fs");
+const path = require("node:path");
 const modelData = require("./nexi-course.json");
+const projectAppManifest = require("./nexi-project-app-manifest.json");
+
+const voiceLabSourcePath = path.resolve(
+  __dirname,
+  "../../../../../projects/waveshare-voice-lab/voice_lab.cpp",
+);
 
 function createNexiCourseModel() {
   function createProject(project, step) {
@@ -12,6 +20,7 @@ function createNexiCourseModel() {
       {
         access_model: definition.access_model,
         customer_entries: definition.customer_entries,
+        build_config: definition.build_config,
         default_device_id: definition.default_device_id,
         hardware_profile_id: definition.hardware_profile_id,
         learning_category: definition.learning_category,
@@ -28,7 +37,21 @@ function createNexiCourseModel() {
   }
 
   function createSources() {
-    return clone(modelData.sources);
+    const sources = clone(modelData.sources)
+      .filter((source) => source.path !== "project-app/manifest.json");
+    return [
+      {
+        path: modelData.project.build_config.user_source_path,
+        role: "user_code",
+        content: fs.readFileSync(voiceLabSourcePath, "utf8"),
+      },
+      ...sources,
+      {
+        path: "project-app/manifest.json",
+        role: "project_app_manifest",
+        content: `${JSON.stringify(projectAppManifest, null, 2)}\n`,
+      },
+    ];
   }
 
   return { createProject, createSources, createViewManifest, slug: modelData.slug };

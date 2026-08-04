@@ -6640,5 +6640,6 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 .project-app-widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 .project-app-widget { padding: 1rem; border: 1px solid var(--line, #d9e2e8); border-radius: .75rem; background: var(--surface, #fff); }
 .project-app-control, .project-app-schedule { display: grid; gap: .5rem; }
+.project-app-control input[type="text"], .project-app-control input[type="number"], .project-app-control select { width: 100%; }
 .project-app-chart { display: flex; align-items: end; gap: 3px; min-height: 7rem; }
 .project-app-chart span { flex: 1; min-height: 2px; height: calc(var(--project-app-value) * 100%); background: var(--accent, #0f766e); }

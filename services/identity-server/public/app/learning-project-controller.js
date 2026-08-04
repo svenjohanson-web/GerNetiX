@@ -34,7 +34,7 @@ const LearningProjectController = (() => {
       target.querySelector("[data-learning-rating-form]")?.addEventListener("submit", (event) => submitRating(event, project));
     }
 
-    async function open(projectId) {
+    async function materialize(projectId) {
       const selectedProject = projectById(projectId);
       let project = selectedProject;
       if (selectedProject?.projectOrigin === "catalog") {
@@ -42,12 +42,28 @@ const LearningProjectController = (() => {
         project = response.project;
         state.projects = state.projects.filter((item) => item.id !== project.id).concat(project);
       }
+      return project;
+    }
+
+    async function open(projectId, options = {}) {
+      const project = await materialize(projectId);
       if (!isLearningProject(project)) return;
       const progress = progressFor(project.id);
+      const requestedStep = options.startViewId
+        ? project.viewManifest?.views?.findIndex((view) => view.id === options.startViewId)
+        : -1;
+      const currentStep = requestedStep >= 0 ? requestedStep : Number(progress.currentStep || 0);
       navigate(`/app/learning-project/?project=${encodeURIComponent(project.id)}`);
       render();
-      void saveStep(project, Number(progress.currentStep || 0), progress.completedSteps || [], false)
+      void saveStep(project, currentStep, progress.completedSteps || [], false)
         .catch((error) => showError(error));
+    }
+
+    async function openDevelopment(projectId) {
+      const project = await materialize(projectId);
+      if (!project?.id) return;
+      state.workspace = { ...state.workspace, lastProjectId: project.id, lastMode: "ide", lastRoute: `/app/ide/?project=${encodeURIComponent(project.id)}` };
+      navigate(`/app/ide/?project=${encodeURIComponent(project.id)}`);
     }
 
     async function openLesson(projectId, lessonId) {
@@ -114,7 +130,7 @@ const LearningProjectController = (() => {
       status.textContent = error?.message || "Der Lernfortschritt konnte nicht gespeichert werden. Bitte erneut versuchen.";
     }
 
-    return { render, open, openLesson };
+    return { render, open, openDevelopment, openLesson };
   }
   return { create };
 })();

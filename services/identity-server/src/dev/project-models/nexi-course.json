@@ -11,7 +11,25 @@
     "product_stage": "local_basic",
     "hardware_profile_id": "hardware.processor_board.waveshare_esp32_s3_audio_board",
     "default_device_id": "",
+    "build_config": {
+      "platform": "espressif32",
+      "framework": "espidf",
+      "board": "4d_systems_esp32s3_gen4_r8n16",
+      "environment": "waveshare_esp32_s3_audio_board",
+      "monitor_speed": 115200,
+      "upload_protocol": "esptool",
+      "flash_size_mb": 16,
+      "build_flags": ["-D BOARD_HAS_PSRAM", "-D GERNETIX_WAVESHARE_AUDIO_VOICE_LAB=1"],
+      "platformio_options": { "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"" },
+      "firmware_basis_id": "gernetix-runtime-basissoftware",
+      "firmware_basis_version": "workspace",
+      "firmware_basis_variant": "full",
+      "partition_profile_id": "full",
+      "user_source_path": "Komponenten/IoT-Device 1/src/user_main.cpp",
+      "user_target_path": "src/user/user_app.cpp"
+    },
     "source_files": [
+      { "path": "Komponenten/IoT-Device 1/src/user_main.cpp", "role": "user_code" },
       { "path": "docs/nexi-entscheidungen.md", "role": "decision_record" },
       { "path": "project-app/manifest.json", "role": "project_app_manifest" }
     ],
@@ -19,7 +37,7 @@
       { "id": "use", "title": "Nexi verwenden", "summary": "Öffne die Kundenoberfläche einer bereits eingerichteten Nexi-Instanz.", "availability": "requires_instance" },
       { "id": "build", "title": "Nexi nachbauen", "summary": "Hardware vorbereiten, lokale Firmware bauen, flashen und alle Audiofunktionen prüfen.", "availability": "available" },
       { "id": "learn", "title": "Nexi verstehen", "summary": "Lerne Schritt für Schritt, wie Audio, Tasten, LEDs, Datenschutz und die optionale KI zusammenspielen.", "availability": "available" },
-      { "id": "develop", "title": "Nexi weiterentwickeln", "summary": "Übernimm Nexi als eigenes Entwicklungsprojekt und ergänze Funktionen, Projekt-App und später KI.", "availability": "preparing" }
+      { "id": "develop", "title": "Nexi weiterentwickeln", "summary": "Übernimm Nexi als eigenes Entwicklungsprojekt und ergänze Funktionen, Projekt-App und später KI.", "availability": "available" }
     ],
     "steps": [
       { "title": "Nexi kennenlernen", "text": "Nexi Basic funktioniert lokal als Stimmenstudio und benötigt noch keinen Cloud- oder KI-Provider.", "insight": "Ein nützliches Produkt und eine optionale KI-Erweiterung bleiben bewusst getrennt." },
@@ -72,7 +90,6 @@
     ]
   },
   "sources": [
-    { "path": "docs/nexi-entscheidungen.md", "role": "decision_record", "content": "# Meine Nexi-Version\n\n- Name und Persönlichkeit:\n- Lokale Modi:\n- Optionale KI-Modi:\n- Tasten und LEDs:\n- Kundenoberfläche:\n- Datenschutz und Aufbewahrung:\n" },
-    { "path": "project-app/manifest.json", "role": "project_app_manifest", "content": "{\n  \"schema\": \"gernetix.project-app/v1\",\n  \"manifest_version\": 1,\n  \"app_id\": \"nexi\",\n  \"title\": \"Nexi Elternbereich\",\n  \"description\": \"Lege fest, wie Nexi in diesem Projekt verwendet werden darf.\",\n  \"settings\": [\n    { \"key\": \"cloud_enabled\", \"type\": \"boolean\", \"label\": \"KI-Funktionen\", \"description\": \"Sprachaufnahmen dürfen nur für freigegebene Anfragen verarbeitet werden.\", \"default\": false },\n    { \"key\": \"web_search_enabled\", \"type\": \"boolean\", \"label\": \"Internetsuche\", \"description\": \"Nexi darf aktuelle Informationen im Internet suchen.\", \"default\": true },\n    { \"key\": \"assistant_mode\", \"type\": \"select\", \"label\": \"Standardmodus\", \"default\": \"learn\", \"options\": [{ \"value\": \"learn\", \"label\": \"Lernen und Fragen\" }, { \"value\": \"story\", \"label\": \"Geschichten\" }, { \"value\": \"play\", \"label\": \"Sprachspiele\" }] },\n    { \"key\": \"voice\", \"type\": \"select\", \"label\": \"Stimme\", \"default\": \"warm\", \"options\": [{ \"value\": \"warm\", \"label\": \"Warm\" }, { \"value\": \"lively\", \"label\": \"Lebhaft\" }, { \"value\": \"calm\", \"label\": \"Ruhig\" }] },\n    { \"key\": \"quiet_hours\", \"type\": \"schedule\", \"label\": \"Ruhezeit\", \"default\": { \"enabled\": true, \"start\": \"20:00\", \"end\": \"07:00\", \"timezone\": \"Europe/Berlin\" } }\n  ],\n  \"bindings\": [\n    { \"id\": \"cloud\", \"type\": \"setting\", \"key\": \"cloud_enabled\" },\n    { \"id\": \"web_search\", \"type\": \"setting\", \"key\": \"web_search_enabled\" },\n    { \"id\": \"mode\", \"type\": \"setting\", \"key\": \"assistant_mode\" },\n    { \"id\": \"voice_choice\", \"type\": \"setting\", \"key\": \"voice\" },\n    { \"id\": \"quiet\", \"type\": \"setting\", \"key\": \"quiet_hours\" },\n    { \"id\": \"connection\", \"type\": \"device_status\", \"field\": \"connection_state\" },\n    { \"id\": \"usage\", \"type\": \"ai_usage\", \"field\": \"monthly_requests\" }\n  ],\n  \"actions\": [\n    { \"id\": \"save_cloud\", \"type\": \"update_setting\", \"setting_key\": \"cloud_enabled\" },\n    { \"id\": \"save_web_search\", \"type\": \"update_setting\", \"setting_key\": \"web_search_enabled\" },\n    { \"id\": \"save_mode\", \"type\": \"update_setting\", \"setting_key\": \"assistant_mode\" },\n    { \"id\": \"save_voice\", \"type\": \"update_setting\", \"setting_key\": \"voice\" },\n    { \"id\": \"save_quiet\", \"type\": \"update_setting\", \"setting_key\": \"quiet_hours\" }\n  ],\n  \"pages\": [\n    { \"id\": \"overview\", \"title\": \"Übersicht\", \"widgets\": [{ \"id\": \"intro\", \"type\": \"text\", \"text\": \"Nexi Basic arbeitet lokal. KI wird erst nach deiner Freigabe aktiv.\" }, { \"id\": \"online\", \"type\": \"status\", \"title\": \"Gerät\", \"binding_id\": \"connection\" }, { \"id\": \"ai_usage\", \"type\": \"metric\", \"title\": \"KI-Anfragen im Monat\", \"binding_id\": \"usage\" }] },\n    { \"id\": \"assistant\", \"title\": \"Assistent\", \"widgets\": [{ \"id\": \"cloud_toggle\", \"type\": \"toggle\", \"binding_id\": \"cloud\", \"action_id\": \"save_cloud\" }, { \"id\": \"search_toggle\", \"type\": \"toggle\", \"binding_id\": \"web_search\", \"action_id\": \"save_web_search\" }, { \"id\": \"mode_select\", \"type\": \"select\", \"binding_id\": \"mode\", \"action_id\": \"save_mode\" }, { \"id\": \"voice_select\", \"type\": \"select\", \"binding_id\": \"voice_choice\", \"action_id\": \"save_voice\" }] },\n    { \"id\": \"times\", \"title\": \"Zeiten\", \"widgets\": [{ \"id\": \"quiet_schedule\", \"type\": \"schedule\", \"binding_id\": \"quiet\", \"action_id\": \"save_quiet\" }] }\n  ]\n}\n" }
+    { "path": "docs/nexi-entscheidungen.md", "role": "decision_record", "content": "# Meine Nexi-Version\n\n- Name und Persönlichkeit:\n- Lokale Modi:\n- Optionale KI-Modi:\n- Tasten und LEDs:\n- Kundenoberfläche:\n- Datenschutz und Aufbewahrung:\n" }
   ]
 }

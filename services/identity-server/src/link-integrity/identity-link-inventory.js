@@ -10,6 +10,7 @@ const identityRoutes = [
   route("identity.rebuild_projects", "/nachbauprojekte/", "public", "Learning"),
   route("identity.motor_rebuild", "/nachbauprojekte/einfache-elektromotoren/", "public", "Learning"),
   route("identity.printed_motor_series", "/nachbauprojekte/druckmotoren/", "public", "Learning"),
+  route("identity.nexi_rebuild", "/nachbauprojekte/nexi-sprachassistent/", "public", "Learning"),
   route("identity.flashbox_setup", "/flashbox-einrichten/", "public", "DeviceManagement"),
   route("identity.knowledge", "/wissen/", "public", "Learning"),
   route("identity.community", "/community/", "public", "Community"),

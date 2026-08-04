@@ -26,18 +26,21 @@ function nexiManifest() {
     ],
     bindings: [
       { id: "cloud", type: "setting", key: "cloud_enabled" },
+      { id: "volume_value", type: "setting", key: "volume" },
       { id: "connection", type: "device_status", field: "connection_state" },
       { id: "temperature", type: "telemetry", metric_id: "room.temperature" },
     ],
     actions: [
       { id: "save_cloud", type: "update_setting", setting_key: "cloud_enabled" },
+      { id: "save_volume", type: "update_setting", setting_key: "volume" },
       { id: "restart", type: "device_command", command_id: "assistant.restart", confirmation: "Nexi wirklich neu starten?" },
     ],
     pages: [{
       id: "overview", title: "Uebersicht", widgets: [
         { id: "intro", type: "text", text: "Hier wird Nexi verwaltet." },
         { id: "online", type: "status", title: "Verbindung", binding_id: "connection" },
-        { id: "cloud_toggle", type: "toggle", title: "Cloud", binding_id: "cloud", action_id: "save_cloud" },
+      { id: "cloud_toggle", type: "toggle", title: "Cloud", binding_id: "cloud", action_id: "save_cloud" },
+        { id: "volume_input", type: "input", title: "Lautstaerke", binding_id: "volume_value", action_id: "save_volume" },
         { id: "restart_button", type: "button", title: "Neu starten", action_id: "restart" },
       ],
     }],
@@ -88,6 +91,13 @@ test("enforces setting types, choices and numeric limits", () => {
   assert.throws(() => validateProjectAppValues(manifest, { voice: "unknown" }), /keine erlaubte Auswahl/);
   assert.throws(() => validateProjectAppValues(manifest, { volume: 6 }), /hoechstens 5/);
   assert.throws(() => validateProjectAppValues(manifest, { injected: true }), /nicht definiert/);
+});
+
+test("only binds text and number settings to generic input widgets", () => {
+  const manifest = nexiManifest();
+  manifest.pages[0].widgets.find((widget) => widget.id === "volume_input").binding_id = "cloud";
+  manifest.pages[0].widgets.find((widget) => widget.id === "volume_input").action_id = "save_cloud";
+  assert.throws(() => validateProjectAppManifest(manifest), /auf Text oder eine Zahl zeigen/);
 });
 
 test("loads the versioned manifest and stores account-bound runtime settings with CAS", async () => {

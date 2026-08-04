@@ -5,7 +5,7 @@ const { ProjectServerError } = require("../errors");
 const PROJECT_APP_MANIFEST_PATH = "project-app/manifest.json";
 const PROJECT_APP_SCHEMA = "gernetix.project-app/v1";
 const IDENTIFIER = /^[a-z][a-z0-9_.-]{0,63}$/;
-const WIDGET_TYPES = new Set(["text", "status", "metric", "chart", "toggle", "select", "schedule", "button"]);
+const WIDGET_TYPES = new Set(["text", "status", "metric", "chart", "toggle", "select", "input", "schedule", "button"]);
 const SETTING_TYPES = new Set(["boolean", "string", "number", "integer", "select", "schedule"]);
 const BINDING_TYPES = new Set(["setting", "telemetry", "device_status", "ai_usage", "project"]);
 const DEVICE_STATUS_FIELDS = new Set(["connection_state", "last_seen_at", "firmware_version", "battery_percent"]);
@@ -38,7 +38,7 @@ function validateProjectAppManifest(input) {
   unique(actions, "id", "manifest.actions");
   const actionsById = new Map(actions.map((item) => [item.id, item]));
 
-  const pages = array(manifest.pages, "manifest.pages", 30, 1).map((page, index) => validatePage(page, index, bindingsById, actionsById));
+  const pages = array(manifest.pages, "manifest.pages", 30, 1).map((page, index) => validatePage(page, index, bindingsById, actionsById, settingsByKey));
   unique(pages, "id", "manifest.pages");
   return compact({ schema: PROJECT_APP_SCHEMA, manifest_version: manifestVersion, app_id: appId, title, description, settings, bindings, actions, pages });
 }
@@ -116,36 +116,39 @@ function validateAction(input, index, settings) {
   return normalized;
 }
 
-function validatePage(input, index, bindings, actions) {
+function validatePage(input, index, bindings, actions, settings) {
   const path = `manifest.pages[${index}]`;
   const page = object(input, path);
   exactKeys(page, new Set(["id", "title", "description", "widgets"]), path);
-  const widgets = array(page.widgets, `${path}.widgets`, 100, 1).map((widget, widgetIndex) => validateWidget(widget, `${path}.widgets[${widgetIndex}]`, bindings, actions));
+  const widgets = array(page.widgets, `${path}.widgets`, 100, 1).map((widget, widgetIndex) => validateWidget(widget, `${path}.widgets[${widgetIndex}]`, bindings, actions, settings));
   unique(widgets, "id", `${path}.widgets`);
   return compact({ id: identifier(page.id, `${path}.id`), title: plainText(page.title, `${path}.title`, 120), description: optionalPlainText(page.description, `${path}.description`, 500), widgets });
 }
 
-function validateWidget(input, path, bindings, actions) {
+function validateWidget(input, path, bindings, actions, settings) {
   const item = object(input, path);
   exactKeys(item, new Set(["id", "type", "title", "text", "binding_id", "action_id", "display"]), path);
   const type = enumValue(item.type, WIDGET_TYPES, `${path}.type`);
   const normalized = compact({ id: identifier(item.id, `${path}.id`), type, title: optionalPlainText(item.title, `${path}.title`, 120) });
   if (type === "text") normalized.text = plainText(item.text, `${path}.text`, 2000);
   else if (item.text !== undefined) invalid(`${path}.text`, "ist nur beim Text-Widget erlaubt");
-  if (["status", "metric", "chart", "toggle", "select", "schedule"].includes(type)) {
+  if (["status", "metric", "chart", "toggle", "select", "input", "schedule"].includes(type)) {
     normalized.binding_id = identifier(item.binding_id, `${path}.binding_id`);
     if (!bindings.has(normalized.binding_id)) invalid(`${path}.binding_id`, "verweist nicht auf eine definierte Bindung");
   } else if (item.binding_id !== undefined) invalid(`${path}.binding_id`, "ist fuer diesen Widget-Typ nicht erlaubt");
-  if (["toggle", "select", "schedule", "button"].includes(type)) {
+  if (["toggle", "select", "input", "schedule", "button"].includes(type)) {
     normalized.action_id = identifier(item.action_id, `${path}.action_id`);
     if (!actions.has(normalized.action_id)) invalid(`${path}.action_id`, "verweist nicht auf eine definierte Aktion");
   } else if (item.action_id !== undefined) invalid(`${path}.action_id`, "ist fuer diesen Widget-Typ nicht erlaubt");
-  if (["toggle", "select", "schedule"].includes(type)) {
+  if (["toggle", "select", "input", "schedule"].includes(type)) {
     const binding = bindings.get(normalized.binding_id);
     const action = actions.get(normalized.action_id);
     if (binding.type !== "setting") invalid(`${path}.binding_id`, "muss fuer ein Eingabe-Widget auf ein Setting zeigen");
     if (action.type !== "update_setting" || action.setting_key !== binding.key) {
       invalid(`${path}.action_id`, "muss genau das gebundene Setting aktualisieren");
+    }
+    if (type === "input" && !["string", "number", "integer"].includes(settings.get(binding.key)?.type)) {
+      invalid(`${path}.binding_id`, "muss fuer ein Eingabefeld auf Text oder eine Zahl zeigen");
     }
   }
   if (type === "chart" && bindings.get(normalized.binding_id).type !== "telemetry") {
