@@ -1,6 +1,7 @@
 // GerNetiX platform module extracted from app.js.
 const projectSourceListLoads = new Map();
 const projectSourceContentLoads = new Map();
+let loadedIdeSourceKey = "";
 
 function renderIdeShell() {
   document.querySelector("#ideDeviceSelect").innerHTML = state.devices.map((device) => `
@@ -555,6 +556,7 @@ async function loadProjectSources(project) {
 async function refreshProjectedProjectSources(project) {
   if (!project?.id) return [];
   delete state.projectSourcesByProjectId[project.id];
+  if (project.id === state.activeProjectId) loadedIdeSourceKey = "";
   const sources = await loadProjectSources(project);
   if (project.id === state.activeProjectId) renderIdeProjectBrowser(project, sources);
   return sources;
@@ -1351,6 +1353,7 @@ function renderIdeCodeAssistant(project) {
 
 async function loadIdeSourceContent(project, sourcePath) {
   const key = `${project.id}\u0000${sourcePath}`;
+  if (loadedIdeSourceKey === key) return;
   if (!projectSourceContentLoads.has(key)) {
     const load = getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(sourcePath)}`)
       .finally(() => projectSourceContentLoads.delete(key));
@@ -1359,6 +1362,7 @@ async function loadIdeSourceContent(project, sourcePath) {
   const source = await projectSourceContentLoads.get(key);
   if (state.activeProjectId !== project.id || state.sourcePath !== sourcePath) return;
   document.querySelector("#sourceEditor").value = source.content || "";
+  loadedIdeSourceKey = key;
   clearIdeSourceDirty(project.id, sourcePath);
 }
 

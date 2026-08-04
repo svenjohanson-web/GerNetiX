@@ -34,12 +34,32 @@ test("IDE contents do not wait for USB discovery or start a duplicate route load
   assert.match(ide, /const projectSourceListLoads = new Map\(\)/);
   assert.match(ide, /projectSourceListLoads\.has\(project\.id\)/);
   assert.match(ide, /const projectSourceContentLoads = new Map\(\)/);
+  assert.match(ide, /if \(loadedIdeSourceKey === key\) return/);
 
   const openStart = builds.indexOf("async function openProjectInIde(projectId)");
   const openEnd = builds.indexOf("\nfunction continueLastProject", openStart);
   const openBody = builds.slice(openStart, openEnd);
   assert.match(openBody, /navigate\(`\/app\/ide\//);
   assert.doesNotMatch(openBody, /loadIdeProject\(/);
+});
+
+test("project file authorization does not reload every account project", () => {
+  const accessStart = devServer.indexOf("async function requireSessionProject");
+  const accessEnd = devServer.indexOf("\nfunction sessionProjectNotFound", accessStart);
+  const accessBody = devServer.slice(accessStart, accessEnd);
+  assert.match(accessBody, /projectServerJson\(`\/api\/projects\/\$\{encodeURIComponent\(requestedProjectId\)\}`\)/);
+  assert.match(accessBody, /storedProject\.user_id !== accountId/);
+  assert.doesNotMatch(accessBody, /loadUserIdeProjects/);
+});
+
+test("resource-plan reconciliation is shared briefly across bootstrap calls", () => {
+  assert.match(devServer, /const accountResourcePlanCache = new Map\(\)/);
+  assert.match(devServer, /const accountResourcePlanLoads = new Map\(\)/);
+  const planStart = devServer.indexOf("async function ensureAccountResourcePlan");
+  const planEnd = devServer.indexOf("\nasync function updateAccountProjectSelection", planStart);
+  const planBody = devServer.slice(planStart, planEnd);
+  assert.match(planBody, /cached\.expires_at > Date\.now\(\)/);
+  assert.match(planBody, /accountResourcePlanLoads\.has\(cacheKey\)/);
 });
 
 test("generated architecture and hardware files use one repository commit", () => {

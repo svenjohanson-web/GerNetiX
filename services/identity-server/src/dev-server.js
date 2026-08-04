@@ -333,6 +333,9 @@ const sessions = new Map();
 const userIdeState = createUserIdeState();
 const projectServerSeededUsers = new Set();
 const projectServerSeedPromises = new Map();
+const accountResourcePlanCache = new Map();
+const accountResourcePlanLoads = new Map();
+const accountResourcePlanCacheMs = 15_000;
 const routeRegistry = createRouteRegistry();
 const sessionAccess = createSessionAccess({ resolveSession: readSession, sendJson });
 
@@ -2488,14 +2491,21 @@ async function handlePlatformDeviceRemove(res, session, accountDeviceId) {
 }
 
 async function requireSessionProject(session, projectId) {
-  const projects = await loadUserIdeProjects(session);
-  const project = projects.find((item) => item.project_server_id === projectId || item.slug === projectId);
-  if (!project) {
-    const error = new Error("Projekt wurde nicht gefunden.");
-    error.status = 404;
-    throw error;
-  }
-  return project;
+  const requestedProjectId = String(projectId || "");
+  const accountId = projectServerUserId(session);
+  const storedProject = await projectServerJson(`/api/projects/${encodeURIComponent(requestedProjectId)}`)
+    .catch((error) => error.status === 404 ? null : Promise.reject(error));
+  if (!storedProject || storedProject.user_id !== accountId) throw sessionProjectNotFound();
+  const synchronizedProject = storedProject.status === "plan_locked"
+    ? storedProject
+    : await synchronizeDevelopmentTemplateRuntimeModel(storedProject, session);
+  return mapProjectServerProject(session, synchronizedProject);
+}
+
+function sessionProjectNotFound() {
+  const error = new Error("Projekt wurde nicht gefunden.");
+  error.status = 404;
+  return error;
 }
 
 async function handleDeviceConnectivityCheck(res, session, deviceId) {
@@ -3492,23 +3502,40 @@ async function loadBillingSummary(session, existingAiUsage = null) {
 async function ensureAccountResourcePlan(session) {
   const subscription = accountSubscription(session);
   const accountId = projectServerUserId(session);
-  return projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
+  const cacheKey = `${accountId}\u0000${subscription.plan_id}`;
+  const cached = accountResourcePlanCache.get(cacheKey);
+  if (cached && cached.expires_at > Date.now()) return cached.value;
+  if (accountResourcePlanLoads.has(cacheKey)) return accountResourcePlanLoads.get(cacheKey);
+  const load = projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
     method: "PUT",
     body: { plan_id: subscription.plan_id },
-  });
+  }).then((value) => {
+    accountResourcePlanCache.set(cacheKey, { value, expires_at: Date.now() + accountResourcePlanCacheMs });
+    return value;
+  }).finally(() => accountResourcePlanLoads.delete(cacheKey));
+  accountResourcePlanLoads.set(cacheKey, load);
+  return load;
 }
 
 async function updateAccountProjectSelection(session, input = {}) {
   const subscription = accountSubscription(session);
   const accountId = projectServerUserId(session);
   const activeProjectIds = Array.from(new Set((input.active_project_ids || []).map(String).filter(Boolean)));
-  return projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
+  const result = await projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
     method: "PUT",
     body: {
       plan_id: subscription.plan_id,
       active_project_ids: activeProjectIds,
     },
   });
+  for (const key of accountResourcePlanCache.keys()) {
+    if (key.startsWith(`${accountId}\u0000`)) accountResourcePlanCache.delete(key);
+  }
+  accountResourcePlanCache.set(`${accountId}\u0000${subscription.plan_id}`, {
+    value: result,
+    expires_at: Date.now() + accountResourcePlanCacheMs,
+  });
+  return result;
 }
 
 function catalogProjectIdForDefinition(definition) {
