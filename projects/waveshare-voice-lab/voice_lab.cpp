@@ -35,6 +35,7 @@ constexpr size_t MIN_RECORD_FRAMES = SAMPLE_RATE / 10;
 constexpr size_t IO_FRAMES = 256;
 constexpr int INPUT_GAIN_DB = 30;
 constexpr int SAFE_OUTPUT_VOLUME = 100;
+constexpr std::array<int, 5> OUTPUT_VOLUME_LEVELS{{20, 40, 60, 80, 100}};
 constexpr int32_t PLAYBACK_TARGET_PEAK = 22937;  // 70 percent of int16 full scale
 constexpr int32_t MAX_DIGITAL_GAIN = 12;
 constexpr gpio_num_t STATUS_LED_GPIO = GPIO_NUM_38;
@@ -47,7 +48,7 @@ constexpr uint8_t TCA9555_CONFIG_PORT_1 = 0x07;
 constexpr uint8_t SPEAKER_PA_MASK = 0x01;  // EXIO8
 constexpr uint8_t EFFECT_BUTTON_MASK = 0x02;  // EXIO9 / KEY1
 constexpr uint8_t RECORD_BUTTON_MASK = 0x04;  // EXIO10 / KEY2
-constexpr uint8_t RESERVED_BUTTON_MASK = 0x08;  // EXIO11 / KEY3
+constexpr uint8_t VOLUME_BUTTON_MASK = 0x08;  // EXIO11 / KEY3
 constexpr size_t ECHO_DELAY_FRAMES = SAMPLE_RATE / 4;
 
 enum class VoiceEffect : uint8_t {
@@ -62,6 +63,7 @@ enum class VoiceEffect : uint8_t {
 enum class UserAction : uint8_t {
   Record,
   EffectChanged,
+  VolumeChanged,
   ModeMenu,
 };
 
@@ -75,6 +77,11 @@ struct ExpectedDevice {
   uint8_t address;
   const char *name;
   const char *role;
+};
+
+struct VolumeState {
+  size_t levelIndex;
+  bool muted;
 };
 
 constexpr std::array<ExpectedDevice, 4> EXPECTED_DEVICES{{
@@ -142,6 +149,15 @@ void showReadyEffect(VoiceEffect effect) {
     default:
       setStatusLeds(1, 0, STATUS_LED_BRIGHTNESS, 0);
       break;
+  }
+}
+
+void showVolumeFeedback(const VolumeState &volume) {
+  if (volume.muted) {
+    setStatusLeds(STATUS_LED_COUNT, STATUS_LED_BRIGHTNESS, STATUS_LED_BRIGHTNESS / 4, 0);
+  } else {
+    setStatusLeds(volume.levelIndex + 1,
+        STATUS_LED_BRIGHTNESS, STATUS_LED_BRIGHTNESS, 0);
   }
 }
 
@@ -232,7 +248,7 @@ esp_err_t configureFunctionButtons() {
   esp_err_t result = readExpanderRegister(TCA9555_CONFIG_PORT_1, &direction);
   if (result != ESP_OK) return result;
   direction = static_cast<uint8_t>(direction | EFFECT_BUTTON_MASK
-      | RECORD_BUTTON_MASK | RESERVED_BUTTON_MASK);
+      | RECORD_BUTTON_MASK | VOLUME_BUTTON_MASK);
   return writeExpanderRegister(TCA9555_CONFIG_PORT_1, direction);
 }
 
@@ -293,10 +309,14 @@ esp_err_t selectOperatingMode(OperatingMode *mode) {
   }
 }
 
-esp_err_t waitForUserAction(VoiceEffect *effect, UserAction *action) {
-  if (effect == nullptr || action == nullptr) return ESP_ERR_INVALID_ARG;
+esp_err_t waitForUserAction(
+    VoiceEffect *effect, VolumeState *volume, UserAction *action) {
+  if (effect == nullptr || volume == nullptr || action == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
   unsigned recordStableChecks = 0;
   unsigned effectStableChecks = 0;
+  unsigned volumeStableChecks = 0;
   while (true) {
     uint8_t input = 0;
     const esp_err_t result = readExpanderRegister(TCA9555_INPUT_PORT_1, &input);
@@ -304,6 +324,7 @@ esp_err_t waitForUserAction(VoiceEffect *effect, UserAction *action) {
 
     const bool recordPressed = (input & RECORD_BUTTON_MASK) == 0;
     const bool effectPressed = (input & EFFECT_BUTTON_MASK) == 0;
+    const bool volumePressed = (input & VOLUME_BUTTON_MASK) == 0;
     recordStableChecks = recordPressed ? recordStableChecks + 1 : 0;
     if (recordStableChecks >= 3) {
       *action = UserAction::Record;
@@ -340,8 +361,46 @@ esp_err_t waitForUserAction(VoiceEffect *effect, UserAction *action) {
     } else {
       effectStableChecks = 0;
     }
+
+    if (volumePressed) {
+      volumeStableChecks++;
+      if (volumeStableChecks >= 3) {
+        unsigned heldChecks = volumeStableChecks;
+        while (true) {
+          bool stillPressed = false;
+          const esp_err_t heldResult = readButtonPressed(VOLUME_BUTTON_MASK, &stillPressed);
+          if (heldResult != ESP_OK) return heldResult;
+          if (!stillPressed) {
+            volume->levelIndex = (volume->levelIndex + 1) % OUTPUT_VOLUME_LEVELS.size();
+            volume->muted = false;
+            *action = UserAction::VolumeChanged;
+            return ESP_OK;
+          }
+          heldChecks++;
+          if (heldChecks >= 50) {
+            const esp_err_t releaseResult = waitForButtonState(VOLUME_BUTTON_MASK, false);
+            if (releaseResult != ESP_OK) return releaseResult;
+            volume->muted = !volume->muted;
+            *action = UserAction::VolumeChanged;
+            return ESP_OK;
+          }
+          vTaskDelay(pdMS_TO_TICKS(20));
+        }
+      }
+    } else {
+      volumeStableChecks = 0;
+    }
     vTaskDelay(pdMS_TO_TICKS(20));
   }
+}
+
+esp_err_t applyOutputVolume(const VolumeState &volume) {
+  const int outputVolume = volume.muted ? 0 : OUTPUT_VOLUME_LEVELS[volume.levelIndex];
+  const int result = esp_codec_dev_set_out_vol(playDevice, outputVolume);
+  if (result != ESP_CODEC_DEV_OK) return ESP_FAIL;
+  feedbackInfo(TAG, "Output volume: %d%% (%s)", outputVolume,
+      volume.muted ? "muted" : "active");
+  return ESP_OK;
 }
 
 esp_err_t setSpeakerAmplifier(bool enabled) {
@@ -661,7 +720,7 @@ esp_err_t playStoredRecording(const int16_t *recording, size_t recordedFrames,
 }
 
 void audioDemoTask(void *) {
-  feedbackInfo(TAG, "Push-to-record Voice Lab is starting");
+  feedbackInfo(TAG, "Nexi Basic local voice studio is starting");
   const esp_err_t ledResult = initializeStatusLeds();
   if (ledResult != ESP_OK) {
     feedbackWarning(TAG, "Status LEDs unavailable: %s", esp_err_to_name(ledResult));
@@ -700,6 +759,8 @@ void audioDemoTask(void *) {
     return;
   }
 
+  VolumeState volume{OUTPUT_VOLUME_LEVELS.size() - 1, false};
+
   while (result == ESP_OK) {
     OperatingMode operatingMode = OperatingMode::VoiceStudio;
     result = selectOperatingMode(&operatingMode);
@@ -725,10 +786,11 @@ void audioDemoTask(void *) {
     while (result == ESP_OK && !returnToModeMenu) {
       showReadyEffect(selectedEffect);
       feedbackInfo(TAG,
-          "Ready: effect=%s; left selects effect, long left returns to mode menu, middle records",
+          "Ready: effect=%s; left selects effect, long left returns to mode menu, "
+          "middle records, right controls volume",
           effectName(selectedEffect));
       UserAction action = UserAction::Record;
-      result = waitForUserAction(&selectedEffect, &action);
+      result = waitForUserAction(&selectedEffect, &volume, &action);
       if (result != ESP_OK) break;
 
       if (action == UserAction::ModeMenu) {
@@ -748,6 +810,13 @@ void audioDemoTask(void *) {
         if (result != ESP_OK) break;
         setStatusLeds(STATUS_LED_COUNT, 0, STATUS_LED_BRIGHTNESS, 0);
         vTaskDelay(pdMS_TO_TICKS(300));
+        continue;
+      }
+      if (action == UserAction::VolumeChanged) {
+        result = applyOutputVolume(volume);
+        if (result != ESP_OK) break;
+        showVolumeFeedback(volume);
+        vTaskDelay(pdMS_TO_TICKS(500));
         continue;
       }
 
@@ -790,7 +859,8 @@ void audioDemoTask(void *) {
 }
 
 extern "C" void onProjectInit() {
-  feedbackInfo(TAG, "Waveshare Voice Lab starting with GerNetiX basis software");
+  feedbackInfo(TAG,
+      "Nexi Basic starting from the Waveshare Voice Lab with GerNetiX basis software");
   BaseType_t created = xTaskCreate(
       audioDemoTask, "voice-lab-audio", 8192, nullptr, 5, nullptr);
   if (created != pdPASS) feedbackError(TAG, "Unable to start bounded audio demo task");

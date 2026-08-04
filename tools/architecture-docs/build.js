@@ -54,9 +54,18 @@ function readGraphDecisions(databasePath) {
   const db = new DatabaseSync(databasePath, { readOnly: true });
   try {
     const decisions = db.prepare(`
+      WITH current_decisions AS (
+        SELECT id, title, status, summary, owner_domain
+        FROM graph_authored_artifacts
+        WHERE artifact_type_id = 'architecture_decision'
+        UNION ALL
+        SELECT id, title, status, summary, owner_domain
+        FROM artifacts
+        WHERE artifact_type_id = 'architecture_decision'
+          AND id NOT IN (SELECT id FROM graph_authored_artifacts)
+      )
       SELECT id, title, status, summary, owner_domain
-      FROM artifacts
-      WHERE artifact_type_id = 'architecture_decision'
+      FROM current_decisions
       ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'approved' THEN 1 WHEN 'accepted' THEN 2 ELSE 3 END, title
     `).all();
     const errors = db.prepare("SELECT COUNT(*) AS count FROM validation_errors WHERE severity = 'error'").get().count;

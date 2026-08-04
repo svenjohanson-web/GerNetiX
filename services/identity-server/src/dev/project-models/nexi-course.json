@@ -1,0 +1,78 @@
+{
+  "slug": "nexi-voice-assistant",
+  "project": {
+    "slug": "nexi-voice-assistant",
+    "title": "Nexi – dein eigener Sprachassistent",
+    "area": "KI und Audio",
+    "summary": "Baue Nexi auf dem Waveshare ESP32-S3 nach, verstehe den lokalen Audiopfad und erweitere das Projekt später um eigene Funktionen und optionale KI.",
+    "learning_category": "embedded",
+    "tags": ["platform:esp32", "topic:audio", "topic:ai", "topic:privacy", "level:beginner"],
+    "access_model": "subscription",
+    "product_stage": "local_basic",
+    "hardware_profile_id": "hardware.processor_board.waveshare_esp32_s3_audio_board",
+    "default_device_id": "",
+    "source_files": [
+      { "path": "docs/nexi-entscheidungen.md", "role": "decision_record" },
+      { "path": "project-app/manifest.json", "role": "project_app_manifest" }
+    ],
+    "customer_entries": [
+      { "id": "use", "title": "Nexi verwenden", "summary": "Öffne die Kundenoberfläche einer bereits eingerichteten Nexi-Instanz.", "availability": "requires_instance" },
+      { "id": "build", "title": "Nexi nachbauen", "summary": "Hardware vorbereiten, lokale Firmware bauen, flashen und alle Audiofunktionen prüfen.", "availability": "available" },
+      { "id": "learn", "title": "Nexi verstehen", "summary": "Lerne Schritt für Schritt, wie Audio, Tasten, LEDs, Datenschutz und die optionale KI zusammenspielen.", "availability": "available" },
+      { "id": "develop", "title": "Nexi weiterentwickeln", "summary": "Übernimm Nexi als eigenes Entwicklungsprojekt und ergänze Funktionen, Projekt-App und später KI.", "availability": "preparing" }
+    ],
+    "steps": [
+      { "title": "Nexi kennenlernen", "text": "Nexi Basic funktioniert lokal als Stimmenstudio und benötigt noch keinen Cloud- oder KI-Provider.", "insight": "Ein nützliches Produkt und eine optionale KI-Erweiterung bleiben bewusst getrennt." },
+      { "title": "Hardware verstehen", "text": "Das Waveshare-Board verbindet ESP32-S3, Mikrofone, Audio-Codec, Verstärker, Tasten und LED-Ring.", "insight": "Ein Sprachassistent beginnt mit einem belastbaren Audiopfad, nicht mit einem Prompt." },
+      { "title": "Nexi nachbauen", "text": "Baue und flashe die Firmware und prüfe Aufnahme, Wiedergabe, Effekte, LEDs und Lautstärke am echten Board.", "insight": "Der reale Hardwaretest bleibt der entscheidende Nachweis." },
+      { "title": "Projekt-App verstehen", "text": "Nexis Elternbereich ist eine konkrete Ausprägung der allgemeinen GerNetiX-Projekt-App.", "insight": "Andere Projekte können aus demselben Vertrag Sensor- oder Steuerungsoberflächen erzeugen." },
+      { "title": "KI vorbereiten", "text": "Spracherkennung, LLM, Websuche und Sprachausgabe werden als austauschbare Plattformfähigkeiten geplant.", "insight": "Ohne freigegebenen Provider verlässt keine Aufnahme das Gerät." },
+      { "title": "Eigene Nexi-Version planen", "text": "Lege fest, welche Persönlichkeit, Modi, Werkzeuge und Kundenfelder deine eigene Variante benötigt.", "insight": "Die Plattform liefert Infrastruktur; das Projekt definiert den Assistenten." }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Nexi – vom lokalen Stimmenstudio zum eigenen Assistenten",
+    "summary": "Ein geführtes Hardware- und Entwicklungsprojekt mit optionaler KI-Erweiterung.",
+    "primary_source_path": "docs/nexi-entscheidungen.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      { "id": "nexi-local", "type": "story_slide", "title": "Nexi funktioniert zuerst lokal", "summary": "Aufnahme, Effekte und Wiedergabe bleiben auf dem ESP32.", "completion": { "type": "acknowledge", "label": "Lokale Basis verstanden" }, "payload": { "model_lines": [
+        { "label": "Nexi Basic", "text": "Fünf Stimmeffekte, Push-to-talk, LED-Rückmeldung und Lautstärke funktionieren ohne externen Dienst." },
+        { "label": "KI-Erweiterung", "text": "Geschichten, Wissen und Sprachspiele werden erst nach bewusster Providerfreigabe aktiviert." }
+      ] } },
+      { "id": "nexi-hardware", "type": "explanation", "title": "Die Audio-Hardware", "summary": "Mikrofone, Codecs, Verstärker, Tasten und LED-Ring bilden die lokale Ein-/Ausgabe.", "completion": { "type": "acknowledge", "label": "Hardware verstanden" }, "payload": { "cards": [
+        { "title": "Aufnahme", "text": "Der ES7210 liefert die beiden Mikrofonspuren an den ESP32-S3." },
+        { "title": "Wiedergabe", "text": "ES8311 und NS4150B treiben den angeschlossenen Lautsprecher." },
+        { "title": "Bedienung", "text": "Drei Funktionstasten und sieben RGB-LEDs machen den Zustand ohne Display sichtbar." }
+      ] } },
+      { "id": "nexi-build", "type": "implementation_plan", "title": "Nexi nachbauen und testen", "summary": "Der erste echte Durchstich endet am realen Lautsprecher.", "payload": { "tasks": [
+        "Waveshare ESP32-S3-AUDIO-Board und Lautsprecher vorbereiten",
+        "GerNetiX-Basissoftware und Nexi-Erweiterung bauen",
+        "Firmware per USB flashen",
+        "Aufnahme, fünf Effekte und fünf Lautstärkestufen prüfen",
+        "LED-Zustände und flüchtige Speicherung kontrollieren"
+      ] } },
+      { "id": "nexi-project-app", "type": "story_slide", "title": "Die Projekt-App", "summary": "Die Kundenoberfläche wird vom Projekt definiert und von GerNetiX sicher gerendert.", "completion": { "type": "acknowledge", "label": "Projekt-App verstanden" }, "payload": { "model_lines": [
+        { "label": "Nexi", "text": "Die Projekt-App wird zum Elternbereich mit Modi, Stimme, Zeiten und Limits." },
+        { "label": "Sensorprojekt", "text": "Derselbe Vertrag kann Messwerte, Diagramme und Warnschwellen darstellen." }
+      ] } },
+      { "id": "nexi-ai", "type": "explanation", "title": "Optionale KI", "summary": "STT, LLM, Websuche und TTS bleiben austauschbare Plattformdienste.", "completion": { "type": "acknowledge", "label": "KI-Grenze verstanden" }, "payload": { "cards": [
+        { "title": "Ohne Provider", "text": "Nexi Basic funktioniert lokal und sendet keine Aufnahme." },
+        { "title": "Mit Freigabe", "text": "Ein kurzlebiger Voice-Auftrag nutzt Kontingent, Projektregeln und einen konfigurierten Provider." }
+      ] } },
+      { "id": "nexi-own", "type": "implementation_plan", "title": "Deine eigene Nexi-Version", "summary": "Aus dem fertigen Produkt wird ein veränderbares Entwicklungsprojekt.", "payload": { "tasks": [
+        "Persönlichkeit und Namen festlegen",
+        "Lokale und KI-gestützte Modi auswählen",
+        "Projekt-App-Felder definieren",
+        "Werkzeuge und Sicherheitsregeln bestimmen",
+        "Änderung commitgebunden bauen und am Gerät prüfen"
+      ] } }
+    ]
+  },
+  "sources": [
+    { "path": "docs/nexi-entscheidungen.md", "role": "decision_record", "content": "# Meine Nexi-Version\n\n- Name und Persönlichkeit:\n- Lokale Modi:\n- Optionale KI-Modi:\n- Tasten und LEDs:\n- Kundenoberfläche:\n- Datenschutz und Aufbewahrung:\n" },
+    { "path": "project-app/manifest.json", "role": "project_app_manifest", "content": "{\n  \"schema\": \"gernetix.project-app/v1\",\n  \"manifest_version\": 1,\n  \"app_id\": \"nexi\",\n  \"title\": \"Nexi Elternbereich\",\n  \"description\": \"Lege fest, wie Nexi in diesem Projekt verwendet werden darf.\",\n  \"settings\": [\n    { \"key\": \"cloud_enabled\", \"type\": \"boolean\", \"label\": \"KI-Funktionen\", \"description\": \"Sprachaufnahmen dürfen nur für freigegebene Anfragen verarbeitet werden.\", \"default\": false },\n    { \"key\": \"web_search_enabled\", \"type\": \"boolean\", \"label\": \"Internetsuche\", \"description\": \"Nexi darf aktuelle Informationen im Internet suchen.\", \"default\": true },\n    { \"key\": \"assistant_mode\", \"type\": \"select\", \"label\": \"Standardmodus\", \"default\": \"learn\", \"options\": [{ \"value\": \"learn\", \"label\": \"Lernen und Fragen\" }, { \"value\": \"story\", \"label\": \"Geschichten\" }, { \"value\": \"play\", \"label\": \"Sprachspiele\" }] },\n    { \"key\": \"voice\", \"type\": \"select\", \"label\": \"Stimme\", \"default\": \"warm\", \"options\": [{ \"value\": \"warm\", \"label\": \"Warm\" }, { \"value\": \"lively\", \"label\": \"Lebhaft\" }, { \"value\": \"calm\", \"label\": \"Ruhig\" }] },\n    { \"key\": \"quiet_hours\", \"type\": \"schedule\", \"label\": \"Ruhezeit\", \"default\": { \"enabled\": true, \"start\": \"20:00\", \"end\": \"07:00\", \"timezone\": \"Europe/Berlin\" } }\n  ],\n  \"bindings\": [\n    { \"id\": \"cloud\", \"type\": \"setting\", \"key\": \"cloud_enabled\" },\n    { \"id\": \"web_search\", \"type\": \"setting\", \"key\": \"web_search_enabled\" },\n    { \"id\": \"mode\", \"type\": \"setting\", \"key\": \"assistant_mode\" },\n    { \"id\": \"voice_choice\", \"type\": \"setting\", \"key\": \"voice\" },\n    { \"id\": \"quiet\", \"type\": \"setting\", \"key\": \"quiet_hours\" },\n    { \"id\": \"connection\", \"type\": \"device_status\", \"field\": \"connection_state\" },\n    { \"id\": \"usage\", \"type\": \"ai_usage\", \"field\": \"monthly_requests\" }\n  ],\n  \"actions\": [\n    { \"id\": \"save_cloud\", \"type\": \"update_setting\", \"setting_key\": \"cloud_enabled\" },\n    { \"id\": \"save_web_search\", \"type\": \"update_setting\", \"setting_key\": \"web_search_enabled\" },\n    { \"id\": \"save_mode\", \"type\": \"update_setting\", \"setting_key\": \"assistant_mode\" },\n    { \"id\": \"save_voice\", \"type\": \"update_setting\", \"setting_key\": \"voice\" },\n    { \"id\": \"save_quiet\", \"type\": \"update_setting\", \"setting_key\": \"quiet_hours\" }\n  ],\n  \"pages\": [\n    { \"id\": \"overview\", \"title\": \"Übersicht\", \"widgets\": [{ \"id\": \"intro\", \"type\": \"text\", \"text\": \"Nexi Basic arbeitet lokal. KI wird erst nach deiner Freigabe aktiv.\" }, { \"id\": \"online\", \"type\": \"status\", \"title\": \"Gerät\", \"binding_id\": \"connection\" }, { \"id\": \"ai_usage\", \"type\": \"metric\", \"title\": \"KI-Anfragen im Monat\", \"binding_id\": \"usage\" }] },\n    { \"id\": \"assistant\", \"title\": \"Assistent\", \"widgets\": [{ \"id\": \"cloud_toggle\", \"type\": \"toggle\", \"binding_id\": \"cloud\", \"action_id\": \"save_cloud\" }, { \"id\": \"search_toggle\", \"type\": \"toggle\", \"binding_id\": \"web_search\", \"action_id\": \"save_web_search\" }, { \"id\": \"mode_select\", \"type\": \"select\", \"binding_id\": \"mode\", \"action_id\": \"save_mode\" }, { \"id\": \"voice_select\", \"type\": \"select\", \"binding_id\": \"voice_choice\", \"action_id\": \"save_voice\" }] },\n    { \"id\": \"times\", \"title\": \"Zeiten\", \"widgets\": [{ \"id\": \"quiet_schedule\", \"type\": \"schedule\", \"binding_id\": \"quiet\", \"action_id\": \"save_quiet\" }] }\n  ]\n}\n" }
+  ]
+}

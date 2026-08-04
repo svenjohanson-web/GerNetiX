@@ -1257,6 +1257,17 @@ button.danger:hover {
 .learning-project-lesson-overview li p { margin: 0; color: var(--muted); line-height: 1.45; }
 .learning-project-lesson-overview li small { color: var(--accent); font-weight: 750; }
 .learning-project-overview-actions { justify-content: flex-start; }
+.learning-product-entries { display: grid; gap: 14px; }
+.learning-product-entries > header { display: grid; gap: 5px; }
+.learning-product-entries > header h3, .learning-product-entries > header p { margin: 0; }
+.learning-product-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.learning-product-entry { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 14px; border: 1px solid var(--line); border-radius: 11px; padding: 15px; background: #0b1018; }
+.learning-product-entry div { display: grid; gap: 6px; }
+.learning-product-entry span { color: #67e8f9; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.learning-product-entry h4, .learning-product-entry p { margin: 0; }
+.learning-product-entry p { color: var(--muted); line-height: 1.5; }
+.learning-product-entry.is-preparing, .learning-product-entry.is-requires_instance { border-style: dashed; }
+@media (max-width: 720px) { .learning-product-entry-grid { grid-template-columns: 1fr; } }
 .learning-entry-context { color: var(--muted); font-size: 11px; }
 @media (max-width: 640px) {
   .learning-project-overview-actions { align-items: stretch; flex-direction: column; }
@@ -6623,3 +6634,11 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
   font-size: .78rem;
 }
 .ide-software-unit-control select { max-width: 240px; }
+.project-app-shell-header { margin-bottom: 1rem; }
+.project-app-page-nav { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.project-app-page-nav button[aria-current="page"] { border-color: var(--accent, #0f766e); }
+.project-app-widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.project-app-widget { padding: 1rem; border: 1px solid var(--line, #d9e2e8); border-radius: .75rem; background: var(--surface, #fff); }
+.project-app-control, .project-app-schedule { display: grid; gap: .5rem; }
+.project-app-chart { display: flex; align-items: end; gap: 3px; min-height: 7rem; }
+.project-app-chart span { flex: 1; min-height: 2px; height: calc(var(--project-app-value) * 100%); background: var(--accent, #0f766e); }

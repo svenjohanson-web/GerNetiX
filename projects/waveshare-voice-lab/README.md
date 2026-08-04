@@ -1,6 +1,8 @@
-# Waveshare Voice Lab
+# Nexi Basic - Waveshare Voice Lab
 
-Dieses lokale Referenzprojekt startet mit der vollstaendigen, unveraenderten
+Nexi Basic ist die lokale, noch cloudfreie erste Produktstufe des geplanten
+GerNetiX-Sprachassistenten. Das technische Waveshare Voice Lab bleibt sein
+Hardware-Vorlaeufer: Dieses Referenzprojekt startet mit der vollstaendigen, unveraenderten
 GerNetiX-ESP32-Basissoftware und bindet die Hardware-Erprobung ausschliesslich
 ueber `onProjectInit()` und `onProjectTick()` ein.
 
@@ -53,9 +55,30 @@ fluechtigen PSRAM erhalten. Jeder Wechsel zum naechsten Effekt spielt sie sofort
 mit der neuen Auswahl ab. Erst der Beginn einer neuen Aufnahme ueberschreibt den
 alten Puffer.
 
-Fuer den aktuellen Hardwaretest ist der ES8311-Ausgang auf 100 Prozent gesetzt.
-Der digitale Audiopfad behaelt seinen Clipping-Schutz; beim ersten Test ist
-trotzdem ausreichend Abstand zum Lautsprecher einzuhalten.
+Die dritte Funktionstaste KEY3 (TCA9555 EXIO11) regelt die Wiedergabe in fuenf
+Stufen von 20 bis 100 Prozent. Ein kurzer Druck wechselt zyklisch zur naechsten
+Stufe und hebt eine Stummschaltung auf. Ein Druck von etwa einer Sekunde
+schaltet stumm beziehungsweise stellt die zuvor gewaehlte Stufe wieder her.
+Zur Rueckmeldung zeigen die LEDs kurz gelb die gewaehlte Stufe; bei
+Stummschaltung leuchten alle LEDs kurz orange. Die Lautstaerkeeinstellung ist
+rein lokal und wird nach einem Neustart nicht wiederhergestellt.
+
+Beim Start ist der ES8311-Ausgang fuer den aktuellen Hardwaretest auf 100
+Prozent gesetzt. Der digitale Audiopfad behaelt seinen Clipping-Schutz; beim
+ersten Test ist trotzdem ausreichend Abstand zum Lautsprecher einzuhalten.
+
+## Bedienung
+
+| Taste | Kurz druecken | Gedrueckt halten |
+| --- | --- | --- |
+| KEY1 / links | naechster Effekt oder Modus | im Stimmenstudio zurueck zur Modusauswahl |
+| KEY2 / Mitte | Auswahl bestaetigen | Aufnahme nur fuer die Dauer des Tastendrucks |
+| KEY3 / rechts | naechste Lautstaerkestufe | stumm beziehungsweise wieder hoerbar |
+
+Gruen steht fuer lokale Bereitschaft, Rot fuer Aufnahme und Blau fuer
+Wiedergabe. Der violette KI-Geschichtenmodus ist nur als Vorschau auf die
+spaetere, allgemeine GerNetiX-Assistenteninfrastruktur enthalten. Er nimmt
+nichts auf und loest weder Netzwerkzugriffe noch Audio-Uploads aus.
 
 ## Lokaler Build
 

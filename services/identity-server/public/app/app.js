@@ -86,6 +86,7 @@ const routeMap = {
   learn: "learnView",
   "learning-project-overview": "learningProjectOverviewView",
   "learning-project": "learningProjectView",
+  "project-app": "projectAppView",
   quiz: "quizView",
   ide: "ideView",
   debug: "debugView",
@@ -114,6 +115,7 @@ let guidedProjectViewController = null;
 let developmentPlatformController = null;
 let projectRepositoryCardController = null;
 let learningProjectController = null;
+let projectAppController = null;
 let quizController = null;
 let lastRenderedRoute = "";
 let processorBoardCatalogLoadPromise = null;
@@ -186,4 +188,16 @@ function projectRepositoryCard() {
     projectRepositoryCardController = ProjectRepositoryCard.create({ getJson, escapeHtml, escapeAttribute });
   }
   return projectRepositoryCardController;
+}
+
+function projectApp() {
+  if (!projectAppController) {
+    projectAppController = ProjectAppController.create({
+      getJson,
+      putJson,
+      renderer: ProjectAppRenderer,
+      escapeHtml,
+    });
+  }
+  return projectAppController;
 }

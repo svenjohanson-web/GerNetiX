@@ -5,7 +5,7 @@ function createConfig(env = process.env) {
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700/api/device-management",
     aiUsageBaseUrl: env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000/api/ai-usage",
     provider: env.DEVICE_VOICE_PROVIDER || "disabled",
-    model: env.DEVICE_VOICE_MODEL || "gpt-5.6-luna",
+    model: env.DEVICE_VOICE_MODEL || "device-voice-pipeline-v1",
     sessionTtlSeconds: boundedNumber(env.DEVICE_VOICE_SESSION_TTL_SECONDS, 120, 30, 300),
     maximumRecordingSeconds: boundedNumber(env.DEVICE_VOICE_MAX_RECORDING_SECONDS, 15, 1, 15),
     deviceSessionsPerMinute: boundedNumber(env.DEVICE_VOICE_DEVICE_SESSIONS_PER_MINUTE, 6, 1, 30),

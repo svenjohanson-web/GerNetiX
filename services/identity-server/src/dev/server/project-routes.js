@@ -158,6 +158,28 @@ function registerProjectRoutes(dependencies) {
     });
     sendJson(res, 200, result);
   });
+  for (const method of ["GET", "PUT"]) {
+    registerProjectPattern(method, /^\/api\/platform\/projects\/([^/]+)\/project-app$/, async ({ req, res, match, session }) => {
+      const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+      const accountId = projectServerUserId(session);
+      const servicePath = `/api/projects/${encodeURIComponent(project.project_server_id)}/project-app`;
+      if (method === "GET") {
+        const query = new URLSearchParams({ account_id: accountId });
+        sendJson(res, 200, await projectServerJson(`${servicePath}?${query}`));
+        return;
+      }
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await projectServerJson(servicePath, {
+        method: "PUT",
+        body: {
+          account_id: accountId,
+          manifest_version: body.manifest_version,
+          expected_revision: body.expected_revision,
+          values: body.values,
+        },
+      }));
+    });
+  }
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/basissoftware-incidents$/, async ({ req, res, match, session }) => {
     const projectId = decodeURIComponent(match[1]);
     const project = await requireSessionProject(session, projectId);

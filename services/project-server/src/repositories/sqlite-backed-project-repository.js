@@ -14,6 +14,7 @@ class SqliteBackedProjectRepository extends FileBackedProjectRepository {
         consents: [],
         learningProgress: [],
         versions: [],
+        projectAppSettings: [],
       },
       collectionMap: {
         projects: "projects",
@@ -25,6 +26,7 @@ class SqliteBackedProjectRepository extends FileBackedProjectRepository {
         consents: "consents",
         learningProgress: "learning_progress",
         versions: "versions",
+        projectAppSettings: "project_app_settings",
       },
     }));
   }

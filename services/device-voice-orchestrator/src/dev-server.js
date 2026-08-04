@@ -20,6 +20,6 @@ async function main() {
   });
   server.listen(config.port, config.host, () => {
     console.log(`Device Voice Orchestrator: http://${config.host}:${config.port}`);
-    console.log("Provider is disabled until an approved voice integration is configured.");
+    console.log(`Provider: ${config.provider}`);
   });
 }

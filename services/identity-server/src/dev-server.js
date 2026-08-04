@@ -90,6 +90,7 @@ const { createInterfaceCallTelemetry } = require("../../shared/persistence/inter
 const { PostgresStateStore } = require("../../shared/persistence/postgres-state-store");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
+const { createNexiCourseModel } = require("./dev/project-models/nexi-course");
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
 const { createHomeAutomationSensorsCourseModel } = require("./dev/project-models/home-automation-sensors-course");
@@ -274,6 +275,7 @@ const createAccountTransparency = createAccountTransparencyFactory({
 });
 const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorkspaceText });
 const smartAssistantCourseModel = createSmartAssistantCourseModel();
+const nexiCourseModel = createNexiCourseModel();
 const buttonToSmartphoneNotificationCourseModel = createButtonToSmartphoneNotificationCourseModel();
 const homeAutomationNetworkCourseModel = createHomeAutomationNetworkCourseModel();
 const homeAutomationSensorsCourseModel = createHomeAutomationSensorsCourseModel();
@@ -3375,6 +3377,8 @@ function toPlatformProject(project) {
     projectStory: project.project_story || null,
     requiredCapabilityIds: project.required_capability_ids,
     accessModel: project.access_model || "subscription",
+    customerEntries: project.customer_entries || [],
+    productStage: project.product_stage || "",
     buildConfig: project.build_config,
     softwareUnits: platformSoftwareUnits(project),
     activeSoftwareUnitId: platformActiveSoftwareUnitId(project),
@@ -3979,6 +3983,7 @@ function createUserIdeState() {
       tags: ["platform:arduino", "platform:avr", "topic:bare-metal"],
     }),
     tamagotchiEntryCourseModel.createProject(project, step),
+    nexiCourseModel.createProject(project, step),
     smartAssistantCourseModel.createProject(project, step),
     buttonToSmartphoneNotificationCourseModel.createProject(project, step),
     homeAutomationNetworkCourseModel.createProject(project, step),
@@ -4058,7 +4063,9 @@ function project(slug, title, area, summary, steps, options = {}) {
       ? options.required_capability_ids
       : (requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"]),
     access_model: options.access_model || accessModelsBySlug[slug] || "subscription",
+    customer_entries: Array.isArray(options.customer_entries) ? options.customer_entries : [],
     learning_category: learningCategory,
+    product_stage: String(options.product_stage || ""),
     tags: learningTags,
     development_lessons: options.development_lessons || [],
     project_story: options.project_story || null,
@@ -4094,6 +4101,7 @@ function normalizeLearningProjectTags(value) {
     "topic:actuators",
     "topic:ai",
     "topic:automation",
+    "topic:audio",
     "topic:bare-metal",
     "topic:firmware",
     "topic:home-automation",
@@ -4158,6 +4166,12 @@ function projectViewManifest(project, options = {}) {
   }
   if (project.slug === smartAssistantCourseModel.slug) {
     return smartAssistantCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === nexiCourseModel.slug) {
+    return nexiCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -5223,6 +5237,9 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === smartAssistantCourseModel.slug) {
     return smartAssistantCourseModel.createSources();
+  }
+  if (project.slug === nexiCourseModel.slug) {
+    return nexiCourseModel.createSources();
   }
   if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
     return buttonToSmartphoneNotificationCourseModel.createSources(options);

@@ -75,6 +75,22 @@ function createHttpApp(options) {
       sendJson(res, 200, await service.endDebugSession(decodeURIComponent(debugSession[1])));
       return;
     }
+
+    const projectApp = path.match(new RegExp(`^${prefix}/([^/]+)/project-app$`));
+    if (req.method === "GET" && projectApp) {
+      sendJson(res, 200, await service.getProjectAppSettings(
+        decodeURIComponent(projectApp[1]),
+        url.searchParams.get("account_id") || "",
+      ));
+      return;
+    }
+    if (req.method === "PUT" && projectApp) {
+      sendJson(res, 200, await service.updateProjectAppSettings(
+        decodeURIComponent(projectApp[1]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
     const debugSessionActivity = path.match(new RegExp(`^${prefix}/([^/]+)/debug-session/activity$`));
     if (req.method === "POST" && debugSessionActivity) {
       sendJson(res, 200, await service.touchDebugSession(decodeURIComponent(debugSessionActivity[1])));

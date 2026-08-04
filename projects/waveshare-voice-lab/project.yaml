@@ -1,8 +1,15 @@
 project:
   id: waveshare-voice-lab
-  name: Waveshare Voice Lab
+  name: Nexi Basic (Waveshare Voice Lab)
   board_profile_id: hardware.processor_board.waveshare_esp32_s3_audio_board
-  purpose: local_hardware_bring_up
+  purpose: local_voice_assistant_reference
+
+product:
+  id: nexi-basic
+  name: Nexi Basic
+  stage: local_reference
+  derived_from: waveshare_voice_lab
+  cloud_ai: disabled
 
 firmware:
   basis: gernetix-runtime-basissoftware
@@ -13,10 +20,14 @@ features:
   wifi: true
   audio_bus_probe: true
   voice_recording: true
-  voice_effects: false
+  voice_effects: true
+  effect_count: 5
+  mode_selection: true
+  local_volume_control: true
+  volume_steps: 5
 
 privacy:
   upload_recordings: false
   persist_recordings: false
-  recording_seconds: 3
+  recording_seconds: 15
   storage: psram_only

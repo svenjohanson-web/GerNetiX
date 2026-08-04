@@ -171,6 +171,15 @@
         </section>
       </section>
 
+      <section id="projectAppView" class="view hidden" aria-labelledby="projectAppTitle">
+        <header class="project-app-shell-header">
+          <p class="eyebrow">Kundenbereich</p>
+          <h1 id="projectAppTitle">Projekt-App</h1>
+          <p>Die Oberfläche und ihre erlaubten Einstellungen werden von deinem Projekt definiert.</p>
+        </header>
+        <div id="projectAppContent"></div>
+      </section>
+
       <section id="aboutView" class="view hidden about-view">
         <section class="panel about-view-hero" aria-labelledby="internalAboutTitle">
           <p class="eyebrow" data-i18n="about.eyebrow">Über uns</p>
@@ -1547,6 +1556,8 @@
     <script defer src="/app/community-portal-controller.js?v=20260802-community-portal"></script>
     <script defer src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
     <script defer src="/app/app-project-controller.js?v=20260801-app-modules-1"></script>
+    <script defer src="/app/project-app-renderer.js?v=20260804-project-app-1"></script>
+    <script defer src="/app/project-app-controller.js?v=20260804-project-app-1"></script>
     <script defer src="/app/app-ide-controller.js?v=20260804-debug-session-1"></script>
     <script defer src="/app/usb-flash-target-model.js?v=20260801-partial-usb-flash"></script>
     <script defer src="/app/app-device-build-controller.js?v=20260804-debug-artifact-protection-1"></script>

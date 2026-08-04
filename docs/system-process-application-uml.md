@@ -53,7 +53,7 @@ flowchart LR
   codex["Codex"]
 
   subgraph applications["Applikationen / HMI"]
-    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn,<br/>/app/development-platform, /app/development-platform/hardware, /app/ide<br/>Identity Server :4300"]
+    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn,<br/>/app/development-platform, /app/ide, /app/project-app<br/>Identity Server :4300"]
     recoveryHmi["KI-geführtes Hardware-Labor + Recovery HMI<br/>Board untersuchen / retten / USB Discovery<br/>:5100"]
     provisioningHmi["Provisioning Tool HMI<br/>Factory USB Provisioning<br/>:4500"]
     contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
@@ -120,7 +120,7 @@ flowchart LR
     identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     releaseDb[("Plattform-Releases SQLite<br/>public / authenticated / entitled / internal")]
     accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
-    projectDb[("Project PostgreSQL<br/>Projekt, Owner, Rechte, Repository-/Commitreferenzen,<br/>Build-Metadaten und Fortschritt")]
+    projectDb[("Project PostgreSQL<br/>Projekt, Owner, Rechte, Repository-/Commitreferenzen,<br/>Build-Metadaten, Fortschritt und Projekt-App-Laufzeitwerte")]
     forgejoDb[("Forgejo PostgreSQL + Repository-Volume<br/>eigene Datenbank forgejo + forgejo_data<br/>Projektdateien und Git-Historie")]
     projectLegacyDb[("Projekt Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     buildArtifactDb[("Build PostgreSQL<br/>Jobregister, Worker, Abbruchstatus, Locks, Cache-Generationen,<br/>Firmware, ELF, HEX, Map, Log")]
@@ -164,6 +164,7 @@ flowchart LR
   sqliteExplorer --> graphDb
 
   identity --> projectServer
+  platformUi -->|"deklarative Projekt-App<br/>sessiongebundene Einstellungen"| identity
   projectServer -->|"Repository-Lifecycle + atomare Commits"| forgejo
   identity -->|"Build + Prebuild"| buildRouter
   identity -->|"typisierte Compute-Jobs"| workerCoordinator
@@ -302,7 +303,7 @@ flowchart LR
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, unveraenderliche Account-Boardversionen, Purchase Contexts, Support-Status |
 | Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse konto- und projektpartitioniert in `telemetry_*` mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
-| Project Server | 4800 | `http://127.0.0.1:4800/` | Projektidentitaet, Owner, Rechte, lokal implementierter optionaler Forgejo-/Git-Adapter mit Repository-Bindung, Initialcommit, Baumlesen und atomarem Mehrdatei-Commit; SQL-Quellen bleiben bis zum kontrollierten Cutover Altpfad |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Projektidentitaet, Owner, Rechte, deklarative Projekt-App-Manifeste aus versionierten Projektquellen sowie accountgebundene Projekt-App-Laufzeitwerte mit Revisionsschutz; lokal implementierter optionaler Forgejo-/Git-Adapter mit Repository-Bindung, Initialcommit, Baumlesen und atomarem Mehrdatei-Commit; SQL-Quellen bleiben bis zum kontrollierten Cutover Altpfad |
 | Forgejo | intern, Betriebsaufnahme offen | nur Backend-Netz; kein oeffentlicher Listener in der ersten Stufe | Ziel fuer private Git-Repositories, Systemvorlagen und echte Historie; Adapter, gepinnter Container, eigene PostgreSQL-Datenbank `forgejo`, `forgejo_data` sowie isolierte Container- und Restore-Nachweise lokal umgesetzt, Staging-Betrieb und Cutover noch offen |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | PostgreSQL-persistente Angebote, Warenkoerbe, Bestellungen und Purchase Contexts; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | VPS-intern sowie ausschliesslich am WireGuard-Interface `http://10.77.0.1:4910/`; kein oeffentlicher Listener | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als PostgreSQL-persistente Quelle |
@@ -329,6 +330,7 @@ flowchart LR
 | Quelle | Ziel | Grund |
 | --- | --- | --- |
 | GerNetiX Plattform UI / Identity Server | Project Server | Projekte, commitgebundene Quellen, sessiongeschuetzte Repository-Karte mit Dateibaum/Historie/Diffs, agentische KI-Such-/Lesewerkzeuge statt pauschaler Dateiuebergabe, persistierte Project-Device-Allocation, Build-Jobs sowie interner Abgleich von wirksamem Accountplan, Policy-Version, Nutzung und `plan_locked` |
+| GerNetiX Projekt-App / Identity Server | Project Server | Liest das strikt validierte `project-app/manifest.json` des eigenen Projekts und speichert ausschliesslich allowlist-validierte Laufzeitwerte unter der serverseitig abgeleiteten Account- und Projektbindung; der Browser liefert weder Account-ID noch ausfuehrbaren Code oder freie Endpunkte. |
 | Project Server | Forgejo | Private Repositorys provisionieren, Dateibaeume an festem Commit lesen und bestaetigte Mehrdatei-Aenderungen atomar mit erwartetem Head-SHA committen |
 | Forgejo | PostgreSQL-Datenbank `forgejo` und `forgejo_data` | Forgejo-eigene Verwaltungsdaten getrennt von `gernetix_runtime` sowie Git-Objekte und Repository-Historie persistent speichern |
 | GerNetiX Plattform UI / Identity Server | Project Server | Aktuelle Lesson, aktueller Step und abgeschlossene Steps eines accountgebundenen Lernprojekts laden und speichern |

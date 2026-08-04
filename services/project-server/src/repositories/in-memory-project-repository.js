@@ -10,6 +10,7 @@ class InMemoryProjectRepository {
     this.learningProgress = new Map((seed.learningProgress || []).map((item) => [item.project_id, clone(item)]));
     this.resourcePolicies = new Map((seed.resourcePolicies || []).map((item) => [item.plan_id, clone(item)]));
     this.versions = new Map((seed.versions || []).map((item) => [item.version_id, clone(item)]));
+    this.projectAppSettings = new Map((seed.projectAppSettings || []).map((item) => [projectAppSettingsKey(item.project_id, item.account_id), clone(item)]));
   }
 
   saveProject(project) {
@@ -148,8 +149,21 @@ class InMemoryProjectRepository {
       .sort((left, right) => right.created_at.localeCompare(left.created_at)).map(clone);
   }
 
+  findProjectAppSettings(projectId, accountId) {
+    return clone(this.projectAppSettings.get(projectAppSettingsKey(projectId, accountId)));
+  }
+
+  compareAndSetProjectAppSettings(settings, expectedRevision) {
+    const id = projectAppSettingsKey(settings.project_id, settings.account_id);
+    const current = this.projectAppSettings.get(id);
+    const currentRevision = current?.revision || 0;
+    if (currentRevision !== expectedRevision) return { saved: false, current: clone(current) };
+    this.projectAppSettings.set(id, clone(settings));
+    return { saved: true, value: clone(settings) };
+  }
+
   deleteProject(projectId) {
-    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0, learning_progress: 0, versions: 0 };
+    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0, learning_progress: 0, versions: 0, project_app_settings: 0 };
     for (const [id, source] of this.sources) if (source.project_id === projectId) { this.sources.delete(id); deleted.sources += 1; }
     for (const [id, job] of this.buildJobs) if (job.project_id === projectId) { this.buildJobs.delete(id); deleted.build_jobs += 1; }
     for (const [id, artifact] of this.artifacts) if (artifact.project_id === projectId) { this.artifacts.delete(id); deleted.artifacts += 1; }
@@ -158,6 +172,7 @@ class InMemoryProjectRepository {
     for (const [id, consent] of this.consents) if (feedbackIds.has(consent.feedback_id)) { this.consents.delete(id); deleted.consents += 1; }
     if (this.learningProgress.delete(projectId)) deleted.learning_progress += 1;
     for (const [id, version] of this.versions) if (version.project_id === projectId) { this.versions.delete(id); deleted.versions += 1; }
+    for (const [id, settings] of this.projectAppSettings) if (settings.project_id === projectId) { this.projectAppSettings.delete(id); deleted.project_app_settings += 1; }
     this.projects.delete(projectId);
     return deleted;
   }
@@ -165,6 +180,10 @@ class InMemoryProjectRepository {
 
 function key(projectId, sourcePath) {
   return `${projectId}:${sourcePath}`;
+}
+
+function projectAppSettingsKey(projectId, accountId) {
+  return `${projectId}:${accountId}`;
 }
 
 function clone(value) {

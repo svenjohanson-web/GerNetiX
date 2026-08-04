@@ -211,6 +211,7 @@ function renderRoute() {
   }
   if (route === "learning-project-overview") renderLearningProjectOverview();
   if (route === "learning-project") learningProject().render();
+  if (route === "project-app") projectApp().render(new URLSearchParams(window.location.search).get("project") || "");
   if (route === "quiz") quiz().render();
   if (route === "device-recovery") {
     renderDeviceRecovery();
@@ -331,6 +332,11 @@ function currentLocationTrail(route) {
       { label: "Lernplattform", route: "/app/learn/" },
       { label: "Lernprojekt", route: "" },
     ],
+    "project-app": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: project?.name || "Projekt", route: project ? `/app/ide/?project=${encodeURIComponent(project.id)}` : "" },
+      { label: "Projekt-App", route: "" },
+    ],
     quiz: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Quiz", route: "/app/quiz/" },
@@ -424,6 +430,7 @@ function routeName() {
 
 function topLevelRouteName(route) {
   if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
+  if (route === "project-app") return "development-platform";
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
   if (["ide", "debug", "development-hardware"].includes(route)) return "development-platform";
   return route;

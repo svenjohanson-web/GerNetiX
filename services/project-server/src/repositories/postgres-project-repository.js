@@ -155,6 +155,19 @@ class PostgresProjectRepository {
       CREATE INDEX IF NOT EXISTS idx_project_versions_snapshot
         ON project_versions (project_id, snapshot_sha256);
 
+      CREATE TABLE IF NOT EXISTS project_app_settings (
+        project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
+        account_id text NOT NULL,
+        manifest_version integer NOT NULL,
+        revision integer NOT NULL,
+        raw_json jsonb NOT NULL,
+        created_at timestamptz NOT NULL,
+        updated_at timestamptz NOT NULL,
+        PRIMARY KEY (project_id, account_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_app_settings_account
+        ON project_app_settings (account_id, updated_at DESC);
+
       CREATE TABLE IF NOT EXISTS project_migrations (
         migration_id text PRIMARY KEY,
         applied_at timestamptz NOT NULL DEFAULT now()
@@ -351,6 +364,34 @@ class PostgresProjectRepository {
     ));
   }
 
+  async findProjectAppSettings(projectId, accountId) {
+    return first(await this.pool.query(
+      "SELECT raw_json FROM project_app_settings WHERE project_id=$1 AND account_id=$2",
+      [projectId, accountId],
+    ));
+  }
+
+  async compareAndSetProjectAppSettings(settings, expectedRevision) {
+    const result = await this.pool.query(`
+      INSERT INTO project_app_settings
+        (project_id, account_id, manifest_version, revision, raw_json, created_at, updated_at)
+      SELECT $1,$2,$3,$4,$5,$6,$7
+      WHERE $8=0
+      ON CONFLICT (project_id, account_id) DO UPDATE SET
+        manifest_version=EXCLUDED.manifest_version,
+        revision=EXCLUDED.revision,
+        raw_json=EXCLUDED.raw_json,
+        updated_at=EXCLUDED.updated_at
+      WHERE project_app_settings.revision=$8
+      RETURNING raw_json
+    `, [
+      settings.project_id, settings.account_id, settings.manifest_version, settings.revision,
+      settings, settings.created_at, settings.updated_at, expectedRevision,
+    ]);
+    if (result.rowCount) return { saved: true, value: clone(result.rows[0].raw_json) };
+    return { saved: false, current: await this.findProjectAppSettings(settings.project_id, settings.account_id) };
+  }
+
   async saveFeedback(feedback) {
     await this.pool.query(`
       INSERT INTO project_feedback
@@ -507,6 +548,7 @@ class PostgresProjectRepository {
         ["artifacts", "project_artifacts"],
         ["feedback", "project_feedback"],
         ["learning_progress", "project_learning_progress"],
+        ["project_app_settings", "project_app_settings"],
       ]) {
         counts[key] = Number((await client.query(
           `SELECT COUNT(*) AS count FROM ${table} WHERE project_id=$1`,

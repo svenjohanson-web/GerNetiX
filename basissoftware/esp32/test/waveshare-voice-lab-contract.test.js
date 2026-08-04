@@ -62,7 +62,7 @@ test("Waveshare Voice Lab probes the documented audio control devices", () => {
   assert.match(source, /RECORD_BUTTON_MASK = 0x04/);
   assert.match(source, /EFFECT_BUTTON_MASK = 0x02/);
   assert.match(source, /waitForButtonState\(RECORD_BUTTON_MASK, false\)/);
-  assert.match(source, /waitForUserAction\(&selectedEffect, &action\)/);
+  assert.match(source, /waitForUserAction\(&selectedEffect, &volume, &action\)/);
   assert.match(source, /UserAction::EffectChanged/);
   assert.match(source, /UserAction::ModeMenu/);
   assert.match(source, /selectOperatingMode\(&operatingMode\)/);
@@ -83,4 +83,31 @@ test("Waveshare Voice Lab probes the documented audio control devices", () => {
   assert.match(source, /recordedFrames \/ 2/);
   assert.match(source, /ECHO_DELAY_FRAMES = SAMPLE_RATE \/ 4/);
   assert.match(source, /sample = \(sample \/ 1024\) \* 1024/);
+  assert.match(source, /VOLUME_BUTTON_MASK = 0x08/);
+  assert.match(source, /OUTPUT_VOLUME_LEVELS\{\{20, 40, 60, 80, 100\}\}/);
+  assert.match(source, /volume->muted = !volume->muted/);
+  assert.match(source, /esp_codec_dev_set_out_vol\(playDevice, outputVolume\)/);
+  assert.match(source, /UserAction::VolumeChanged/);
+  assert.match(source, /Nexi Basic local voice studio is starting/);
+  assert.doesNotMatch(source, /esp_http_client|https?:\/\/|socket\(/);
+});
+
+test("Nexi Basic manifest and project guide describe the local product truthfully", () => {
+  const projectRoot = path.join(repositoryRoot, "projects/waveshare-voice-lab");
+  const manifest = fs.readFileSync(path.join(projectRoot, "project.yaml"), "utf8");
+  const readme = fs.readFileSync(path.join(projectRoot, "README.md"), "utf8");
+
+  assert.match(manifest, /name: Nexi Basic \(Waveshare Voice Lab\)/);
+  assert.match(manifest, /id: nexi-basic/);
+  assert.match(manifest, /cloud_ai: disabled/);
+  assert.match(manifest, /voice_effects: true/);
+  assert.match(manifest, /effect_count: 5/);
+  assert.match(manifest, /volume_steps: 5/);
+  assert.match(manifest, /recording_seconds: 15/);
+  assert.match(manifest, /upload_recordings: false/);
+  assert.match(manifest, /persist_recordings: false/);
+
+  assert.match(readme, /Nexi Basic ist die lokale, noch cloudfreie erste Produktstufe/);
+  assert.match(readme, /KEY3 .* regelt die Wiedergabe in fuenf/);
+  assert.match(readme, /Er nimmt\s+nichts auf und loest weder Netzwerkzugriffe noch Audio-Uploads aus/);
 });

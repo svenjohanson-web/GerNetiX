@@ -14,6 +14,11 @@ const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = req
 const { validateSha } = require("../repository-store/git-project-repository-store");
 const { loadProjectFileSet, mimeTypeForPath, validateProjectChanges } = require("../repository-store/project-file-schema");
 const { SqlCacheAccountStorageMeter } = require("./sql-cache-account-storage-meter");
+const {
+  PROJECT_APP_MANIFEST_PATH,
+  validateProjectAppManifest,
+  validateProjectAppValues,
+} = require("../modules/project-app-manifest");
 
 const RESERVED_PLATFORMIO_OPTIONS = new Set([
   "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
@@ -138,6 +143,98 @@ class ProjectService {
   async getProject(projectId) {
     await this.ready;
     return this.projectWithSummary(await this.requireProject(projectId));
+  }
+
+  async getProjectAppManifest(projectId, accountId, input = {}) {
+    await this.ready;
+    await this.requireAccountProject(projectId, accountId);
+    let source;
+    try {
+      source = await this.getSource(projectId, PROJECT_APP_MANIFEST_PATH, { commit_sha: input.commit_sha || "" });
+    } catch (error) {
+      if (error.code !== "source_not_found") throw error;
+      throw new ProjectServerError("project_app_manifest_not_found", "Das Projekt besitzt keine Projekt-App-Definition.", 404);
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(source.content);
+    } catch {
+      throw new ProjectServerError("invalid_project_app_manifest", "project-app/manifest.json enthaelt kein gueltiges JSON.", 400, { path: PROJECT_APP_MANIFEST_PATH });
+    }
+    return {
+      manifest: validateProjectAppManifest(parsed),
+      source: {
+        path: PROJECT_APP_MANIFEST_PATH,
+        content_sha256: source.content_sha256 || sha256(source.content),
+        ...(source.commit_sha ? { commit_sha: source.commit_sha } : {}),
+      },
+    };
+  }
+
+  async getProjectAppSettings(projectId, accountId, input = {}) {
+    await this.ready;
+    const project = await this.requireAccountProject(projectId, accountId);
+    const { manifest, source } = await this.getProjectAppManifest(projectId, accountId, input);
+    const stored = await this.repository.findProjectAppSettings(project.project_id, project.user_id);
+    const compatibleValues = stored ? projectAppCompatibleValues(manifest, stored.values) : {};
+    return {
+      project_id: project.project_id,
+      account_id: project.user_id,
+      manifest,
+      manifest_version: manifest.manifest_version,
+      revision: stored?.revision || 0,
+      values: validateProjectAppValues(manifest, compatibleValues),
+      requires_migration: Boolean(stored && stored.manifest_version !== manifest.manifest_version),
+      manifest_source: source,
+      updated_at: stored?.updated_at || null,
+    };
+  }
+
+  async updateProjectAppSettings(projectId, input = {}) {
+    await this.ready;
+    const accountId = required(input.account_id, "account_id");
+    const project = await this.requireAccountProject(projectId, accountId);
+    this.assertProjectWritable(project);
+    const { manifest, source } = await this.getProjectAppManifest(projectId, accountId, { commit_sha: input.commit_sha || "" });
+    if (input.manifest_version !== manifest.manifest_version) {
+      throw new ProjectServerError("project_app_manifest_version_conflict", "Die Projekt-App-Definition wurde zwischenzeitlich aktualisiert.", 409, {
+        expected_manifest_version: manifest.manifest_version,
+      });
+    }
+    const expectedRevision = Number(input.expected_revision);
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+      throw new ProjectServerError("invalid_project_app_revision", "expected_revision muss eine nichtnegative Ganzzahl sein.", 400);
+    }
+    const current = await this.repository.findProjectAppSettings(projectId, accountId);
+    const currentValues = current ? projectAppCompatibleValues(manifest, current.values) : {};
+    if (!input.values || typeof input.values !== "object" || Array.isArray(input.values)) {
+      throw new ProjectServerError("invalid_project_app_settings", "values muss ein Objekt mit definierten Projekt-App-Einstellungen sein.", 400);
+    }
+    const patch = input.values;
+    const values = validateProjectAppValues(manifest, { ...currentValues, ...patch });
+    const now = new Date().toISOString();
+    const settings = {
+      project_id: projectId,
+      account_id: accountId,
+      manifest_version: manifest.manifest_version,
+      revision: expectedRevision + 1,
+      values,
+      manifest_source_sha256: source.content_sha256,
+      created_at: current?.created_at || now,
+      updated_at: now,
+    };
+    const result = await this.repository.compareAndSetProjectAppSettings(settings, expectedRevision);
+    if (!result.saved) {
+      throw new ProjectServerError("project_app_settings_revision_conflict", "Die Projekt-App-Einstellungen wurden zwischenzeitlich geaendert.", 409, {
+        expected_revision: expectedRevision,
+        current_revision: result.current?.revision || 0,
+      });
+    }
+    return {
+      ...result.value,
+      manifest,
+      manifest_source: source,
+    };
   }
 
   async deleteProject(projectId) {
@@ -1582,6 +1679,15 @@ class ProjectService {
     return project;
   }
 
+  async requireAccountProject(projectId, accountId) {
+    const normalizedAccountId = required(accountId, "account_id");
+    const project = await this.repository.findProject(projectId);
+    if (!project || project.user_id !== normalizedAccountId) {
+      throw new ProjectServerError("project_not_found", "Projekt wurde nicht gefunden.", 404);
+    }
+    return this.ensureComponentSoftwareLayout(project);
+  }
+
   async ensureComponentSoftwareLayout(project) {
     if (project.status === "plan_locked") return project;
     const previousUnits = Array.isArray(project.software_units) ? project.software_units : [];
@@ -2573,6 +2679,12 @@ function publicRepositoryBinding(binding) {
     updated_at: String(binding.updated_at || ""),
     error_code: String(binding.error_code || ""),
   };
+}
+
+function projectAppCompatibleValues(manifest, values) {
+  const allowed = new Set(manifest.settings.map((setting) => setting.key));
+  return Object.fromEntries(Object.entries(values && typeof values === "object" ? values : {})
+    .filter(([key]) => allowed.has(key)));
 }
 
 module.exports = { ProjectService };

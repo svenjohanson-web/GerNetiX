@@ -95,6 +95,25 @@ function renderLearningProjectOverview() {
           ${project.projectStory.result ? `<div><strong>${escapeHtml(learningText("result", "Dein Ergebnis"))}</strong><p>${escapeHtml(project.projectStory.result)}</p></div>` : ""}
         </section>
       ` : ""}
+      ${project.customerEntries?.length ? `
+        <section class="learning-product-entries" aria-labelledby="learningProductEntriesTitle">
+          <header>
+            <p class="eyebrow">Dein Einstieg</p>
+            <h3 id="learningProductEntriesTitle">Was möchtest du mit ${escapeHtml(project.name)} machen?</h3>
+            <p>Das fertige Produkt, der Nachbau, das Lernprojekt und deine eigene Weiterentwicklung bleiben klar getrennt.</p>
+          </header>
+          <div class="learning-product-entry-grid">
+            ${project.customerEntries.map((entry) => `
+              <article class="learning-product-entry is-${escapeAttribute(entry.availability || "preparing")}">
+                <div><span>${escapeHtml(customerEntryAvailabilityLabel(entry.availability))}</span><h4>${escapeHtml(entry.title)}</h4><p>${escapeHtml(entry.summary)}</p></div>
+                ${entry.availability === "available"
+                  ? `<button type="button" data-start-learning-entry="${escapeAttribute(project.id)}" data-learning-entry-kind="${escapeAttribute(entry.id)}">${escapeHtml(entry.id === "build" ? "Nachbau starten" : "Lernprojekt starten")}</button>`
+                  : `<button type="button" disabled>${escapeHtml(entry.availability === "requires_instance" ? "Nach Einrichtung verfügbar" : "Wird vorbereitet")}</button>`}
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      ` : ""}
       <section class="learning-project-lesson-overview">
         <header>
           <p class="eyebrow">${escapeHtml(learningText("structureEyebrow", "Projektaufbau"))}</p>
@@ -128,6 +147,15 @@ function renderLearningProjectOverview() {
   target.querySelector("[data-start-learning-project]")?.addEventListener("click", (event) => {
     learningProject().open(event.currentTarget.dataset.startLearningProject);
   });
+  target.querySelectorAll("[data-start-learning-entry]").forEach((button) => {
+    button.addEventListener("click", () => learningProject().open(button.dataset.startLearningEntry));
+  });
+}
+
+function customerEntryAvailabilityLabel(availability) {
+  if (availability === "available") return "Jetzt verfügbar";
+  if (availability === "requires_instance") return "Benötigt eine eingerichtete Instanz";
+  return "In Vorbereitung";
 }
 
 function learningCategoryLabel(category) {
@@ -265,7 +293,7 @@ function renderLearn() {
             <td><span class="project-status ${learningProjectFilter(project, progress)}">${learningProjectStatus(project, progress)}</span></td>
             <td>${escapeHtml(progressText)}</td>
             <td>${escapeHtml(project.linkedDeviceId || learningText("noDevice", "kein Device"))}</td>
-            <td><button type="button" data-open-project="${escapeHtml(project.id)}">${escapeHtml(hasProgress ? learningText("continue", "Fortsetzen") : learningText("start", "Starten"))}</button></td>
+            <td><div class="button-row"><button type="button" data-open-project="${escapeHtml(project.id)}">${escapeHtml(hasProgress ? learningText("continue", "Fortsetzen") : learningText("start", "Starten"))}</button>${hasProjectApp(project) ? `<button type="button" data-open-project-app="${escapeAttribute(project.id)}">Projekt-App</button>` : ""}</div></td>
           </tr>
     `;
   }).join("")}
@@ -275,6 +303,13 @@ function renderLearn() {
   document.querySelectorAll("#learnProjectList [data-open-project]").forEach((button) => {
     button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
   });
+  document.querySelectorAll("#learnProjectList [data-open-project-app]").forEach((button) => {
+    button.addEventListener("click", () => navigate(`/app/project-app/?project=${encodeURIComponent(button.dataset.openProjectApp)}`));
+  });
+}
+
+function hasProjectApp(project) {
+  return (project.sourceFiles || []).some((source) => source.path === "project-app/manifest.json");
 }
 
 function personalLearningProjects() {
