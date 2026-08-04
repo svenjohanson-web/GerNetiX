@@ -46,7 +46,7 @@ function sessionColumns() {
     device_id: "device_id",
     status: "status",
     recovery_type: "recovery_type",
-    detected_board_json: jsonColumn("detected_board"),
+    detected_board_json: jsonColumn((row) => row.detected_board || row.candidate_profile || row.detection || null),
     capabilities_json: jsonColumn("capabilities"),
     steps_json: jsonColumn("steps"),
     created_at: "created_at",

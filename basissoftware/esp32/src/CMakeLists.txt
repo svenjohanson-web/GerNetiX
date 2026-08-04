@@ -1,9 +1,13 @@
 set(GERNETIX_PROJECT_SOURCES)
 set(GERNETIX_PROJECT_REQUIRES)
+set(GERNETIX_PROJECT_INCLUDE_DIRS)
 file(GLOB GERNETIX_PACKAGED_USER_SOURCES "user/*.cpp")
 file(GLOB_RECURSE GERNETIX_PACKAGED_PROJECT_SOURCES "user_project/*.cpp")
 list(APPEND GERNETIX_PROJECT_SOURCES ${GERNETIX_PACKAGED_USER_SOURCES})
 list(APPEND GERNETIX_PROJECT_SOURCES ${GERNETIX_PACKAGED_PROJECT_SOURCES})
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../include/user_project")
+  list(APPEND GERNETIX_PROJECT_INCLUDE_DIRS ../include/user_project)
+endif()
 if(GERNETIX_CAMERA_DISPLAY_SLICE)
   list(APPEND GERNETIX_PROJECT_REQUIRES esp32-camera esp_http_client esp_lcd esp_driver_i2c esp_driver_spi mdns)
 endif()
@@ -43,14 +47,17 @@ idf_component_register(
     ${GERNETIX_PROJECT_SOURCES}
   INCLUDE_DIRS
     ../include
-    ../include/user_project
     ../../../firmware/shared/gernetix-runtime-core/include
+    ${GERNETIX_PROJECT_INCLUDE_DIRS}
   REQUIRES
     app_update
     esp_app_format
+    esp_codec_dev
     espcoredump
     driver
     esp_driver_gpio
+    esp_driver_i2c
+    esp_driver_i2s
     esp_driver_uart
     esp_driver_usb_serial_jtag
     esp_event
@@ -63,6 +70,7 @@ idf_component_register(
     freertos
     heap
     log
+    led_strip
     lwip
     mbedtls
     mqtt

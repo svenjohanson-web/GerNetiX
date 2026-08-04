@@ -139,6 +139,7 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
       default: { provider: "default", reason: "Globale Standardroute fuer nicht spezialisierte KI-Aufgaben." },
       general_chat: { provider: "default", reason: "Interaktiver Chat darf die aktive Standardroute nutzen." },
       architecture_discovery: { provider: "default", reason: "Architektur-Discovery darf die aktive Standardroute nutzen." },
+      hardware_lab_analysis: { provider: "api", reason: "Das Hardware-Labor analysiert externe Herstellerquellen ueber die OpenAI Responses API.", costPolicy: "external_costs_with_preflight" },
       artifact_generation: { provider: "ollama", reason: "Artefakte wie PlantUML, Pseudocode und Code werden kostenschonend lokal erzeugt.", costPolicy: "prefer_local" },
       code_generation: { provider: "ollama", reason: "Codegenerierung laeuft standardmaessig lokal, um externe Kosten zu vermeiden.", costPolicy: "prefer_local" },
       help_chat: { provider: "ollama", reason: "Help-Chat verwendet ausschliesslich das lokale Ollama-Modell.", costPolicy: "local_only" },
@@ -146,7 +147,7 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
     return Object.fromEntries(Object.entries(defaults).map(([task, fallback]) => {
       const route = input && typeof input === "object" ? input[task] || {} : {};
       return [task, {
-        provider: task === "help_chat" ? "ollama" : ["default", "ollama", "api"].includes(route.provider) ? route.provider : fallback.provider,
+        provider: task === "help_chat" ? "ollama" : task === "hardware_lab_analysis" ? "api" : ["default", "ollama", "api"].includes(route.provider) ? route.provider : fallback.provider,
         reason: clean(route.reason) || fallback.reason,
         costPolicy: clean(route.costPolicy) || fallback.costPolicy || "default",
       }];

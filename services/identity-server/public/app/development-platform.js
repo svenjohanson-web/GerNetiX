@@ -85,6 +85,7 @@ const DevelopmentPlatform = (() => {
         description: template.description || "",
         hint: template.hint || template.description || "",
         available: template.available !== false,
+        boardSelectionRequired: template.board_selection_required === true,
         requiredEntitlements: template.required_entitlements || [],
       }]));
       const select = document.querySelector("#developmentProjectTemplate");
@@ -281,6 +282,11 @@ const DevelopmentPlatform = (() => {
     function quickPrompts() {
       if (state.developmentPlatform.assistantMode !== "architecture_structure") return [];
       if (state.developmentPlatform.chat.length) return [];
+      if (currentProjectTemplateId() === "ai_board_playground") return [
+        "Welche Experimente passen zu den Funktionen meines Boards?",
+        "Entwirf einen sicheren ersten Hardwaretest",
+        "Ich möchte mit Licht, Tasten oder Audio spielen",
+      ];
       if (currentProjectUsesTemplate()) return [];
       return [
         "Ich moechte einen Observer",
@@ -299,6 +305,13 @@ const DevelopmentPlatform = (() => {
     function currentProjectTemplateId() {
       const project = currentProject();
       return project?.viewManifest?.template_id || project?.viewManifest?.templateId || "";
+    }
+
+    function currentPlaygroundBoardName() {
+      const project = currentProject();
+      return project?.buildConfig?.board_configuration?.name
+        || project?.build_config?.board_configuration?.name
+        || "";
     }
 
     function usageRows(usage) {
@@ -321,6 +334,9 @@ const DevelopmentPlatform = (() => {
     }
 
     function defaultAssistantMessage() {
+      if (currentProjectTemplateId() === "ai_board_playground") {
+        return `Dein Board-Spielprojekt ist bereit${currentPlaygroundBoardName() ? `: ${currentPlaygroundBoardName()}` : ""}. Was möchtest du ausprobieren? Ich kann dir zuerst Ideen aus den vorhandenen Boardfunktionen vorschlagen und danach bestätigungspflichtige Codeänderungen vorbereiten.`;
+      }
       if (state.developmentPlatform.assistantMode === "function_clarification") {
         return "Jetzt klaeren wir die Funktion. Beschreibe fachlich, was passiert, z. B. `Temperatur wird gemessen`, `Messwert wird angezeigt` oder `Nutzer sieht den Messwert`.";
       }
@@ -1522,6 +1538,8 @@ const DevelopmentPlatform = (() => {
       const descriptionInput = document.querySelector("#developmentProjectDescription");
       const templateInput = document.querySelector("#developmentProjectTemplate");
       const selectedTemplateId = templateInput.value;
+      const selectedTemplate = projectTemplates[selectedTemplateId] || projectTemplates.empty;
+      const boardInput = document.querySelector("#developmentProjectBoard");
       const title = titleInput.value.trim();
       if (state.developmentPlatform.projectPanelMode === "new-template" && !selectedTemplateId) {
         setProjectStatus("Bitte waehle zuerst ein Projekttemplate.");
@@ -1533,12 +1551,18 @@ const DevelopmentPlatform = (() => {
         titleInput.focus();
         return;
       }
+      if (selectedTemplate?.boardSelectionRequired && !boardInput?.value) {
+        setProjectStatus("Bitte wähle zuerst das Board für dein KI-Spielprojekt aus.");
+        boardInput?.focus();
+        return;
+      }
       setProjectStatus("Projekt wird angelegt...");
       try {
         const response = await postJson("/api/platform/development-projects", {
           title,
           description: descriptionInput.value.trim(),
           template_id: templateInput.value,
+          ...(selectedTemplate?.boardSelectionRequired ? { board_profile_id: boardInput.value } : {}),
         });
         if (response.project) {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
@@ -1548,7 +1572,7 @@ const DevelopmentPlatform = (() => {
           state.developmentPlatform.chat = [];
           state.developmentPlatform.lastRouting = null;
           state.developmentPlatform.assistantMode = "architecture_structure";
-          state.developmentPlatform.assistantOpen = false;
+          state.developmentPlatform.assistantOpen = selectedTemplateId === "ai_board_playground";
           state.developmentPlatform.architectureDiagram = architectureDiagramForProject(response.project);
           state.developmentPlatform.homeAutomationConfiguration = selectedTemplateId === "distributed_home_automation"
             ? normalizeHomeAutomationConfiguration(response.project.viewManifest?.home_automation_configuration)
@@ -1593,6 +1617,16 @@ const DevelopmentPlatform = (() => {
       const details = document.querySelector("#developmentProjectDetails");
       const choosingTemplate = state.developmentPlatform.projectPanelMode === "new-template";
       const templateSelected = Boolean(templateInput.value && templateInput.value !== "empty");
+      const boardField = document.querySelector("#developmentProjectBoardField");
+      const boardInput = document.querySelector("#developmentProjectBoard");
+      const boardSelectionRequired = Boolean(templateSelected && template.boardSelectionRequired);
+      boardField?.classList.toggle("hidden", !boardSelectionRequired);
+      if (boardInput) boardInput.required = boardSelectionRequired;
+      if (boardSelectionRequired) {
+        void loadProcessorBoardCatalog().then(() => renderPlaygroundBoardOptions());
+      } else if (boardInput) {
+        boardInput.value = "";
+      }
       document.querySelector("#rateDevelopmentTemplateButton")?.classList.toggle("hidden", !templateSelected);
       details?.classList.toggle("hidden", choosingTemplate && !templateSelected);
       titleInput.disabled = choosingTemplate && !templateSelected;
@@ -1613,6 +1647,18 @@ const DevelopmentPlatform = (() => {
       }
       renderArchitectureDiagram();
       renderWorkflowStep();
+    }
+
+    function renderPlaygroundBoardOptions() {
+      const select = document.querySelector("#developmentProjectBoard");
+      if (!select) return;
+      const selected = select.value;
+      const boards = (state.processorBoards || []).filter((board) => board.platformio_build?.board);
+      select.innerHTML = [
+        '<option value="">Board auswählen</option>',
+        ...boards.map((board) => `<option value="${escapeAttribute(board.hardware_item_id)}">${escapeHtml(board.title || board.hardware_item_id)}</option>`),
+      ].join("");
+      if (boards.some((board) => board.hardware_item_id === selected)) select.value = selected;
     }
 
     async function sendChatMessage(event) {

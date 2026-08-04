@@ -32,6 +32,27 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "POST" && path === `${prefix}/hardware-lab/sessions`) {
+      sendJson(res, 201, service.createHardwareLabSession(await readJsonBody(req)));
+      return;
+    }
+
+    const hardwareLabActionMatch = path.match(new RegExp(`^${prefix}/hardware-lab/sessions/([^/]+)/(analyze-sources|discovery-firmware-build|discovery-firmware-build-status|discovery-firmware-build-result|examination-report|gernetix-verification-request)$`));
+    if (req.method === "POST" && hardwareLabActionMatch) {
+      const sessionId = decodeURIComponent(hardwareLabActionMatch[1]);
+      const body = await readJsonBody(req);
+      const actions = {
+        "analyze-sources": () => service.analyzeHardwareLabSources(sessionId, body),
+        "discovery-firmware-build": () => service.requestDiscoveryFirmwareBuild(sessionId, body),
+        "discovery-firmware-build-status": () => service.synchronizeDiscoveryFirmwareBuild(sessionId),
+        "discovery-firmware-build-result": () => service.recordDiscoveryFirmwareBuild(sessionId, body),
+        "examination-report": () => service.recordHardwareExamination(sessionId, body),
+        "gernetix-verification-request": () => service.requestGerNetiXVerification(sessionId, body),
+      };
+      sendJson(res, 200, await actions[hardwareLabActionMatch[2]]());
+      return;
+    }
+
     const sessionMatch = path.match(new RegExp(`^${prefix}/sessions/([^/]+)$`));
     if (req.method === "GET" && sessionMatch) {
       sendJson(res, 200, service.getSession(decodeURIComponent(sessionMatch[1])));

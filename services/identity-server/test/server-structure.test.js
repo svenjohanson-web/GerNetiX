@@ -179,6 +179,7 @@ test("device routes preserve decoded device ids and existing handler ownership c
     handlePlatformDiscoveredDeviceClaim: async () => {},
     handlePlatformDeviceCreate: async () => {},
     handlePlatformDeviceBasissoftwareProfileUpdate: async () => {},
+    handlePlatformDeviceVoiceAiPolicyUpdate: async (req, res, session, deviceId) => calls.push([session.account.user_id, deviceId, "voice-ai"]),
     handlePlatformDeviceRemove: async (res, session, deviceId) => calls.push([session.account.user_id, deviceId]),
     handlePlatformProvisioningSession: async () => {},
     handlePlatformProvisioningComplete: async () => {},
@@ -186,7 +187,8 @@ test("device routes preserve decoded device ids and existing handler ownership c
     handleDeviceRecoveryFirmwareCheck: async () => {},
   });
   assert.equal(await registry.dispatch({ req: { method: "DELETE" }, res: {}, url: new URL("http://localhost/api/platform/devices/device%2042") }), true);
-  assert.deepEqual(calls, [["user-1", "device 42"]]);
+  assert.equal(await registry.dispatch({ req: { method: "PUT" }, res: {}, url: new URL("http://localhost/api/platform/devices/device%2042/voice-ai-policy") }), true);
+  assert.deepEqual(calls, [["user-1", "device 42"], ["user-1", "device 42", "voice-ai"]]);
 });
 
 test("community routes keep public reads separate from authenticated writes", async () => {
@@ -290,6 +292,75 @@ test("build artifact routes retain account ownership checks", async () => {
   assert.deepEqual(responses, [[404, { error: "build_artifact_not_found" }]]);
 });
 
+test("owned builds expose firmware but deny symbol and diagnostic artifact downloads", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  const proxied = [];
+  const artifacts = Object.fromEntries(["firmware.bin", "firmware.elf", "firmware.map", "build.log"]
+    .map((file_name) => [file_name, { file_name }]));
+  registerBuildRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    readJsonBody: async () => ({}),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    handleUserIdeBuildJob: async () => {},
+    loadUserIdeProjects: async () => [],
+    buildDeployJson: async () => ({}),
+    projectServerJson: async () => ({ user_id: "user-1", result: { build: { artifacts } } }),
+    loadBuildDeployJob: async () => ({}),
+    recordCompletedBuildJob: async () => {},
+    browserFlashManifest: () => ({}),
+    projectServerUserId: () => "user-1",
+    proxyBuildArtifact: async (_res, jobId, fileName) => proxied.push([jobId, fileName]),
+  });
+  for (const fileName of ["firmware.bin", "firmware.elf", "firmware.map", "build.log"]) {
+    await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL(`http://localhost/api/user-ide/build-artifacts/job-1/${fileName}`) });
+  }
+  assert.deepEqual(proxied, [["job-1", "firmware.bin"]]);
+  assert.deepEqual(responses, [
+    [404, { error: "build_artifact_not_found" }],
+    [404, { error: "build_artifact_not_found" }],
+    [404, { error: "build_artifact_not_found" }],
+  ]);
+});
+
+test("basissoftware build status never returns raw compiler logs", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  registerBuildRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    readJsonBody: async () => ({}),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    handleUserIdeBuildJob: async () => {},
+    loadUserIdeProjects: async () => [],
+    buildDeployJson: async () => ({}),
+    projectServerJson: async () => ({
+      user_id: "user-1",
+      build_config: { firmware_basis_id: "gernetix-runtime-basissoftware" },
+      error: { details: { build_log: "secret basis source path" } },
+    }),
+    loadBuildDeployJob: async () => ({
+      status: "failed",
+      mode: "build",
+      error: { message: "Build fehlgeschlagen", details: { build_log: "secret worker path" } },
+      progress: [{ sequence: 1, phase: "compiling", message: "Compiling secret/functions/pairing.cpp", at: "now" }],
+      result: { build: { artifacts: {} } },
+    }),
+    recordCompletedBuildJob: async () => {},
+    browserFlashManifest: () => [],
+    projectServerUserId: () => "user-1",
+    proxyBuildArtifact: async () => {},
+  });
+  await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL("http://localhost/api/user-ide/build-jobs/job-1/status") });
+  assert.equal(responses[0][1].build_log, "");
+  assert.equal(responses[0][1].protected_build_diagnostics, true);
+  assert.deepEqual(responses[0][1].progress, [
+    { sequence: 1, phase: "compiling", message: "Firmware wird kompiliert.", at: "now" },
+  ]);
+  assert.equal(JSON.stringify(responses).includes("secret"), false);
+});
+
 test("build cancellation keeps account ownership and targets the central coordinator", async () => {
   const registry = createRouteRegistry();
   const responses = [];
@@ -330,15 +401,22 @@ test("crash symbolization is account-bound and requires the exact persisted buil
   registerBuildRoutes({
     registry,
     requireSession: async () => ({ account: { user_id: "user-1" } }),
-    readJsonBody: async () => ({ build_id: buildId, addresses: ["0x40001234"] }),
+    readJsonBody: async () => ({ build_id: buildId, addresses: ["0x40001234", "0x40005678"] }),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
     loadUserIdeProjects: async () => [],
     buildDeployJson: async (path, options) => {
       forwarded.push([path, options]);
-      return { status: "symbolized", build_id: buildId, frames: [] };
+      return { status: "symbolized", build_id: buildId, frames: [
+        { address: "0x40001234", resolved: true, function: "userMain", file: "/build/src/user/user_app.cpp", line: 5 },
+        { address: "0x40005678", resolved: true, function: "internalPairing", file: "/build/src/functions/pairing.cpp", line: 19 },
+      ] };
     },
-    projectServerJson: async () => ({ user_id: "user-1", result: { build: { build_id: buildId } } }),
+    projectServerJson: async () => ({
+      user_id: "user-1",
+      customer_debug_source_paths: ["src/user/user_app.cpp"],
+      result: { build: { build_id: buildId } },
+    }),
     loadBuildDeployJob: async () => ({}),
     recordCompletedBuildJob: async () => {},
     browserFlashManifest: () => [],
@@ -350,9 +428,12 @@ test("crash symbolization is account-bound and requires the exact persisted buil
     url: new URL("http://localhost/api/user-ide/build-jobs/job-1/symbolize"),
   }), true);
   assert.deepEqual(forwarded, [["/api/build-jobs/job-1/symbolize", {
-    method: "POST", body: { build_id: buildId, addresses: ["0x40001234"] },
+    method: "POST", body: { build_id: buildId, addresses: ["0x40001234", "0x40005678"] },
   }]]);
-  assert.deepEqual(responses, [[200, { status: "symbolized", build_id: buildId, frames: [] }]]);
+  assert.deepEqual(responses, [[200, { status: "symbolized", build_id: buildId, frames: [
+    { address: "0x40001234", resolved: true, function: "userMain", file: "/build/src/user/user_app.cpp", line: 5 },
+    { address: "0x40005678", resolved: false, protected: true, function: "", file: "", line: 0 },
+  ] }]]);
 });
 
 test("USB flash reuses an owned successful build only after the Project Server confirms its snapshot", async () => {

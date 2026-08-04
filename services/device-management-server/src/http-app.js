@@ -64,6 +64,15 @@ function createHttpApp(options) {
       return;
     }
 
+    const voiceAuthorize = path.match(new RegExp(`^${prefix}/devices/([^/]+)/voice-authorize$`));
+    if (req.method === "POST" && voiceAuthorize) {
+      sendJson(res, 200, await service.authorizeVoiceSession(
+        decodeURIComponent(voiceAuthorize[1]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
+
     if (req.method === "POST" && path === `${prefix}/pairing/sessions`) {
       sendJson(res, 201, await service.createPairingSession(await readJsonBody(req)));
       return;
@@ -144,6 +153,16 @@ function createHttpApp(options) {
       sendJson(res, 200, await service.updateAccountDeviceBasissoftwareProfile(
         decodeURIComponent(accountDevice[1]),
         decodeURIComponent(accountDevice[2]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
+
+    const accountDeviceVoicePolicy = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/devices/([^/]+)/voice-ai-policy$`));
+    if (req.method === "PUT" && accountDeviceVoicePolicy) {
+      sendJson(res, 200, await service.updateAccountDeviceVoiceAiPolicy(
+        decodeURIComponent(accountDeviceVoicePolicy[1]),
+        decodeURIComponent(accountDeviceVoicePolicy[2]),
         await readJsonBody(req),
       ));
       return;

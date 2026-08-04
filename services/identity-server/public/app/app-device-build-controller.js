@@ -921,6 +921,18 @@ function renderDevices() {
           <button class="secondary" type="button" data-save-device-profile="${escapeHtml(device.account_device_id)}">Profil ändern</button>
           <small>Jederzeit änderbar. Bei einem anderen Partitionslayout ist einmalig ein USB-Flash erforderlich.</small>
         </div>
+        <div class="device-voice-ai-policy">
+          <label class="device-voice-ai-toggle"><input type="checkbox" data-device-voice-enabled="${escapeHtml(device.account_device_id)}" ${device.voice_ai_policy?.enabled ? "checked" : ""}> KI-Geschichten für dieses Gerät freigeben</label>
+          <label>Altersstufe
+            <select data-device-voice-age-band="${escapeHtml(device.account_device_id)}">
+              <option value="child_6_8" ${device.voice_ai_policy?.age_band === "child_6_8" ? "selected" : ""}>6–8 Jahre</option>
+              <option value="child_9_12" ${device.voice_ai_policy?.age_band === "child_9_12" ? "selected" : ""}>9–12 Jahre</option>
+              <option value="child_6_12" ${!device.voice_ai_policy?.age_band || device.voice_ai_policy?.age_band === "child_6_12" ? "selected" : ""}>6–12 Jahre</option>
+            </select>
+          </label>
+          <button class="secondary" type="button" data-save-device-voice-policy="${escapeHtml(device.account_device_id)}">Freigabe speichern</button>
+          <small>Aufnahmen sind auf 15 Sekunden begrenzt. GerNetiX speichert standardmäßig weder Rohaufnahme noch Transkript. Der Cloud-Provider ist derzeit zentral deaktiviert.</small>
+        </div>
         <div class="device-card-actions">
           <button class="danger subtle-danger" type="button" data-unpair-device="${escapeHtml(device.account_device_id)}">Zuordnung aufheben</button>
         </div>
@@ -932,6 +944,9 @@ function renderDevices() {
   });
   document.querySelectorAll("[data-save-device-profile]").forEach((button) => {
     button.addEventListener("click", () => saveDeviceBasissoftwareProfile(button.dataset.saveDeviceProfile));
+  });
+  document.querySelectorAll("[data-save-device-voice-policy]").forEach((button) => {
+    button.addEventListener("click", () => saveDeviceVoiceAiPolicy(button.dataset.saveDeviceVoicePolicy));
   });
 }
 
@@ -991,6 +1006,26 @@ async function saveDeviceBasissoftwareProfile(accountDeviceId) {
     renderDevices();
     renderIdeShell();
     setInventoryStatus(result.requires_usb_reflash ? "running" : "ok", result.message);
+  } catch (error) {
+    setInventoryStatus("error", error.message);
+  }
+}
+
+async function saveDeviceVoiceAiPolicy(accountDeviceId) {
+  const device = state.devices.find((item) => item.account_device_id === accountDeviceId);
+  const enabled = document.querySelector(`[data-device-voice-enabled="${CSS.escape(accountDeviceId)}"]`);
+  const ageBand = document.querySelector(`[data-device-voice-age-band="${CSS.escape(accountDeviceId)}"]`);
+  if (!device || !enabled || !ageBand) return;
+  if (enabled.checked && !window.confirm("Voice AI für dieses Gerät aktivieren? Kurze Aufnahmen dürfen dann zur Verarbeitung an den später freigegebenen GerNetiX-Sprachdienst übertragen werden.")) return;
+  setInventoryStatus("running", `Voice-AI-Freigabe für ${device.display_name} wird gespeichert...`);
+  try {
+    const result = await putJson(`/api/platform/devices/${encodeURIComponent(accountDeviceId)}/voice-ai-policy`, {
+      enabled: enabled.checked,
+      age_band: ageBand.value,
+    });
+    state.devices = state.devices.map((item) => item.account_device_id === accountDeviceId ? result.device : item);
+    renderDevices();
+    setInventoryStatus("ok", result.message);
   } catch (error) {
     setInventoryStatus("error", error.message);
   }
@@ -1187,7 +1222,9 @@ function formatBuildDate(value) {
 }
 
 function renderBuildArtifacts(build) {
-  const artifacts = Array.isArray(build.artifacts) ? build.artifacts : [];
+  const downloadableNames = new Set(["bootloader.bin", "partitions.bin", "boot_app0.bin", "firmware.bin", "firmware.hex"]);
+  const artifacts = (Array.isArray(build.artifacts) ? build.artifacts : [])
+    .filter((artifact) => downloadableNames.has(artifact.file_name));
   if (!artifacts.length) return build.status === "succeeded"
     ? `<p class="build-artifact-note">Für diesen älteren Build ist kein herunterladbares Ergebnis hinterlegt.</p>`
     : "";

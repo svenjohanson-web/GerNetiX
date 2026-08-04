@@ -39,6 +39,17 @@ Zweck:
 - Device signiert die kanonische, zeitlich begrenzte Challenge mit seinem P-256-Privatschluessel
 - Server bewertet `gernetix_verified` oder `community_unverified`
 
+## Device Voice AI
+
+```text
+PUT  /accounts/{accountId}/devices/{accountDeviceId}/voice-ai-policy
+POST /devices/{deviceId}/voice-authorize
+```
+
+Die Policy-Aenderung ist fuer den sessiongebundenen Identity-Proxy vorgesehen und verlangt eine ausdrueckliche Aktivierung samt Consent-Version und Altersstufe. `voice-authorize` kombiniert die bestehende einmalige ECDSA-Challenge mit serverseitig abgeleiteter Account-Zuordnung. Nur genau ein aktiv freigebender Account ist erlaubt; eine vom Device behauptete Account-ID wird nicht benoetigt.
+
+Die Policy erzwingt hoechstens 15 Sekunden Aufnahme und 30 Sekunden Antwort. `raw_audio_retention=transient_only` und `transcript_retention=disabled` sind feste technische Schutzregeln und koennen nicht durch den Client aufgeweicht werden.
+
 ## Pairing
 
 ```text

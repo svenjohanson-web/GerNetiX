@@ -282,6 +282,18 @@ Das Kommunikationssetup enthaelt keine SSID, WLAN-Kennwoerter, Zertifikate oder 
 
 Beim Waveshare ESP32-S3-CAM-OVxxxx gehoert auch die Kameraversorgung zur eingefrorenen Boardkonfiguration: Der integrierte CH32V003-I/O-Expander wird ueber I2C-Adresse `0x24` angesprochen und sein Ausgang IO6 vor `esp_camera_init()` aktiviert. Adresse, I2C-Pins und Ausgangsnummer werden aus `build_config.board_configuration.board_features.camera_power` in den Compilerheader projiziert und duerfen nicht als abweichende Projektkonstante gepflegt werden. Der ES3C28P-Display-Client verwendet fuer asynchrone SPI-/DMA-Uebertragungen einen dauerhaft gueltigen internen DMA-Puffer; ein lokaler Stackpuffer darf nicht an `esp_lcd_panel_io_tx_color()` uebergeben werden.
 
+Das Waveshare ESP32-S3-AUDIO-Board besitzt ein eigenes Katalogprofil und darf
+nicht als generisches S3-DevKit behandelt werden. Sein Basissoftware-Build
+verwendet das N16R8-Ziel mit 16 MB Flash und 8 MB Octal-PSRAM. Der eingefrorene
+Board-Snapshot enthaelt den gemeinsamen Audio-I2S-Bus auf GPIO12 bis GPIO16,
+den Audio-/Touch-I2C-Bus auf GPIO10/GPIO11, den RGB-Ring auf GPIO38, den
+TF-SPI-Bus auf GPIO40 bis GPIO42 sowie die dokumentierten LCD-, Touch- und
+DVP-Kameraanschluesse. Nicht mitgelieferte Displays, Kamera, Lautsprecher und
+Akku bleiben dabei deaktivierte optionale Hardware. Katalog- und
+Compilerheader-Vertrag sind softwareseitig getestet; ein echter Firmware-Build,
+USB-Flash und die Audio-/Peripherieabnahme auf dem Nutzerboard bleiben bis zu
+ihrem jeweiligen Nachweis offen.
+
 Der Kamera-Host schaltet die integrierte Kameraversorgung vor jeder Initialisierung kontrolliert aus und wieder ein, prueft anschliessend ein erstes JPEG und protokolliert ein fehlendes Kameramodul eindeutig. Der allgemeine Device-Webserver liest den projektspezifischen Zustand nur ueber den schmalen Hook `writeProjectStatusJson`; Kameraerkennung und Streamlogik bleiben Bestandteil des unveraenderlichen Templates. HTTP-Tasks besitzen eigene, explizite Stackgroessen und erben den Stack von `app_main` nicht.
 
 Fuer den Access-Point-Modus wird initial `192.168.50.0/24` mit Hostadresse `192.168.50.1` und DHCP-Bereich `192.168.50.100` bis `192.168.50.199` vorgeschlagen. Der Nutzer kann ein anderes privates `/24`-Netz waehlen, wenn dieses mit dem Heim-WLAN kollidiert. Der Server validiert, dass AP-IP und DHCP-Grenzen im selben Netz liegen und die AP-IP nicht innerhalb des DHCP-Bereichs liegt. Nur die Host-Firmware erhaelt diese Werte im generierten Basissoftware-Header. Die ESP32-Basissoftware setzt damit vor dem Start des SoftAP die IP-, Gateway-, Netzmasken- und DHCP-Server-Konfiguration; der Captive-DNS-Server antwortet mit derselben AP-Adresse.

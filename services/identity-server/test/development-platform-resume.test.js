@@ -25,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260803-forgejo-repository-card/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260804-ai-board-playground-1/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -109,7 +109,7 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.createdAt\)/);
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.updatedAt\)/);
   assert.doesNotMatch(publicController, /project\.description \|\| "Keine Beschreibung\."/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260803-forgejo-repository-card/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260804-ai-board-playground-1/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -126,6 +126,19 @@ test("loads the development template catalog from the server model registry", ()
   assert.match(publicController, /templateEntitlementLabel/);
   assert.doesNotMatch(publicHtml, /<option value="esp32_device_only"/);
   assert.doesNotMatch(publicController, /const projectTemplates = \{/);
+});
+
+test("creates a board-bound AI playground through the existing project and repository flow", () => {
+  assert.match(publicHtml, /id="developmentProjectBoardField"/);
+  assert.match(publicController, /boardSelectionRequired: template\.board_selection_required === true/);
+  assert.match(publicController, /board_profile_id: boardInput\.value/);
+  assert.match(publicController, /Welche Experimente passen zu den Funktionen meines Boards/);
+  assert.match(publicController, /assistantOpen = selectedTemplateId === "ai_board_playground"/);
+  assert.match(devServer, /template\.id === "ai_board_playground"/);
+  assert.match(devServer, /board_playground_board_unavailable/);
+  assert.match(devServer, /board_configuration: compilerBoardConfiguration\(null, selectedPlaygroundBoard\)/);
+  assert.match(devServer, /software_unit_id: "board_playground"/);
+  assert.match(devServer, /templateVariant = selectedPlaygroundBoard/);
 });
 
 test("persists architecture derivation metadata in the project view manifest", () => {
@@ -165,7 +178,7 @@ test("refreshes legacy camera template architecture to IoT-device aggregates wit
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260803-forgejo-repository-card/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260804-ai-board-playground-1/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);

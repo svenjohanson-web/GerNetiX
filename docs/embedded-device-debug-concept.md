@@ -70,6 +70,7 @@ Die Diagnose bleibt damit fachlich ein Vertrag, waehrend ESP-IDF, Arduino und av
 5. **Exakte Build-Zuordnung.** Crash-Adressen werden nur gegen das exakt passende ELF-/Map-Artefakt derselben Build-ID symbolisiert. Firmware-Version allein ist dafuer nicht eindeutig genug.
 6. **Basissoftware behaelt die Kontrolle.** Projektcode darf strukturierte Ereignisse und Metriken publizieren, aber keine eigenen Debugports, HTTP-Diagnoserouten, MQTT-Debugtopics oder JTAG-Freigaben registrieren.
 7. **Fehlerdiagnose darf das Geraet nicht destabilisieren.** Logging ist begrenzt, nicht blockierend und besitzt feste Speicher-, Frequenz- und Transportbudgets.
+8. **Interne Symbole bleiben intern.** Kunden koennen nur flashbare Firmware-Dateien herunterladen. ELF, Map und Compiler-Log der Basissoftware bleiben im Artifact Store hinter der internen Servicegrenze; auch erratene Download-URLs werden neutral abgewiesen.
 
 ## Diagnosepfade und Vertrauensgrenzen
 
@@ -209,8 +210,9 @@ Symbolisierung erfolgt ausserhalb des Devices mit dem BuildResult des Project Se
 1. Kurzbericht enthaelt Build-ID und rohe Adressen.
 2. Project Server prueft Account-, Projekt-, Build- und Device-Zuordnung.
 3. Nur das ELF/Map derselben Build-ID wird verwendet.
-4. Die Nutzeransicht zeigt Funktionsname, Quelldatei und Zeile, soweit das Artefakt dies erlaubt.
-5. Build-Artefakt fehlt oder passt nicht: keine geratenen Symbole, sondern ein sichtbarer `build_artifact_mismatch`-Status.
+4. Der Project Server speichert beim Build eine exakte Allowlist der in das Paket abgebildeten Kundenquellpfade.
+5. Identity gibt Funktion, Quelldatei und Zeile nur fuer Treffer dieser Allowlist aus. Aufgeloeste Adressen aus der Basissoftware werden zu `protected`-Frames ohne Namen, Pfad oder Zeile redigiert und in der IDE als geschuetzte GerNetiX-Basissoftware gekennzeichnet.
+6. Build-Artefakt fehlt oder passt nicht: keine geratenen Symbole, sondern ein sichtbarer `build_artifact_mismatch`-Status.
 
 Bei einem Bootloop startet die Basissoftware nach einer definierten Zahl fehlender Health-Meilensteine im vorhandenen Recoverypfad. Das Debugkonzept ersetzt weder A/B-Rollback noch MEDIUM-Bootstrap oder USB-Recovery.
 
@@ -284,7 +286,7 @@ Stand: Der generische Vertrag, der ESP32-/FreeRTOS-Adapter und die beiden ersten
 - lokale beziehungsweise accountautorisierte Symbolisierung umsetzen
 - Panic-, Task-Watchdog-, Brownout-, Heap- und falsches-ELF-Szenarien testen
 
-Stand: Softwareseitig umgesetzt und contract-getestet. RTC-Bootsnapshot, Core-Dump-Summary, Bootloop-Schwelle, exakte ELF-SHA-256-Build-ID, accountgebundene Symbolisierungsroute, `build_artifact_mismatch` und IDE-Quellnavigation sind vorhanden. Die geforderten realen Panic-, Watchdog-, Brownout-, Heap- und Bootloop-Abnahmen bleiben Hardwaretests und sind keine durch Contract-Tests ersetzte Freigabe.
+Stand: Softwareseitig umgesetzt und contract-getestet. RTC-Bootsnapshot, Core-Dump-Summary, Bootloop-Schwelle, exakte ELF-SHA-256-Build-ID, accountgebundene Symbolisierungsroute, kundenquellpfadgebundene Ausgabe, Redaktion interner Basissoftware-Symbole, `build_artifact_mismatch` und IDE-Quellnavigation sind vorhanden. ELF, Map und Build-Log bleiben serverintern; Kunden-Downloads sind auf flashbare Dateien begrenzt. Die geforderten realen Panic-, Watchdog-, Brownout-, Heap- und Bootloop-Abnahmen bleiben Hardwaretests und sind keine durch Contract-Tests ersetzte Freigabe.
 
 ### Phase 3: Autorisierter Runtime-Monitor
 

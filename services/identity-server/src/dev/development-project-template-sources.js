@@ -5,6 +5,7 @@ const { renderPlatformioIni } = require("../../../shared/platformio-config");
 function templateFirmwareSources(template, title) {
   if (template?.id === "esp32_camera_to_touch_display") return cameraToTouchDisplaySources(template);
   if (template.id === "touchscreen_game_collection") return touchscreenDemoSources();
+  if (template.id === "ai_board_playground") return boardPlaygroundSources(title);
   if (!template?.realization?.buildConfig) return [];
   return [{
     path: "Komponenten/IoT-Device 1/src/user_main.cpp",
@@ -23,6 +24,44 @@ function templateFirmwareSources(template, title) {
       "",
     ].join("\n"),
   }];
+}
+
+function boardPlaygroundSources(title) {
+  const safeTitle = String(title || "Meine Board-Spielwiese").replace(/["\\]/g, "");
+  return [
+    {
+      path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+      role: "user_code",
+      content_type: "text/x-c++src",
+      content: [
+        '#include "user/user_app.h"',
+        '#include "gernetix_board_configuration.h"',
+        "",
+        'extern "C" void userMain() {',
+        `  // ${safeTitle}: Hier beginnt dein erstes KI-gestütztes Board-Experiment.`,
+        "  // Die GerNetiX-Basissoftware bleibt unverändert und ruft diese Funktion auf.",
+        "}",
+        "",
+        'extern "C" void userTick() {',
+        "  // Wiederkehrende Projektlogik kommt nach deiner Bestätigung hier hinein.",
+        "}",
+        "",
+      ].join("\n"),
+    },
+    {
+      path: "README.md",
+      role: "documentation",
+      content_type: "text/markdown",
+      content: [
+        `# ${safeTitle}`,
+        "",
+        "Dieses Spielprojekt ist an den beim Anlegen gespeicherten Board-Snapshot gebunden.",
+        "Die GerNetiX-KI darf Projektdateien suchen und lesen, Änderungen vorschlagen und nach deiner Bestätigung übernehmen.",
+        "Basissoftware, Secrets, Flashen und produktive Systeme bleiben außerhalb ihres Schreibbereichs.",
+        "",
+      ].join("\n"),
+    },
+  ];
 }
 
 function cameraToTouchDisplaySources(template) {

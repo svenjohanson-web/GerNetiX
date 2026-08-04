@@ -845,6 +845,7 @@ test("composes ESP32 basissoftware with only the project-owned user main", async
   assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");
   assert.equal(buildPackage.files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
+  assert.deepEqual((await service.getBuildJob(job.build_job_id)).customer_debug_source_paths, ["src/user/user_app.cpp"]);
 });
 
 test("stores project view manifest and includes it in build package", async () => {

@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  customerArtifactList,
+  customerBuildProgress,
+  isCustomerDownloadableArtifactName,
+  redactProtectedSymbolFrames,
+} = require("./build-artifact-visibility");
+
 function registerBuildRoutes({
   registry,
   requireSession,
@@ -161,8 +168,11 @@ function registerBuildRoutes({
           : (job.result?.build?.usb_flash?.status || "nicht angefordert"),
         flash_manifest: browserFlashManifest(jobId, job, projectJob?.build_config || {}),
         error: job.error?.message || projectJob?.error?.message || "",
-        build_log: job.error?.details?.build_log || projectJob?.error?.details?.build_log || job.result?.build?.log || "",
-        progress: Array.isArray(job.progress) ? job.progress : [],
+        build_log: projectJob?.build_config?.firmware_basis_id
+          ? ""
+          : job.error?.details?.build_log || projectJob?.error?.details?.build_log || job.result?.build?.log || "",
+        protected_build_diagnostics: Boolean(projectJob?.build_config?.firmware_basis_id),
+        progress: customerBuildProgress(job.progress, Boolean(projectJob?.build_config?.firmware_basis_id)),
         build_id: job.result?.build?.build_id || projectJob?.result?.build?.build_id || "",
         artifacts: buildArtifactList(jobId, job.result?.build?.artifacts || projectJob?.result?.build?.artifacts || {}),
       });
@@ -194,7 +204,10 @@ function registerBuildRoutes({
         method: "POST",
         body: { build_id: body.build_id, addresses: body.addresses },
       });
-      sendJson(res, 200, result);
+      sendJson(res, 200, {
+        ...result,
+        frames: redactProtectedSymbolFrames(result.frames, projectJob.customer_debug_source_paths),
+      });
     },
   });
   registry.register({
@@ -209,18 +222,19 @@ function registerBuildRoutes({
         sendJson(res, 404, { error: "build_artifact_not_found" });
         return;
       }
-      await proxyBuildArtifact(res, jobId, decodeURIComponent(match[2]));
+      const fileName = decodeURIComponent(match[2]);
+      const artifact = job.result?.build?.artifacts?.[fileName];
+      if (!isCustomerDownloadableArtifactName(fileName) || !artifact || artifact.file_name !== fileName) {
+        sendJson(res, 404, { error: "build_artifact_not_found" });
+        return;
+      }
+      await proxyBuildArtifact(res, jobId, fileName);
     },
   });
 }
 
 function buildArtifactList(jobId, artifacts) {
-  return Object.values(artifacts || {}).filter((artifact) => artifact?.file_name).map((artifact) => ({
-    file_name: artifact.file_name,
-    size_bytes: artifact.size_bytes,
-    sha256: artifact.sha256,
-    download_url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(artifact.file_name)}`,
-  }));
+  return customerArtifactList(jobId, artifacts);
 }
 
 module.exports = { registerBuildRoutes };

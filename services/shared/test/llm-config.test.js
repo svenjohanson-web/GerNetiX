@@ -110,6 +110,18 @@ test("llm config permanently routes GerNetiX Help to Ollama", () => {
   assert.equal(store.publicConfig().routes.help_chat.provider, "ollama");
 });
 
+test("llm config permanently routes hardware lab analysis to external API", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const store = createLlmConfigStore({
+    configPath: path.join(tmp, "identity-llm-config.json"),
+    defaultOllamaBaseUrl: "http://127.0.0.1:11434",
+    defaultOllamaModel: "llama-local",
+  });
+  await store.updateConfig({ provider: "ollama", routes: { hardware_lab_analysis: { provider: "ollama" } } });
+  assert.equal(store.resolveRoute("hardware_lab_analysis").provider, "api");
+  assert.equal(store.publicConfig().routes.hardware_lab_analysis.provider, "api");
+});
+
 test("llm config store persists route overrides", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
   const configPath = path.join(tmp, "identity-llm-config.json");

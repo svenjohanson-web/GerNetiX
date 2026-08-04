@@ -641,6 +641,25 @@ services:
     depends_on:
       ai-usage-postgres-migration: { condition: service_completed_successfully }
 
+  device-voice-orchestrator:
+    <<: *node-service
+    networks:
+      - backend
+      - loopback-access
+    environment:
+      GERNETIX_SERVICE: device-voice-orchestrator
+      HOST: 0.0.0.0
+      PORT: 5800
+      DEVICE_VOICE_PROVIDER: disabled
+      DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700/api/device-management
+      AI_USAGE_BASE_URL: http://ai-usage-server:5000/api/ai-usage
+    expose: ["5800"]
+    ports:
+      - "127.0.0.1:5800:5800"
+    depends_on:
+      device-management-server: { condition: service_healthy }
+      ai-usage-server: { condition: service_healthy }
+
   community-platform:
     <<: *node-service
     networks:

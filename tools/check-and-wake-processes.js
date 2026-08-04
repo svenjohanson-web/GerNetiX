@@ -15,6 +15,7 @@ const PLATFORM_SERVICES = [
   service("hardware-catalog", "Hardware Catalog", 4910, { PERSISTENCE_BACKEND: "memory" }),
   service("hardware-shop", "Hardware Shop", 4900, { PERSISTENCE_BACKEND: "memory" }),
   service("ai-usage-server", "AI Usage Server", 5000, { PERSISTENCE_BACKEND: "memory" }),
+  service("device-voice-orchestrator", "Device Voice Orchestrator", 5800),
   service("ai-context-server", "AI Context Server", 5500),
   service("admin-tool", "Admin Tool", 4600, { PERSISTENCE_BACKEND: "memory" }),
   service("community-platform", "Community Platform", 5200),

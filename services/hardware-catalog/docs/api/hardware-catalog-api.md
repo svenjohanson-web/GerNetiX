@@ -10,8 +10,8 @@ Formfaktor oder Framework-Kompatibilitaet, aber keine technische Hauptkategorie.
 
 Beispiele sind Arduino Nano R3 / ATmega328P, Wemos D1 mini / ESP-12F,
 generische Boards mit ESP-WROOM-32 Modul, Arduino Nano ESP32, Espressif
-ESP32-S3-DevKitC-1, das lokal getestete ESP32-S3 ES3C28P Touch-Board und
-Espressif ESP32-C6-DevKitC-1.
+ESP32-S3-DevKitC-1, das lokal getestete ESP32-S3 ES3C28P Touch-Board, das
+Waveshare ESP32-S3-AUDIO-Board und Espressif ESP32-C6-DevKitC-1.
 
 Spezialhardware wie Display, Sound, Online-LEDs, Sensoren oder abweichende Pins
 ist keine automatisch erkannte Board-Wahrheit. Der Katalog liefert bekannte
@@ -39,6 +39,18 @@ Pinbelegung sowie bekannten Speicherwerten liefern. Beim ES3C28P ist das Modul
 `ESP32-S3-WROOM-1-N16R8` hinterlegt: 512 KB interner SRAM, 8 MB PSRAM und
 16 MB Flash. Provisioning verwendet diese Werte als Vorbelegung; erst
 die Nutzerbestaetigung speichert sie am konkreten Account-Device.
+
+Das Waveshare `ESP32-S3-AUDIO-Board` ist als eigener Herstellerreferenz-Eintrag
+mit den Hersteller-SKUs 32184/32185 erfasst. Das Profil trennt fest integrierte
+Funktionen von optional angeschlossener Hardware: ES7210-Doppelmikrofon,
+ES8311/NS4150B-Audioausgang, sieben WS2812B-RGB-LEDs, PCF85063-RTC,
+TCA9555-I/O-Expander und TF-Slot sind Boardausstattung; LCD, Touch, Kamera,
+Lautsprecher und Lithium-Akku werden nur als optionale Anschluesse beschrieben.
+Die herstellerdokumentierten GPIO- und EXIO-Zuordnungen werden in den
+Projekt-Board-Snapshot uebernommen. Das Board verweist fuer einen
+Basissoftware-Build auf das kompatible N16R8-Ziel, bleibt aber bis zur echten
+Build-, Flash- und Peripherieabnahme als `vendor_reference` mit
+`pending_user_hardware_test` gekennzeichnet.
 
 Die Referenz `firmware_build_target_id` ist keine Compiler-Konfiguration im
 Hardware-Katalog. Sie verweist auf die bei der Basissoftware gepflegte,

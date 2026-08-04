@@ -22,6 +22,10 @@ test("inventory exposes account unpair without claiming to delete the physical d
   assert.match(app, /data-save-device-profile=/);
   assert.match(app, /Update- und Speicherprofil/);
   assert.match(app, /putJson\(`\/api\/platform\/devices\/\$\{encodeURIComponent\(accountDeviceId\)\}`/);
+  assert.match(app, /data-save-device-voice-policy=/);
+  assert.match(app, /KI-Geschichten für dieses Gerät freigeben/);
+  assert.match(app, /Aufnahmen sind auf 15 Sekunden begrenzt/);
+  assert.match(app, /putJson\(`\/api\/platform\/devices\/\$\{encodeURIComponent\(accountDeviceId\)\}\/voice-ai-policy`/);
   assert.doesNotMatch(app, /data-remove-device=/);
 });
 

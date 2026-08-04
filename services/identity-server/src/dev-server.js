@@ -80,6 +80,7 @@ const { registerHardwareRoutes } = require("./dev/server/hardware-routes");
 const { registerDeviceRoutes } = require("./dev/server/device-routes");
 const { registerCommunityRoutes } = require("./dev/server/community-routes");
 const { registerBuildRoutes } = require("./dev/server/build-routes");
+const { customerArtifactList } = require("./dev/server/build-artifact-visibility");
 const { registerProjectRoutes } = require("./dev/server/project-routes");
 const { registerSystemRoutes } = require("./dev/server/system-routes");
 const { registerDownloadRoutes } = require("./dev/server/download-routes");
@@ -412,6 +413,7 @@ registerDeviceRoutes({
   handlePlatformDiscoveredDeviceClaim,
   handlePlatformDeviceCreate,
   handlePlatformDeviceBasissoftwareProfileUpdate,
+  handlePlatformDeviceVoiceAiPolicyUpdate,
   handlePlatformDeviceRemove,
   handlePlatformProvisioningSession,
   handlePlatformProvisioningComplete,
@@ -1447,6 +1449,56 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   let buildConfig = templateBuildConfig(template);
   let hardwareConfiguration = templateHardwareConfiguration(template);
   let softwareUnits = templateSoftwareUnits(template);
+  let selectedPlaygroundBoard = null;
+  if (template.id === "ai_board_playground") {
+    const requestedBoardId = requiredField(body.board_profile_id, "board_profile_id").slice(0, 180);
+    const boards = await loadAvailableProcessorBoards(session);
+    selectedPlaygroundBoard = boards.find((board) => board.hardware_item_id === requestedBoardId);
+    if (!selectedPlaygroundBoard?.platformio_build?.board) {
+      sendJson(res, 409, {
+        error: "board_playground_board_unavailable",
+        message: "Das gewählte Board ist nicht als buildfähiges GerNetiX-Boardprofil verfügbar.",
+      });
+      return;
+    }
+    const catalogBuild = selectedPlaygroundBoard.platformio_build;
+    buildConfig = {
+      ...catalogBuild,
+      libraries: Array.isArray(catalogBuild.libraries) ? catalogBuild.libraries : [],
+      build_flags: Array.isArray(catalogBuild.build_flags) ? catalogBuild.build_flags : [],
+      platformio_options: catalogBuild.platformio_options || {},
+      firmware_basis_id: catalogBuild.firmware_basis_id || "gernetix-runtime-basissoftware",
+      firmware_basis_version: catalogBuild.firmware_basis_version || "workspace",
+      firmware_basis_variant: catalogBuild.firmware_basis_variant || "full",
+      partition_profile_id: catalogBuild.partition_profile_id || "full",
+      user_source_path: "src/user_main.cpp",
+      user_target_path: "src/user/user_app.cpp",
+      board_configuration: compilerBoardConfiguration(null, selectedPlaygroundBoard),
+    };
+    softwareUnits = [{
+      software_unit_id: "board_playground",
+      title: "Board-Spielprojekt",
+      software_kind: "embedded_firmware",
+      build_system: "platformio",
+      source_root: "Komponenten/IoT-Device 1",
+      entrypoint: "src/user_main.cpp",
+      device_id: "",
+      hardware_profile_id: selectedPlaygroundBoard.hardware_item_id,
+      build_config: structuredClone(buildConfig),
+    }];
+    hardwareConfiguration = {
+      schema_version: 6,
+      components: [{
+        component_id: "device",
+        label: selectedPlaygroundBoard.title || "Ausgewähltes Board",
+        plantuml_type: "rectangle",
+        abstract_type: "iot_device",
+        concrete_type: "processor_board",
+        board_profile_id: selectedPlaygroundBoard.hardware_item_id,
+        board_configuration: compilerBoardConfiguration(null, selectedPlaygroundBoard),
+      }],
+    };
+  }
   if (softwareUnits.length) {
     const boards = await loadAvailableProcessorBoards(session);
     const missingBoard = softwareUnits.find((unit) => !boards.some((board) => board.hardware_item_id === unit.hardware_profile_id));
@@ -1523,7 +1575,10 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const initialSource = template.id === "empty" ? "" : templateArchitecturePlantUml(template, title);
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
     .concat(templateFirmwareSources(template, title));
-  const templateProjectId = `system_template_${template.id}_v${template.schemaVersion}`;
+  const templateVariant = selectedPlaygroundBoard
+    ? `_${slugifyProjectId(selectedPlaygroundBoard.hardware_item_id)}`
+    : "";
+  const templateProjectId = `system_template_${template.id}${templateVariant}_v${template.schemaVersion}`;
   if (template.id !== "empty") {
     const existingTemplate = await projectServerJson(`/api/projects/${encodeURIComponent(templateProjectId)}`).catch((error) => error.status === 404 ? null : Promise.reject(error));
     if (!existingTemplate) await projectServerJson("/api/projects", {
@@ -2786,14 +2841,7 @@ function esp32BootloaderAddress(buildConfig = {}) {
 
 function buildArtifactDownloads(jobId, completedJob) {
   const artifacts = completedJob?.result?.build?.artifacts || {};
-  return Object.values(artifacts)
-    .filter((artifact) => artifact?.file_name)
-    .map((artifact) => ({
-      file_name: artifact.file_name,
-      size_bytes: artifact.size_bytes,
-      sha256: artifact.sha256,
-      download_url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(artifact.file_name)}`,
-    }));
+  return customerArtifactList(jobId, artifacts);
 }
 
 async function proxyBuildArtifact(res, jobId, fileName) {
@@ -3272,14 +3320,9 @@ async function loadProjectBuilds(projects, session) {
     ]);
     for (const job of response.items) {
       const device = devices.find((item) => item.device_id === job.device_id);
-      const artifacts = artifactResponse.items
+      const artifacts = customerArtifactList(job.build_job_id, Object.fromEntries(artifactResponse.items
         .filter((artifact) => artifact.build_job_id === job.build_job_id)
-        .map((artifact) => ({
-          file_name: artifact.file_name,
-          size_bytes: artifact.size_bytes,
-          sha256: artifact.sha256,
-          download_url: `/api/user-ide/build-artifacts/${encodeURIComponent(job.build_job_id)}/${encodeURIComponent(artifact.file_name)}`,
-        }));
+        .map((artifact) => [artifact.file_name, artifact])));
       result.push({
         build_job_id: job.build_job_id,
         project_server_id: job.project_id,
@@ -3689,6 +3732,14 @@ function decorateUserIdeDevice(device) {
     build_config: deviceBuildConfig(device),
     build_target_label: buildTargetLabel(device),
     ownership_status: device.ownership_status,
+    voice_ai_policy: device.voice_ai_policy || {
+      enabled: false,
+      age_band: "child_6_12",
+      max_recording_seconds: 15,
+      max_reply_seconds: 20,
+      raw_audio_retention: "transient_only",
+      transcript_retention: "disabled",
+    },
     purchase_context_id: device.purchase_context_id || "",
     hardware_unit_id: device.instance_configuration?.hardware_unit_id || "",
   };
@@ -4377,6 +4428,40 @@ async function handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session,
     sendJson(res, error.status || 400, {
       error: error.code || "basissoftware_profile_update_failed",
       message: error.message || "Basissoftware-Profil konnte nicht gespeichert werden.",
+      details: error.payload || {},
+    });
+  }
+}
+
+async function handlePlatformDeviceVoiceAiPolicyUpdate(req, res, session, accountDeviceId) {
+  try {
+    const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const enabled = body.enabled === true;
+    const result = await deviceManagementJson(
+      `/api/device-management/accounts/${encodeURIComponent(accountId)}/devices/${encodeURIComponent(accountDeviceId)}/voice-ai-policy`,
+      {
+        method: "PUT",
+        body: {
+          enabled,
+          consent_version: enabled ? "voice-ai-parent-v1" : "",
+          age_band: body.age_band || "child_6_12",
+          max_recording_seconds: 15,
+          max_reply_seconds: 20,
+        },
+      },
+    );
+    sendJson(res, 200, {
+      device: decorateUserIdeDevice(result.account_device),
+      voice_ai_policy: result.voice_ai_policy,
+      message: enabled
+        ? "Voice AI ist fuer dieses Device freigegeben. Der Provider bleibt bis zur zentralen GerNetiX-Freigabe deaktiviert."
+        : "Voice AI ist fuer dieses Device deaktiviert.",
+    });
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "voice_ai_policy_update_failed",
+      message: error.message || "Voice-AI-Freigabe konnte nicht gespeichert werden.",
       details: error.payload || {},
     });
   }

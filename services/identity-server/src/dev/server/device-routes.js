@@ -10,6 +10,7 @@ function registerDeviceRoutes({
   handlePlatformDiscoveredDeviceClaim,
   handlePlatformDeviceCreate,
   handlePlatformDeviceBasissoftwareProfileUpdate,
+  handlePlatformDeviceVoiceAiPolicyUpdate,
   handlePlatformDeviceRemove,
   handlePlatformProvisioningSession,
   handlePlatformProvisioningComplete,
@@ -57,6 +58,14 @@ function registerDeviceRoutes({
       },
     });
   }
+  registry.register({
+    method: "PUT",
+    pattern: /^\/api\/platform\/devices\/([^/]+)\/voice-ai-policy$/,
+    async handler({ req, res, match }) {
+      const session = await requireSession(req, res);
+      if (session) await handlePlatformDeviceVoiceAiPolicyUpdate(req, res, session, decodeURIComponent(match[1]));
+    },
+  });
   registry.register({
     method: "PUT",
     pattern: /^\/api\/platform\/devices\/([^/]+)$/,

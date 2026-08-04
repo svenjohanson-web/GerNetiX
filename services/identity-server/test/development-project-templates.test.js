@@ -30,7 +30,7 @@ test("separates semantic template models from rendered views", () => {
 
 test("exposes one UI catalog without architecture or realization internals", () => {
   const catalog = developmentProjectTemplateCatalog();
-  assert.equal(catalog.length, 10);
+  assert.equal(catalog.length, 11);
   assert.equal(catalog.find((template) => template.id === "empty").default_title, "");
   assert.deepEqual(catalog.find((template) => template.id === "sensor_actuator_control"), {
     id: "sensor_actuator_control",
@@ -39,9 +39,26 @@ test("exposes one UI catalog without architecture or realization internals", () 
     description: "IoT-Device erfasst einen Sensorwert, wertet ihn in einer lokalen Steuerlogik aus und steuert damit einen Aktor.",
     hint: "Sensor, lokale Steuerlogik und Aktor als durchgaengige Wirkungskette.",
     required_entitlements: [],
+    board_selection_required: false,
     model_schema_version: 1,
   });
   assert.equal(catalog.some((template) => "architecture" in template || "realization" in template), false);
+});
+
+test("provides a board-selectable AI playground without granting access to the basis software", () => {
+  const template = developmentProjectTemplate("ai_board_playground");
+  const catalogItem = developmentProjectTemplateCatalog().find((item) => item.id === template.id);
+  const source = templateArchitecturePlantUml(template, template.title);
+  const files = templateFirmwareSources(template, "Audio-Spielwiese");
+
+  assert.equal(catalogItem.board_selection_required, true);
+  assert.equal(templateBuildConfig(template), null);
+  assert.equal(templateHardwareProfileId(template), "architecture.discovery");
+  assert.match(source, /Ausgewähltes Board/);
+  assert.match(source, /experimentiert und erweitert/);
+  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), true);
+  assert.equal(files.some((file) => /basissoftware/i.test(file.path)), false);
+  assert.match(files.find((file) => file.path === "README.md").content, /nach deiner Bestätigung übernehmen/);
 });
 
 test("renders initial previews separately and keeps the empty project blank", () => {

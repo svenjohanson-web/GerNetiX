@@ -127,9 +127,10 @@ Neue Worker verwenden folgende Grenze:
 - Die Klassen `deployable`, `symbols` und `diagnostic` besitzen im heutigen
   Rueckfallvertrag 90, 30 beziehungsweise 14 Tage Retention. Der Zielvertrag
   leitet die Frist aus der serverseitig aktiven, versionierten Policy ab. ELF,
-  HEX, Map und Log werden als Gzip
-  gespeichert und fuer Download sowie Symbolisierung transparent dekodiert;
-  Firmware-Binaries bleiben unveraendert.
+  HEX, Map und Log werden als Gzip gespeichert. Flashbare Firmware-Dateien
+  werden fuer autorisierte Downloads dekodiert; ELF und Map werden nur
+  serverintern fuer die exakte Symbolisierung dekodiert, Diagnose-Logs nur fuer
+  interne Betriebszwecke. Firmware-Binaries bleiben unveraendert.
 - S3-kompatibler Primaerspeicher ist vorbereitet, aber nicht freigegeben. Seine
   Einfuehrung verlangt eine eigene Architekturentscheidung, transaktionale
   Referenzregeln, Migration, Backup-Erweiterung und Restore-Nachweis.
@@ -149,7 +150,8 @@ Community-Inhalte gehoeren nicht in die Account-Asset-Ablage. Eine oeffentliche 
 2. Das oeffentliche Flashbox-API fragt ausschliesslich `flashbox-initial-image` mit `visibility=public` ab. Es enthaelt keine Account- oder Besitzdaten.
 3. Der Serial-Service-/MaxSerial-Download fragt ausschliesslich `visibility=authenticated` ab und benoetigt eine Sitzung.
 4. Build-&-Deploy liest Ausgaben nur aus dem temporaeren Build-Workspace. Ein externer Worker hasht und komprimiert sie lokal, streamt sie authentifiziert zum zentralen Dienst und veroeffentlicht den geprueften Satz dort transaktional als BLOBs in `build_artifacts`.
-5. Identity liefert ein Build-Artefakt erst nach serverseitiger Zuordnung des Build-Jobs zum angemeldeten Projektbesitzer. Die Flashbox erhaelt nur einen signierten, ablaufenden Auftrag fuer den konkreten Helper und das konkrete Ziel.
+5. Identity liefert nach serverseitiger Zuordnung des Build-Jobs zum angemeldeten Projektbesitzer ausschliesslich flashbare Build-Artefakte (`bootloader.bin`, `partitions.bin`, `boot_app0.bin`, `firmware.bin`, `firmware.hex`). ELF, Map und Build-Log bleiben auch bei bekanntem Dateinamen intern. Die Flashbox erhaelt nur einen signierten, ablaufenden Auftrag fuer den konkreten Helper und das konkrete Ziel.
+6. Die serverseitige Crash-Symbolisierung verwendet die interne ELF nur bei exakter Build-ID. Identity gibt Symbolnamen und Quellorte ausschliesslich fuer die beim Build gespeicherten Kundenquellpfade aus und redigiert Basissoftware-Frames.
 
 Damit kann dasselbe Release auf mehreren Rechnern verwendet werden, ohne lokal erneut ein Firmware-Image zu bauen. Das Flashen eines Arduino Nano oder anderen Targets bleibt ein Hardwarevorgang des lokalen Serial Service beziehungsweise der inventarisierten Flashbox; der VPS verwaltet Release, Build-Artefakt, Berechtigung und Auftrag.
 

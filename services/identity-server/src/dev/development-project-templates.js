@@ -16,6 +16,7 @@ function developmentProjectTemplateCatalog() {
     description: template.description,
     hint: template.hint,
     required_entitlements: template.requiredEntitlements || [],
+    board_selection_required: Boolean(template.boardSelectionRequired),
     model_schema_version: template.schemaVersion,
   }));
 }

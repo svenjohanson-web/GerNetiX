@@ -167,6 +167,48 @@ test("pairing creates account device and OTA target discovery marks selectable d
   assert.equal(targets[0].selectable, true);
 });
 
+test("authorizes Voice AI only with device proof, account ownership and explicit consent", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const accountDevice = await service.addAccountDevice("acct-parent", { device_id: device.device_id });
+
+  await assert.rejects(
+    service.updateAccountDeviceVoiceAiPolicy("acct-parent", accountDevice.account_device_id, { enabled: true }),
+    /Consent-Version/,
+  );
+  const configured = await service.updateAccountDeviceVoiceAiPolicy("acct-parent", accountDevice.account_device_id, {
+    enabled: true,
+    consent_version: "voice-ai-parent-v1",
+    age_band: "child_6_8",
+  });
+  assert.equal(configured.voice_ai_policy.raw_audio_retention, "transient_only");
+  assert.equal(configured.voice_ai_policy.transcript_retention, "disabled");
+
+  const challenge = await service.createChallenge(device.device_id);
+  const signature = crypto.sign("sha256", Buffer.from(challenge.canonical), {
+    key: TEST_DEVICE_KEYS.privateKey,
+    dsaEncoding: "ieee-p1363",
+  }).toString("base64url");
+  const authorized = await service.authorizeVoiceSession(device.device_id, {
+    account_id: "acct-parent",
+    challenge_id: challenge.challenge_id,
+    signature,
+  });
+  assert.equal(authorized.authorized, true);
+  assert.equal(authorized.voice_ai_policy.age_band, "child_6_8");
+
+  const otherChallenge = await service.createChallenge(device.device_id);
+  const otherSignature = crypto.sign("sha256", Buffer.from(otherChallenge.canonical), {
+    key: TEST_DEVICE_KEYS.privateKey,
+    dsaEncoding: "ieee-p1363",
+  }).toString("base64url");
+  await assert.rejects(service.authorizeVoiceSession(device.device_id, {
+    account_id: "acct-other",
+    challenge_id: otherChallenge.challenge_id,
+    signature: otherSignature,
+  }), /nicht.*freigegeben/);
+});
+
 test("resolves push recipients from the current account-device ownership", async () => {
   const service = await createDefaultDeviceManagementServer();
   const device = await registerVerified(service);

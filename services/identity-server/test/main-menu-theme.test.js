@@ -22,6 +22,7 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(html, /data-route="dashboard"[^>]*>Übersicht/);
   assert.match(html, /<summary data-i18n="platform\.menu\.learn_develop">Lernen &amp; Entwickeln<\/summary>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.boards_tools">Boards &amp; Werkzeuge<\/summary>/);
+  assert.match(html, /id="hardwareLabMenuLink"[^>]*href="http:\/\/127\.0\.0\.1:5100\/"[^>]*>KI-Hardware-Labor<\/a>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.service_shop">Service &amp; Shop<\/summary>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.account">Konto<\/summary>/);
   assert.equal((html.match(/class="app-menu-group/g) || []).length, 4);

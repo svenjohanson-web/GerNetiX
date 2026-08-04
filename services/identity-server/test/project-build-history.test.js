@@ -25,6 +25,8 @@ test("offers persisted firmware artifacts as authenticated project downloads", (
   assert.match(server, /job\.user_id !== projectServerUserId\(session\)/);
   assert.match(server, /Content-Disposition/);
   assert.match(server, /function buildArtifactDownloads\(jobId, completedJob\)/);
+  assert.match(server, /customerArtifactList\(jobId, artifacts\)/);
+  assert.match(server, /isCustomerDownloadableArtifactName\(fileName\)/);
 });
 
 test("explains each saved build with a stable configuration snapshot and readable result", () => {

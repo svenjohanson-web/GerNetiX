@@ -18,11 +18,12 @@ test("monitor controls Identity and the isolated build worker locally while pers
   assert.equal(control.services.find((item) => item.id === "public-demo-server").port, 4920);
   assert.equal(control.services.find((item) => item.id === "community-ai-assistant").port, 5300);
   assert.equal(control.services.find((item) => item.id === "persistence-server").port, 5400);
+  assert.equal(control.services.find((item) => item.id === "device-voice-orchestrator").port, 5800);
   assert.equal(control.services.find((item) => item.id === "provisioning-tool").port, 4500);
   assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
   assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
   assert.equal(control.services.find((item) => item.id === "build-worker").port, 4400);
-  assert.equal(control.services.length, 18);
+  assert.equal(control.services.length, 19);
   assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server", "build-worker"]);
   assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), ["identity-server"]);
   const states = await control.processStates();

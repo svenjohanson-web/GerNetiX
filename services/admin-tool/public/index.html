@@ -499,6 +499,13 @@
               </select>
             </div>
             <div>
+              <span>Hardware-Labor</span>
+              <select id="adminRouteHardwareLab" aria-describedby="adminRouteHardwareLabHint">
+                <option value="api">Nur API (OpenAI Responses)</option>
+              </select>
+              <small id="adminRouteHardwareLabHint">Herstellerquellen werden nur nach AI-Usage-Preflight extern analysiert.</small>
+            </div>
+            <div>
               <span>Artefakte</span>
               <select id="adminRouteArtifactGeneration">
                 <option value="ollama">Lokal</option>
@@ -534,7 +541,7 @@
           <p class="eyebrow">Aktiv</p>
           <h2>Konfiguration</h2>
           <dl id="adminLlmStatus" class="meta-list"></dl>
-          <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. GerNetiX Help bleibt immer lokal in Ollama; externe Provider erhalten keine Help-Chat-Anfragen.</p>
+          <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. Das Hardware-Labor verwendet verbindlich OpenAI Responses mit AI-Usage-Preflight; GerNetiX Help bleibt immer lokal in Ollama.</p>
         </aside>
       </section>
 

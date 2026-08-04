@@ -11,7 +11,7 @@ const informationView = fs.readFileSync(path.resolve(__dirname, "../public/app/i
 const apiClient = fs.readFileSync(path.resolve(__dirname, "../public/app/api-client.js"), "utf8");
 const assistant = fs.readFileSync(path.resolve(__dirname, "../src/dev/development-assistant.js"), "utf8");
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
-const { isAllowedNewCodeExplorerPath } = require("../src/dev/development-assistant");
+const { isAllowedNewCodeExplorerPath, isProtectedBoardPlaygroundPath } = require("../src/dev/development-assistant");
 
 test("shows a contextual AI chat only for code explorer views", () => {
   assert.match(guidedView, /view\?\.type === "source_analysis"/);
@@ -202,4 +202,19 @@ test("allows new AI-created files only in the game folder of the touchscreen tem
   assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/include/game/game_catalog.h"), false);
   assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/include/games/../board_adapter.h"), false);
   assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/include/games/Asteroids.h"), false);
+});
+
+test("allows bounded new user-code files only inside a board playground project", () => {
+  const playground = { view_manifest: { template_id: "ai_board_playground" } };
+  const otherProject = { view_manifest: { template_id: "esp32_device_only" } };
+
+  assert.equal(isAllowedNewCodeExplorerPath(playground, "Komponenten/IoT-Device 1/src/audio/voice_effect.cpp"), true);
+  assert.equal(isAllowedNewCodeExplorerPath(playground, "Komponenten/IoT-Device 1/include/audio/voice_effect.h"), true);
+  assert.equal(isAllowedNewCodeExplorerPath(playground, "Komponenten/IoT-Device 1/platformio.ini"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(playground, "basissoftware/esp32/src/main.cpp"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(playground, "Komponenten/IoT-Device 1/src/../secrets.cpp"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(otherProject, "Komponenten/IoT-Device 1/src/audio.cpp"), false);
+  assert.equal(isProtectedBoardPlaygroundPath("Komponenten/IoT-Device 1/platformio.ini"), true);
+  assert.equal(isProtectedBoardPlaygroundPath("Komponenten/IoT-Device 1/src/board_adapter.cpp"), true);
+  assert.equal(isProtectedBoardPlaygroundPath("Komponenten/IoT-Device 1/src/audio_effect.cpp"), false);
 });

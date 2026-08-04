@@ -1,0 +1,22 @@
+project:
+  id: waveshare-voice-lab
+  name: Waveshare Voice Lab
+  board_profile_id: hardware.processor_board.waveshare_esp32_s3_audio_board
+  purpose: local_hardware_bring_up
+
+firmware:
+  basis: gernetix-runtime-basissoftware
+  profile: full
+  build_environment: waveshare-esp32-s3-audio-voice-lab
+
+features:
+  wifi: true
+  audio_bus_probe: true
+  voice_recording: true
+  voice_effects: false
+
+privacy:
+  upload_recordings: false
+  persist_recordings: false
+  recording_seconds: 3
+  storage: psram_only

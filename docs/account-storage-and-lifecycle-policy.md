@@ -67,7 +67,9 @@ eigener Kundenprojektzustand.
 
 - Ein Standardbuild publiziert nur die zum Flashen erforderlichen Artefakte.
 - Ein expliziter Debug-Build darf ELF, Map und weitere Diagnoseartefakte
-  publizieren, wenn die effektive Policy dies erlaubt.
+  serverintern aufbewahren, wenn die effektive Policy dies erlaubt. Fuer den
+  Kunden publiziert Identity weiterhin nur die zum Flashen erforderlichen
+  Dateien. ELF, Map und Compiler-Log sind kein Kunden-Download.
 - Eine Debug-Session ist kein dauerhafter Projektmodus. Sie wird im Project
   Server an Projektstand, Debug-BuildJobs, Software-Einheiten und Zielgeraete
   gebunden. Das Schliessen des Browsers beendet sie nicht. Nur bewusste
@@ -79,6 +81,14 @@ eigener Kundenprojektzustand.
   Bereits publizierte Build-Artefakte folgen unabhaengig davon ihrer eigenen,
   im Admin Tool sichtbaren Retention-Policy; das Sessionende verlaengert oder
   verkuerzt diese Aufbewahrung nicht.
+- Die interne ELF wird nur fuer die account- und Build-ID-gebundene
+  Symbolisierung verwendet. Der Project Server speichert mit dem Build die
+  exakten Pfade des kundenveraenderbaren Projektcodes. Identity gibt nur fuer
+  diese Pfade Funktion, Datei und Zeile aus; Treffer der geschuetzten
+  Basissoftware werden ohne Symbolnamen und Quellpfad als intern markiert.
+  Rohes Compiler-Log und zeilenweiser Compilerfortschritt eines
+  Basissoftware-Builds werden auch im Buildstatus nicht an den Kunden
+  ausgegeben; dort erscheinen nur normalisierte Buildphasen.
 - Das Debugprofil veraendert die Firmware reproduzierbar ueber PlatformIO
   `build_type = debug`, Debugsymbole und `GERNETIX_DEBUG_SESSION=1`. Deshalb
   muessen betroffene IoT-Firmwares nach dem Wechsel neu gebaut und geflasht

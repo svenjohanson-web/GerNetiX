@@ -3,12 +3,32 @@ const { createHttpApp } = require("./http-app");
 const { InMemoryRecoveryRepository } = require("./repositories/in-memory-recovery-repository");
 const { SqliteBackedRecoveryRepository } = require("./repositories/sqlite-backed-recovery-repository");
 const { RecoveryService } = require("./services/recovery-service");
+const { HardwareSourceReader } = require("./services/hardware-source-reader");
+const { HardwareLabAi } = require("./services/hardware-lab-ai");
+const { BuildDeployClient } = require("./services/build-deploy-client");
+const { AiUsageClient } = require("./services/ai-usage-client");
+const { createLlmConfigStore } = require("../../shared/llm-config");
 
-function createDefaultRecoveryTool(config = createConfig()) {
+function createDefaultRecoveryTool(config = createConfig(), overrides = {}) {
+  const llmConfigStore = overrides.llmConfigStore || createLlmConfigStore({
+    configPath: config.llmConfigPath,
+    defaultOllamaBaseUrl: config.ollamaBaseUrl,
+    defaultOllamaModel: config.ollamaModel,
+  });
   return new RecoveryService({
-    repository: createRepository(config),
+    repository: overrides.repository || createRepository(config),
     deviceManagementBaseUrl: config.deviceManagementBaseUrl,
     registerRecoveredDevices: config.registerRecoveredDevices,
+    sourceReader: overrides.sourceReader || new HardwareSourceReader({
+      maxSourceBytes: config.hardwareSourceMaxBytes,
+      timeoutMs: config.hardwareSourceTimeoutMs,
+    }),
+    hardwareLabAi: overrides.hardwareLabAi || new HardwareLabAi({
+      llmConfigStore,
+      timeoutMs: config.hardwareAiTimeoutMs,
+      aiUsageClient: overrides.aiUsageClient || new AiUsageClient({ baseUrl: config.aiUsageBaseUrl, timeoutMs: config.aiUsageTimeoutMs }),
+    }),
+    buildDeployClient: overrides.buildDeployClient || new BuildDeployClient({ baseUrl: config.buildDeployBaseUrl }),
   });
 }
 
@@ -23,5 +43,9 @@ module.exports = {
   InMemoryRecoveryRepository,
   SqliteBackedRecoveryRepository,
   RecoveryService,
+  HardwareSourceReader,
+  HardwareLabAi,
+  BuildDeployClient,
+  AiUsageClient,
   createDefaultRecoveryTool,
 };

@@ -22,6 +22,7 @@ test("remote-dev services with loopback ports use a non-internal access network"
     ["telemetry-server", 5600],
     ["hardware-shop", 4900],
     ["ai-usage-server", 5000],
+    ["device-voice-orchestrator", 5800],
     ["community-platform", 5200],
     ["ai-context-server", 5500],
   ]);

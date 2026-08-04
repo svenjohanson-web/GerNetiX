@@ -7,10 +7,53 @@ function isTouchscreenGameCollectionProject(project) {
     || manifest.templateId === "touchscreen_game_collection";
 }
 
+function isAiBoardPlaygroundProject(project) {
+  const manifest = project?.view_manifest || project?.viewManifest || {};
+  return manifest.template_id === "ai_board_playground"
+    || manifest.templateId === "ai_board_playground";
+}
+
 function isAllowedNewCodeExplorerPath(project, pathValue) {
-  if (!isTouchscreenGameCollectionProject(project)) return false;
   const normalized = String(pathValue || "").replaceAll("\\", "/");
-  return /^Komponenten\/IoT-Device 1\/include\/games\/[a-z][a-z0-9_]{0,48}\.h$/.test(normalized);
+  if (isTouchscreenGameCollectionProject(project)) {
+    return /^Komponenten\/IoT-Device 1\/include\/games\/[a-z][a-z0-9_]{0,48}\.h$/.test(normalized);
+  }
+  if (isAiBoardPlaygroundProject(project)) {
+    return /^Komponenten\/IoT-Device 1\/(?:src|include)\/(?:[a-z][a-z0-9_]{0,48}\/)*[a-z][a-z0-9_]{0,48}\.(?:c|cc|cpp|h|hpp)$/.test(normalized);
+  }
+  return false;
+}
+
+function isProtectedBoardPlaygroundPath(pathValue) {
+  const normalized = String(pathValue || "").replaceAll("\\", "/");
+  return /(^|\/)(?:basissoftware|\.git)(?:\/|$)/i.test(normalized)
+    || /(^|\/)(?:platformio\.ini|CMakeLists\.txt|sdkconfig(?:\..*)?|idf_component\.yml)$/i.test(normalized)
+    || /(^|\/)(?:board_adapter|gernetix_board_configuration|gernetix_basissoftware_configuration)\.(?:c|cc|cpp|h|hpp)$/i.test(normalized)
+    || /(^|\/)(?:\.env(?:\..*)?|.*(?:secret|credential|private[_-]?key).*)$/i.test(normalized);
+}
+
+function projectBoardContext(project) {
+  const buildConfig = project?.build_config || project?.buildConfig || {};
+  const board = buildConfig.board_configuration || buildConfig.boardConfiguration || {};
+  const rawFeatures = board.board_features || board.boardFeatures || {};
+  const features = Object.entries(rawFeatures)
+    .filter(([, value]) => value?.enabled !== false)
+    .slice(0, 30)
+    .map(([id, value]) => ({
+      id,
+      hardware: String(value?.hardware || "").slice(0, 100),
+      driver: String(value?.driver || "").slice(0, 100),
+      connection: String(value?.connection || "").slice(0, 100),
+      pins: value?.pins && typeof value.pins === "object" ? value.pins : {},
+    }));
+  return `Verbindlicher Board-Snapshot: ${JSON.stringify({
+    name: board.name || project?.title || "Ausgewähltes Board",
+    profile_id: board.base_board_profile_id || board.baseBoardProfileId || project?.hardware_profile_id || project?.hardwareProfileId || "",
+    platform: buildConfig.platform || "",
+    framework: buildConfig.framework || "",
+    environment: buildConfig.environment || "",
+    features,
+  })}`;
 }
 
 function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
@@ -105,7 +148,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const context = codeExplorerMode ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
       const codeContext = codeExplorerMode ? normalizeCodeContext(body.codeContext) : null;
       const messages = [
-        ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext, project) : await systemPrompt(session, requestProfile) }] : []),
+        ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext, project) : await systemPrompt(session, requestProfile, project) }] : []),
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
         ...(body.homeAutomationConfiguration || body.home_automation_configuration ? [{ role: "system", content: homeAutomationConfigurationPrompt(body.homeAutomationConfiguration || body.home_automation_configuration) }] : []),
@@ -271,13 +314,15 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       .slice(-12);
   }
 
-  async function systemPrompt(session, requestProfile = {}) {
+  async function systemPrompt(session, requestProfile = {}, project = null) {
     // Prompt-Regeln gehoeren in die AI-Context-SQLite, nicht in Identity-Code.
     // Identity fuegt hier nur dynamischen Laufzeitkontext an.
     return [
       await promptFoundation("architecture_discovery"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
-    ].join("\n");
+      isAiBoardPlaygroundProject(project) ? projectBoardContext(project) : "",
+      isAiBoardPlaygroundProject(project) ? "Fuehre den Nutzer spielerisch: schlage zuerst wenige konkrete Experimente aus den belegten Boardfunktionen vor und frage dann, welches umgesetzt werden soll. Erfinde keine Pins oder Hardwarefunktionen." : "",
+    ].filter(Boolean).join("\n");
   }
 
   async function codeExplorerSystemPrompt(session, rawContext = {}, project = null) {
@@ -294,6 +339,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       "Bei Aenderungen: nutze find_and_read_project_sources; bearbeite nur dadurch gelesene Pfade.",
       touchscreenGameProject
         ? "Dieses Projekt ist eine Touchscreen-Spielesammlung. Bei einem ausdruecklichen Auftrag fuer ein neues Spiel darfst du zusaetzlich genau einen neuen Header unter Komponenten/IoT-Device 1/include/games/<spiel_id>.h vorschlagen. Verwende eine kleingeschriebene stabile spiel_id aus Buchstaben, Ziffern und Unterstrichen. Lies und aktualisiere zugleich include/game/game_catalog.h und include/config/selected_games.h, damit das Spiel registriert und aktiviert ist. Aendere keine Basissoftware und keine Boardadapter."
+        : "",
+      isAiBoardPlaygroundProject(project)
+        ? `${projectBoardContext(project)}\nDieses Projekt ist eine Board-Spielwiese. Du darfst nach einem ausdruecklichen Implementierungsauftrag bis zu drei neue C/C++-Projektdateien unter Komponenten/IoT-Device 1/src oder Komponenten/IoT-Device 1/include vorschlagen. Basissoftware, Buildsystem, Boardadapter, Secrets und Dateien ausserhalb des Projektquellbereichs bleiben unveraendert.`
         : "",
       "Waehle source_kind=architecture fuer Komponenten, Boards, Module, Beziehungen oder Diagramme; source_kind=code nur fuer ausdrueckliche Implementierungs-, Funktions-, Klassen- oder Quellcodeauftraege.",
       "Kurze Folgenachrichten verfeinern die offene Aufgabe. Fuer Architektur genuegen Typ, Name und bekannte Eigenschaften; fehlende GPIO-/Schaltungsdetails bleiben offen.",
@@ -344,13 +392,24 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       content: String(edit.content || "").slice(0, 120000),
     })).filter((edit) => edit.path && edit.content);
     const newGameCandidates = candidates.filter((edit) => !allowedPaths.has(edit.path)
+      && isTouchscreenGameCollectionProject(project)
+      && isAllowedNewCodeExplorerPath(project, edit.path));
+    const newPlaygroundCandidates = candidates.filter((edit) => !allowedPaths.has(edit.path)
+      && isAiBoardPlaygroundProject(project)
       && isAllowedNewCodeExplorerPath(project, edit.path));
     if (newGameCandidates.length > 1) {
       return { content: "Die KI darf pro Auftrag nur eine neue Spieldatei vorschlagen; es wurde nichts verändert.", fileEdits: [] };
     }
     const allowNewGameFile = newGameCandidates.length === 1 && isExplicitNewGameRequest(latestUserRequest);
+    if (newPlaygroundCandidates.length > 3) {
+      return { content: "Die KI darf pro Auftrag höchstens drei neue Projektdateien vorschlagen; es wurde nichts verändert.", fileEdits: [] };
+    }
+    const allowNewPlaygroundFiles = newPlaygroundCandidates.length > 0 && isExplicitCodeEditRequest(latestUserRequest);
     const fileEdits = candidates
-      .filter((edit) => allowedPaths.has(edit.path) || (allowNewGameFile && isAllowedNewCodeExplorerPath(project, edit.path)))
+      .filter((edit) => (allowedPaths.has(edit.path)
+          && !(isAiBoardPlaygroundProject(project) && isProtectedBoardPlaygroundPath(edit.path)))
+        || (allowNewGameFile && isAllowedNewCodeExplorerPath(project, edit.path))
+        || (allowNewPlaygroundFiles && isAllowedNewCodeExplorerPath(project, edit.path)))
       .map((edit) => describeCodeExplorerEdit({
         ...edit,
         isNewFile: !allowedPaths.has(edit.path),
@@ -607,7 +666,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
             ...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
             tools: projectSourceTools(),
             tool_choice: "auto",
-            max_output_tokens: Number.isFinite(activeConfig.maxOutputTokens) ? Math.min(activeConfig.maxOutputTokens, 700) : 700,
+            max_output_tokens: Number.isFinite(activeConfig.maxOutputTokens)
+              ? Math.min(activeConfig.maxOutputTokens, isAiBoardPlaygroundProject(project) ? 4000 : 700)
+              : isAiBoardPlaygroundProject(project) ? 4000 : 700,
           }),
         });
         const payload = await response.json().catch(() => ({}));
@@ -1802,4 +1863,6 @@ module.exports = {
   plantUmlFunctionCoverage,
   architectureIntentContext,
   isAllowedNewCodeExplorerPath,
+  isProtectedBoardPlaygroundPath,
+  projectBoardContext,
 };

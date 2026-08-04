@@ -103,7 +103,7 @@ const GerNetiXDeviceDebug = (() => {
     if (!session) {
       const installedWarning = installed.length
         ? `<p>Auf ${installed.length} Gerät${installed.length === 1 ? "" : "en"} kann noch Debug-Firmware installiert sein. Baue und flashe Standard-Firmware, um den normalen Zustand wiederherzustellen.</p>`
-        : "<p>Eine Debug-Session verwendet instrumentierte Firmware und bewahrt ELF, Map und Build-Log zeitlich begrenzt auf.</p>";
+        : "<p>Eine Debug-Session verwendet instrumentierte Firmware. ELF, Map und Build-Log bleiben für die zeitlich begrenzte Diagnose serverintern geschützt.</p>";
       return `<section class="device-debug-session ${installed.length ? "warning" : ""}">
         <header><div><p class="eyebrow">Debug-Session</p><h4>${installed.length ? "Debug-Firmware möglicherweise noch installiert" : "Keine Debug-Session aktiv"}</h4></div></header>
         ${installedWarning}
@@ -410,7 +410,7 @@ const GerNetiXDeviceDebug = (() => {
     };
     if (!frames.length) return `<p class="device-debug-symbol-status ${escapeAttribute(symbolization.status || "idle")}">${escapeHtml(messages[symbolization.status] || messages.idle)}</p>`;
     return `<div class="device-debug-stack"><strong>Symbolisierter Stack</strong><ol>${frames.map((frame) => `
-      <li class="${frame.resolved ? "resolved" : "unresolved"}"><code>${escapeHtml(frame.address)}</code><span>${escapeHtml(frame.resolved ? frame.function : "nicht aufgelöst")}</span><small>${escapeHtml(frame.resolved ? `${frame.file}:${frame.line}` : "Kein Symbol im passenden ELF")}</small>${frame.resolved ? `<button type="button" data-debug-source="${escapeAttribute(frame.file)}" data-debug-line="${escapeAttribute(String(frame.line))}">Stelle öffnen</button>` : ""}</li>`).join("")}</ol></div>`;
+      <li class="${frame.resolved ? "resolved" : "unresolved"}"><code>${escapeHtml(frame.address)}</code><span>${escapeHtml(frame.resolved ? frame.function : frame.protected ? "GerNetiX-Basissoftware" : "nicht aufgelöst")}</span><small>${escapeHtml(frame.resolved ? `${frame.file}:${frame.line}` : frame.protected ? "Interne Symbole geschützt" : "Kein Symbol im passenden ELF")}</small>${frame.resolved ? `<button type="button" data-debug-source="${escapeAttribute(frame.file)}" data-debug-line="${escapeAttribute(String(frame.line))}">Stelle öffnen</button>` : ""}</li>`).join("")}</ol></div>`;
   }
 
   function renderEvent(event) {
@@ -559,10 +559,6 @@ const GerNetiXDeviceDebug = (() => {
     const build = state.builds.find((item) => String(item.build_id || "").toLowerCase() === buildId);
     if (!build) {
       session.symbolization = { key, status: "build_artifact_mismatch", frames: [] };
-      return;
-    }
-    if (!Array.isArray(build.artifacts) || !build.artifacts.some((artifact) => artifact.file_name === "firmware.elf")) {
-      session.symbolization = { key, status: "build_elf_missing", frames: [] };
       return;
     }
     session.symbolization = { key, status: "pending", frames: [] };

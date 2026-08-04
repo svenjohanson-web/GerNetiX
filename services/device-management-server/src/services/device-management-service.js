@@ -129,6 +129,38 @@ class DeviceManagementService {
     };
   }
 
+  async authorizeVoiceSession(deviceId, input = {}) {
+    const proof = await this.verifyChallenge(deviceId, input);
+    if (proof.verification_state !== "verified") {
+      throw new DeviceManagementError("device_proof_failed", "Der kryptografische Device-Nachweis ist fehlgeschlagen.", 403);
+    }
+    const requestedAccountId = String(input.account_id || "").trim();
+    const eligible = (await this.repository.listAllAccountDevices()).filter((item) => (
+      item.device_id === deviceId
+      && item.ownership_status !== "removed"
+      && item.voice_ai_policy?.enabled === true
+      && item.voice_ai_policy?.consent_version
+      && (!requestedAccountId || item.account_id === requestedAccountId)
+    ));
+    if (eligible.length === 0) {
+      throw new DeviceManagementError("voice_ai_consent_required", "Voice AI wurde fuer dieses Device nicht durch den Account freigegeben.", 403);
+    }
+    if (eligible.length > 1) {
+      throw new DeviceManagementError("voice_ai_account_ambiguous", "Fuer dieses Device sind mehrere Voice-AI-Accounts aktiv.", 409);
+    }
+    const accountDevice = eligible[0];
+    const accountId = accountDevice.account_id;
+    const policy = accountDevice.voice_ai_policy;
+    return {
+      authorized: true,
+      account_id: accountId,
+      account_device_id: accountDevice.account_device_id,
+      device_id: deviceId,
+      voice_ai_policy: policy,
+      verification_state: proof.verification_state,
+    };
+  }
+
   async createPairingSession(input = {}) {
     await this.requireDevice(required(input.device_id, "device_id"));
     const now = new Date();
@@ -364,6 +396,32 @@ class DeviceManagementService {
         ? "Das Profil wurde gespeichert. Fuer die neue Speicheraufteilung ist ein einmaliger USB-Flash erforderlich."
         : "Das Profil wurde gespeichert.",
     };
+  }
+
+  async updateAccountDeviceVoiceAiPolicy(accountId, accountDeviceId, input = {}) {
+    const accountDevice = await this.repository.findAccountDevice(accountId, accountDeviceId);
+    if (!accountDevice) throw new DeviceManagementError("account_device_not_found", "AccountDevice wurde nicht gefunden.", 404);
+    if (typeof input.enabled !== "boolean") {
+      throw new DeviceManagementError("voice_ai_enabled_required", "enabled muss explizit true oder false sein.", 400);
+    }
+    const enabled = input.enabled;
+    const consentVersion = String(input.consent_version || "").trim();
+    if (enabled && !consentVersion) {
+      throw new DeviceManagementError("voice_ai_consent_version_required", "Zur Aktivierung ist eine Consent-Version erforderlich.", 400);
+    }
+    const policy = {
+      enabled,
+      consent_version: enabled ? consentVersion : "",
+      age_band: normalizeAgeBand(input.age_band),
+      max_recording_seconds: boundedInteger(input.max_recording_seconds, 15, 1, 15),
+      max_reply_seconds: boundedInteger(input.max_reply_seconds, 20, 1, 30),
+      raw_audio_retention: "transient_only",
+      transcript_retention: "disabled",
+      updated_at: new Date().toISOString(),
+    };
+    const updated = { ...accountDevice, voice_ai_policy: policy };
+    await this.repository.saveAccountDevice(updated);
+    return { account_device: updated, voice_ai_policy: policy };
   }
 
   async addAccountDevice(accountId, input = {}) {
@@ -817,6 +875,22 @@ async function findPurchaseContextForDevice(repository, accountId, device) {
 function parseCapabilities(value) {
   if (Array.isArray(value)) return value;
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeAgeBand(value) {
+  const normalized = String(value || "child_6_12").trim();
+  if (!["child_6_8", "child_9_12", "child_6_12"].includes(normalized)) {
+    throw new DeviceManagementError("invalid_voice_ai_age_band", "Unbekannte Voice-AI-Altersstufe.", 400);
+  }
+  return normalized;
+}
+
+function boundedInteger(value, fallback, minimum, maximum) {
+  const number = value === undefined || value === null || value === "" ? fallback : Number(value);
+  if (!Number.isInteger(number) || number < minimum || number > maximum) {
+    throw new DeviceManagementError("invalid_voice_ai_limit", `Voice-AI-Grenze muss zwischen ${minimum} und ${maximum} liegen.`, 400);
+  }
+  return number;
 }
 
 function normalizeBoardFeatures(input = {}) {

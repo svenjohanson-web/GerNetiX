@@ -117,6 +117,19 @@ Diese Gruppe ist fuer Community-Fragen und KI-gestuetzte Community-Antworten rel
 | 2 | AI Usage Server (isolierter Test ohne dauerhafte Daten) | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; $env:PERSISTENCE_BACKEND="memory"; npm run dev` |
 | 3 | Community AI Assistant | 5300 | `services/community-ai-assistant` | `$env:PORT="5300"; npm run dev` |
 
+## Device Voice AI
+
+Der Device Voice Orchestrator ist auf Port `5800` vorbereitet, bleibt aber ohne bewusst freigegebenen Provider im sicheren Zustand `available=false`. Fuer Vertrags- und UI-Tests kann er zusammen mit Device Management und AI Usage gestartet werden:
+
+```powershell
+cd services\device-voice-orchestrator
+$env:PORT="5800"
+$env:DEVICE_VOICE_PROVIDER="disabled"
+npm run dev
+```
+
+Ein oeffentlicher Device-Endpunkt oder echter Audio-Provider wird dadurch nicht freigeschaltet.
+
 ## Wissens- und Diagnose-Tools
 
 Diese Prozesse sind lokal hilfreich, aber nicht fuer jeden Plattformlauf erforderlich.

@@ -209,6 +209,32 @@ test("carries every Waveshare OV3660 signal from the catalog snapshot into the c
   assert.match(header, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT 6/);
 });
 
+test("projects the Waveshare audio board buses without treating optional display and camera as installed", () => {
+  const catalogBoard = synchronizeBoardFeaturePins(defaultCatalogSeed().hardwareItems
+    .find((item) => item.hardware_item_id === "hardware.processor_board.waveshare_esp32_s3_audio_board"));
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}" }],
+    buildConfig: {
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+      board_configuration: {
+        source: "catalog",
+        base_board_profile_id: catalogBoard.hardware_item_id,
+        board_features: catalogBoard.default_instance_configuration.board_features,
+      },
+    },
+  });
+  const header = files.find((file) => file.path === "include/gernetix_board_configuration.h").content;
+  assert.match(header, /GERNETIX_BOARD_FEATURE_MICROPHONE_DRIVER "es7210"/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_MICROPHONE_PIN_DATA_IN 15/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_SPEAKER_DRIVER "es8311"/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_SPEAKER_PIN_DATA_OUT 16/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_RGB_LED_PIN_DATA 38/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_STORAGE_PIN_SCLK 40/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_ENABLED 0/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_CAMERA_ENABLED 0/);
+});
+
 test("copies separated project user headers into the protected build package", () => {
   const files = composeEsp32BasissoftwarePackage({
     basisFiles: [],

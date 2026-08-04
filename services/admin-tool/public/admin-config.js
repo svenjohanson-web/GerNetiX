@@ -1387,6 +1387,7 @@ function renderForm() {
   setValue("#adminApiKey", "");
   setValue("#adminRouteGeneralChat", routeProvider(config, "general_chat", "default"));
   setValue("#adminRouteArchitectureDiscovery", routeProvider(config, "architecture_discovery", "default"));
+  setValue("#adminRouteHardwareLab", routeProvider(config, "hardware_lab_analysis", "api"));
   setValue("#adminRouteArtifactGeneration", routeProvider(config, "artifact_generation", "ollama"));
   setValue("#adminRouteCodeGeneration", routeProvider(config, "code_generation", "ollama"));
   setValue("#adminRouteHelpChat", routeProvider(config, "help_chat", "ollama"));
@@ -1469,6 +1470,7 @@ async function saveLlmConfig(event) {
     routes: {
       general_chat: { provider: value("#adminRouteGeneralChat"), reason: "Interaktiver Chat." },
       architecture_discovery: { provider: value("#adminRouteArchitectureDiscovery"), reason: "Architektur-Discovery im Entwicklungsprojekt." },
+      hardware_lab_analysis: { provider: "api", reason: "Herstellerquellen im KI-gefuehrten Hardware-Labor ueber OpenAI Responses nach AI-Usage-Preflight." },
       artifact_generation: { provider: value("#adminRouteArtifactGeneration"), reason: "PlantUML, Pseudocode und andere ableitbare Artefakte." },
       code_generation: { provider: value("#adminRouteCodeGeneration"), reason: "Quellcode- und Pseudocode-Generierung." },
       help_chat: { provider: "ollama", reason: "GerNetiX Help bleibt ausschliesslich lokal." },
@@ -1813,6 +1815,7 @@ function billingScopeLabel(scope) {
 function featureLabel(feature) {
   return {
     architecture_discovery: "Architektur-Discovery",
+    hardware_lab_analysis: "Hardware-Labor",
     general_chat: "Chat",
     artifact_generation: "Artefakte",
     code_generation: "Codegenerierung",
@@ -1987,6 +1990,7 @@ function routeTaskLabel(task) {
   return {
     general_chat: "Chat",
     architecture_discovery: "Architektur-Discovery",
+    hardware_lab_analysis: "Hardware-Labor",
     artifact_generation: "Artefakte",
     code_generation: "Codegenerierung",
   }[task] || task || "-";

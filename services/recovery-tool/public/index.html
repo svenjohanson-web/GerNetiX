@@ -3,18 +3,71 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GerNetiX Recovery Tool</title>
-    <link rel="stylesheet" href="/app.css?v=20260726-responsive-1" />
+    <title>GerNetiX Hardware-Labor &amp; Recovery</title>
+    <link rel="stylesheet" href="/app.css?v=20260804-hardware-lab-1" />
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">GerNetiX Nutzerwerkzeug</p>
-          <h1>Recovery Tool</h1>
+          <p class="eyebrow">GerNetiX KI-geführtes Hardware-Labor</p>
+          <h1>Hardware untersuchen und Boards retten</h1>
         </div>
-        <span id="healthBadge" class="badge">USB Recovery</span>
+        <span id="healthBadge" class="badge">Hardware-Labor</span>
       </header>
+
+      <section class="lab-intro panel">
+        <div>
+          <p class="eyebrow">Neues Board</p>
+          <h2>Ein selbst gekauftes Board wird zum real geprüften Board-Kandidaten</h2>
+        </div>
+        <p>Dieser Ablauf ist nur für selbst gekaufte oder fremde Community-Boards gedacht. Von GerNetiX vertriebene Boards sind bereits vollständig angelegt und geprüft. GerNetiX übernimmt die Quellen als Entwurf, fordert danach aber immer eine gebaute Discovery-Firmware und die Untersuchung des realen Boards.</p>
+      </section>
+
+      <section class="hardware-lab-layout">
+        <form id="hardwareLabForm" class="panel form-grid">
+          <div class="section-title">
+            <p class="eyebrow">1 · Quellen</p>
+            <h2>Board-Kandidat anlegen</h2>
+          </div>
+          <label>Identity User-ID<input id="labAccountId" type="text" required placeholder="Wird in GerNetiX aus der Anmeldung übernommen" /></label>
+          <label>Board-Name<input id="labBoardName" type="text" required placeholder="z. B. ESP32-S3 Audio Board" /></label>
+          <label>Hersteller<input id="labManufacturer" type="text" placeholder="optional" /></label>
+          <label>Herstellerseite und Datenblätter<textarea id="labSourceUrls" rows="5" required placeholder="Eine HTTP-/HTTPS-URL pro Zeile"></textarea></label>
+          <label>Hinweise<textarea id="labNotes" rows="3" placeholder="Variante, sichtbare Bestückung oder offene Fragen"></textarea></label>
+          <button class="primary" type="submit">Hardware-Untersuchung starten</button>
+        </form>
+
+        <section class="panel lab-progress-panel">
+          <div class="section-title">
+            <p class="eyebrow">2 · Verpflichtende Untersuchung</p>
+            <h2>Discovery-Firmware bauen und ausführen</h2>
+          </div>
+          <div id="labStatusBox" class="status hidden"></div>
+          <dl id="labSessionMeta" class="meta-list"></dl>
+          <section id="labAiResult" class="ai-result hidden"></section>
+          <ol id="labPhaseList" class="phase-list"></ol>
+          <div class="button-row">
+            <button id="labAnalyzeButton" class="primary" type="button" disabled>Quellen mit KI analysieren</button>
+            <button id="labBuildButton" class="primary" type="button" disabled>Discovery-Firmware anfordern</button>
+            <button id="labBuildStatusButton" type="button" disabled>Buildstatus aktualisieren</button>
+            <a id="labFirmwareDownload" class="button-link hidden" href="#" target="_blank" rel="noopener">Firmware herunterladen</a>
+          </div>
+          <p class="helper-text">Der Build-&amp;-Deploy-Server und die Discovery-Firmware melden Build- und Prüfergebnis über die Hardware-Labor-API zurück. Eine manuelle Bestätigung ersetzt diesen Nachweis nicht.</p>
+
+          <div class="verification-box">
+            <p class="eyebrow">3 · Freiwillige Gegenprüfung</p>
+            <h2>Möchtest du das von GerNetiX überprüfen lassen?</h2>
+            <p>Nach bestandener Untersuchung kannst du GerNetiX über dein selbst gekauftes Board informieren und um eine unabhängige Gegenprüfung bitten. GerNetiX klärt die weitere Prüfung anschließend mit dir; hier entsteht weder ein Kauf- noch ein Versandauftrag.</p>
+            <label class="consent-row"><input id="labVerificationConsent" type="checkbox" /> Boardprofil, Quellen und Prüfbericht zweckgebunden an GerNetiX übermitteln</label>
+            <label>Nachricht<textarea id="labVerificationMessage" rows="3" placeholder="optional"></textarea></label>
+            <button id="labVerificationButton" type="button" disabled>Selbst gekauftes Board zur Prüfung melden</button>
+          </div>
+          <pre id="labDetailsBox" class="details compact-details"></pre>
+        </section>
+      </section>
+
+      <div class="section-divider"><span>Bestehendes Board wiederherstellen</span></div>
 
       <section class="workflow">
         <form id="detectForm" class="panel form-grid">
@@ -52,6 +105,6 @@
       </section>
     </main>
 
-    <script src="/app.js"></script>
+    <script src="/app.js?v=20260804-hardware-lab-ai-1"></script>
   </body>
 </html>

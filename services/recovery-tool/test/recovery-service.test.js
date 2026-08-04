@@ -3,11 +3,60 @@ const test = require("node:test");
 
 const { createConfig, createDefaultRecoveryTool } = require("../src");
 
-function createService() {
+function createService(overrides = {}) {
   return createDefaultRecoveryTool(createConfig({
     DEVICE_MANAGEMENT_BASE_URL: "https://devices.gernetix.test/api/device-management",
     REGISTER_RECOVERED_DEVICES: "false",
-  }));
+  }), overrides);
+}
+
+function hardwareLabOverrides() {
+  return {
+    sourceReader: {
+      async readAll(urls) {
+        return urls.map((source_url) => ({ source_url, final_url: source_url, content_type: "text/html", kind: "text", byte_length: 120, text: "ESP32-S3 with 16 MB flash" }));
+      },
+    },
+    hardwareLabAi: {
+      async analyze(input) {
+        return {
+          provider: "openai-responses",
+          model: "gpt-test",
+          response_id: "resp-test",
+          usage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 },
+          profile: {
+            board_name: input.board_name,
+            manufacturer: input.manufacturer || null,
+            processor_family: "esp32",
+            mcu_variant: "ESP32-S3",
+            module_name: "ESP32-S3-WROOM-1",
+            flash_bytes: 16777216,
+            psram_bytes: 8388608,
+            ram_bytes: 524288,
+            platformio: { platform: "espressif32", board: "esp32-s3-devkitc-1", framework: "arduino", environment: "hardware_lab_test", build_flags: ["-DBOARD_HAS_PSRAM"] },
+            capabilities: ["wifi", "bluetooth"],
+            integrated_peripherals: [],
+            pin_candidates: [],
+            evidence: [{ property: "flash_bytes", value: "16 MB", source_url: input.sources[0].source_url, confidence: "documented" }],
+            unresolved_questions: [],
+            discovery_expectations: { passive_checks: ["flash size", "psram size"], active_checks_requiring_confirmation: [], safety_notes: [] },
+          },
+        };
+      },
+    },
+    buildDeployClient: {
+      async submit(request) { return { job_id: request.job_id, status: "running" }; },
+      async get(jobId) {
+        return {
+          job_id: jobId,
+          status: "succeeded",
+          finished_at: "2026-08-04T12:00:00.000Z",
+          result: { build: { build_id: "c".repeat(64), primary_firmware: { file_name: "firmware.bin", sha256: "c".repeat(64) } } },
+        };
+      },
+      artifactUrl(jobId, fileName) { return `http://build.test/artifacts/${jobId}/${fileName}`; },
+    },
+  };
 }
 
 test("creates recovery session from USB detection", () => {
@@ -76,4 +125,99 @@ test("prepares connectivity reset without storing wifi password centrally", () =
   assert.equal(reset.status, "connectivity_repair_prepared");
   assert.equal(reset.connectivity_repair.store_wifi_password_centrally, false);
   assert.equal(reset.recovery_state.connectivity, "ap_mode_ready");
+});
+
+test("creates hardware lab session with mandatory physical discovery", () => {
+  const service = createService();
+  const session = service.createHardwareLabSession({
+    account_id: "acct-lab",
+    board_name: "Example ESP32-S3 Board",
+    manufacturer: "Example Devices",
+    source_urls: ["https://example.test/boards/esp32-s3", "https://example.test/esp32-s3.pdf"],
+  });
+
+  assert.equal(session.recovery_type, "ai_guided_hardware_lab");
+  assert.equal(session.status, "source_submitted");
+  assert.equal(session.discovery.mandatory, true);
+  assert.equal(session.discovery.verification_status, "discovery_pending");
+  assert.equal(session.candidate_profile.board_origin, "customer_purchased_community_board");
+  assert.equal(session.candidate_profile.source_evidence.length, 2);
+});
+
+test("requires successful discovery build and all examination phases", async () => {
+  const service = createService(hardwareLabOverrides());
+  const session = service.createHardwareLabSession({
+    account_id: "acct-lab",
+    board_name: "Example Board",
+    source_urls: ["https://example.test/board"],
+  });
+
+  assert.throws(
+    () => service.recordHardwareExamination(session.recovery_session_id, { result: "passed" }),
+    (error) => error.code === "successful_discovery_build_required",
+  );
+
+  await service.analyzeHardwareLabSources(session.recovery_session_id);
+  await service.requestDiscoveryFirmwareBuild(session.recovery_session_id);
+  const built = await service.synchronizeDiscoveryFirmwareBuild(session.recovery_session_id);
+
+  assert.throws(
+    () => service.recordHardwareExamination(session.recovery_session_id, {
+      result: "passed",
+      safe_detection_complete: true,
+      report_id: "report-incomplete",
+      firmware_build_id: built.discovery.firmware_build.build_id,
+      firmware_sha256: built.discovery.firmware_build.firmware_sha256,
+      completed_phases: ["chip_and_memory"],
+    }),
+    (error) => error.code === "hardware_examination_incomplete" && error.details.missing_phases.length === 4,
+  );
+});
+
+test("allows GerNetiX verification request only after examined hardware and consent", async () => {
+  const service = createService(hardwareLabOverrides());
+  const session = service.createHardwareLabSession({
+    account_id: "acct-lab",
+    board_name: "Example Board",
+    source_urls: ["https://example.test/board"],
+  });
+
+  assert.throws(
+    () => service.requestGerNetiXVerification(session.recovery_session_id, {
+      consent_to_share_profile: true,
+    }),
+    (error) => error.code === "hardware_examination_required",
+  );
+
+  await service.analyzeHardwareLabSources(session.recovery_session_id);
+  await service.requestDiscoveryFirmwareBuild(session.recovery_session_id);
+  const built = await service.synchronizeDiscoveryFirmwareBuild(session.recovery_session_id);
+  const examined = service.recordHardwareExamination(session.recovery_session_id, {
+    result: "passed",
+    safe_detection_complete: true,
+    report_id: "report-2",
+    firmware_build_id: built.discovery.firmware_build.build_id,
+    firmware_sha256: built.discovery.firmware_build.firmware_sha256,
+    completed_phases: built.discovery.required_phases,
+    capabilities: ["capability.processor_esp32", "capability.wifi"],
+    findings: [{ property: "flash_size", observed_value: "16 MB", source_value: "16 MB", status: "confirmed" }],
+  });
+
+  assert.equal(examined.status, "hardware_examined");
+  assert.throws(
+    () => service.requestGerNetiXVerification(session.recovery_session_id, {
+      consent_to_share_profile: false,
+    }),
+    (error) => error.code === "verification_consent_required",
+  );
+
+  const requested = service.requestGerNetiXVerification(session.recovery_session_id, {
+    consent_to_share_profile: true,
+    customer_message: "Bitte dieses selbst gekaufte Board gegenpruefen.",
+  });
+  assert.equal(requested.status, "gernetix_verification_requested");
+  assert.equal(requested.gernetix_verification_request.board_origin, "customer_purchased_community_board");
+  assert.equal(requested.gernetix_verification_request.follow_up_required, true);
+  assert.equal(requested.gernetix_verification_request.shipping_details_collected, false);
+  assert.equal(requested.gernetix_verification_request.shared_scope.includes("hardware_examination_report"), true);
 });

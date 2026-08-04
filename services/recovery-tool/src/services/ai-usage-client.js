@@ -1,0 +1,45 @@
+const { RecoveryToolError } = require("../errors");
+
+class AiUsageClient {
+  constructor(options = {}) {
+    this.baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
+    this.fetchImpl = options.fetchImpl || fetch;
+    this.timeoutMs = Number(options.timeoutMs || 10000);
+  }
+
+  async preflight(payload) {
+    return this.request("/preflight", payload, "hardware_lab_ai_usage_preflight_failed");
+  }
+
+  async complete(eventId, payload) {
+    return this.request(`/events/${encodeURIComponent(eventId)}/complete`, payload, "hardware_lab_ai_usage_completion_failed");
+  }
+
+  async fail(eventId, payload) {
+    return this.request(`/events/${encodeURIComponent(eventId)}/fail`, payload, "hardware_lab_ai_usage_failure_booking_failed");
+  }
+
+  async request(path, payload, errorCode) {
+    if (!this.baseUrl) throw new RecoveryToolError("hardware_lab_ai_usage_not_configured", "Die verpflichtende KI-Nutzungspruefung ist nicht konfiguriert.", 503);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new RecoveryToolError(errorCode, body.message || body.error || `AI Usage antwortet mit HTTP ${response.status}.`, response.status >= 500 ? 502 : response.status, body);
+      return body;
+    } catch (error) {
+      if (error.name === "AbortError") throw new RecoveryToolError(errorCode, "AI Usage hat das Zeitlimit ueberschritten.", 504);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
+module.exports = { AiUsageClient };

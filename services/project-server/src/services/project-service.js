@@ -899,13 +899,18 @@ class ProjectService {
       );
     }
     const projectSnapshot = sanitizeProject(buildProject);
-    const firmwareSources = buildConfig?.firmware_basis_id === "gernetix-runtime-basissoftware"
+    const includesGerNetiXBasissoftware = buildConfig?.firmware_basis_id === "gernetix-runtime-basissoftware";
+    const firmwareSources = includesGerNetiXBasissoftware
       ? composeEsp32BasissoftwarePackage({
           basisFiles: this.loadEsp32BasissoftwareFiles(),
           projectSources: sources,
           buildConfig,
         })
       : sources;
+    const customerDebugSourcePaths = firmwareSources
+      .filter((source) => !includesGerNetiXBasissoftware || source.source_project_path)
+      .map((source) => source.path)
+      .filter((sourcePath) => /\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|inc|inl|ipp|tpp)$/i.test(sourcePath));
     const platformioIni = renderPlatformioIni(buildConfig);
     const buildJob = {
       job_id: job.build_job_id,
@@ -936,6 +941,7 @@ class ProjectService {
     await this.repository.saveBuildJob(job.commit_sha ? {
       ...job,
       package_sha256: packageSha256,
+      customer_debug_source_paths: customerDebugSourcePaths,
       updated_at: new Date().toISOString(),
     } : {
       ...job,
@@ -943,6 +949,7 @@ class ProjectService {
       source_snapshot: sources,
       snapshot_sha256: projectVersionHash(projectSnapshot, sources),
       package_sha256: packageSha256,
+      customer_debug_source_paths: customerDebugSourcePaths,
       updated_at: new Date().toISOString(),
     });
     return {

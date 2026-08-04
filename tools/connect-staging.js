@@ -16,6 +16,7 @@ const REMOTE_DEV_SERVICE_FORWARDS = [
   [5200, 5200],
   [5500, 5500],
   [5600, 5600],
+  [5800, 5800],
 ];
 
 function parseArgs(argv) {

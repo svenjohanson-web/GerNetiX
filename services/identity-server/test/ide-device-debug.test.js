@@ -25,7 +25,7 @@ test("Debug & Diagnose is a separate project workspace and not a component-tree 
   assert.match(html, /id="debugDeviceList"/);
   assert.match(html, /id="debugDeviceView"/);
   assert.match(html, /id="openProjectDebugButton"/);
-  assert.match(html, /device-debug-controller\.js/);
+  assert.match(html, /device-debug-controller\.js\?v=20260804-debug-artifact-protection-1/);
   assert.match(css, /\.device-debug-workspace/);
   assert.match(css, /\.device-debug-events/);
   assert.match(css, /\.debug-workspace-layout/);
@@ -50,11 +50,14 @@ test("local device debug uses read-only USB diagnostics and an explicit local ex
   assert.doesNotMatch(controllerSource, /localStorage|sendBeacon|support.*upload/i);
 });
 
-test("crash reports require an exact build id before ELF symbolization", () => {
+test("crash reports require an exact build id while internal basissoftware symbols stay protected", () => {
   assert.match(controllerSource, /crash_report/);
   assert.match(controllerSource, /backtrace_addresses/);
   assert.match(controllerSource, /build_artifact_mismatch/);
-  assert.match(controllerSource, /firmware\.elf/);
+  assert.match(controllerSource, /ELF, Map und Build-Log bleiben.*serverintern geschützt/);
+  assert.match(controllerSource, /GerNetiX-Basissoftware/);
+  assert.match(controllerSource, /Interne Symbole geschützt/);
+  assert.doesNotMatch(controllerSource, /artifact\.file_name === "firmware\.elf"/);
   assert.match(controllerSource, /data-debug-source/);
   assert.match(css, /\.device-debug-crash/);
   assert.match(css, /\.device-debug-stack/);

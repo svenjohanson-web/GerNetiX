@@ -6,6 +6,24 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
     description: "Architektur und Anforderungen gemeinsam von Grund auf klaeren.",
     hint: "Architektur und Anforderungen gemeinsam von Grund auf klaeren.",
   }),
+  ai_board_playground: templateModel({
+    id: "ai_board_playground",
+    schemaVersion: 1,
+    title: "KI-Spielprojekt für dein Board",
+    defaultTitle: "Meine Board-Spielwiese",
+    description: "Board auswählen, passende Ideen entdecken und die Umsetzung gemeinsam mit der GerNetiX-KI entwickeln.",
+    hint: "Das gewählte Board wird als geschützter Projektsnapshot übernommen. Danach schlägt die KI passende Experimente vor und bereitet bestätigungspflichtige Codeänderungen vor.",
+    boardSelectionRequired: true,
+    architecture: {
+      elements: [
+        element("user", "Nutzer", "actor"),
+        element("device", "Ausgewähltes Board", "iot_device"),
+      ],
+      relations: [
+        relation("user", "device", "experimentiert und erweitert"),
+      ],
+    },
+  }),
   esp32_device_only: templateModel({
     id: "esp32_device_only",
     title: "IoT-Device only",
