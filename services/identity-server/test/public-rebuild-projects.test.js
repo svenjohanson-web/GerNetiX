@@ -125,6 +125,9 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiFlash, /releaseRetryTimer = window\.setTimeout\(loadRelease, 5000\)/);
   assert.match(nexiFlash, /if \(navigator\.serial\)/);
   assert.match(nexiFlash, /USB-Zugriff einrichten/);
+  assert.match(nexiFlash, /await selectSerialServicePort\(\{ automatic: true, releaseReady \}\)/);
+  assert.match(nexiFlash, /if \(!automatic\) showSupportDialog\(\)/);
+  assert.match(nexiFlash, /automatic && ports\.length > 1/);
   assert.match(nexiProject, /kein aktiver Provider|Ohne aktiven Provider/);
 });
 

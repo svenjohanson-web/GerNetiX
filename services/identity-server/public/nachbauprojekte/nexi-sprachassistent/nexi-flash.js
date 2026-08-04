@@ -42,7 +42,8 @@ async function loadRelease() {
     } else {
       portButton.textContent = "USB-Zugriff einrichten";
       setActionEnabled(portButton, true, portStatus, `${releaseReady} Dieser Browser hat keinen direkten Web-Serial-Zugriff.`);
-      setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Öffne die Seite in Chrome oder Edge oder starte den GerNetiX Serial Helper und richte den USB-Zugriff ein.");
+      setActionEnabled(flashButton, false, flashStatus, "Der GerNetiX Serial Helper und das angeschlossene Board werden automatisch geprüft …");
+      await selectSerialServicePort({ automatic: true, releaseReady });
     }
   } catch (error) {
     const detail = error?.message || "Netzwerkfehler";
@@ -54,7 +55,7 @@ async function loadRelease() {
 }
 
 portButton.addEventListener("click", async () => {
-  if (!navigator.serial) return selectSerialServicePort();
+  if (!navigator.serial) return selectSerialServicePort({ automatic: false });
   try {
     selectedPort = await navigator.serial.requestPort();
     const info = selectedPort.getInfo();
@@ -67,27 +68,35 @@ portButton.addEventListener("click", async () => {
   }
 });
 
-async function selectSerialServicePort() {
+async function selectSerialServicePort({ automatic = false, releaseReady = "" } = {}) {
   setActionEnabled(portButton, false, portStatus, "Noch nicht möglich: Der GerNetiX Serial Helper wird geprüft …");
   setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Der USB-Port und das angeschlossene Board werden geprüft …");
   try {
     if (!serialService || !await serialService.available()) {
-      const reason = "Noch nicht möglich: Kein laufender Serial Helper gefunden.";
+      const reason = `${releaseReady ? `${releaseReady} ` : ""}Noch nicht möglich: Kein laufender Serial Helper gefunden.`;
       portStatus.textContent = reason;
-      flashStatus.textContent = reason;
-      showSupportDialog();
+      setActionEnabled(flashButton, false, flashStatus, reason);
+      if (!automatic) showSupportDialog();
       return;
     }
     const ports = await serialService.ports();
     if (!ports.length) throw new Error("Der Serial Helper findet kein USB-Gerät. Prüfe Datenkabel und Verbindung.");
     serialServicePort.innerHTML = ports.map((port) => `<option value="${escapeHtml(port.path)}">${escapeHtml(port.displayName || port.path)}</option>`).join("");
     serialServicePort.hidden = ports.length < 2;
+    if (automatic && ports.length > 1) {
+      selectedPort = null;
+      const reason = "Noch nicht möglich: Der Serial Helper hat mehrere USB-Geräte gefunden. Wähle den Port des Waveshare-Boards aus und starte die Prüfung.";
+      portStatus.textContent = reason;
+      setActionEnabled(flashButton, false, flashStatus, reason);
+      return;
+    }
     const selectedPath = serialServicePort.value;
     selectedPort = { ...(ports.find((port) => port.path === selectedPath) || ports[0]), source: "gernetix_serial_service" };
     const probe = await serialService.probe(selectedPort.path);
     if (!/ESP32[- ]?S3/i.test(probe.chipName || "")) throw new Error("Das verbundene Gerät ist kein ESP32-S3. Es wird nichts geschrieben.");
     if (sizeMb(probe.flashSize) < 16) throw new Error("Das verbundene Gerät meldet weniger als 16 MB Flash. Es wird nichts geschrieben.");
     portStatus.textContent = `${probe.chipName || "USB-Board"} erkannt (${selectedPort.path}).`;
+    portButton.textContent = "USB-Gerät erneut prüfen";
     enableFlash("Der Serial Helper ist bereit. Nexi Basic kann jetzt geflasht werden.");
   } catch (error) {
     const reason = `Noch nicht möglich: ${error.message || "Der Serial Helper konnte den USB-Port nicht prüfen."}`;
