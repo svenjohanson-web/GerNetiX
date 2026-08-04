@@ -25,6 +25,10 @@ Direkt flashbare Nachbauprojekte verwenden durchgängig dieselbe Reihenfolge:
 5. Die Installationseinheit zeigt Zielhardware, Releasezustand, überschreibende Wirkung, Browser-/Helper-Weg und den konkreten Verbindungsbutton.
 6. Vor dem Schreiben werden Boardtyp, Flashgröße, Dateigrößen und SHA-256-Prüfsummen geprüft.
 
+## Deaktivierte Aktionen
+
+Eine deaktivierte Aktion zeigt immer unmittelbar am Bedienelement den konkreten Grund, warum sie noch nicht ausgeführt werden kann. Der Hinweis bleibt sichtbar, wird über `aria-describedby` mit der Aktion verknüpft und nennt nach Möglichkeit den nächsten notwendigen Schritt. Ein lediglich ausgegrauter Button oder ein versteckter Folgeschritt ist nicht zulässig.
+
 ## Abgrenzung
 
 Lern- und Entwicklungswege bleiben zusätzliche Perspektiven. Sie dürfen die direkte Installation eines fertig veröffentlichten Nachbauprojekts weder voraussetzen noch verdecken.

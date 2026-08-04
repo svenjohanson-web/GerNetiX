@@ -3,7 +3,6 @@
 const DEMO_ID = "nexi-basic-waveshare-s3";
 const portButton = document.querySelector("#choose-port");
 const portStatus = document.querySelector("#port-status");
-const flashStep = document.querySelector("#flash-step");
 const flashButton = document.querySelector("#flash-button");
 const flashStatus = document.querySelector("#flash-status");
 const serialServicePort = document.querySelector("#serial-service-port");
@@ -14,6 +13,8 @@ const serialService = window.GerNetiXSerialService?.create?.() || null;
 let selectedDemo = null;
 let selectedPort = null;
 
+setActionEnabled(portButton, false, portStatus, "Noch nicht möglich: Der geprüfte Nexi-Release wird geladen …");
+setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Zuerst muss der geprüfte Release geladen und ein USB-Port gewählt werden.");
 loadRelease();
 
 supportDialog.addEventListener("click", (event) => {
@@ -29,10 +30,12 @@ async function loadRelease() {
     if (!release) throw new Error("Kein Release veröffentlicht");
     document.querySelector("#flash-title").textContent = `Nexi Basic ${release.version} auf das Waveshare-Board flashen`;
     const source = release.source_commit_sha ? ` · Quellstand ${release.source_commit_sha.slice(0, 12)}` : "";
-    portStatus.textContent = `Release ${release.version} ist bereit${source} · Firmware SHA-256 ${release.firmware_sha256.slice(0, 12)}…`;
-    portButton.disabled = false;
+    setActionEnabled(portButton, true, portStatus, `Release ${release.version} ist bereit${source} · Firmware SHA-256 ${release.firmware_sha256.slice(0, 12)}…`);
+    setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Wähle zuerst den USB-Port des Waveshare-Boards.");
   } catch {
-    portStatus.textContent = "Der geprüfte Nexi-Release ist gerade nicht verfügbar. Bitte später erneut versuchen.";
+    const reason = "Nicht möglich: Der geprüfte Nexi-Release ist gerade nicht verfügbar. Bitte später erneut versuchen.";
+    setActionEnabled(portButton, false, portStatus, reason);
+    setActionEnabled(flashButton, false, flashStatus, reason);
   }
 }
 
@@ -44,16 +47,20 @@ portButton.addEventListener("click", async () => {
     portStatus.textContent = `USB-Port gewählt (${hex(info.usbVendorId)}:${hex(info.usbProductId)}).`;
     enableFlash("Das Board ist verbunden. Nexi Basic kann jetzt geflasht werden.");
   } catch (error) {
-    portStatus.textContent = error.name === "NotFoundError" ? "Es wurde kein USB-Port ausgewählt." : "Der USB-Port konnte nicht geöffnet werden.";
+    const reason = error.name === "NotFoundError" ? "Noch nicht möglich: Es wurde kein USB-Port ausgewählt." : "Noch nicht möglich: Der USB-Port konnte nicht geöffnet werden.";
+    portStatus.textContent = reason;
+    setActionEnabled(flashButton, false, flashStatus, reason);
   }
 });
 
 async function selectSerialServicePort() {
-  portButton.disabled = true;
-  portStatus.textContent = "GerNetiX Serial Helper wird geprüft …";
+  setActionEnabled(portButton, false, portStatus, "Noch nicht möglich: Der GerNetiX Serial Helper wird geprüft …");
+  setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Der USB-Port und das angeschlossene Board werden geprüft …");
   try {
     if (!serialService || !await serialService.available()) {
-      portStatus.textContent = "Kein laufender Serial Helper gefunden.";
+      const reason = "Noch nicht möglich: Kein laufender Serial Helper gefunden.";
+      portStatus.textContent = reason;
+      flashStatus.textContent = reason;
       showSupportDialog();
       return;
     }
@@ -69,24 +76,23 @@ async function selectSerialServicePort() {
     portStatus.textContent = `${probe.chipName || "USB-Board"} erkannt (${selectedPort.path}).`;
     enableFlash("Der Serial Helper ist bereit. Nexi Basic kann jetzt geflasht werden.");
   } catch (error) {
-    portStatus.textContent = error.message || "Der Serial Helper konnte den USB-Port nicht prüfen.";
+    const reason = `Noch nicht möglich: ${error.message || "Der Serial Helper konnte den USB-Port nicht prüfen."}`;
+    portStatus.textContent = reason;
+    setActionEnabled(flashButton, false, flashStatus, reason);
   } finally {
-    portButton.disabled = !selectedDemo;
+    setActionEnabled(portButton, Boolean(selectedDemo), portStatus, portStatus.textContent);
   }
 }
 
 function enableFlash(message) {
-  flashStep.hidden = false;
-  flashButton.disabled = false;
-  flashStatus.textContent = message;
+  setActionEnabled(flashButton, true, flashStatus, message);
 }
 
 flashButton.addEventListener("click", () => {
   if (!selectedPort || !selectedDemo) return;
-  flashButton.disabled = true;
+  setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Der Flashvorgang läuft bereits …");
   flashSelectedRelease().catch((error) => {
-    flashStatus.textContent = `Flash fehlgeschlagen: ${error.message || "unbekannter Fehler"}`;
-    flashButton.disabled = false;
+    setActionEnabled(flashButton, true, flashStatus, `Flash fehlgeschlagen: ${error.message || "unbekannter Fehler"}`);
   });
 });
 
@@ -124,7 +130,15 @@ async function flashSelectedRelease() {
     try { await loader.after("custom_reset", false, "D0|R1|W120|R0|W120"); } catch { /* Nutzer kann RESET drücken. */ }
     await transport.disconnect();
   }
-  flashStatus.textContent = "Nexi Basic wurde erfolgreich geflasht. Falls das Board nicht startet, drücke einmal RESET.";
+  setActionEnabled(flashButton, false, flashStatus, "Nicht erneut möglich: Nexi Basic wurde erfolgreich geflasht. Falls das Board nicht startet, drücke einmal RESET.");
+}
+
+function setActionEnabled(button, enabled, reasonNode, message) {
+  button.disabled = !enabled;
+  button.toggleAttribute("aria-disabled", !enabled);
+  button.title = enabled ? "" : message;
+  reasonNode.textContent = message;
+  reasonNode.classList.toggle("disabled-action-reason", !enabled);
 }
 
 function showSupportDialog() {

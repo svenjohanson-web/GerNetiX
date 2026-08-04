@@ -106,6 +106,9 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiProject, /ohne Konto und ohne eigenen Build/);
   assert.match(nexiProject, /id="choose-port"/);
   assert.match(nexiProject, /id="flash-button"/);
+  assert.match(nexiProject, /id="flash-button"[^>]*aria-describedby="flash-status"[^>]*disabled/);
+  assert.match(nexiProject, /id="flash-status"[^>]*>Noch nicht möglich: Zuerst muss der geprüfte Release geladen und ein USB-Port gewählt werden\./);
+  assert.doesNotMatch(nexiProject, /id="flash-step" hidden/);
   assert.match(nexiProject, /nexi-flash\.js/);
   assert.match(nexiFlash, /const DEMO_ID = "nexi-basic-waveshare-s3"/);
   assert.match(nexiFlash, /manifest\.chip !== "esp32s3"/);
@@ -115,6 +118,8 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiFlash, /await sha256\(data\) !== asset\.sha256/);
   assert.match(nexiFlash, /loader\.writeFlash/);
   assert.match(nexiFlash, /serialService\.flash/);
+  assert.match(nexiFlash, /function setActionEnabled\(button, enabled, reasonNode, message\)/);
+  assert.match(nexiFlash, /button\.title = enabled \? "" : message/);
   assert.match(nexiProject, /kein aktiver Provider|Ohne aktiven Provider/);
 });
 
