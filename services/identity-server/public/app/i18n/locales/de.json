@@ -14,6 +14,7 @@
   "nav.login": "Anmelden",
   "auth.login.title": "Anmelden",
   "auth.login.hint": "Wähle deinen gespeicherten Passkey – zum Beispiel per Fingerabdruck, Face ID oder Geräte-PIN. Dein Spitzname ist dafür nicht erforderlich.",
+  "auth.passkey.qr_hint": "Siehst du einen QR-Code? Scanne ihn mit deinem Smartphone oder Tablet und bestätige den Passkey dort. Das ist besonders bei Browsern ohne Touch-ID-Zugriff nötig.",
   "auth.login.passkey": "Mit Passkey anmelden",
   "auth.login.identifier.show": "Spitzname stattdessen eingeben",
   "auth.nickname": "Spitzname",

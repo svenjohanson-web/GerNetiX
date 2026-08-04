@@ -14,6 +14,7 @@
   "nav.login": "Sign in",
   "auth.login.title": "Sign in",
   "auth.login.hint": "Choose your saved passkey, for example with Touch ID, Face ID or your device PIN. You do not need to enter your nickname.",
+  "auth.passkey.qr_hint": "Do you see a QR code? Scan it with your smartphone or tablet and confirm the passkey there. This is especially useful in browsers without Touch ID access.",
   "auth.login.passkey": "Sign in with passkey",
   "auth.login.identifier.show": "Enter nickname instead",
   "auth.nickname": "Nickname",

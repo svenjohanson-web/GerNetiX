@@ -569,6 +569,10 @@ function accountDashboard(account, events, policy) {
     available_credits: availableCredits(account),
     today_credits: usage.today_credits,
     month_credits: usage.month_credits,
+    daily_requests: usage.daily_requests,
+    monthly_requests: usage.monthly_requests,
+    daily_cost: usage.daily_cost,
+    monthly_cost: usage.monthly_cost,
     budget_used_percent: Number(usedPercent.toFixed(2)),
     rejected_events: accountEvents.filter((event) => event.status === "rejected").length,
     blocked: isBlocked(account),
@@ -626,6 +630,10 @@ function usageForAccount(events) {
   return {
     today_credits: Number(events.filter((event) => event.created_at.slice(0, 10) === day).reduce((sum, event) => sum + billableCredits(event), 0).toFixed(4)),
     month_credits: Number(events.filter((event) => event.created_at.slice(0, 7) === month).reduce((sum, event) => sum + billableCredits(event), 0).toFixed(4)),
+    daily_requests: events.filter((event) => event.created_at.slice(0, 10) === day).length,
+    monthly_requests: events.filter((event) => event.created_at.slice(0, 7) === month).length,
+    daily_cost: Number(events.filter((event) => event.created_at.slice(0, 10) === day).reduce((sum, event) => sum + billableProviderCost(event), 0).toFixed(6)),
+    monthly_cost: Number(events.filter((event) => event.created_at.slice(0, 7) === month).reduce((sum, event) => sum + billableProviderCost(event), 0).toFixed(6)),
   };
 }
 

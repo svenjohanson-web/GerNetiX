@@ -1497,10 +1497,12 @@ class ProjectService {
   }
 
   async projectWithSummary(project) {
+    const sources = await this.repository.listSources(project.project_id);
     return {
       ...sanitizeProject(project),
       repository_binding: publicRepositoryBinding(project.repository_binding),
-      source_count: (await this.repository.listSources(project.project_id)).length,
+      source_count: sources.length,
+      source_files: sources.map((source) => ({ path: source.path, role: source.role || inferSourceRole(source.path) })),
       build_count: (await this.repository.listBuildJobs({ project_id: project.project_id })).length,
     };
   }

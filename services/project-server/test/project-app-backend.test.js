@@ -73,6 +73,16 @@ test("rejects executable hooks, free URLs and dangling references", () => {
   assert.throws(() => validateProjectAppManifest(dangling), /verweist nicht auf eine definierte Bindung/);
 });
 
+test("bounds telemetry fan-out in a project-authored manifest", () => {
+  const excessive = nexiManifest();
+  excessive.bindings = Array.from({ length: 21 }, (_, index) => ({
+    id: `metric_${index}`,
+    type: "telemetry",
+    metric_id: `room.metric_${index}`,
+  }));
+  assert.throws(() => validateProjectAppManifest(excessive), /hoechstens 20 Telemetrie-Bindungen/);
+});
+
 test("enforces setting types, choices and numeric limits", () => {
   const manifest = nexiManifest();
   assert.throws(() => validateProjectAppValues(manifest, { voice: "unknown" }), /keine erlaubte Auswahl/);

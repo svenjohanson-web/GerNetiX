@@ -41,16 +41,19 @@ Projekt-Repository. Eine Definition darf ausschliesslich freigegebene Seiten,
 Widgets, Datenbindungen und typisierte Aktionen enthalten. Freies JavaScript,
 freie Netzwerkziele, Datenbankzugang und Secrets sind nicht Teil des Vertrags.
 
-Die erste Version benoetigt mindestens:
+Der umgesetzte Vertrag `gernetix.project-app/v1` unterstuetzt:
 
 - Text und erklaerende Hinweise,
 - Status- und Messwertkarten,
 - Schalter und Auswahlfelder,
-- Zahlen- und Texteingaben mit Wertebereichen,
 - Zeitfenster,
 - einfache Verlaufsdiagramme,
 - typisierte Aktionsbuttons,
 - sichtbare Lade-, Offline-, Fehler- und Berechtigungszustaende.
+
+Zahlen- und Texteingaben mit Wertebereichen sind als naechste Erweiterung des
+versionierten Vertrags vorgesehen. Bis dahin duerfen Projekte solche
+Einstellungen nicht als interaktive Widgets deklarieren.
 
 ## Trennung der Wahrheiten
 
@@ -68,6 +71,29 @@ Eine Aenderung der Projekt-App-Definition erzeugt einen Projekt-Commit. Eine
 Kundeneinstellung wie Nexis Ruhezeit erzeugt keinen Quellcode-Commit, sondern
 eine versionierte Laufzeitaenderung innerhalb der konkreten Projekt-App-
 Instanz.
+
+Project Server liefert der Plattform fuer die Erkennung einer Projekt-App nur
+Pfad und Rolle der vorhandenen Projektdateien. Quellinhalte bleiben hinter der
+projektgebundenen Datei-API und werden nicht mit der Projektuebersicht
+ausgeliefert.
+
+Beim Laden loest Identity nur die im validierten Manifest genannten
+`device_status`-, `ai_usage`-, `project`- und `telemetry`-Bindungen auf. Der Geraetestatus
+stammt ausschliesslich vom dem Projekt zugeordneten Account-Device. KI-Werte
+stammen aus der serverseitig abgeleiteten Account-Nutzung. Faellt ein
+Domaenendienst aus, bleibt die Projekt-App bedienbar und kennzeichnet nur den
+betroffenen Wert als nicht verfuegbar. Telemetrie wird nur fuer die im Manifest
+validierte Metrik aus dem sitzungsgebundenen Account und Projekt gelesen. Der
+Scope `assigned_device` begrenzt sie zusaetzlich auf das exakt zugeordnete
+Geraet. Je Bindung werden hoechstens die letzten 24 Werte ohne Metadaten an den
+Browser ausgegeben; ein Manifest darf hoechstens 20 Telemetrie-Bindungen
+definieren.
+
+Ein kontrollierter Browserdurchstich prueft den echten Renderer und Controller
+mit einer angemeldeten Testhuelle: Status, aktueller Messwert, Verlauf und eine
+revisionsgeschuetzte Einstellungs-Aenderung funktionieren gemeinsam. Der
+Live-Nachweis gegen Remote-Dev-PostgreSQL und die VPS-Domaenendienste bleibt ein
+eigener Betriebsnachweis und setzt den kontrollierten Tunnel voraus.
 
 ## Nexi-Projekt-App
 

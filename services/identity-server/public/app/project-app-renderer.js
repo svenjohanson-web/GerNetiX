@@ -148,6 +148,12 @@
   function valueOrDefault(value, fallback) { return value === undefined ? fallback : value; }
   function formatValue(value) {
     if (value === undefined || value === null || value === "") return "Nicht verfügbar";
+    if (Array.isArray(value)) {
+      if (!value.length) return "Noch keine Messwerte";
+      const latest = value[value.length - 1];
+      if (latest && typeof latest === "object") return `${latest.value}${latest.unit ? ` ${latest.unit}` : ""}`;
+      return String(latest);
+    }
     if (typeof value === "boolean") return value ? "Aktiv" : "Inaktiv";
     if (typeof value === "object") return value.label || value.value || "Verfügbar";
     return String(value);

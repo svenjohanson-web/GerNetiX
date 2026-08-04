@@ -14,6 +14,7 @@
   "nav.login": "Inloggen",
   "auth.login.title": "Inloggen",
   "auth.login.hint": "Kies je opgeslagen passkey, bijvoorbeeld met Touch ID, Face ID of de pincode van je apparaat. Je hoeft je bijnaam niet in te voeren.",
+  "auth.passkey.qr_hint": "Zie je een QR-code? Scan deze met je smartphone of tablet en bevestig daar de passkey. Dit is vooral nodig in browsers zonder toegang tot Touch ID.",
   "auth.login.passkey": "Inloggen met passkey",
   "auth.login.identifier.show": "In plaats daarvan bijnaam invoeren",
   "auth.nickname": "Bijnaam",

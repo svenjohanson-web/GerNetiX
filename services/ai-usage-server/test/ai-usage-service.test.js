@@ -225,6 +225,10 @@ test("admin dashboard summarizes usage and flags budget proximity", async () => 
   assert.equal(dashboard.summary.successful, 1);
   assert.equal(dashboard.summary.cost_by_day.length, 1);
   assert.equal(dashboard.summary.cost_by_day[0].estimated_provider_cost, 0.0012);
+  assert.equal(dashboard.by_account.find((item) => item.account_id === "acct-1").daily_requests, 1);
+  assert.equal(dashboard.by_account.find((item) => item.account_id === "acct-1").monthly_requests, 1);
+  assert.equal(dashboard.by_account.find((item) => item.account_id === "acct-1").daily_cost, 0.0012);
+  assert.equal(dashboard.by_account.find((item) => item.account_id === "acct-1").monthly_cost, 0.0012);
   assert.equal(dashboard.suspicious_usage.some((item) => item.finding_type === "near_budget_limit"), true);
 });
 

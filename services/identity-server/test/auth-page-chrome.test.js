@@ -22,6 +22,9 @@ test("shows the public GerNetiX header and burger menu on the authentication pag
   assert.doesNotMatch(html, /class="brand-mark" aria-hidden="true">G/);
   assert.match(html, /class="guest-access"[\s\S]*Als Gast starten/);
   assert.match(html, /Passwort\/Passkey vergessen/);
+  assert.equal((html.match(/data-i18n="auth\.passkey\.qr_hint"/g) || []).length, 2);
+  assert.match(html, /QR-Code[\s\S]*Smartphone oder Tablet/);
+  assert.match(css, /\.passkey-qr-hint/);
   assert.match(script, /\/api\/recovery\/offline\/start/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/options/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/verify/);

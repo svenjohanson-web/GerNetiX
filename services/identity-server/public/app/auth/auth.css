@@ -94,6 +94,16 @@ h1 {
   gap: 16px;
 }
 
+.passkey-qr-hint {
+  margin: 0;
+  border-left: 3px solid #22d3ee;
+  padding: 9px 11px;
+  color: #cbd5e1;
+  background: rgba(14, 116, 144, .16);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .hidden {
   display: none !important;
 }

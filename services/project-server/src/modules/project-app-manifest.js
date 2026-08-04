@@ -11,6 +11,7 @@ const BINDING_TYPES = new Set(["setting", "telemetry", "device_status", "ai_usag
 const DEVICE_STATUS_FIELDS = new Set(["connection_state", "last_seen_at", "firmware_version", "battery_percent"]);
 const AI_USAGE_FIELDS = new Set(["daily_requests", "monthly_requests", "daily_cost", "monthly_cost", "remaining_budget"]);
 const PROJECT_FIELDS = new Set(["title", "status", "updated_at"]);
+const MAX_TELEMETRY_BINDINGS = 20;
 const TOP_LEVEL_KEYS = new Set(["schema", "manifest_version", "app_id", "title", "description", "settings", "bindings", "actions", "pages"]);
 
 function validateProjectAppManifest(input) {
@@ -28,6 +29,9 @@ function validateProjectAppManifest(input) {
 
   const bindings = array(manifest.bindings, "manifest.bindings", 200).map((item, index) => validateBinding(item, index, settingsByKey));
   unique(bindings, "id", "manifest.bindings");
+  if (bindings.filter((item) => item.type === "telemetry").length > MAX_TELEMETRY_BINDINGS) {
+    invalid("manifest.bindings", `darf hoechstens ${MAX_TELEMETRY_BINDINGS} Telemetrie-Bindungen enthalten`);
+  }
   const bindingsById = new Map(bindings.map((item) => [item.id, item]));
 
   const actions = array(manifest.actions, "manifest.actions", 100).map((item, index) => validateAction(item, index, settingsByKey));

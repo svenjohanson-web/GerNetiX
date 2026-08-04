@@ -59,3 +59,22 @@ test("requires a matching typed setting action for interactive controls", () => 
   invalid.actions[0].setting_key = "another_setting";
   assert.throws(() => render({ manifest: invalid }), /matching update_setting action/);
 });
+
+test("renders telemetry history as a chart and its latest value as a metric", () => {
+  const telemetryManifest = manifest();
+  telemetryManifest.bindings.push({ id: "temperature", type: "telemetry", metric_id: "room.temperature" });
+  telemetryManifest.pages[0].widgets.push(
+    { id: "temperature_now", type: "metric", title: "Temperatur", binding_id: "temperature" },
+    { id: "temperature_history", type: "chart", title: "Verlauf", binding_id: "temperature" },
+  );
+  const html = render({
+    manifest: telemetryManifest,
+    snapshot: { bindings: { temperature: [
+      { value: 20.5, unit: "°C", measured_at: "2026-08-04T10:00:00.000Z" },
+      { value: 21.5, unit: "°C", measured_at: "2026-08-04T10:01:00.000Z" },
+    ] } },
+  });
+  assert.match(html, />21\.5 °C</);
+  assert.match(html, /aria-label="2 Messwerte"/);
+  assert.match(html, /--project-app-value:/);
+});

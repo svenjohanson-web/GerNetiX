@@ -37,11 +37,12 @@
       if (!action || action.type !== "update_setting" || !settingKey) return;
       control.disabled = true;
       try {
-        snapshot = await putJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app`, {
+        const saved = await putJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app`, {
           manifest_version: snapshot.manifest_version,
           expected_revision: snapshot.revision,
           values: { [settingKey]: value },
         });
+        snapshot = { ...saved, bindings: snapshot.bindings || {} };
         draw(document.querySelector("#projectAppContent"));
       } catch (error) {
         control.disabled = false;

@@ -165,7 +165,21 @@ function registerProjectRoutes(dependencies) {
       const servicePath = `/api/projects/${encodeURIComponent(project.project_server_id)}/project-app`;
       if (method === "GET") {
         const query = new URLSearchParams({ account_id: accountId });
-        sendJson(res, 200, await projectServerJson(`${servicePath}?${query}`));
+        const snapshot = await projectServerJson(`${servicePath}?${query}`);
+        const bindings = await resolveProjectAppBindings({
+          manifest: snapshot.manifest,
+          project,
+          session,
+          loadUserIdeDevices: dependencies.loadUserIdeDevices,
+          loadAiUsageSummary: dependencies.loadAiUsageSummary,
+          loadProjectTelemetry: (binding) => loadProjectAppTelemetry({
+            binding,
+            project,
+            accountId,
+            telemetryJson: dependencies.telemetryJson,
+          }),
+        });
+        sendJson(res, 200, { ...snapshot, bindings });
         return;
       }
       const body = await readJsonBody(req);
@@ -309,4 +323,87 @@ function registerProjectRoutes(dependencies) {
   });
 }
 
-module.exports = { registerProjectRoutes };
+async function resolveProjectAppBindings({ manifest, project, session, loadUserIdeDevices, loadAiUsageSummary, loadProjectTelemetry }) {
+  const bindings = Array.isArray(manifest?.bindings) ? manifest.bindings : [];
+  const needsDevice = bindings.some((binding) => binding.type === "device_status");
+  const needsAiUsage = bindings.some((binding) => binding.type === "ai_usage");
+  const telemetryBindings = bindings.filter((binding) => binding.type === "telemetry");
+  const [devices, aiUsage, telemetryValues] = await Promise.all([
+    needsDevice && loadUserIdeDevices ? loadUserIdeDevices(session).catch(() => []) : [],
+    needsAiUsage && loadAiUsageSummary ? loadAiUsageSummary(session).catch(() => null) : null,
+    resolveTelemetryBindings(telemetryBindings, loadProjectTelemetry),
+  ]);
+  const device = devices.find((item) => item.device_id === project.linked_device_id) || null;
+  const accountUsage = aiUsage?.available === false ? null : aiUsage?.account_usage || null;
+  const result = {};
+  for (const binding of bindings) {
+    if (binding.type === "setting") continue;
+    if (binding.type === "telemetry" && telemetryValues.has(binding.id)) result[binding.id] = telemetryValues.get(binding.id);
+    if (binding.type === "device_status") result[binding.id] = projectAppDeviceValue(device, binding.field);
+    if (binding.type === "ai_usage") result[binding.id] = projectAppAiUsageValue(accountUsage, binding.field);
+    if (binding.type === "project") result[binding.id] = projectAppProjectValue(project, binding.field);
+  }
+  return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== undefined));
+}
+
+async function resolveTelemetryBindings(bindings, loadProjectTelemetry) {
+  const values = new Map();
+  if (!loadProjectTelemetry) return values;
+  await Promise.all(bindings.map(async (binding) => {
+    try {
+      const response = await loadProjectTelemetry(binding);
+      const items = Array.isArray(response?.items) ? response.items : [];
+      values.set(binding.id, items.slice(0, 24).reverse().map((item) => ({
+        value: item.value,
+        unit: item.unit || "",
+        measured_at: item.measured_at,
+      })));
+    } catch {
+      // A missing telemetry dependency leaves only this binding unavailable.
+    }
+  }));
+  return values;
+}
+
+async function loadProjectAppTelemetry({ binding, project, accountId, telemetryJson }) {
+  if (!telemetryJson) return null;
+  const query = new URLSearchParams({ metric: binding.metric_id, limit: "24" });
+  if (binding.device_scope === "assigned_device") {
+    if (!project.linked_device_id) return { items: [] };
+    query.set("device_id", project.linked_device_id);
+  }
+  const projectId = project.project_server_id || project.project_id;
+  const path = `/api/telemetry/internal/accounts/${encodeURIComponent(accountId)}/projects/${encodeURIComponent(projectId)}/measurements?${query}`;
+  return telemetryJson(path);
+}
+
+function projectAppDeviceValue(device, field) {
+  if (!device) return undefined;
+  return {
+    connection_state: device.connectivity_status,
+    last_seen_at: device.last_seen_at,
+    firmware_version: device.firmware_version,
+    battery_percent: device.battery_percent,
+  }[field];
+}
+
+function projectAppAiUsageValue(accountUsage, field) {
+  if (!accountUsage) return undefined;
+  return {
+    daily_requests: accountUsage.daily_requests,
+    monthly_requests: accountUsage.monthly_requests,
+    daily_cost: accountUsage.daily_cost,
+    monthly_cost: accountUsage.monthly_cost,
+    remaining_budget: accountUsage.available_credits,
+  }[field];
+}
+
+function projectAppProjectValue(project, field) {
+  return {
+    title: project.title,
+    status: project.status,
+    updated_at: project.updated_at,
+  }[field];
+}
+
+module.exports = { registerProjectRoutes, resolveProjectAppBindings, loadProjectAppTelemetry };
