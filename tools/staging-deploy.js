@@ -70,7 +70,7 @@ function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, pu
     publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : './scripts/staging/remote-deploy.sh "$previous_commit"',
   ];
   if (migrateArtifacts) commands.push(
-    `docker compose --env-file .env.vps -f compose.vps.yaml exec -T build-deploy-server node /app/tools/migrate-postgres-binaries-to-artifact-store.js --remove-untraceable-test-artifacts`,
+    `docker compose --env-file .env.vps -f compose.vps.yaml exec -T build-deploy-server node /app/tools/migrate-postgres-binaries-to-artifact-store.js --quarantine-untraceable-artifacts`,
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T build-deploy-server node /app/tools/audit-postgres-binaries.js`,
   );
   if (publishNexi) commands.push(

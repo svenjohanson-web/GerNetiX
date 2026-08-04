@@ -36,7 +36,7 @@ test("adds the verified PostgreSQL binary migration to staging only when request
     remoteDir: "/opt/gernetix",
     migrateArtifacts: true,
   });
-  assert.match(command, /migrate-postgres-binaries-to-artifact-store\.js --remove-untraceable-test-artifacts/);
+  assert.match(command, /migrate-postgres-binaries-to-artifact-store\.js --quarantine-untraceable-artifacts/);
   assert.match(command, /audit-postgres-binaries\.js/);
 });
 

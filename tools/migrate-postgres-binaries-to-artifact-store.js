@@ -2,11 +2,12 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const fs = require("node:fs/promises");
 const path = require("node:path");
 const { Pool } = require(path.join(__dirname, "..", "services", "build-deploy-server", "node_modules", "pg"));
 const { ContentAddressedArtifactStore } = require(path.join(__dirname, "..", "services", "shared"));
 
-const removeUntraceableTests = process.argv.includes("--remove-untraceable-test-artifacts");
+const quarantineUntraceable = process.argv.includes("--quarantine-untraceable-artifacts");
 const pool = new Pool({
   host: process.env.RUNTIME_POSTGRES_HOST || process.env.BUILD_POSTGRES_HOST || "127.0.0.1",
   port: Number(process.env.RUNTIME_POSTGRES_PORT || process.env.BUILD_POSTGRES_PORT || 5432),
@@ -15,7 +16,8 @@ const pool = new Pool({
   password: process.env.RUNTIME_POSTGRES_PASSWORD || process.env.BUILD_POSTGRES_PASSWORD || "",
   ssl: false,
 });
-const store = new ContentAddressedArtifactStore(process.env.ARTIFACT_STORE_DIR || process.env.BUILD_ARTIFACT_DIR || "/var/lib/gernetix/build/artifacts");
+const artifactRoot = process.env.ARTIFACT_STORE_DIR || process.env.BUILD_ARTIFACT_DIR || "/var/lib/gernetix/build/artifacts";
+const store = new ContentAddressedArtifactStore(artifactRoot);
 
 main().catch((error) => {
   process.stderr.write(`Artifact-Migration fehlgeschlagen: ${error.message}\n`);
@@ -23,7 +25,7 @@ main().catch((error) => {
 }).finally(() => pool.end());
 
 async function main() {
-  const report = { migrated_build_artifacts: 0, removed_untraceable_test_artifacts: 0, migrated_public_demo_assets: 0, removed_duplicate_demo_firmware_blobs: 0, migrated_identity_downloads: 0, migrated_identity_account_assets: 0 };
+  const report = { migrated_build_artifacts: 0, quarantined_untraceable_artifacts: 0, migrated_public_demo_assets: 0, removed_duplicate_demo_firmware_blobs: 0, migrated_identity_downloads: 0, migrated_identity_account_assets: 0 };
   await ensureReferenceColumns();
   await migrateBuildArtifacts(report);
   await migratePublicDemoAssets(report);
@@ -69,12 +71,13 @@ async function migrateBuildArtifacts(report) {
   const removable = unresolved.filter((item) => /^(?:artifact-batch-benchmark-|mac-arm64-smoke-|mac-basissoftware-esp32dev-|build_job_)/.test(item.job_id));
   const blocked = unresolved.filter((item) => !removable.includes(item));
   if (blocked.length) throw new Error(`${blocked.length} Build-Artefakte besitzen keine belastbare Quellreferenz.`);
-  if (removable.length && !removeUntraceableTests) {
-    throw new Error(`${removable.length} nicht rückverfolgbare Test-Artefakte gefunden; erneut mit --remove-untraceable-test-artifacts ausführen.`);
+  if (removable.length && !quarantineUntraceable) {
+    throw new Error(`${removable.length} nicht rückverfolgbare Test-Artefakte gefunden; erneut mit --quarantine-untraceable-artifacts ausführen.`);
   }
   for (const item of removable) {
+    await quarantineLegacyArtifact(item);
     await pool.query("DELETE FROM build_artifacts WHERE job_id=$1 AND artifact_name=$2", [item.job_id, item.artifact_name]);
-    report.removed_untraceable_test_artifacts += 1;
+    report.quarantined_untraceable_artifacts += 1;
   }
   for (const item of items.filter(validSource)) {
     const content = Buffer.from(item.content_blob);
@@ -83,6 +86,31 @@ async function migrateBuildArtifacts(report) {
       WHERE job_id=$5 AND artifact_name=$6`, [object.object_key, object.sha256, object.source_path, object.source_version, item.job_id, item.artifact_name]);
     report.migrated_build_artifacts += 1;
   }
+}
+
+async function quarantineLegacyArtifact(item) {
+  const content = Buffer.from(item.content_blob);
+  const storedSha256 = sha256(content);
+  const objectDir = path.join(artifactRoot, "legacy-quarantine", "objects", storedSha256.slice(0, 2));
+  const objectPath = path.join(objectDir, storedSha256);
+  await fs.mkdir(objectDir, { recursive: true, mode: 0o700 });
+  try { await fs.writeFile(objectPath, content, { flag: "wx", mode: 0o600 }); }
+  catch (error) { if (error.code !== "EEXIST") throw error; }
+  const persisted = await fs.readFile(objectPath);
+  if (sha256(persisted) !== storedSha256) throw new Error(`Quarantäneobjekt für ${item.job_id}/${item.artifact_name} ist beschädigt.`);
+  const manifestDir = path.join(artifactRoot, "legacy-quarantine", "manifests");
+  await fs.mkdir(manifestDir, { recursive: true, mode: 0o700 });
+  const manifestId = sha256(Buffer.from(`${item.job_id}\0${item.artifact_name}`));
+  await fs.writeFile(path.join(manifestDir, `${manifestId}.json`), JSON.stringify({
+    schema_version: 1,
+    status: "quarantined_missing_source_reference",
+    original_job_id: item.job_id,
+    original_artifact_name: item.artifact_name,
+    logical_sha256: item.sha256,
+    storage_encoding: item.storage_encoding,
+    stored_sha256: storedSha256,
+    stored_size_bytes: content.length,
+  }, null, 2), { mode: 0o600 });
 }
 
 async function migratePublicDemoAssets(report) {
