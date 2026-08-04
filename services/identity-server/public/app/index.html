@@ -64,7 +64,7 @@
           <summary data-i18n="platform.menu.boards_tools">Boards &amp; Werkzeuge</summary>
           <div>
             <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
-            <a id="hardwareLabMenuLink" class="utility" href="http://127.0.0.1:5100/" target="_blank" rel="noopener" data-i18n="platform.nav.hardware_lab">KI-Hardware-Labor</a>
+            <a id="hardwareLabMenuLink" class="utility" href="/app/hardware-lab/" data-route="hardware-lab" data-i18n="platform.nav.hardware_lab">KI-Hardware-Labor</a>
             <button id="deviceWifiSetupMenuButton" class="utility menu-tool-action" type="button">Device-WLAN-Setup</button>
             <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
             <a class="utility public-information-link" href="/flashbox-einrichten/">FlashBox einrichten</a>
@@ -169,6 +169,58 @@
           </div>
           <div id="dashboardAiUsage" class="ai-rating-grid"></div>
         </section>
+      </section>
+
+      <section id="hardwareLabView" class="view hidden hardware-lab-view" aria-labelledby="hardwareLabTitle">
+        <header class="hardware-lab-hero panel">
+          <p class="eyebrow">Identity · KI-geführtes Hardware-Labor</p>
+          <h1 id="hardwareLabTitle">Ein selbst gekauftes Board sicher anlegen</h1>
+          <p>GerNetiX liest Herstellerseiten und Datenblätter, erstellt daraus einen Board-Kandidaten und baut anschließend eine passive Discovery-Firmware. Erst die verpflichtende Untersuchung des realen Boards schließt das Profil ab.</p>
+          <p class="hardware-lab-scope"><strong>Hinweis:</strong> Dieser Ablauf gilt für selbst beschaffte Fremd- und Community-Boards. Von GerNetiX vertriebene Boards sind bereits vollständig angelegt und geprüft.</p>
+        </header>
+
+        <div class="hardware-lab-layout">
+          <form id="hardwareLabForm" class="panel form-grid hardware-lab-form">
+            <div>
+              <p class="eyebrow">1 · Quellen</p>
+              <h2>Board-Kandidat anlegen</h2>
+            </div>
+            <p class="helper-text">Dein GerNetiX-Konto wird automatisch aus der Anmeldung übernommen.</p>
+            <label>Board-Name<input id="labBoardName" type="text" required placeholder="z. B. ESP32-S3 Audio Board" /></label>
+            <label>Hersteller<input id="labManufacturer" type="text" placeholder="optional" /></label>
+            <label>Herstellerseite und Datenblätter<textarea id="labSourceUrls" rows="5" required placeholder="Eine HTTP-/HTTPS-URL pro Zeile"></textarea></label>
+            <label>Hinweise<textarea id="labNotes" rows="3" placeholder="Variante, sichtbare Bestückung oder offene Fragen"></textarea></label>
+            <button class="primary" type="submit">Hardware-Untersuchung starten</button>
+          </form>
+
+          <section class="panel hardware-lab-progress">
+            <div>
+              <p class="eyebrow">2 · Verpflichtende Untersuchung</p>
+              <h2>Discovery-Firmware bauen und ausführen</h2>
+            </div>
+            <div id="labStatusBox" class="hardware-lab-status hidden" role="status"></div>
+            <dl id="labSessionMeta" class="meta-list hardware-lab-meta"></dl>
+            <section id="labAiResult" class="hardware-lab-ai-result hidden"></section>
+            <ol id="labPhaseList" class="hardware-lab-phases"></ol>
+            <div class="button-row hardware-lab-actions">
+              <button id="labAnalyzeButton" class="primary" type="button" disabled>Quellen mit KI analysieren</button>
+              <button id="labBuildButton" class="primary" type="button" disabled>Discovery-Firmware anfordern</button>
+              <button id="labBuildStatusButton" type="button" disabled>Buildstatus aktualisieren</button>
+              <a id="labFirmwareDownload" class="button-link hidden" href="#">Firmware herunterladen</a>
+            </div>
+            <p class="helper-text">Die Firmware untersucht Chip, Speicher, Boot-/Recovery-Verhalten, sichere Busse, Peripherie, Runtime und Konnektivität. Eine manuelle Bestätigung ersetzt den signierten Build- und Prüfbericht nicht.</p>
+
+            <div class="hardware-lab-verification">
+              <p class="eyebrow">3 · Freiwillige Gegenprüfung</p>
+              <h2>Möchtest du das von GerNetiX überprüfen lassen?</h2>
+              <p>Nach bestandener Untersuchung kannst du GerNetiX über dein selbst gekauftes Board informieren und um eine unabhängige Gegenprüfung bitten. Hier entsteht weder ein Kauf- noch ein Versandauftrag.</p>
+              <label class="hardware-lab-consent"><input id="labVerificationConsent" type="checkbox" /> Boardprofil, Quellen und Prüfbericht zweckgebunden an GerNetiX übermitteln</label>
+              <label>Nachricht<textarea id="labVerificationMessage" rows="3" placeholder="optional"></textarea></label>
+              <button id="labVerificationButton" type="button" disabled>Selbst gekauftes Board zur Prüfung melden</button>
+            </div>
+            <details class="hardware-lab-details"><summary>Technische Details</summary><pre id="labDetailsBox"></pre></details>
+          </section>
+        </div>
       </section>
 
       <section id="projectAppView" class="view hidden" aria-labelledby="projectAppTitle">
@@ -1548,6 +1600,7 @@
     <script defer src="/app/information-view.js?v=20260802-version-control-variants"></script>
     <script defer src="/app/quiz-data.js?v=20260726-01"></script>
     <script defer src="/app/quiz.js?v=20260726-01"></script>
+    <script defer src="/app/hardware-lab-controller.js?v=20260804-identity-1"></script>
     <script defer src="/app/app-shell-controller.js?v=20260804-project-app-1"></script>
     <script defer src="/app/app-dashboard-controller.js?v=20260802-dashboard-community-messages"></script>
     <script defer src="/app/app-community-controller.js?v=20260801-app-modules-1"></script>

@@ -6643,3 +6643,27 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 .project-app-control input[type="text"], .project-app-control input[type="number"], .project-app-control select { width: 100%; }
 .project-app-chart { display: flex; align-items: end; gap: 3px; min-height: 7rem; }
 .project-app-chart span { flex: 1; min-height: 2px; height: calc(var(--project-app-value) * 100%); background: var(--accent, #0f766e); }
+
+.hardware-lab-view { display: grid; gap: 16px; }
+.hardware-lab-hero h1 { margin: 4px 0 8px; font-size: clamp(1.65rem, 3vw, 2.25rem); font-weight: 760; }
+.hardware-lab-hero > p:last-child, .hardware-lab-hero > p:nth-last-child(2) { max-width: 980px; margin-bottom: 0; color: var(--muted); line-height: 1.55; }
+.hardware-lab-scope { padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--soft); }
+.hardware-lab-layout { display: grid; grid-template-columns: minmax(280px, .78fr) minmax(430px, 1.22fr); gap: 16px; align-items: start; }
+.hardware-lab-form h2, .hardware-lab-progress h2, .hardware-lab-verification h2 { margin: 3px 0 8px; font-size: 1.25rem; }
+.hardware-lab-progress { display: grid; gap: 14px; min-width: 0; }
+.hardware-lab-status { padding: 10px 12px; border-radius: 8px; background: var(--soft); }
+.hardware-lab-status.running { border: 1px solid #f59e0b; }
+.hardware-lab-status.ok { border: 1px solid #16a34a; }
+.hardware-lab-status.error { border: 1px solid #dc2626; }
+.hardware-lab-meta { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
+.hardware-lab-meta div { padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.hardware-lab-ai-result, .hardware-lab-verification { padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); }
+.hardware-lab-ai-result h3, .hardware-lab-ai-result p { margin: 0 0 8px; }
+.hardware-lab-phases { display: grid; gap: 7px; margin: 0; padding-left: 24px; color: var(--muted); }
+.hardware-lab-phases li.is-complete { color: #15803d; text-decoration: line-through; }
+.hardware-lab-actions { justify-content: flex-start; flex-wrap: wrap; }
+.hardware-lab-consent, .hardware-lab-verification > label:not(.hardware-lab-consent) { display: grid; gap: 7px; margin: 12px 0; }
+.hardware-lab-consent { grid-template-columns: auto 1fr; align-items: start; }
+.hardware-lab-details summary { cursor: pointer; font-weight: 700; }
+.hardware-lab-details pre { overflow: auto; max-height: 340px; padding: 12px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font-size: 12px; white-space: pre-wrap; }
+@media (max-width: 860px) { .hardware-lab-layout { grid-template-columns: 1fr; } .hardware-lab-actions { align-items: stretch; flex-direction: column; } }

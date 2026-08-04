@@ -168,6 +168,7 @@ function renderAll() {
   renderBuilds();
   renderShopConfiguration();
   renderBilling();
+  GerNetiXHardwareLab.render();
 }
 
 function renderRoute() {
@@ -218,6 +219,7 @@ function renderRoute() {
     refreshUsbPorts(false);
   }
   if (route === "device-provisioning") loadDevicePageTools();
+  if (route === "hardware-lab") GerNetiXHardwareLab.enter();
   if (route === "downloads") renderDownloads();
   if (route === "shop") loadCommunityMarketplace();
   if (route === "community") loadCommunityPortal();
@@ -317,6 +319,10 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
       { label: "Hardware-Zuordnung", route: "" },
+    ],
+    "hardware-lab": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "KI-Hardware-Labor", route: "" },
     ],
     learn: [
       { label: "Plattform", route: "/app/dashboard/" },

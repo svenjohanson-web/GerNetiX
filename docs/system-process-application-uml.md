@@ -53,8 +53,8 @@ flowchart LR
   codex["Codex"]
 
   subgraph applications["Applikationen / HMI"]
-    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn,<br/>/app/development-platform, /app/ide, /app/project-app<br/>Identity Server :4300"]
-    recoveryHmi["KI-geführtes Hardware-Labor + Recovery HMI<br/>Board untersuchen / retten / USB Discovery<br/>:5100"]
+    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn,<br/>/app/development-platform, /app/hardware-lab, /app/ide, /app/project-app<br/>Identity Server :4300"]
+    recoveryHmi["Recovery HMI<br/>bestehende Boards retten<br/>:5100"]
     provisioningHmi["Provisioning Tool HMI<br/>Factory USB Provisioning<br/>:4500"]
     contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
     sqliteExplorer["SQLite Graph Explorer<br/>Tool UI<br/>:4318"]
@@ -75,7 +75,7 @@ flowchart LR
     deviceManagement["Device Management Server<br/>:4700"]
     telemetryServer["Telemetry Server<br/>interner Ingress + SQL-Retention<br/>:5600"]
     provisioning["Provisioning Tool Server<br/>:4500"]
-    recovery["Hardware-Labor + Recovery Tool Server<br/>:5100"]
+    recovery["Recovery Tool Server<br/>bestehende Boards retten :5100"]
     hardwareCatalog["Hardware Catalog<br/>:4910"]
     publicDemo["Öffentlicher Demo-Katalog<br/>nur veröffentlichte USB-Releases<br/>:4920"]
     hardwareShop["Hardware Shop<br/>:4900"]
@@ -168,7 +168,7 @@ flowchart LR
   projectServer -->|"Repository-Lifecycle + atomare Commits"| forgejo
   identity -->|"Build + Prebuild"| buildRouter
   identity -->|"typisierte Compute-Jobs"| workerCoordinator
-  identity -->|"OTA/USB/FlashBox + Status"| buildDeploy
+  identity -->|"OTA/USB/FlashBox + Hardware-Labor-Discovery"| buildDeploy
   buildRouter --> buildDeploy
   buildRouter -->|"WireGuard"| linuxBuildWorker
   linuxBuildWorker -->|"WireGuard PostgreSQL :25432<br/>nur Bestandskoordination"| runtimePostgres
@@ -188,7 +188,7 @@ flowchart LR
     hardwareShop --> hardwareCatalog
   identity --> deviceManagement
   identity --> telemetryServer
-  identity --> aiUsage
+  identity -->|"Plattform-KI einschließlich Hardware-Labor"| aiUsage
   identity --> aiContext
   aiContext -->|"Embeddings"| localOllama
   aiContext --> runtimePostgres
@@ -198,7 +198,7 @@ flowchart LR
   identity -->|"SMTP/TLS"| ionosMail["IONOS Mail"]
   identity -->|"token-geschuetzte Auth-/Runtime-Ereignisse"| adminTool
   identity -->|"token-geschuetztes Linkinventar"| adminTool
-  identity --> externalLlm
+  identity -->|"Hardware-Labor: Structured Board Profile, store=false"| externalLlm
   platformUi -->|"Origin-gebundene lokale Sitzung<br/>kein Wechsel der Oberfläche"| usbSerialHelper
   usbSerialHelper -. "USB-Erkennung, Flash und lokale Provisionierung" .-> esp32Basis
 
@@ -224,9 +224,6 @@ flowchart LR
 
   provisioning --> deviceManagement
   recovery --> deviceManagement
-  recovery -->|"Discovery-Build + Artefaktstatus"| buildDeploy
-  recovery -->|"Preflight + Tokenbuchung"| aiUsage
-  recovery -->|"Structured Board Profile<br/>store=false"| externalLlm
   communityAi --> communityPlatform
   communityAi --> aiUsage
 
@@ -311,7 +308,8 @@ flowchart LR
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Device Voice Orchestrator | 5800 | vorerst nur `http://127.0.0.1:5800/`; kein oeffentlicher Device-Endpunkt freigegeben | Providerneutrale, fluechtige Voice-Sessions fuer kryptografisch gepruefte Devices; Account wird serverseitig aus eindeutiger Elternfreigabe abgeleitet, Provider ist standardmaessig deaktiviert |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
-| Hardware-Labor + Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | Quellenaufnahme fuer selbst gekaufte oder fremde Community-Board-Kandidaten, verpflichtender Discovery-Firmware- und Hardware-Pruefstatus, freiwillige einwilligungsgebundene Meldung zur GerNetiX-Gegenpruefung sowie bestehende Recovery-, Credential- und Connectivity-Abläufe; von GerNetiX vertriebene Boards sind bereits vollstaendig katalogisiert und geprueft |
+| Identity Server mit KI-Hardware-Labor | 4300 | `/app/hardware-lab/` und `/api/platform/hardware-lab/*` | Sitzungsgeschuetzte Quellenaufnahme fuer selbst gekaufte oder fremde Community-Board-Kandidaten, serverseitige Bindung an `identity.user_id`, Persistenz im zentralen Identity-PostgreSQL, verpflichtender Discovery-Firmware- und Hardware-Pruefstatus sowie freiwillige einwilligungsgebundene Meldung zur GerNetiX-Gegenpruefung; kein eigener Laborprozess und keine Account-ID aus dem Browser |
+| Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | Recovery-, Credential- und Connectivity-Abläufe fuer bestehende Boards; kein Einstieg fuer das KI-Hardware-Labor |
 | Community Platform | 5200 | intern im Docker-Netz | Community-Portal mit Forum, Ideenwerkstatt, Projekt-Showcase, privater Projektbegleitung, internen Nachrichten und Kleinanzeigen fuer gebrauchte Elektronik; Support, Fragen und Meldungen werden ausschließlich über getrennte Admin-Akteure mit eigener Capability geprüft; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
@@ -379,7 +377,8 @@ flowchart LR
 | Device Voice Orchestrator | AI Usage Server | Fuehrt vor jeder Providerverarbeitung einen Preflight und danach genau eine Abschluss- oder Fehlerbuchung aus |
 | GerNetiX Prozess-Monitor | VPS-Host, Nginx und MQTT Broker | Liest feste Schutzregeln und ihren Nachweisstatus ueber den konfigurierten WireGuard-/SSH-Zugang; stellt keinen generischen Shellzugriff im Renderer bereit |
 | GerNetiX Prozess-Monitor | Admin Tool | Liest das zentrale Linkinventar über einen festen SSH-Diagnosebefehl und die autorisierte Admin-Tool-API. Das Admin-Token bleibt im Container; über Electron-IPC werden nur Statusfelder an den Renderer gegeben. |
-| Hardware-Labor + Recovery HMI | Hardware-Labor + Recovery Tool Server | Nutzer-/Support-Flow zum KI-gefuehrten Anlegen und verpflichtenden realen Untersuchen neuer ProcessorBoards sowie zum Retten bestehender Boards |
+| GerNetiX Plattform UI | Identity Server | Das KI-Hardware-Labor bleibt innerhalb der angemeldeten Plattform; Navigation, Konto und Autorisierung verwenden dieselbe Identity-Sitzung |
+| Recovery HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten bestehender Boards |
 | Provisioning Tool HMI | Provisioning Tool Server | Factory-Provisioning per USB ohne IDE-/Plattform-Umweg |
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
 | Admin Tool API | Project Server | Learning Feedback |
@@ -388,11 +387,11 @@ flowchart LR
 | Admin Tool API | GerNetiX Plattform UI / Identity Server | Pflegt verschluesselt gespeicherte SMTP-Zugangsdaten nur ueber einen token-geschuetzten internen Endpunkt; das Passwort wird nicht wieder ausgelesen |
 | Provisioning Tool Server | Device Management Server | registriert verifizierte Devices |
 | Provisioning Tool Server | Device Management / Firmware Artifact Repository | liest versionierte Basissoftware-Artefaktreferenz fuer Factory-Flash; Workflow-State ist fluechtig, dauerhafte Device-Ergebnisse gehen an Device Management |
-| Hardware-Labor + Recovery Tool Server | Build & Deploy Server | erzeugt deterministisch eine passive Discovery-Firmware, startet den echten PlatformIO-Build und uebernimmt Artefakt, Build-ID und SHA-256; nur daran gebundene Pruefberichte werden akzeptiert |
-| Hardware-Labor + Recovery Tool Server | AI Usage Server | verlangt vor jedem externen Quellenanalyse-Aufruf die Freigabe fuer `identity.user_id` und verbucht danach tatsaechliche Tokens oder den Providerfehler |
-| Hardware-Labor + Recovery Tool Server | Externe LLM API | analysiert begrenzt geladene Herstellerquellen ueber OpenAI Responses mit Structured Outputs, `store: false` und pseudonymisiertem Safety-Identifier; KI-Code wird nicht ausgefuehrt |
-| Hardware-Labor + Recovery Tool Server | Hardware Catalog | uebergibt erst nach bestandener realer Untersuchung einen Board-Kandidaten zur redaktionellen Freigabe; der Katalog bleibt Wahrheit fuer globale ProcessorBoard-Typen |
-| Hardware-Labor + Recovery Tool Server | Device Management Server | registriert Recovery-/Community-Devices |
+| Identity Server / KI-Hardware-Labor | Build & Deploy Server | erzeugt deterministisch eine passive Discovery-Firmware, startet den echten PlatformIO-Build und uebernimmt Artefakt, Build-ID und SHA-256; nur daran gebundene Pruefberichte werden akzeptiert |
+| Identity Server / KI-Hardware-Labor | AI Usage Server | verlangt vor jedem externen Quellenanalyse-Aufruf die Freigabe fuer die aus der Sitzung abgeleitete `identity.user_id` und verbucht danach tatsaechliche Tokens oder den Providerfehler |
+| Identity Server / KI-Hardware-Labor | Externe LLM API | analysiert begrenzt geladene Herstellerquellen ueber OpenAI Responses mit Structured Outputs, `store: false` und pseudonymisiertem Safety-Identifier; KI-Code wird nicht ausgefuehrt |
+| Identity Server / KI-Hardware-Labor | Hardware Catalog | uebergibt erst nach bestandener realer Untersuchung einen Board-Kandidaten zur redaktionellen Freigabe; der Katalog bleibt Wahrheit fuer globale ProcessorBoard-Typen |
+| Recovery Tool Server | Device Management Server | registriert Recovery-/Community-Devices bei der Rettung bestehender Boards |
 | Community AI Assistant | Community Platform | liest/schreibt Community-Kontext |
 | Community AI Assistant | AI Usage Server | prueft und verbucht KI-Nutzung |
 | Context Manager | Projektdateien, Git, SQLite Graph | erkennt Kontextvorschlaege und erzeugt Context Packs |
@@ -463,7 +462,7 @@ flowchart LR
 - Das Provisioning Tool laesst pro ESP32 entweder den VPS-Broker (`mqtts://`, standardmaessig `mqtt.gernetix.com:8883`) oder einen lokalen privaten IPv4-Broker auswaehlen. Der ESP32 erzeugt seinen P-256-Privatschluessel selbst; das Tool zertifiziert nur den Public Key. Extern authentifiziert sich das Board per mTLS und abonniert `gernetix/devices/<device_id>/ota` mit QoS 1. MQTT transportiert nur den Deploy-Auftrag; ECDSA-Autorisierung, Ablaufzeit, Replay-Schutz, HTTPS-Download, Hash-Pruefung und Rollback bleiben im OTA-Modul. Der Gesamt-Preflight prueft HTTPS-Artefaktadresse, MQTT-Publisher, konfigurierten OTA-Signer und Device-Rueckmeldung. Der Build-&-Deploy-Server signiert kanonische Auftraege mit einem separaten OTA-Private-Key, publiziert intern mit QoS 1 und Retain und persistiert Acknowledgements. Plattform, Device Management und Broker speichern keinen privaten Device-Schluessel.
 - Voice AI ist ein ausdruecklich aktivierter Device-Komfort und kein impliziter Bestandteil der Basissoftware. Device Management speichert am konkreten Account-Device die Elternfreigabe, Altersstufe und harte Zeitgrenzen. Der Device Voice Orchestrator vertraut keiner vom Board behaupteten Account-ID, sondern leitet genau einen freigebenden Account nach kryptografischem Challenge-Nachweis serverseitig ab. Session-Token werden nur gehasht und kurzlebig im Prozess gehalten; Rohaufnahme und Transkript werden nicht persistiert. Ohne bewusst implementierten Provider, Kinderschutz-Evaluation, oeffentlichen TLS-Endpunkt und Betreiberfreigabe bleibt `available=false` und die Firmware sendet keine Aufnahme.
 - Der Nutzer vergibt beim Onboarding einen kurzen Board-Namen. Daraus entsteht der `gernetix-*` Node-/SSID-/Hostname. Die Seriennummer wird vom System erzeugt und dauerhaft am Device/Inventory gespeichert; Spezialhardware und Verdrahtung werden als Instanz-Konfiguration am Account-Device gefuehrt.
-- Das KI-gefuehrte Hardware-Labor und Recovery Tool ist ein eigenstaendiges Nutzer-/Support-Tool am Port 5100. Das Hardware-Labor gilt ausschliesslich fuer selbst gekaufte oder fremde Community-Boards; von GerNetiX vertriebene Boards sind bereits vor dem Vertrieb vollstaendig im Hardware Catalog angelegt und geprueft. Neue Community-Board-Kandidaten beginnen mit der angemeldeten Identity und Herstellerquellen. Ein SSRF-geschuetzter Adapter laedt begrenzte HTML-/Text-/PDF-Inhalte. Nach AI-Usage-Preflight erzeugt OpenAI Responses mit Structured Outputs, `store: false` und pseudonymisiertem Safety-Identifier ein evidenzgebundenes Profil; aktive Pintests werden serverseitig verworfen. Aus diesem Profil erzeugt GerNetiX deterministisch passiven ESP32-Discovery-Code und laesst ihn durch Build & Deploy real mit PlatformIO bauen. Ein generisches Chipfamilien-DevKit darf nur als gekennzeichnetes Compilerziel dienen und bestaetigt kein physisches Boardprofil. Das Board bleibt bis zum build- und SHA-gebundenen Bericht der verpflichtenden Untersuchung gesperrt. Erst der bestandene Bericht darf eine freiwillige, ausdruecklich eingewilligte Meldung zur GerNetiX-Gegenpruefung anbieten. Der Nutzer waehlt keinen Beschaffungs- oder Versandweg; die interne Prueforganisation wird spaeter geklaert. Die Meldung enthaelt keine Versandadresse und erzeugt keinen Kaufauftrag. Derselbe Service behaelt die bisherigen USB-Recovery-, Registrierungs- und Credential-Funktionen fuer bestehende Boards.
+- Das KI-gefuehrte Hardware-Labor ist ein Bestandteil der angemeldeten Identity-Plattform unter `/app/hardware-lab/`, kein eigenstaendiger Nutzerprozess. Identity leitet den Account fuer jeden Vorgang ausschliesslich aus der serverseitigen Sitzung ab; der Browser sendet und waehlt keine Account-ID. Laborvorgaenge liegen im zentralen Identity-PostgreSQL und werden nicht in einer separaten Labor-SQLite gehalten. Das Hardware-Labor gilt ausschliesslich fuer selbst gekaufte oder fremde Community-Boards; von GerNetiX vertriebene Boards sind bereits vor dem Vertrieb vollstaendig im Hardware Catalog angelegt und geprueft. Ein SSRF-geschuetzter Adapter laedt begrenzte HTML-/Text-/PDF-Inhalte. Nach AI-Usage-Preflight erzeugt OpenAI Responses mit Structured Outputs, `store: false` und pseudonymisiertem Safety-Identifier ein evidenzgebundenes Profil; aktive Pintests werden serverseitig verworfen. Aus diesem Profil erzeugt GerNetiX deterministisch passiven ESP32-Discovery-Code und laesst ihn durch Build & Deploy real mit PlatformIO bauen. Ein generisches Chipfamilien-DevKit darf nur als gekennzeichnetes Compilerziel dienen und bestaetigt kein physisches Boardprofil. Das Board bleibt bis zum build- und SHA-gebundenen Bericht der verpflichtenden Untersuchung gesperrt. Erst der bestandene Bericht darf eine freiwillige, ausdruecklich eingewilligte Meldung zur GerNetiX-Gegenpruefung anbieten. Der Nutzer waehlt keinen Beschaffungs- oder Versandweg; die interne Prueforganisation wird spaeter geklaert. Die Meldung enthaelt keine Versandadresse und erzeugt keinen Kaufauftrag. Das Recovery Tool am Port 5100 bleibt davon getrennt und rettet bestehende Boards.
 - Die Flashbox ist ein kaufbares oder selbst herstellbares, inventarisierbares GerNetiX-Werkzeuggeraet und kein frei erfassbares Zielboard. Der Selbstbau-Assistent akzeptiert ausschliesslich das aktive Referenzprofil: ESP32-S3 mit mindestens 16 MB Flash und 8 MB PSRAM, getrennten datenfaehigen Control-/Target-USB-Ports, USB-OTG-Host sowie nachgewiesener 5-V-VBUS-Schaltung mit Power-Switch und Strombegrenzung. Der oeffentliche Assistent darf ohne Login nur ein signiertes, accountneutrales Initialimage flashen; er erzeugt keine Accountdaten. Im internen Bereich beginnt die Selbstbau-Fuehrung mit „bereits geflasht“ oder „neue Flashbox erstellen“; der zweite Weg oeffnet dieselbe oeffentliche Assistenten-Komponente als Dialog und ordnet nach Discovery plus Challenge-Signatur die Einheit ausschliesslich dem aktuell angemeldeten Account zu. Hardware Catalog beschreibt die Klasse `flashbox` und dieses Profil, Webshop erzeugt den Kauf-/Claim-Kontext, Provisioning Tool fuehrt alternativ die Selbstbau-Zertifizierung mit Device-Key und Challenge-Signatur aus, Identity ordnet die konkrete Einheit dem Account-Inventar zu, Device Management fuehrt Herkunft, Ownership, Trust-State, Firmwarestatus und Revocation, Build-&-Deploy liefert getrennte signierte Manifeste fuer Flashbox-Selbstupdate, Zielgeraete-Flash und Recovery. Beliebige ESP32-Boards bleiben Community-Hardware. Die Detailregeln stehen in [GerNetiX Flashbox - Systemzusammenspiel](flashbox-system-integration.md).
 - TODO: Der bereits vorhandene Identity-Reiter `Device Management > Recovery` muss fuer bekannte MEDIUM-Devices eine boardspezifische Schrittfolge fuer LED-Fenster, `BOOT`-Tastendruck nach Bootstrap-Start, erneuten signierten Firmwaredownload und den ESP-ROM-/USB-Fallback bereitstellen. Die Rettung erhaelt Device-ID, Schluesselmaterial, Zertifikat und Account-Pairing.
 - Der GerNetiX Serial Service ist ein UI-loser, lokal installierter nativer Swift-Hintergrunddienst ohne Electron, Chromium oder Node.js im Kundenpaket. Auf macOS läuft er als benutzerbezogener `launchd`-Agent, greift direkt über die serielle macOS-Schnittstelle auf USB zu und verwendet für ESP32-Erkennung und Flash das eingebettete native `espflash`. Er bindet ausschließlich per TLS an `127.0.0.1:43123`; das Installationspaket erzeugt dafür ein installationsspezifisches, nur für Loopback gültiges Zertifikat. Der Dienst akzeptiert nur explizite GerNetiX-Origins und verlangt für USB-Aktionen eine kurzlebige, Origin-gebundene Sitzung. Die Plattform bleibt die einzige Bedienoberfläche; es gibt kein Helper-Fenster und keinen Browserwechsel. Das signierte und notarisierte Installationspaket wird im authentifizierten Download-Bereich angeboten.

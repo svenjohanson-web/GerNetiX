@@ -80,6 +80,7 @@ const state = {
 
 const routeMap = {
   dashboard: "dashboardView",
+  "hardware-lab": "hardwareLabView",
   about: "aboutView",
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",

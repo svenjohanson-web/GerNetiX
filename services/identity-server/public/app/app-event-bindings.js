@@ -1,5 +1,6 @@
 // GerNetiX platform module extracted from app.js.
 bootstrap();
+GerNetiXHardwareLab.bind();
 
 document.querySelector("#mainMenuButton").addEventListener("click", (event) => {
   event.stopPropagation();

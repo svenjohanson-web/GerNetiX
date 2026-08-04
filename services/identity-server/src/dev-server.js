@@ -80,12 +80,19 @@ const { registerHardwareRoutes } = require("./dev/server/hardware-routes");
 const { registerDeviceRoutes } = require("./dev/server/device-routes");
 const { registerCommunityRoutes } = require("./dev/server/community-routes");
 const { registerBuildRoutes } = require("./dev/server/build-routes");
+const { registerHardwareLabRoutes } = require("./dev/server/hardware-lab-routes");
 const { customerArtifactList } = require("./dev/server/build-artifact-visibility");
 const { registerProjectRoutes } = require("./dev/server/project-routes");
 const { registerSystemRoutes } = require("./dev/server/system-routes");
 const { registerDownloadRoutes } = require("./dev/server/download-routes");
 const { registerPlatformExtraRoutes } = require("./dev/server/platform-extra-routes");
 const { registerWebRoutes } = require("./dev/server/web-routes");
+const { RecoveryService } = require("../../recovery-tool/src/services/recovery-service");
+const { HardwareSourceReader } = require("../../recovery-tool/src/services/hardware-source-reader");
+const { HardwareLabAi } = require("../../recovery-tool/src/services/hardware-lab-ai");
+const { BuildDeployClient } = require("../../recovery-tool/src/services/build-deploy-client");
+const { AiUsageClient } = require("../../recovery-tool/src/services/ai-usage-client");
+const { PostgresHardwareLabRepository } = require("./dev/hardware-lab-repository");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 const { PostgresStateStore } = require("../../shared/persistence/postgres-state-store");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
@@ -160,6 +167,9 @@ const identityLlmStateStore = identityAuxiliaryPool
     encryptionKey: process.env.RUNTIME_STATE_ENCRYPTION_KEY || "",
   })
   : null;
+const identityHardwareLabStateStore = identityAuxiliaryPool
+  ? new PostgresStateStore(identityAuxiliaryPool, "identity-hardware-lab", { sessions: [] })
+  : null;
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
@@ -191,6 +201,9 @@ const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.
 const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://10.77.0.1:4910";
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
 const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
+const hardwareLabAiUsageBaseUrl = /\/api\/ai-usage\/?$/.test(aiUsageBaseUrl)
+  ? aiUsageBaseUrl.replace(/\/$/, "")
+  : `${aiUsageBaseUrl.replace(/\/$/, "")}/api/ai-usage`;
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
 const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
 const systemEventIngestToken = process.env.SYSTEM_EVENT_INGEST_TOKEN || "";
@@ -292,6 +305,18 @@ const llmConfigStore = createLlmConfigStore({
   stateStore: identityLlmStateStore,
   defaultOllamaBaseUrl: ollamaBaseUrl,
   defaultOllamaModel: ollamaModel,
+});
+const hardwareLabRepository = new PostgresHardwareLabRepository(identityHardwareLabStateStore);
+const hardwareLabService = new RecoveryService({
+  repository: hardwareLabRepository,
+  deviceManagementBaseUrl,
+  registerRecoveredDevices: false,
+  sourceReader: new HardwareSourceReader(),
+  hardwareLabAi: new HardwareLabAi({
+    llmConfigStore,
+    aiUsageClient: new AiUsageClient({ baseUrl: hardwareLabAiUsageBaseUrl }),
+  }),
+  buildDeployClient: new BuildDeployClient({ baseUrl: buildDeployBaseUrl }),
 });
 const { discoverNetworkDevices } = createDeviceDiscoveryService({
   deviceDiscoveryUrls,
@@ -448,6 +473,16 @@ registerBuildRoutes({
   projectServerUserId,
   proxyBuildArtifact,
 });
+registerHardwareLabRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  projectServerUserId,
+  hardwareLabService,
+  hardwareLabRepository,
+  buildDeployBaseUrl,
+});
 registerProjectRoutes({
   registry: routeRegistry,
   requireSession: sessionAccess.requireSession,
@@ -548,6 +583,10 @@ async function bootstrap() {
   if (identityPushStateStore) await identityPushStateStore.initialize();
   if (identitySmtpStateStore) await identitySmtpStateStore.initialize();
   if (identityLlmStateStore) await identityLlmStateStore.initialize();
+  if (identityHardwareLabStateStore) {
+    await identityHardwareLabStateStore.initialize();
+    hardwareLabRepository.hydrate();
+  }
   if (identityPersistenceBackend === "postgres") {
     platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres });
     accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres });
