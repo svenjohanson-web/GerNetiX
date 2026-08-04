@@ -5,6 +5,8 @@ const crypto = require("node:crypto");
 const zlib = require("node:zlib");
 const test = require("node:test");
 const { PostgresArtifactStore } = require("../src/modules/postgres-artifact-store");
+const SOURCE = { sourcePath: "src/main.cpp", sourceVersion: "d".repeat(64) };
+const objectFor = (content) => ({ key: `objects/aa/${"a".repeat(64)}`, sha256: crypto.createHash("sha256").update(content).digest("hex") });
 
 test("reads each artifact once, batches PostgreSQL inserts and reports payload-free metrics", async () => {
   const queries = [];
@@ -27,6 +29,7 @@ test("reads each artifact once, batches PostgreSQL inserts and reports payload-f
       return contents.get(filePath);
     },
     reportMetrics: (entry) => metrics.push(entry),
+    writeObject: async (content) => objectFor(content),
   });
 
   const saved = await store.saveBuildArtifacts("job/with spaces", {
@@ -34,20 +37,21 @@ test("reads each artifact once, batches PostgreSQL inserts and reports payload-f
       "firmware.bin": "/build/firmware.bin",
       "build.log": "/build/build.log",
     },
-  });
+  }, SOURCE);
 
   assert.deepEqual(reads, ["/build/build.log", "/build/firmware.bin"]);
   assert.equal(saved["firmware.bin"].sha256, crypto.createHash("sha256").update("firmware").digest("hex"));
   const inserts = queries.filter((entry) => /INSERT INTO build_artifacts/.test(entry.sql));
   assert.equal(inserts.length, 1);
-  assert.equal(inserts[0].values.length, 22);
+  assert.equal(inserts[0].values.length, 28);
   assert.equal(inserts[0].values[0], "job_with_spaces");
   assert.equal(inserts[0].values[1], "build.log");
   assert.equal(inserts[0].values[2], "text/plain; charset=utf-8");
-  assert.ok(Buffer.isBuffer(inserts[0].values[3]));
-  assert.equal(inserts[0].values[11], "job_with_spaces");
-  assert.equal(inserts[0].values[12], "firmware.bin");
-  assert.equal(inserts[0].values[18], "identity");
+  assert.match(inserts[0].values[3], /^objects\//);
+  assert.equal(inserts[0].values[14], "job_with_spaces");
+  assert.equal(inserts[0].values[15], "firmware.bin");
+  assert.equal(inserts[0].values[22], "identity");
+  assert.equal(inserts[0].values[26], "src/main.cpp");
   assert.deepEqual(queries.map((entry) => entry.sql.trim().split(/\s+/).slice(0, 2).join(" ")), [
     "BEGIN",
     "DELETE FROM",
@@ -81,10 +85,11 @@ test("rolls back a failed batch and reports only its failure phase", async () =>
   const store = new PostgresArtifactStore({ connect: async () => client }, {
     readFile: async () => Buffer.from("firmware"),
     reportMetrics: (entry) => metrics.push(entry),
+    writeObject: async (content) => objectFor(content),
   });
 
   await assert.rejects(
-    store.saveBuildArtifacts("job-1", { artifacts: { "firmware.bin": "/build/firmware.bin" } }),
+    store.saveBuildArtifacts("job-1", { artifacts: { "firmware.bin": "/build/firmware.bin" } }, SOURCE),
     /database unavailable/,
   );
 
@@ -103,11 +108,12 @@ test("does not fail artifact persistence when the metrics reporter fails", async
   const store = new PostgresArtifactStore({ connect: async () => client }, {
     readFile: async () => Buffer.from("firmware"),
     reportMetrics: () => { throw new Error("metrics unavailable"); },
+    writeObject: async (content) => objectFor(content),
   });
 
   const saved = await store.saveBuildArtifacts("job-1", {
     artifacts: { "firmware.bin": "/build/firmware.bin" },
-  });
+  }, SOURCE);
 
   assert.match(saved["firmware.bin"].sha256, /^[a-f0-9]{64}$/);
 });
@@ -126,14 +132,19 @@ test("publishes staged encoded artifacts transactionally and decodes them for co
       return { rows: [{
         artifact_name: "firmware.elf",
         content_type: "application/octet-stream",
-        content_blob: encoded,
+        object_key: `objects/aa/${"a".repeat(64)}`,
+        object_sha256: crypto.createHash("sha256").update(encoded).digest("hex"),
         size_bytes: String(original.length),
         sha256: crypto.createHash("sha256").update(original).digest("hex"),
         storage_encoding: "gzip",
       }] };
     },
   };
-  const store = new PostgresArtifactStore(pool, { readFile: async () => encoded });
+  const store = new PostgresArtifactStore(pool, {
+    readFile: async () => encoded,
+    writeObject: async (content) => objectFor(content),
+    readObject: async () => encoded,
+  });
   const metadata = {
     artifactName: "firmware.elf",
     payloadPath: "/staged/firmware.elf",
@@ -144,6 +155,8 @@ test("publishes staged encoded artifacts transactionally and decodes them for co
     espImageSha256: null,
     artifactClass: "symbols",
     retentionDays: 30,
+    sourcePath: SOURCE.sourcePath,
+    sourceVersion: SOURCE.sourceVersion,
   };
   const published = await store.saveEncodedArtifacts("job-1", [metadata]);
   assert.equal(published["firmware.elf"].size_bytes, original.length);

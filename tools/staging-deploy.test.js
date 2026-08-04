@@ -23,9 +23,21 @@ test("parses deploy arguments", () => {
     dryRun: true,
     publicDemo: false,
     publishNexi: false,
+    migrateArtifacts: false,
     host: "deploy@example.test",
     branch: "agent/test",
   });
+});
+
+test("adds the verified PostgreSQL binary migration to staging only when requested", () => {
+  const command = remoteDeployCommand({
+    branch: "main",
+    commit: "0123456789abcdef0123456789abcdef01234567",
+    remoteDir: "/opt/gernetix",
+    migrateArtifacts: true,
+  });
+  assert.match(command, /migrate-postgres-binaries-to-artifact-store\.js --remove-untraceable-test-artifacts/);
+  assert.match(command, /audit-postgres-binaries\.js/);
 });
 
 test("adds a committed Nexi release publication to the controlled staging deploy", () => {

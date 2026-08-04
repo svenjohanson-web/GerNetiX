@@ -105,11 +105,14 @@ function parseHeaders(headers, artifactName, maxStoredBytes, maxOriginalBytes, p
   const artifactClass = String(headers["x-artifact-class"] || "");
   const retentionDays = Number(headers["x-artifact-retention-days"]);
   const suppliedContentType = String(headers["content-type"] || "");
+  const sourcePath = String(headers["x-artifact-source-path"] || "").trim();
+  const sourceVersion = String(headers["x-artifact-source-version"] || "").trim().toLowerCase();
   if (!["identity", "gzip"].includes(encoding) || !/^[a-f0-9]{64}$/.test(sha256)) throw invalid("invalid_artifact_metadata");
   if (espImageSha256 && !/^[a-f0-9]{64}$/.test(espImageSha256)) throw invalid("invalid_artifact_metadata");
   if (artifactClass !== policy.artifactClass || retentionDays !== policy.retentionDays) throw invalid("invalid_artifact_policy");
   if (encoding === "gzip" && !policy.compress) throw invalid("invalid_artifact_encoding");
   if (suppliedContentType !== contentType(artifactName)) throw invalid("invalid_artifact_content_type");
+  if (!sourcePath || sourcePath.length > 1024 || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sourceVersion)) throw invalid("invalid_artifact_source_reference");
   return {
     contentType: suppliedContentType,
     encoding,
@@ -119,6 +122,8 @@ function parseHeaders(headers, artifactName, maxStoredBytes, maxOriginalBytes, p
     espImageSha256: espImageSha256 || null,
     artifactClass,
     retentionDays,
+    sourcePath,
+    sourceVersion,
   };
 }
 

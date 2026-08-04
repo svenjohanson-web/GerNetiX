@@ -4,11 +4,11 @@ const { PublicDemoError } = require("../errors");
 class PostgresPublicDemoRepository {
   static async create(options = {}) {
     const { Pool } = require("pg");
-    const repository = new PostgresPublicDemoRepository(options.pool || new Pool(options.poolOptions));
+    const repository = new PostgresPublicDemoRepository(options.pool || new Pool(options.poolOptions), options.artifactStore);
     await repository.migrate();
     return repository;
   }
-  constructor(pool) { this.pool = pool; }
+  constructor(pool, artifactStore) { this.pool = pool; this.artifactStore = artifactStore; }
   async migrate() {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS public_demo_catalog (
@@ -21,20 +21,35 @@ class PostgresPublicDemoRepository {
       );
       CREATE TABLE IF NOT EXISTS public_demo_releases (
         demo_id TEXT NOT NULL REFERENCES public_demo_catalog(demo_id) ON DELETE RESTRICT,
-        version TEXT NOT NULL, firmware_file_name TEXT NOT NULL, firmware_blob BYTEA NOT NULL,
+        version TEXT NOT NULL, firmware_file_name TEXT NOT NULL,
         firmware_size_bytes BIGINT NOT NULL, firmware_sha256 TEXT NOT NULL,
-        source_build_sha256 TEXT, source_commit_sha TEXT, created_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (demo_id,version)
+        source_build_sha256 TEXT, source_commit_sha TEXT, source_path TEXT NOT NULL, source_version TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (demo_id,version)
       );
       CREATE TABLE IF NOT EXISTS public_demo_release_assets (
         demo_id TEXT NOT NULL, version TEXT NOT NULL,
         asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader','partitions','otadata','firmware')),
-        file_name TEXT NOT NULL, flash_offset INTEGER NOT NULL, content_blob BYTEA NOT NULL,
+        file_name TEXT NOT NULL, flash_offset INTEGER NOT NULL, object_key TEXT NOT NULL, object_sha256 TEXT NOT NULL,
         size_bytes BIGINT NOT NULL, sha256 TEXT NOT NULL, PRIMARY KEY (demo_id,version,asset_id),
         FOREIGN KEY (demo_id,version) REFERENCES public_demo_releases(demo_id,version) ON DELETE RESTRICT
       );
       CREATE INDEX IF NOT EXISTS idx_public_demo_catalog_status ON public_demo_catalog(status,published_at DESC,demo_id);
     `);
     await this.pool.query("ALTER TABLE public_demo_releases ADD COLUMN IF NOT EXISTS source_commit_sha TEXT");
+    await this.pool.query(`
+      ALTER TABLE public_demo_releases ADD COLUMN IF NOT EXISTS source_path TEXT;
+      ALTER TABLE public_demo_releases ADD COLUMN IF NOT EXISTS source_version TEXT;
+      ALTER TABLE public_demo_release_assets ADD COLUMN IF NOT EXISTS object_key TEXT;
+      ALTER TABLE public_demo_release_assets ADD COLUMN IF NOT EXISTS object_sha256 TEXT;
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='public_demo_releases' AND column_name='firmware_blob') THEN
+          ALTER TABLE public_demo_releases ALTER COLUMN firmware_blob DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='public_demo_release_assets' AND column_name='content_blob') THEN
+          ALTER TABLE public_demo_release_assets ALTER COLUMN content_blob DROP NOT NULL;
+        END IF;
+      END $$;
+    `);
     const assetConstraint = (await this.pool.query(`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
       WHERE conrelid = 'public_demo_release_assets'::regclass AND conname = 'public_demo_release_assets_asset_id_check'`)).rows[0]?.definition || "";
     if (!assetConstraint.includes("otadata")) {
@@ -46,7 +61,13 @@ class PostgresPublicDemoRepository {
   async publish(input) {
     const demo = normalizeDemo(input);
     const assets = normalizeAssets(input);
+    const sourcePath = requiredString(input.source_path, "source_path");
+    const sourceVersion = immutableSourceVersion(input.source_commit_sha || input.source_build_sha256);
     if (input.firmware_sha256 && input.firmware_sha256 !== assets.firmware.sha256) throw new PublicDemoError("firmware_checksum_mismatch", "Die angegebene Firmware-Prüfsumme stimmt nicht mit dem Release überein.");
+    if (!this.artifactStore) throw new PublicDemoError("artifact_store_unavailable", "Der Artifact Store ist nicht verfügbar.", 503);
+    for (const asset of Object.values(assets)) {
+      asset.object = await this.artifactStore.put(asset.content, { source_path: sourcePath, source_version: sourceVersion });
+    }
     const client = await this.pool.connect();
     const now = new Date().toISOString();
     try {
@@ -59,12 +80,12 @@ class PostgresPublicDemoRepository {
         status='published',updated_at=EXCLUDED.updated_at,published_at=EXCLUDED.published_at`,
       [demo.demo_id,demo.title,demo.description,demo.board_hardware_item_id,demo.category,demo.games,now]);
       await client.query(`INSERT INTO public_demo_releases
-        (demo_id,version,firmware_file_name,firmware_blob,firmware_size_bytes,firmware_sha256,source_build_sha256,source_commit_sha,created_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [demo.demo_id,demo.version,assets.firmware.file_name,assets.firmware.content,assets.firmware.size_bytes,assets.firmware.sha256,optionalString(input.source_build_sha256),optionalCommit(input.source_commit_sha),now]);
+        (demo_id,version,firmware_file_name,firmware_size_bytes,firmware_sha256,source_build_sha256,source_commit_sha,source_path,source_version,created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [demo.demo_id,demo.version,assets.firmware.file_name,assets.firmware.size_bytes,assets.firmware.sha256,optionalString(input.source_build_sha256),optionalCommit(input.source_commit_sha),sourcePath,sourceVersion,now]);
       for (const asset of Object.values(assets)) await client.query(`INSERT INTO public_demo_release_assets
-        (demo_id,version,asset_id,file_name,flash_offset,content_blob,size_bytes,sha256) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [demo.demo_id,demo.version,asset.asset_id,asset.file_name,asset.flash_offset,asset.content,asset.size_bytes,asset.sha256]);
+        (demo_id,version,asset_id,file_name,flash_offset,object_key,object_sha256,size_bytes,sha256) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [demo.demo_id,demo.version,asset.asset_id,asset.file_name,asset.flash_offset,asset.object.object_key,asset.object.sha256,asset.size_bytes,asset.sha256]);
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -97,12 +118,13 @@ class PostgresPublicDemoRepository {
       assets:assets.map((a)=>({...a,size_bytes:Number(a.size_bytes),download_url:`/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(version)}/assets/${a.asset_id}`}))};
   }
   async getAsset(demoId,version,assetId) {
-    const row=(await this.pool.query(`SELECT a.file_name AS firmware_file_name,a.content_blob AS firmware_blob,
+    const row=(await this.pool.query(`SELECT a.file_name AS firmware_file_name,a.object_key,a.object_sha256,
       a.size_bytes::bigint AS firmware_size_bytes,a.sha256 AS firmware_sha256 FROM public_demo_release_assets a
       JOIN public_demo_catalog c ON c.demo_id=a.demo_id WHERE a.demo_id=$1 AND a.version=$2 AND a.asset_id=$3 AND c.status='published'`,
     [demoId,version,assetId])).rows[0];
     if(!row) throw new PublicDemoError("release_not_found","Der öffentliche Demo-Release wurde nicht gefunden.",404);
-    return {...row,firmware_size_bytes:Number(row.firmware_size_bytes)};
+    const firmware_blob = await this.artifactStore.get(row);
+    return {...row,firmware_size_bytes:Number(row.firmware_size_bytes),firmware_blob};
   }
   async close(){await this.pool.end();}
 }
@@ -131,6 +153,7 @@ function hasRequiredAssets(assets){const ids=new Set(assets.map((asset)=>asset.a
 function requiredString(v,f){const n=String(v||"").trim();if(!n)throw new PublicDemoError("required_field_missing",`${f} muss angegeben werden.`);return n;}
 function optionalString(v){return String(v||"").trim()||null;}
 function optionalCommit(v){const value=optionalString(v);if(value&&!/^[0-9a-f]{40}$/.test(value))throw new PublicDemoError("invalid_source_commit","source_commit_sha muss ein vollständiger Git-Commit sein.");return value;}
+function immutableSourceVersion(v){const value=requiredString(v,"source_version").toLowerCase();if(!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value))throw new PublicDemoError("invalid_source_version","Quellversion muss ein vollständiger Commit oder SHA-256 sein.");return value;}
 function publicCatalogRow(r){return{demo_id:r.demo_id,title:r.title,description:r.description,board_hardware_item_id:r.board_hardware_item_id,
   category:r.category,games:typeof r.games_json==="string"?JSON.parse(r.games_json):r.games_json,usb_flash_only:true,ota_supported:false,published_at:r.published_at};}
 module.exports={PostgresPublicDemoRepository};

@@ -27,7 +27,8 @@ class HttpArtifactStore {
     if (this.token.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
   }
 
-  async saveBuildArtifacts(jobId, buildOutput) {
+  async saveBuildArtifacts(jobId, buildOutput, sourceReference) {
+    const source = requireSourceReference(sourceReference);
     const startedAt = Date.now();
     const safeJobId = sanitizeJobId(jobId);
     const prepared = [];
@@ -39,7 +40,7 @@ class HttpArtifactStore {
         if (!sourcePath || !policy) continue;
         prepared.push(await this.prepareArtifact(safeJobId, artifactName, sourcePath, policy));
       }
-      await Promise.all(prepared.map((artifact) => this.uploadArtifact(safeJobId, artifact)));
+      await Promise.all(prepared.map((artifact) => this.uploadArtifact(safeJobId, artifact, source)));
       await this.callJson("POST", `/api/internal/build-artifacts/${encodeURIComponent(safeJobId)}/finalize`, {
         artifacts: prepared.map((artifact) => artifact.name),
       });
@@ -104,7 +105,7 @@ class HttpArtifactStore {
     };
   }
 
-  async uploadArtifact(jobId, artifact) {
+  async uploadArtifact(jobId, artifact, source) {
     const headers = {
       "Authorization": `Bearer ${this.token}`,
       "Content-Type": contentType(artifact.name),
@@ -114,6 +115,8 @@ class HttpArtifactStore {
       "X-Artifact-SHA256": artifact.sha256,
       "X-Artifact-Class": artifact.artifactClass,
       "X-Artifact-Retention-Days": String(artifact.retentionDays),
+      "X-Artifact-Source-Path": source.sourcePath,
+      "X-Artifact-Source-Version": source.sourceVersion,
     };
     if (artifact.espImageSha256) headers["X-Artifact-ESP-Image-SHA256"] = artifact.espImageSha256;
     await this.request({
@@ -166,6 +169,15 @@ class HttpArtifactStore {
   async close() {}
 }
 
+function requireSourceReference(value) {
+  const sourcePath = String(value?.sourcePath || "").trim();
+  const sourceVersion = String(value?.sourceVersion || "").trim().toLowerCase();
+  if (!sourcePath || sourcePath.length > 1024 || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sourceVersion)) {
+    throw new Error("Artefakte brauchen Quellpfad und unveraenderliche Quellversion.");
+  }
+  return { sourcePath, sourceVersion };
+}
+
 function request(options) {
   return new Promise((resolve, reject) => {
     const target = new URL(options.url);
@@ -189,4 +201,4 @@ function request(options) {
   });
 }
 
-module.exports = { HttpArtifactStore, request };
+module.exports = { HttpArtifactStore, request, requireSourceReference };

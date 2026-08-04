@@ -198,19 +198,19 @@
 
     <rect class="node store" x="625" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="742" y="807" text-anchor="middle">Zentrales PostgreSQL / Identity</text>
-    <text class="smallText" x="742" y="826" text-anchor="middle">Accounts · Assets · Releases · Konfiguration</text>
+    <text class="smallText" x="742" y="826" text-anchor="middle">Accounts · Asset-/Release-Referenzen · Konfiguration</text>
 
     <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="992" y="807" text-anchor="middle">Dasselbe PostgreSQL / Project + Build</text>
-    <text class="smallText" x="992" y="826" text-anchor="middle">Owner · Rechte · Commitrefs · Jobs · Build-Artefakte</text>
+    <text class="smallText" x="992" y="826" text-anchor="middle">Owner · Rechte · Commitrefs · Jobs · Objektreferenzen</text>
 
     <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
     <text class="titleText" x="1250" y="807" text-anchor="middle">Weitere Domaenen-PostgreSQL</text>
     <text class="smallText" x="1250" y="826" text-anchor="middle">Telemetry · Community · Device-Boardversionen · Catalog · Ops</text>
 
     <rect class="node store" x="625" y="858" width="235" height="52" rx="10"/>
-    <text class="titleText" x="742" y="880" text-anchor="middle">Dasselbe PostgreSQL / Demos</text>
-    <text class="smallText" x="742" y="899" text-anchor="middle">immutable Demo-Firmware als BYTEA</text>
+    <text class="titleText" x="742" y="880" text-anchor="middle">Artifact Store Volume</text>
+    <text class="smallText" x="742" y="899" text-anchor="middle">Binaries · Content-Hash · Quellpfad/-version</text>
 
     <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
     <text class="titleText" x="992" y="880" text-anchor="middle">Forgejo DB + Repository-Volume</text>

@@ -97,6 +97,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
     const artifactStorePromise = config.artifactPersistenceBackend === "postgres"
       ? PostgresArtifactStore.create({
         poolOptions,
+        artifactDir: config.artifactDir,
         publicBaseUrl: config.publicBaseUrl,
         manageSchema: config.databaseSchemaManagement,
         reportMetrics: (metrics) => console.log(`[artifact-store-metrics] ${JSON.stringify(metrics)}`),

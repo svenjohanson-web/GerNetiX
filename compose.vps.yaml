@@ -519,7 +519,10 @@ services:
       PUBLIC_DEMO_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
       PUBLIC_DEMO_RUNTIME_DIR: /var/lib/gernetix/public-demos
       PUBLIC_DEMO_PUBLISHER_TOKEN: ${PUBLIC_DEMO_PUBLISHER_TOKEN:?PUBLIC_DEMO_PUBLISHER_TOKEN muss gesetzt sein}
+      ARTIFACT_STORE_DIR: /var/lib/gernetix/build/artifacts
     expose: ["4920"]
+    volumes:
+      - build_state:/var/lib/gernetix/build
     depends_on:
       runtime-postgres-migration: { condition: service_completed_successfully }
 
@@ -841,7 +844,10 @@ services:
       SYSTEM_EVENT_INGEST_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
       LINK_INTEGRITY_INGEST_TOKEN: ${LINK_INTEGRITY_INGEST_TOKEN:?LINK_INTEGRITY_INGEST_TOKEN muss gesetzt sein}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      ARTIFACT_STORE_DIR: /var/lib/gernetix/build/artifacts
     expose: ["4300"]
+    volumes:
+      - build_state:/var/lib/gernetix/build
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:

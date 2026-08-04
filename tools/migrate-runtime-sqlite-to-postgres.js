@@ -22,11 +22,8 @@ async function migrateRuntimeSqliteToPostgres(options = {}) {
   const counts = {};
   try {
     counts.identity = await importIdentityAuxiliary(pool, options.identitySqlitePath);
-    counts.downloads = await copySqliteTable(pool, options.platformDownloadSqlitePath, "identity_platform_download_releases",
-      ["download_id","version","platform","architecture","label","detail","file_name","content_type","content_blob","size_bytes","sha256","visibility","status","created_at","published_at"]);
-    counts.assets = await copySqliteTable(pool, options.accountAssetSqlitePath, "identity_account_assets",
-      ["asset_id","account_id","asset_type","display_name","content_type","content_blob","size_bytes","sha256","metadata_json","visibility","status","created_at","updated_at","deleted_at"],
-      { metadata_json: parseJson });
+    counts.downloads = assertNoLegacyBinaryRows(options.platformDownloadSqlitePath, "identity_platform_download_releases");
+    counts.assets = assertNoLegacyBinaryRows(options.accountAssetSqlitePath, "identity_account_assets");
     counts.adminAccessUsers = await copySqliteTable(pool, options.adminAccessSqlitePath, "admin_access_users",
       ["admin_id","username","password_hash","password_salt","role","enabled","created_at","last_login_at"], { enabled: Boolean });
     counts.adminAccessSessions = await copySqliteTable(pool, options.adminAccessSqlitePath, "admin_access_sessions",
@@ -36,12 +33,9 @@ async function migrateRuntimeSqliteToPostgres(options = {}) {
     counts.publicDemoCatalog = await copySqliteTable(pool, options.publicDemoSqlitePath, "public_demo_catalog",
       ["demo_id","title","description","board_hardware_item_id","category","games_json","status","usb_flash_only","ota_supported","created_at","updated_at","published_at"],
       { games_json: parseJson, usb_flash_only: Boolean, ota_supported: Boolean });
-    counts.publicDemoReleases = await copySqliteTable(pool, options.publicDemoSqlitePath, "public_demo_releases",
-      ["demo_id","version","firmware_file_name","firmware_blob","firmware_size_bytes","firmware_sha256","source_build_sha256","created_at"]);
-    counts.publicDemoAssets = await copySqliteTable(pool, options.publicDemoSqlitePath, "public_demo_release_assets",
-      ["demo_id","version","asset_id","file_name","flash_offset","content_blob","size_bytes","sha256"]);
-    counts.buildArtifacts = await copySqliteTable(pool, options.buildSqlitePath, "build_artifacts",
-      ["job_id","artifact_name","content_type","content_blob","size_bytes","sha256","esp_image_sha256","created_at"]);
+    counts.publicDemoReleases = assertNoLegacyBinaryRows(options.publicDemoSqlitePath, "public_demo_releases");
+    counts.publicDemoAssets = assertNoLegacyBinaryRows(options.publicDemoSqlitePath, "public_demo_release_assets");
+    counts.buildArtifacts = assertNoLegacyBinaryRows(options.buildSqlitePath, "build_artifacts");
     counts.otaAcknowledgements = await copySqliteTable(pool, options.buildSqlitePath, "build_deploy_ota_acknowledgements",
       ["deploy_id","device_id","status","published_at","acknowledged_at","detail_json"], { detail_json: parseJson });
     if (options.llmConfigPath && fs.existsSync(options.llmConfigPath)) {
@@ -107,6 +101,16 @@ function readServiceState(db, serviceKey, defaults) {
   return state;
 }
 function tableExists(db, table){return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table));}
+function assertNoLegacyBinaryRows(sqlitePath, table) {
+  if (!sqlitePath || !fs.existsSync(sqlitePath)) return 0;
+  const db = new DatabaseSync(sqlitePath, { readOnly: true });
+  try {
+    if (!tableExists(db, table)) return 0;
+    const count = Number(db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count || 0);
+    if (count) throw new Error(`${table} enthält ${count} Binärdatensätze. Legacy-Binaries dürfen nicht nach PostgreSQL importiert werden; zuerst in den Artifact Store migrieren.`);
+    return 0;
+  } finally { db.close(); }
+}
 function parseJson(value){return typeof value==="string"?JSON.parse(value):value;}
 
 if (require.main === module) {

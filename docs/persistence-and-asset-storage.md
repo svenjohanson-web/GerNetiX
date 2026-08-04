@@ -12,6 +12,8 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 - Zugriff wird serverseitig aus Route, Sitzung, Besitz, Projektzuordnung und Freigabeklasse abgeleitet. Ein Client darf keine fremde `account_id` als Berechtigung setzen.
 - Oeffentliche, angemeldete, berechtigte, kontoeigene, projektgebundene und interne Daten sind getrennte Schutzklassen.
 - Veroeffentlichte Releases sind unveraenderlich. Eine neue Fassung erhaelt eine neue Version; Widerruf ersetzt kein Artefakt stillschweigend.
+- PostgreSQL speichert niemals Binary-Payloads: kein `BYTEA`, keine Large Objects und keine als Base64/JSON getarnten Binaries. Es speichert nur fachliche Metadaten, Hashes und Artifact-Store-Referenzen.
+- Jedes Binary im Artifact Store besitzt verpflichtend einen Quellpfad und eine unveraenderliche Quellversion (vollstaendiger Git-Commit oder reproduzierbarer Quell-/Package-Hash). Ohne diese Referenz darf es nicht publiziert werden.
 - Dem Account zurechenbare Forgejo-Repositories einschliesslich Historie und
   Git-LFS sowie dauerhafte Projekt-Releases werden gegen die effektive,
   versionierte Speicherpolicy des Accounts gerechnet. Technische Build-Caches
@@ -59,7 +61,7 @@ Forgejo-Tabellen mit dem GerNetiX-Domaenenmodell vermischt werden.
 | Projektdateien und Historie | Forgejo, private Git-Repositories | `forgejo_data` | Quellcode, Header, Tests, Projektmanifest, Architekturdateien, Software-Einheiten, Buildkonfiguration und aufgeloeste projektbezogene Board-/Pin-Konfiguration als echte Dateien und Commits |
 | Forgejo-Verwaltungsdaten | PostgreSQL-Datenbank `forgejo`, eigener Login | `runtime_postgres_data` | Forgejo-eigene Repository-, Organisations-, Token- und Betriebsmetadaten; kein GerNetiX-Domaenenmodell |
 | Projekt-Altbestand | `/var/lib/gernetix/projects/gernetix-projects.sqlite` beziehungsweise fruehere `gernetix-services.sqlite` | `project_state` / `service_state` | einmalige, read-only Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
-| Build und OTA | PostgreSQL `gernetix_runtime`, Tabellen `build_*` | `runtime_postgres_data` | Firmware-, ELF-, HEX-, Map- und Log-BLOBs sowie OTA-Bestaetigungen |
+| Build und OTA | PostgreSQL `gernetix_runtime`, Tabellen `build_*`; Binaries im Artifact Store | `runtime_postgres_data` / `build_state` | Job-, Hash-, Quell- und Objektreferenzen sowie OTA-Bestaetigungen; Firmware, ELF, HEX, Map und Log ausschliesslich als content-addressed Objekte |
 | Telemetrie | PostgreSQL `gernetix_runtime`, Tabellen `telemetry_*` | `runtime_postgres_data` | partitionierte Messwerte, Ereignisse und Retention |
 | Telemetrie-Altbestand | `/var/lib/gernetix/telemetry/gernetix-telemetry.sqlite` beziehungsweise fruehere `gernetix-services.sqlite` | `telemetry_state` / `service_state` | einmalige, read-only Altuebernahme; danach nicht mehr fuehrend |
 | Community | PostgreSQL `gernetix_runtime`, Tabellen `community_*`, insbesondere `community_marketplace_listings`, `community_project_ideas`, `community_project_idea_comments` und `community_project_showcases` | `runtime_postgres_data` | Fragen, Antworten, private Begleitung, Projektideen mit Diskussion, Showcase-Projekte mit begrenzter Projektkopie, Kleinanzeigen fuer gebrauchte Elektronik und Knowledge-Dokumente |
@@ -74,12 +76,12 @@ Forgejo-Tabellen mit dem GerNetiX-Domaenenmodell vermischt werden.
 | Hardware-Shop-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nicht mehr fuehrend |
 | Operations und Admin-Zugang | PostgreSQL `gernetix_runtime`, Tabellen `operations_*` und `admin_access_*` | `runtime_postgres_data` | Admin-Consents, Audit, Systemereignisse, Schnittstellenstatistik, Linkziele, Linkfundstellen, Linkprüfhistorie, Admin-Konten und Sessions |
 | Operations-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nur Rueckfallkopie |
-| Oeffentliche Demos | PostgreSQL `gernetix_runtime`, Tabellen `public_demo_*` | `runtime_postgres_data` | redaktionell freigegebene Demos und Firmware-BLOBs |
+| Oeffentliche Demos | PostgreSQL `gernetix_runtime`, Tabellen `public_demo_*`; Binaries im Artifact Store | `runtime_postgres_data` / `build_state` | redaktionell freigegebene Metadaten, Offsets, Hashes, Quell- und Objektreferenzen; Flash-Images ausschliesslich im Artifact Store |
 | AI Context | PostgreSQL `gernetix_runtime`, Tabellen `ai_context_*` plus pgvector | `runtime_postgres_data` | Kontext, Grants, Policy, Audit und Vektoren |
 | Verschluesselte Runtime-Konfiguration | PostgreSQL `gernetix_runtime`, Tabelle `runtime_state_documents` | `runtime_postgres_data` | LLM-Routing und weitere kleine Konfigurationsdokumente; Secret-haltige Inhalte AES-256-GCM-verschluesselt |
 | Legacy-SQLite-Dateien | bisherige Volumes `identity_state`, `service_state`, `build_state`, `public_demo_state`, `admin_access_state` | nur am einmaligen Migrationscontainer read-only | Altuebernahme, keine laufende Nutzung durch Fachservices |
 
-Die frueheren Plattform-Release-, Account-Asset- und Build-Artefakt-SQLite-Dateien werden ausschliesslich read-only migriert. Danach liegen Metadaten und BLOBs in ihren praefixierten Tabellen der zentralen Datenbank.
+Die frueheren Plattform-Release-, Account-Asset- und Build-Artefakt-SQLite-Dateien werden ausschliesslich read-only behandelt. Legacy-Binaries duerfen nicht nach PostgreSQL importiert werden; sie werden mit Quellreferenz und Hash-Pruefung in den Artifact Store uebernommen.
 
 ## Lokale Identity-Runtime ohne lokale Identity-Persistenz
 
@@ -92,7 +94,7 @@ Accounts, Credentials und Sessions liegen ausschliesslich in `gernetix_runtime` 
 | versionierte Website-Assets | `services/identity-server/public/` | GerNetiX-Repository-/Deployment-Inhalt, keine Nutzerablage |
 | lokaler Paket-Fallback | `tools/usb-serial-helper/dist/` | Entwicklungsfallback; auf dem VPS ist SQL fuehrend |
 | Build-Workspace und Cache | `/var/lib/gernetix/build/tmp`, Cache-/Toolchain-Verzeichnisse | loesch- und wiederherstellbarer technischer Cache |
-| fuer Flashwerkzeuge materialisierte Firmware | Provisioning-Runtimepfad | temporaere Ableitung eines SQL-BLOBs |
+| fuer Flashwerkzeuge materialisierte Firmware | Provisioning-Runtimepfad | temporaere Ableitung eines Artifact-Store-Objekts |
 | generierte Architektursicht | `tools/architecture-docs/dist/` | reproduzierbare Leseansicht |
 | Browser-/PWA-State | IndexedDB, Cache Storage, Local Storage | UI-/Offline-Hilfe, niemals Besitz- oder Berechtigungsquelle |
 
@@ -117,12 +119,13 @@ Neue Worker verwenden folgende Grenze:
   eingeschraenkter Bestandsadapter ueber WireGuard zulaessig, bis Build-Jobs
   auf das Gateway migriert sind. Artefakt-BLOBs schreibt ein externer Worker
   nicht mehr direkt in PostgreSQL.
-- Ein interner `ArtifactStore`-Vertrag kapselt Metadaten, BLOB, Hash,
+- Ein interner `ArtifactStore`-Vertrag kapselt Objekt, Hash,
   Schutzklasse, Retention, Kompression und Streaming. Externe Build-Worker
   streamen die Artefakte mit einem getrennten Bearer-Secret ueber den privaten
   HTTPS-Endpunkt zum zentralen Build-Service. Dort werden sie erst nach
-  Groessen- und SHA-256-Pruefung als vollstaendiger Satz transaktional in der
-  PostgreSQL-BYTEA-Implementierung veroeffentlicht. Unvollstaendige Uploads
+  Groessen- und SHA-256-Pruefung als content-addressed Objekte im persistenten
+  Artifact-Store-Volume veroeffentlicht. PostgreSQL erhaelt nur Objektschluessel,
+  Hash, Groesse, Quellpfad und Quellversion. Unvollstaendige Uploads
   liegen nur im zeitlich begrenzten technischen Staging und sind nicht lesbar.
 - Die Klassen `deployable`, `symbols` und `diagnostic` besitzen im heutigen
   Rueckfallvertrag 90, 30 beziehungsweise 14 Tage Retention. Der Zielvertrag
@@ -146,10 +149,10 @@ Community-Inhalte gehoeren nicht in die Account-Asset-Ablage. Eine oeffentliche 
 
 ## Download- und Firmwarefluss
 
-1. Ein Publisher schreibt Inhalt, Version, Plattform, Architektur, MIME-Type, Groesse, SHA-256 und Sichtbarkeit als unveraenderlichen SQL-Release.
+1. Ein Publisher schreibt den Inhalt in den Artifact Store und Version, Plattform, Architektur, MIME-Type, Groesse, SHA-256, Sichtbarkeit, Quellpfad, Quellversion und Objektreferenz als unveraenderlichen SQL-Release.
 2. Das oeffentliche Flashbox-API fragt ausschliesslich `flashbox-initial-image` mit `visibility=public` ab. Es enthaelt keine Account- oder Besitzdaten.
 3. Der Serial-Service-/MaxSerial-Download fragt ausschliesslich `visibility=authenticated` ab und benoetigt eine Sitzung.
-4. Build-&-Deploy liest Ausgaben nur aus dem temporaeren Build-Workspace. Ein externer Worker hasht und komprimiert sie lokal, streamt sie authentifiziert zum zentralen Dienst und veroeffentlicht den geprueften Satz dort transaktional als BLOBs in `build_artifacts`.
+4. Build-&-Deploy liest Ausgaben nur aus dem temporaeren Build-Workspace. Ein externer Worker hasht und komprimiert sie lokal, streamt sie authentifiziert zum zentralen Dienst und veroeffentlicht den geprueften Satz content-addressed im Artifact Store; `build_artifacts` enthaelt ausschliesslich Metadaten und Referenzen.
 5. Identity liefert nach serverseitiger Zuordnung des Build-Jobs zum angemeldeten Projektbesitzer ausschliesslich flashbare Build-Artefakte (`bootloader.bin`, `partitions.bin`, `boot_app0.bin`, `firmware.bin`, `firmware.hex`). ELF, Map und Build-Log bleiben auch bei bekanntem Dateinamen intern. Die Flashbox erhaelt nur einen signierten, ablaufenden Auftrag fuer den konkreten Helper und das konkrete Ziel.
 6. Die serverseitige Crash-Symbolisierung verwendet die interne ELF nur bei exakter Build-ID. Identity gibt Symbolnamen und Quellorte ausschliesslich fuer die beim Build gespeicherten Kundenquellpfade aus und redigiert Basissoftware-Frames.
 
@@ -171,7 +174,7 @@ Damit kann dasselbe Release auf mehreren Rechnern verwendet werden, ohne lokal e
 - `gernetix-services.sqlite` bleibt nur als read-only Altquelle der idempotenten Migrationen erhalten. Kein produktiver Compose-Dienst schreibt weiter hinein.
 - Provisioning, Recovery, Context Manager und Community AI halten kurzlebigen Workflow-State im Prozessspeicher. Dauerhafte Ergebnisse werden ueber Device Management, Community, AI Context oder `build_artifacts` uebernommen.
 - Die lokale JSON-Datei der LLM-Routing-Konfiguration ist nur noch Altimport; produktiv liegt die Konfiguration verschluesselt in PostgreSQL.
-- Provisioning besitzt weiterhin explizite Entwicklungsfallbacks fuer lokale Firmwarepfade. Im VPS-Betrieb muss das SQL-Artefakt fuehrend bleiben.
+- Provisioning besitzt weiterhin explizite Entwicklungsfallbacks fuer lokale Firmwarepfade. Im VPS-Betrieb muss die SQL-Metadatenreferenz auf das Artifact-Store-Objekt fuehrend bleiben.
 - Account-Assets verwenden derzeit JSON/Base64 bis 16 MiB. Fuer groessere Bilder ist spaeter ein streamingfaehiger Uploadvertrag sinnvoll; Eigentumspruefung und SQL-Wahrheit bleiben unveraendert.
 - Backup-, Restore- und Retention-Zeiten muessen pro Volume beziehungsweise Datenbank operational getestet und protokolliert werden. Forgejo-Datenbank und `forgejo_data` benoetigen dabei einen gemeinsamen konsistenten Sicherungspunkt.
 

@@ -118,12 +118,13 @@ flowchart LR
   subgraph storage["Persistenz / Wissensbasis"]
     identityDb[("Identity PostgreSQL<br/>Accounts, Credentials, Sessions,<br/>Wissenskapitel-Lesestaende")]
     identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
-    releaseDb[("Plattform-Releases SQLite<br/>public / authenticated / entitled / internal")]
-    accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
+    releaseDb[("Plattform-Release-Metadaten PostgreSQL<br/>public / authenticated / entitled / internal")]
+    accountAssetDb[("Account-Asset-Metadaten PostgreSQL<br/>owner_only QR, Bilder, Bildstile")]
     projectDb[("Project PostgreSQL<br/>Projekt, Owner, Rechte, Repository-/Commitreferenzen,<br/>Build-Metadaten, Fortschritt und Projekt-App-Laufzeitwerte")]
     forgejoDb[("Forgejo PostgreSQL + Repository-Volume<br/>eigene Datenbank forgejo + forgejo_data<br/>Projektdateien und Git-Historie")]
     projectLegacyDb[("Projekt Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
-    buildArtifactDb[("Build PostgreSQL<br/>Jobregister, Worker, Abbruchstatus, Locks, Cache-Generationen,<br/>Firmware, ELF, HEX, Map, Log")]
+    buildArtifactDb[("Build PostgreSQL<br/>Jobregister, Worker, Abbruchstatus, Locks, Cache-Generationen,<br/>Objekt-, Hash- und Quellreferenzen")]
+    artifactStore[("Artifact Store Volume<br/>content-addressed Binaries<br/>mit Quellpfad + Quellversion")]
     telemetryDb[("Telemetry PostgreSQL<br/>Messwerte, Ereignisse, Retention")]
     telemetryLegacyDb[("Telemetry Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     communityDb[("Community PostgreSQL<br/>public / private Autor + getrennte Admin-Akteure")]
@@ -242,6 +243,9 @@ flowchart LR
   publicDemo -. "veröffentlichte Metadaten + immutable firmware.bin" .-> publicDemoDb
   buildDeploy --> runtimePostgres
   runtimePostgres --> buildArtifactDb
+  buildArtifactDb --> artifactStore
+  releaseDb --> artifactStore
+  accountAssetDb --> artifactStore
   deviceManagement --> runtimePostgres
   runtimePostgres --> deviceManagementDb
   telemetryServer --> runtimePostgres
@@ -335,7 +339,7 @@ flowchart LR
 | Forgejo | PostgreSQL-Datenbank `forgejo` und `forgejo_data` | Forgejo-eigene Verwaltungsdaten getrennt von `gernetix_runtime` sowie Git-Objekte und Repository-Historie persistent speichern |
 | GerNetiX Plattform UI / Identity Server | Project Server | Aktuelle Lesson, aktueller Step und abgeschlossene Steps eines accountgebundenen Lernprojekts laden und speichern |
 | GerNetiX Plattform UI / Identity Server | Build & Deploy Server | Build-Ausfuehrung und Ergebnisabholung |
-| Build & Deploy Coordinator / Worker | Zentrales PostgreSQL | Systemweit eindeutige BuildJob-IDs, workerunabhaengige Status- und Abbruchsicht, Advisory Locks je Build-Ziel, Cache-Generationen und unveraenderliche Artefakt-BLOBs |
+| Build & Deploy Coordinator / Worker | Zentrales PostgreSQL plus Artifact Store | Systemweit eindeutige BuildJob-IDs, workerunabhaengige Status- und Abbruchsicht, Advisory Locks je Build-Ziel und Cache-Generationen in PostgreSQL; unveraenderliche Binaries ausschliesslich als content-addressed Objekte mit Quellpfad und Quellversion |
 | GerNetiX Plattform UI / Identity Server | Build & Deploy Coordinator | Der sessiongebundene Abbruch eines eigenen BuildJobs wird zentral persistiert; der ausfuehrende Worker beendet den Compiler-Prozessbaum und meldet `cancelled` zurueck |
 | Identity Server | Build Worker Pool Router | Reine Builds und Prebuilds automatisch auf verfuegbare Worker verteilen; keine Rechnerauswahl in der IDE |
 | Build Worker Pool Router | Externer Build-Worker | Private HTTP-Verteilung ausschliesslich ueber WireGuard; schnelle Primaer-Worker werden bevorzugt, VPS und weitere Worker bilden den automatischen Rueckfallpool |

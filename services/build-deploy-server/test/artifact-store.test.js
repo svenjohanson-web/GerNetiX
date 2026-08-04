@@ -7,7 +7,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { ArtifactStore } = require("../src/modules/artifact-store");
 
-test("persists build artifacts as SQL BLOBs independently from build files", async () => {
+test("persists build artifacts as content-addressed objects with SQL references", async () => {
   const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-artifact-source-"));
   const sqliteDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-artifact-sql-"));
   const firmwarePath = path.join(sourceDir, "firmware.hex");
@@ -25,7 +25,7 @@ test("persists build artifacts as SQL BLOBs independently from build files", asy
         "firmware.hex": firmwarePath,
         "build.log": logPath,
       },
-    });
+    }, { sourcePath: "src/main.cpp", sourceVersion: "e".repeat(64) });
     await fs.rm(sourceDir, { recursive: true, force: true });
 
     assert.match(saved["firmware.hex"].sha256, /^[a-f0-9]{64}$/);
@@ -45,7 +45,7 @@ test("prunes expired sqlite artifacts independently from new builds", async () =
   let now = new Date("2026-01-01T00:00:00.000Z");
   const store = new ArtifactStore({ artifactDir: root, sqlitePath: ":memory:", now: () => now });
   try {
-    await store.saveBuildArtifacts("job-1", { artifacts: { "firmware.bin": source } });
+    await store.saveBuildArtifacts("job-1", { artifacts: { "firmware.bin": source } }, { sourcePath: "src/main.cpp", sourceVersion: "e".repeat(64) });
     assert.ok(store.getArtifact("job-1", "firmware.bin"));
     now = new Date("2027-01-01T00:00:00.000Z");
     assert.equal(store.getArtifact("job-1", "firmware.bin"), null);

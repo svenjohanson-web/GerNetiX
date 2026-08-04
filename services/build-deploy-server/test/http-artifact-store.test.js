@@ -26,10 +26,15 @@ test("compresses symbol artifacts, streams uploads and finalizes the exact set",
     reportMetrics: (entry) => metrics.push(entry),
   });
   try {
-    const result = await store.saveBuildArtifacts("job-1", { artifacts: { "firmware.elf": source } });
+    const result = await store.saveBuildArtifacts("job-1", { artifacts: { "firmware.elf": source } }, {
+      sourcePath: "src/main.cpp",
+      sourceVersion: "b".repeat(64),
+    });
     assert.equal(calls.length, 2);
     assert.equal(calls[0].method, "PUT");
     assert.equal(calls[0].headers["Content-Encoding"], "gzip");
+    assert.equal(calls[0].headers["X-Artifact-Source-Path"], "src/main.cpp");
+    assert.equal(calls[0].headers["X-Artifact-Source-Version"], "b".repeat(64));
     assert.deepEqual(zlib.gunzipSync(calls[0].payload), original);
     assert.ok(calls[0].payload.length < original.length);
     assert.deepEqual(JSON.parse(calls[1].payload), { artifacts: ["firmware.elf"] });

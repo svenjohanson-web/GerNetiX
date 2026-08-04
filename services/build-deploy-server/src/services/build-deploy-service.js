@@ -1,4 +1,4 @@
-const { randomUUID } = require("node:crypto");
+const { createHash, randomUUID } = require("node:crypto");
 const { BuildDeployError } = require("../errors");
 const { DEFAULT_ARTIFACT_POLICY_SOURCE, normalizeBuildProfile } = require("../modules/artifact-contract");
 
@@ -364,7 +364,11 @@ class BuildDeployService {
         ...buildOutput,
         artifacts: this.artifactPolicySource.filterArtifacts(buildOutput.artifacts, job.build_profile),
       };
-      const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, publishableOutput);
+      const artifacts = await this.artifactStore.saveBuildArtifacts(
+        job.job_id,
+        publishableOutput,
+        artifactSourceReference(job),
+      );
       throwIfCancelled(job);
       const primaryFirmware = selectPrimaryFirmware(artifacts);
       const buildResult = {
@@ -444,6 +448,40 @@ class BuildDeployService {
     if (job.progress.length > 240) job.progress.splice(0, job.progress.length - 240);
     this.persistJobs(job);
   }
+}
+
+function artifactSourceReference(job) {
+  const buildPackage = job.build_package || {};
+  const buildConfig = buildPackage.build_job?.build_config || {};
+  const contract = buildPackage.contract || {};
+  const sourcePath = String(
+    buildConfig.user_source_path
+      || contract.project_entrypoint
+      || contract.source_root
+      || "project-source",
+  ).trim();
+  const sourceVersion = String(
+    buildPackage.commit_sha
+      || buildPackage.package_sha256
+      || buildPackage.snapshot_sha256
+      || createHash("sha256").update(stableJson(buildPackage.files || {})).digest("hex"),
+  ).trim();
+  if (!sourcePath || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(sourceVersion)) {
+    throw new BuildDeployError(
+      "artifact_source_reference_missing",
+      "Build-Artefakte brauchen Quellpfad und unveraenderliche Quellversion.",
+      409,
+    );
+  }
+  return { sourcePath, sourceVersion: sourceVersion.toLowerCase() };
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function buildDeploySchema() {

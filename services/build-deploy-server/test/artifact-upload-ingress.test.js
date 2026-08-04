@@ -84,5 +84,7 @@ function uploadHeaders(encoded, original, artifactClass, retentionDays) {
     "x-artifact-sha256": crypto.createHash("sha256").update(original).digest("hex"),
     "x-artifact-class": artifactClass,
     "x-artifact-retention-days": String(retentionDays),
+    "x-artifact-source-path": "src/main.cpp",
+    "x-artifact-source-version": "c".repeat(64),
   };
 }

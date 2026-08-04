@@ -34,6 +34,7 @@ async function main() {
     version,
     firmware_file_name: "firmware.bin",
     source_commit_sha: sourceCommit,
+    source_path: "basissoftware/esp32",
     flash_assets: [
       asset("bootloader", "bootloader.bin", 0x0),
       asset("partitions", "partitions.bin", 0x8000),

@@ -23,6 +23,7 @@ function createConfig(env = process.env) {
       password: env.PUBLIC_DEMO_POSTGRES_PASSWORD || "",
     },
     publisherToken: env.PUBLIC_DEMO_PUBLISHER_TOKEN || "",
+    artifactDir: path.resolve(env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts")),
   };
 }
 

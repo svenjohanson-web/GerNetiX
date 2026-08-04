@@ -6,13 +6,14 @@ const { MAX_DOWNLOAD_BYTES } = require("./sqlite-platform-download-repository");
 class PostgresPlatformDownloadRepository {
   static async create(options = {}) {
     const { Pool } = require("pg");
-    const repository = new PostgresPlatformDownloadRepository(options.pool || new Pool(options.poolOptions));
+    const repository = new PostgresPlatformDownloadRepository(options.pool || new Pool(options.poolOptions), options.artifactStore);
     await repository.migrate();
     return repository;
   }
 
-  constructor(pool) {
+  constructor(pool, artifactStore) {
     this.pool = pool;
+    this.artifactStore = artifactStore;
   }
 
   async migrate() {
@@ -26,17 +27,29 @@ class PostgresPlatformDownloadRepository {
         detail TEXT NOT NULL,
         file_name TEXT NOT NULL,
         content_type TEXT NOT NULL,
-        content_blob BYTEA NOT NULL,
+        object_key TEXT NOT NULL,
+        object_sha256 TEXT NOT NULL,
         size_bytes BIGINT NOT NULL,
         sha256 TEXT NOT NULL,
         visibility TEXT NOT NULL CHECK (visibility IN ('public', 'authenticated', 'entitled', 'internal')),
         status TEXT NOT NULL CHECK (status IN ('published', 'revoked')),
         created_at TIMESTAMPTZ NOT NULL,
         published_at TIMESTAMPTZ NOT NULL,
+        source_path TEXT NOT NULL,
+        source_version TEXT NOT NULL,
         PRIMARY KEY (download_id, version, platform, architecture)
       );
       CREATE INDEX IF NOT EXISTS idx_identity_platform_download_releases_current
         ON identity_platform_download_releases(download_id, platform, architecture, status, published_at DESC);
+    `);
+    await this.pool.query(`
+      ALTER TABLE identity_platform_download_releases ADD COLUMN IF NOT EXISTS object_key TEXT;
+      ALTER TABLE identity_platform_download_releases ADD COLUMN IF NOT EXISTS object_sha256 TEXT;
+      ALTER TABLE identity_platform_download_releases ADD COLUMN IF NOT EXISTS source_path TEXT;
+      ALTER TABLE identity_platform_download_releases ADD COLUMN IF NOT EXISTS source_version TEXT;
+      DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='identity_platform_download_releases' AND column_name='content_blob') THEN
+        ALTER TABLE identity_platform_download_releases ALTER COLUMN content_blob DROP NOT NULL;
+      END IF; END $$;
     `);
   }
 
@@ -51,16 +64,18 @@ class PostgresPlatformDownloadRepository {
       throw platformDownloadError("download_checksum_mismatch", "Die angegebene Prüfsumme stimmt nicht mit dem Download-Artefakt überein.");
     }
     const now = new Date().toISOString();
+    if (!this.artifactStore) throw platformDownloadError("artifact_store_unavailable", "Der Artifact Store ist nicht verfügbar.");
+    const object = await this.artifactStore.put(content, { source_path: input.source_path, source_version: input.source_version });
     try {
       await this.pool.query(`
         INSERT INTO identity_platform_download_releases (
           download_id, version, platform, architecture, label, detail, file_name,
-          content_type, content_blob, size_bytes, sha256, visibility, status, created_at, published_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'published',$13,$13)
+          content_type, object_key, object_sha256, size_bytes, sha256, visibility, status, created_at, published_at, source_path, source_version
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'published',$14,$14,$15,$16)
       `, [
         release.download_id, release.version, release.platform, release.architecture,
         release.label, release.detail, release.file_name, release.content_type,
-        content, content.length, sha256, release.visibility, now,
+        object.object_key, object.sha256, content.length, sha256, release.visibility, now, object.source_path, object.source_version,
       ]);
     } catch (error) {
       if (error.code === "23505") {
@@ -101,13 +116,13 @@ class PostgresPlatformDownloadRepository {
 
   async getContent(downloadId, version, platform, architecture, options = {}) {
     const result = await this.pool.query(`
-      SELECT file_name, content_type, content_blob, size_bytes::bigint AS size_bytes, sha256, visibility
+      SELECT file_name, content_type, object_key, object_sha256, size_bytes::bigint AS size_bytes, sha256, visibility
       FROM identity_platform_download_releases
       WHERE download_id=$1 AND version=$2 AND platform=$3 AND architecture=$4
         AND status='published' AND ($5 = '' OR visibility = $5)
     `, [downloadId, version, platform, architecture, normalizeVisibilityFilter(options.visibility)]);
     if (!result.rows[0]) throw platformDownloadError("download_release_not_found", "Der Download-Release wurde nicht gefunden.");
-    return { ...normalizeNumbers(result.rows[0]), content_blob: Buffer.from(result.rows[0].content_blob) };
+    return { ...normalizeNumbers(result.rows[0]), content_blob: await this.artifactStore.get(result.rows[0]) };
   }
 
   async close() {

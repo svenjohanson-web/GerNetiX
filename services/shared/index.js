@@ -8,6 +8,7 @@ const {
   profileChangeRequiresUsb,
 } = require("./basissoftware-profiles");
 const elasticComputeContract = require("./elastic-compute-contract");
+const { ContentAddressedArtifactStore, normalizeSourceReference } = require("./persistence/content-addressed-artifact-store");
 
 module.exports = {
   JsonFileStore,
@@ -19,4 +20,6 @@ module.exports = {
   normalizeBasissoftwareProfile,
   profileChangeRequiresUsb,
   ...elasticComputeContract,
+  ContentAddressedArtifactStore,
+  normalizeSourceReference,
 };

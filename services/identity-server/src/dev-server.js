@@ -15,6 +15,7 @@ const { SqlitePlatformDownloadRepository } = require("./repositories/sqlite-plat
 const { SqliteAccountAssetRepository } = require("./repositories/sqlite-account-asset-repository");
 const { PostgresPlatformDownloadRepository } = require("./repositories/postgres-platform-download-repository");
 const { PostgresAccountAssetRepository } = require("./repositories/postgres-account-asset-repository");
+const { ContentAddressedArtifactStore } = require("../../shared");
 const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
 const { passkeyClientError } = require("./services/passkey-client-errors");
@@ -588,8 +589,9 @@ async function bootstrap() {
     hardwareLabRepository.hydrate();
   }
   if (identityPersistenceBackend === "postgres") {
-    platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres });
-    accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres });
+    const artifactStore = new ContentAddressedArtifactStore(process.env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts"));
+    platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres, artifactStore });
+    accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres, artifactStore });
   }
   auth = await createDefaultIdentityModule({
     emailService,

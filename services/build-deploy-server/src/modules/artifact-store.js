@@ -4,6 +4,7 @@ const fsSync = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { DEFAULT_ARTIFACT_POLICY_SOURCE } = require("./artifact-contract");
+const { ContentAddressedArtifactStore, normalizeSourceReference } = require("../../../shared");
 
 class ArtifactStore {
   constructor(options) {
@@ -11,6 +12,7 @@ class ArtifactStore {
     this.sqlitePath = options.sqlitePath || path.join(this.artifactDir, "gernetix-build-artifacts.sqlite");
     this.publicBaseUrl = options.publicBaseUrl || "";
     this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
+    this.objectStore = options.objectStore || new ContentAddressedArtifactStore(this.artifactDir);
     this.now = options.now || (() => new Date());
     if (this.sqlitePath !== ":memory:") fsSync.mkdirSync(path.dirname(this.sqlitePath), { recursive: true });
     this.db = new DatabaseSync(this.sqlitePath);
@@ -21,13 +23,16 @@ class ArtifactStore {
         job_id TEXT NOT NULL,
         artifact_name TEXT NOT NULL,
         content_type TEXT NOT NULL,
-        content_blob BLOB NOT NULL,
+        object_key TEXT NOT NULL,
+        object_sha256 TEXT NOT NULL,
         size_bytes INTEGER NOT NULL,
         sha256 TEXT NOT NULL,
         esp_image_sha256 TEXT,
         created_at TEXT NOT NULL,
         artifact_class TEXT NOT NULL DEFAULT 'deployable',
         retention_until TEXT,
+        source_path TEXT NOT NULL,
+        source_version TEXT NOT NULL,
         PRIMARY KEY (job_id, artifact_name)
       );
       CREATE INDEX IF NOT EXISTS idx_build_artifacts_job ON build_artifacts(job_id);
@@ -43,7 +48,8 @@ class ArtifactStore {
     }
   }
 
-  async saveBuildArtifacts(jobId, buildOutput) {
+  async saveBuildArtifacts(jobId, buildOutput, sourceReference) {
+    const source = normalizeSourceReference(sourceReference);
     const artifacts = {};
     const rows = [];
     for (const artifactName of Object.keys(buildOutput.artifacts).sort()) {
@@ -53,7 +59,8 @@ class ArtifactStore {
       const metadata = describeContent(content);
       const policy = this.artifactPolicySource.get(artifactName);
       if (!policy) throw new Error(`Artefakt ${artifactName} ist serverseitig nicht erlaubt.`);
-      rows.push({ artifactName, content, metadata, policy });
+      const object = await this.objectStore.put(content, source);
+      rows.push({ artifactName, metadata, policy, object });
       artifacts[artifactName] = {
         file_name: artifactName,
         size_bytes: metadata.size_bytes,
@@ -70,9 +77,9 @@ class ArtifactStore {
     const safeJobId = sanitizeName(jobId);
     const insert = this.db.prepare(`
       INSERT INTO build_artifacts (
-        job_id, artifact_name, content_type, content_blob, size_bytes, sha256,
-        esp_image_sha256, created_at, artifact_class, retention_until
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        job_id, artifact_name, content_type, object_key, object_sha256, size_bytes, sha256,
+        esp_image_sha256, created_at, artifact_class, retention_until, source_path, source_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     this.db.exec("BEGIN IMMEDIATE");
     try {
@@ -84,13 +91,16 @@ class ArtifactStore {
           safeJobId,
           row.artifactName,
           contentType(row.artifactName),
-          row.content,
+          row.object.object_key,
+          row.object.sha256,
           row.metadata.size_bytes,
           row.metadata.sha256,
           row.metadata.esp_image_sha256,
           createdAt,
           row.policy.artifactClass,
           new Date(now.getTime() + row.policy.retentionDays * 86400000).toISOString(),
+          source.sourcePath,
+          source.sourceVersion,
         );
       }
       this.db.exec("COMMIT");
@@ -104,12 +114,16 @@ class ArtifactStore {
 
   getArtifact(jobId, artifactName) {
     const row = this.db.prepare(`
-      SELECT artifact_name, content_type, content_blob, size_bytes, sha256
+      SELECT artifact_name, content_type, object_key, object_sha256, size_bytes, sha256
       FROM build_artifacts
       WHERE job_id = ? AND artifact_name = ?
         AND (retention_until IS NULL OR retention_until > ?)
     `).get(sanitizeName(jobId), artifactName, this.now().toISOString());
-    return row ? { ...row, content_blob: Buffer.from(row.content_blob) } : null;
+    if (!row) return null;
+    const content = fsSync.readFileSync(this.objectStore.resolve(row.object_key));
+    const actual = crypto.createHash("sha256").update(content).digest("hex");
+    if (actual !== row.object_sha256 || actual !== row.sha256) throw new Error("Artifact-Store-Integritätsprüfung fehlgeschlagen.");
+    return { ...row, content_blob: content };
   }
 
   async pruneExpired(now = this.now()) {

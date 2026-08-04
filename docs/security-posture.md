@@ -6,6 +6,8 @@ Diese Datei ist die zentrale, fortlaufend gepflegte Uebersicht der empfohlenen u
 
 Die Uebersicht enthaelt keine IP-Adressen, Schluessel, Fingerprints, Passwoerter, Tokens oder sonstige Geheimnisse.
 
+Seit 2026-08-04 gilt als verbindliche Speichergrenze: PostgreSQL darf keine Binary-Payloads (`BYTEA`, Large Objects oder Base64-/JSON-Ersatzformen) enthalten. Binaries liegen ausschliesslich content-addressed im verwalteten Artifact Store; jede SQL-Referenz fuehrt Hash, Groesse, Quellpfad und unveraenderliche Quellversion. Aeltere Nachweiszeilen, die noch SQL-BLOBs als damaligen Zwischenstand beschreiben, sind historisch und durch diese Regel abgeloest.
+
 ## Statusmodell
 
 - **Umgesetzt:** technisch aktiv und mit Datum nachgewiesen.
@@ -14,6 +16,10 @@ Die Uebersicht enthaelt keine IP-Adressen, Schluessel, Fingerprints, Passwoerter
 - **Zu pruefen:** der aktuelle Zustand ist nicht belastbar bekannt.
 
 ## Aktuell umgesetzte Massnahmen
+
+| Bereich | Schutzmassnahme | Status | Nachweis / offene Arbeit |
+|---|---|---|---|
+| Binary-Speichergrenze und Supply-Chain-Traceability | Binärinhalte werden ausserhalb PostgreSQL im persistenten, content-addressed Artifact Store gehalten. PostgreSQL speichert nur Objektschluessel, Hash, Groesse, Schutzdaten, Quellpfad und vollständige Commit-/Package-Version. Upload-Ingress und Publisher lehnen fehlende Quellreferenzen ab; ein Audit inventarisiert `BYTEA` und Large Objects ohne Payload-Ausgabe. | Teilweise | 2026-08-04: Codevertrag, Schema, Hash-pruefende Migration, Legacy-Import-Sperre und Tests sind umgesetzt. Staging-Migration, erneuter Nullbefund-Audit und Backup-/Restore-Nachweis des `build_state`-Volumes stehen bis zum Deployment aus. |
 
 Stand der letzten VPS-Pruefung: **2026-07-19**
 
