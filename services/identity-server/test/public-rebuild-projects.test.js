@@ -105,7 +105,7 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.doesNotMatch(nexiProject, /Der Nachbau in sechs prüfbaren Schritten|Ehrlicher Softwarestand/);
   assert.match(nexiProject, /ohne Konto und ohne eigenen Build/);
   assert.match(nexiProject, /id="choose-port"/);
-  assert.match(nexiProject, /id="retry-release"[^>]*hidden>Release erneut laden/);
+  assert.doesNotMatch(nexiProject, /id="retry-release"|Release erneut laden/);
   assert.match(nexiProject, /id="flash-button"/);
   assert.match(nexiProject, /id="flash-button"[^>]*aria-describedby="flash-status"[^>]*disabled/);
   assert.match(nexiProject, /id="flash-status"[^>]*>Noch nicht möglich: Zuerst muss der geprüfte Release geladen und ein USB-Port gewählt werden\./);
@@ -123,6 +123,8 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiFlash, /button\.title = enabled \? "" : message/);
   assert.match(nexiFlash, /fetch\(`api\/public\/demos\/\$\{DEMO_ID\}`.*, \{ cache: "no-store" \}\)/);
   assert.match(nexiFlash, /releaseRetryTimer = window\.setTimeout\(loadRelease, 5000\)/);
+  assert.match(nexiFlash, /if \(navigator\.serial\)/);
+  assert.match(nexiFlash, /USB-Zugriff einrichten/);
   assert.match(nexiProject, /kein aktiver Provider|Ohne aktiven Provider/);
 });
 

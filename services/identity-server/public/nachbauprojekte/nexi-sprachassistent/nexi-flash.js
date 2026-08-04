@@ -3,7 +3,6 @@
 const DEMO_ID = "nexi-basic-waveshare-s3";
 const portButton = document.querySelector("#choose-port");
 const portStatus = document.querySelector("#port-status");
-const retryReleaseButton = document.querySelector("#retry-release");
 const flashButton = document.querySelector("#flash-button");
 const flashStatus = document.querySelector("#flash-status");
 const serialServicePort = document.querySelector("#serial-service-port");
@@ -23,11 +22,9 @@ supportDialog.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-serial-support]")) closeSupportDialog();
 });
 
-retryReleaseButton.addEventListener("click", loadRelease);
-
 async function loadRelease() {
   window.clearTimeout(releaseRetryTimer);
-  retryReleaseButton.hidden = true;
+  portButton.textContent = "USB-Port wählen";
   setActionEnabled(portButton, false, portStatus, "Noch nicht möglich: Der geprüfte Nexi-Release wird geladen …");
   setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Der geprüfte Nexi-Release wird geladen und danach muss ein USB-Port gewählt werden.");
   try {
@@ -38,14 +35,20 @@ async function loadRelease() {
     if (!release) throw new Error("Kein Release veröffentlicht");
     document.querySelector("#flash-title").textContent = `Nexi Basic ${release.version} auf das Waveshare-Board flashen`;
     const source = release.source_commit_sha ? ` · Quellstand ${release.source_commit_sha.slice(0, 12)}` : "";
-    setActionEnabled(portButton, true, portStatus, `Release ${release.version} ist bereit${source} · Firmware SHA-256 ${release.firmware_sha256.slice(0, 12)}…`);
-    setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Wähle zuerst den USB-Port des Waveshare-Boards.");
+    const releaseReady = `Release ${release.version} ist bereit${source} · Firmware SHA-256 ${release.firmware_sha256.slice(0, 12)}…`;
+    if (navigator.serial) {
+      setActionEnabled(portButton, true, portStatus, releaseReady);
+      setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Wähle zuerst den USB-Port des Waveshare-Boards.");
+    } else {
+      portButton.textContent = "USB-Zugriff einrichten";
+      setActionEnabled(portButton, true, portStatus, `${releaseReady} Dieser Browser hat keinen direkten Web-Serial-Zugriff.`);
+      setActionEnabled(flashButton, false, flashStatus, "Noch nicht möglich: Öffne die Seite in Chrome oder Edge oder starte den GerNetiX Serial Helper und richte den USB-Zugriff ein.");
+    }
   } catch (error) {
     const detail = error?.message || "Netzwerkfehler";
     const reason = `Nicht möglich: Der geprüfte Nexi-Release ist gerade nicht verfügbar (${detail}). Automatischer neuer Versuch in 5 Sekunden.`;
     setActionEnabled(portButton, false, portStatus, reason);
     setActionEnabled(flashButton, false, flashStatus, reason);
-    retryReleaseButton.hidden = false;
     releaseRetryTimer = window.setTimeout(loadRelease, 5000);
   }
 }
