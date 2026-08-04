@@ -25,11 +25,12 @@ function parseEnvFile(content) {
 }
 
 function parseArgs(argv) {
-  const result = { dryRun: false, publicDemo: false };
+  const result = { dryRun: false, publicDemo: false, publishNexi: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
     else if (argument === "--public-demo") result.publicDemo = true;
+    else if (argument === "--publish-nexi") result.publishNexi = true;
     else if (["--host", "--remote-dir", "--branch"].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${argument} benoetigt einen Wert.`);
@@ -58,15 +59,19 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false }) {
-  return [
+function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, publishNexi = false }) {
+  const commands = [
     `cd ${shellQuote(remoteDir)}`,
     "test -z \"$(git status --porcelain --untracked-files=no)\"",
     "previous_commit=$(git rev-parse HEAD)",
     `git fetch origin ${shellQuote(branch)}`,
     `git switch --detach ${shellQuote(commit)}`,
     publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : './scripts/staging/remote-deploy.sh "$previous_commit"',
-  ].join(" && ");
+  ];
+  if (publishNexi) commands.push(
+    `docker compose --env-file .env.vps -f compose.vps.yaml exec -T -e NEXI_RELEASE_VERSION=${shellQuote(`0.1.0-${commit.slice(0, 12)}`)} -e NEXI_SOURCE_COMMIT=${shellQuote(commit)} public-demo-server sh -lc ${shellQuote("/opt/platformio/bin/platformio run --project-dir /app/basissoftware/esp32 -e waveshare-esp32-s3-audio-voice-lab && node /app/tools/publish-nexi-release.js")}`,
+  );
+  return commands.join(" && ");
 }
 
 function run(command, args, options = {}) {
@@ -103,7 +108,7 @@ function main() {
   const upstream = run("git", ["rev-parse", "@{upstream}"], { capture: true, quiet: true });
   if (commit !== upstream) throw new Error("Der aktuelle Commit ist noch nicht zum Upstream-Branch gepusht.");
 
-  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo });
+  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, publishNexi: args.publishNexi });
   process.stdout.write(`Staging-Deploy: ${branch} @ ${commit.slice(0, 12)} -> ${host}:${remoteDir}\n`);
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${host} ${command}\n`);

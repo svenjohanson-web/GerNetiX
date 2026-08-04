@@ -9,6 +9,7 @@ const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte"
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
+const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
 const motorFieldIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-magnetic-field.svg"), "utf8");
 const motorForceIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-force.svg"), "utf8");
 const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-simple-coil-force-pair-v2.png"));
@@ -82,7 +83,7 @@ test("publishes the HW-364A one-button game collection as an additional rebuild 
   assert.match(hw364aGames, /öffentlicher WebSerial-Download wird hier ergänzt/);
 });
 
-test("publishes Nexi as a complete public rebuild entry with an authenticated handoff", () => {
+test("publishes Nexi as a complete, prebuilt and directly flashable rebuild project", () => {
   assert.match(server, /path: "\/nachbauprojekte\/nexi-sprachassistent"[\s\S]*redirect\(res, "\/nachbauprojekte\/nexi-sprachassistent\/"\)/);
   assert.match(server, /path: "\/nachbauprojekte\/nexi-sprachassistent\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/nexi-sprachassistent\/index\.html"\)/);
   assert.match(page, /href="\/nachbauprojekte\/nexi-sprachassistent\/"/);
@@ -91,7 +92,20 @@ test("publishes Nexi as a complete public rebuild entry with an authenticated ha
   assert.match(nexiProject, /ES8311, TCA9555, ES7210 und PCF85063/);
   assert.match(nexiProject, /KEY1[\s\S]*KEY2[\s\S]*KEY3/);
   assert.match(nexiProject, /lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter/);
-  assert.match(nexiProject, /href="\/app\/learning-project-overview\/\?catalog=nexi-voice-assistant&amp;entry=build"/);
+  assert.match(server, /pattern: \/\^\\\/nachbauprojekte\\\/nexi-sprachassistent\\\/api\\\//);
+  assert.match(nexiProject, /Fertig gebaut · direkt installieren/);
+  assert.match(nexiProject, /ohne Konto und ohne eigenen Build/);
+  assert.match(nexiProject, /id="choose-port"/);
+  assert.match(nexiProject, /id="flash-button"/);
+  assert.match(nexiProject, /nexi-flash\.js/);
+  assert.match(nexiFlash, /const DEMO_ID = "nexi-basic-waveshare-s3"/);
+  assert.match(nexiFlash, /manifest\.chip !== "esp32s3"/);
+  assert.match(nexiFlash, /manifest\.flash_size !== "16MB"/);
+  assert.match(nexiFlash, /Das verbundene Gerät ist kein ESP32-S3/);
+  assert.match(nexiFlash, /loader\.detectFlashSize\(\)/);
+  assert.match(nexiFlash, /await sha256\(data\) !== asset\.sha256/);
+  assert.match(nexiFlash, /loader\.writeFlash/);
+  assert.match(nexiFlash, /serialService\.flash/);
   assert.match(nexiProject, /kein aktiver Provider|Ohne aktiven Provider/);
 });
 

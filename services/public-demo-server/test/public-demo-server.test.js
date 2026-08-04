@@ -62,6 +62,26 @@ test("Firmware wird nur als firmware.bin und mit korrekter Prüfsumme gespeicher
   repository.close();
 });
 
+test("ein Nexi-Release bewahrt die vier ESP-IDF-Images und ihre Board-Offsets", () => {
+  const repository = createRepository();
+  repository.publish(release({
+    demo_id: "nexi-basic-waveshare-s3",
+    source_commit_sha: "0123456789abcdef0123456789abcdef01234567",
+    flash_assets: [
+      { asset_id: "bootloader", flash_offset: 0x0, base64: Buffer.from([1]).toString("base64") },
+      { asset_id: "partitions", flash_offset: 0x8000, base64: Buffer.from([2]).toString("base64") },
+      { asset_id: "otadata", flash_offset: 0xf000, base64: Buffer.from([3]).toString("base64") },
+      { asset_id: "firmware", flash_offset: 0x20000, base64: Buffer.from([4]).toString("base64") },
+    ],
+  }));
+  const manifest = repository.getFlashManifest("nexi-basic-waveshare-s3", "1.0.0");
+  assert.equal(repository.getPublicDemo("nexi-basic-waveshare-s3").releases[0].source_commit_sha, "0123456789abcdef0123456789abcdef01234567");
+  assert.deepEqual(manifest.assets.map(({ asset_id, flash_offset }) => [asset_id, flash_offset]), [
+    ["bootloader", 0x0], ["partitions", 0x8000], ["otadata", 0xf000], ["firmware", 0x20000],
+  ]);
+  repository.close();
+});
+
 test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen", async () => {
   const repository = createRepository();
   const service = new PublicDemoService({ repository });

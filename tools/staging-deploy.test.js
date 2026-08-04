@@ -22,9 +22,23 @@ test("parses deploy arguments", () => {
   assert.deepEqual(parseArgs(["--dry-run", "--host", "deploy@example.test", "--branch", "agent/test"]), {
     dryRun: true,
     publicDemo: false,
+    publishNexi: false,
     host: "deploy@example.test",
     branch: "agent/test",
   });
+});
+
+test("adds a committed Nexi release publication to the controlled staging deploy", () => {
+  const command = remoteDeployCommand({
+    branch: "main",
+    commit: "0123456789abcdef0123456789abcdef01234567",
+    remoteDir: "/opt/gernetix",
+    publishNexi: true,
+  });
+  assert.match(command, /NEXI_RELEASE_VERSION='0\.1\.0-0123456789ab'/);
+  assert.match(command, /NEXI_SOURCE_COMMIT='0123456789abcdef0123456789abcdef01234567'/);
+  assert.match(command, /platformio run --project-dir \/app\/basissoftware\/esp32 -e waveshare-esp32-s3-audio-voice-lab/);
+  assert.match(command, /publish-nexi-release\.js/);
 });
 
 test("rejects unsafe refs and ssh targets", () => {

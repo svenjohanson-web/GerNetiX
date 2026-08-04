@@ -23,17 +23,25 @@ class PostgresPublicDemoRepository {
         demo_id TEXT NOT NULL REFERENCES public_demo_catalog(demo_id) ON DELETE RESTRICT,
         version TEXT NOT NULL, firmware_file_name TEXT NOT NULL, firmware_blob BYTEA NOT NULL,
         firmware_size_bytes BIGINT NOT NULL, firmware_sha256 TEXT NOT NULL,
-        source_build_sha256 TEXT, created_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (demo_id,version)
+        source_build_sha256 TEXT, source_commit_sha TEXT, created_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (demo_id,version)
       );
       CREATE TABLE IF NOT EXISTS public_demo_release_assets (
         demo_id TEXT NOT NULL, version TEXT NOT NULL,
-        asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader','partitions','firmware')),
+        asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader','partitions','otadata','firmware')),
         file_name TEXT NOT NULL, flash_offset INTEGER NOT NULL, content_blob BYTEA NOT NULL,
         size_bytes BIGINT NOT NULL, sha256 TEXT NOT NULL, PRIMARY KEY (demo_id,version,asset_id),
         FOREIGN KEY (demo_id,version) REFERENCES public_demo_releases(demo_id,version) ON DELETE RESTRICT
       );
       CREATE INDEX IF NOT EXISTS idx_public_demo_catalog_status ON public_demo_catalog(status,published_at DESC,demo_id);
     `);
+    await this.pool.query("ALTER TABLE public_demo_releases ADD COLUMN IF NOT EXISTS source_commit_sha TEXT");
+    const assetConstraint = (await this.pool.query(`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+      WHERE conrelid = 'public_demo_release_assets'::regclass AND conname = 'public_demo_release_assets_asset_id_check'`)).rows[0]?.definition || "";
+    if (!assetConstraint.includes("otadata")) {
+      await this.pool.query(`ALTER TABLE public_demo_release_assets DROP CONSTRAINT IF EXISTS public_demo_release_assets_asset_id_check;
+        ALTER TABLE public_demo_release_assets ADD CONSTRAINT public_demo_release_assets_asset_id_check
+        CHECK (asset_id IN ('bootloader','partitions','otadata','firmware'))`);
+    }
   }
   async publish(input) {
     const demo = normalizeDemo(input);
@@ -51,9 +59,9 @@ class PostgresPublicDemoRepository {
         status='published',updated_at=EXCLUDED.updated_at,published_at=EXCLUDED.published_at`,
       [demo.demo_id,demo.title,demo.description,demo.board_hardware_item_id,demo.category,demo.games,now]);
       await client.query(`INSERT INTO public_demo_releases
-        (demo_id,version,firmware_file_name,firmware_blob,firmware_size_bytes,firmware_sha256,source_build_sha256,created_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [demo.demo_id,demo.version,assets.firmware.file_name,assets.firmware.content,assets.firmware.size_bytes,assets.firmware.sha256,optionalString(input.source_build_sha256),now]);
+        (demo_id,version,firmware_file_name,firmware_blob,firmware_size_bytes,firmware_sha256,source_build_sha256,source_commit_sha,created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [demo.demo_id,demo.version,assets.firmware.file_name,assets.firmware.content,assets.firmware.size_bytes,assets.firmware.sha256,optionalString(input.source_build_sha256),optionalCommit(input.source_commit_sha),now]);
       for (const asset of Object.values(assets)) await client.query(`INSERT INTO public_demo_release_assets
         (demo_id,version,asset_id,file_name,flash_offset,content_blob,size_bytes,sha256) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [demo.demo_id,demo.version,asset.asset_id,asset.file_name,asset.flash_offset,asset.content,asset.size_bytes,asset.sha256]);
@@ -75,7 +83,7 @@ class PostgresPublicDemoRepository {
       FROM public_demo_catalog WHERE demo_id=$1 AND status='published'`, [demoId])).rows[0];
     if (!item) throw new PublicDemoError("demo_not_found", "Die öffentliche Demo wurde nicht gefunden.", 404);
     const releases = (await this.pool.query(`SELECT version,firmware_file_name,firmware_size_bytes::bigint AS firmware_size_bytes,
-      firmware_sha256,created_at::text AS created_at FROM public_demo_releases WHERE demo_id=$1 ORDER BY created_at DESC,version DESC`, [demoId])).rows;
+      firmware_sha256,source_commit_sha,created_at::text AS created_at FROM public_demo_releases WHERE demo_id=$1 ORDER BY created_at DESC,version DESC`, [demoId])).rows;
     return {...publicCatalogRow(item),releases:releases.map((row)=>({...row,firmware_size_bytes:Number(row.firmware_size_bytes),
       firmware_download_url:`/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(row.version)}/firmware`}))};
   }
@@ -84,7 +92,7 @@ class PostgresPublicDemoRepository {
     await this.getPublicDemo(demoId);
     const assets=(await this.pool.query(`SELECT asset_id,file_name,flash_offset,size_bytes::bigint AS size_bytes,sha256
       FROM public_demo_release_assets WHERE demo_id=$1 AND version=$2 ORDER BY flash_offset`,[demoId,version])).rows;
-    if(assets.length!==3) throw new PublicDemoError("release_not_found","Der vollständige Flash-Release wurde nicht gefunden.",404);
+    if(!hasRequiredAssets(assets)) throw new PublicDemoError("release_not_found","Der vollständige Flash-Release wurde nicht gefunden.",404);
     return {demo_id:demoId,version,chip:"esp32s3",flash_mode:"dio",flash_freq:"80m",flash_size:"16MB",
       assets:assets.map((a)=>({...a,size_bytes:Number(a.size_bytes),download_url:`/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(version)}/assets/${a.asset_id}`}))};
   }
@@ -104,12 +112,25 @@ function normalizeDemo(input){const fields=["demo_id","title","description","boa
   if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(demo.version)) throw new PublicDemoError("invalid_release_version","version ist ungültig.");
   if(demo.firmware_file_name!=="firmware.bin") throw new PublicDemoError("invalid_firmware_file","Öffentliche Demo-Releases dürfen nur firmware.bin enthalten.");
   demo.games=Array.isArray(input.games)?input.games.map((g)=>requiredString(g,"games[]")):[];return demo;}
-function normalizeAssets(input){const defs={bootloader:{file_name:"bootloader.bin",flash_offset:0},partitions:{file_name:"partitions.bin",flash_offset:0x8000},firmware:{file_name:"firmware.bin",flash_offset:0x10000}};
-  return Object.fromEntries(Object.entries(defs).map(([id,d])=>{const content=Buffer.from(input[`${id}_base64`]||"","base64");
-    if(!content.length||content.length>16*1024*1024) throw new PublicDemoError("flash_asset_invalid",`${id} fehlt oder ist zu groß.`);
-    return [id,{asset_id:id,...d,content,size_bytes:content.length,sha256:crypto.createHash("sha256").update(content).digest("hex")}];}));}
+function normalizeAssets(input){
+  const defs={bootloader:{file_name:"bootloader.bin",flash_offset:0},partitions:{file_name:"partitions.bin",flash_offset:0x8000},otadata:{file_name:"ota_data_initial.bin",flash_offset:0xf000},firmware:{file_name:"firmware.bin",flash_offset:0x10000}};
+  const supplied=Array.isArray(input.flash_assets)?input.flash_assets:["bootloader","partitions","firmware"].map((asset_id)=>({asset_id,base64:input[`${asset_id}_base64`]}));
+  const assets={};
+  for(const item of supplied){
+    const id=String(item?.asset_id||"");const definition=defs[id];
+    if(!definition||assets[id]) throw new PublicDemoError("flash_asset_invalid","Flash-Asset ist unbekannt oder doppelt vorhanden.");
+    const content=Buffer.from(item.base64||"","base64");
+    const flash_offset=item.flash_offset===undefined?definition.flash_offset:Number(item.flash_offset);
+    if(!content.length||content.length>16*1024*1024||!Number.isInteger(flash_offset)||flash_offset<0||flash_offset>=16*1024*1024) throw new PublicDemoError("flash_asset_invalid",`${id} fehlt, ist zu groß oder hat einen ungültigen Offset.`);
+    assets[id]={asset_id:id,file_name:definition.file_name,flash_offset,content,size_bytes:content.length,sha256:crypto.createHash("sha256").update(content).digest("hex")};
+  }
+  if(!hasRequiredAssets(Object.values(assets))) throw new PublicDemoError("flash_asset_invalid","Bootloader, Partitionstabelle und Firmware müssen enthalten sein.");
+  return assets;
+}
+function hasRequiredAssets(assets){const ids=new Set(assets.map((asset)=>asset.asset_id));return ids.has("bootloader")&&ids.has("partitions")&&ids.has("firmware");}
 function requiredString(v,f){const n=String(v||"").trim();if(!n)throw new PublicDemoError("required_field_missing",`${f} muss angegeben werden.`);return n;}
 function optionalString(v){return String(v||"").trim()||null;}
+function optionalCommit(v){const value=optionalString(v);if(value&&!/^[0-9a-f]{40}$/.test(value))throw new PublicDemoError("invalid_source_commit","source_commit_sha muss ein vollständiger Git-Commit sein.");return value;}
 function publicCatalogRow(r){return{demo_id:r.demo_id,title:r.title,description:r.description,board_hardware_item_id:r.board_hardware_item_id,
   category:r.category,games:typeof r.games_json==="string"?JSON.parse(r.games_json):r.games_json,usb_flash_only:true,ota_supported:false,published_at:r.published_at};}
 module.exports={PostgresPublicDemoRepository};

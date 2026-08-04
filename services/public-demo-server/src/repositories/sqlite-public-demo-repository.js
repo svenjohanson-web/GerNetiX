@@ -39,6 +39,7 @@ class SqlitePublicDemoRepository {
         firmware_size_bytes INTEGER NOT NULL,
         firmware_sha256 TEXT NOT NULL,
         source_build_sha256 TEXT,
+        source_commit_sha TEXT,
         created_at TEXT NOT NULL,
         PRIMARY KEY (demo_id, version),
         FOREIGN KEY (demo_id) REFERENCES public_demo_catalog(demo_id) ON DELETE RESTRICT
@@ -50,7 +51,7 @@ class SqlitePublicDemoRepository {
       CREATE TABLE IF NOT EXISTS public_demo_release_assets (
         demo_id TEXT NOT NULL,
         version TEXT NOT NULL,
-        asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader', 'partitions', 'firmware')),
+        asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader', 'partitions', 'otadata', 'firmware')),
         file_name TEXT NOT NULL,
         flash_offset INTEGER NOT NULL,
         content_blob BLOB NOT NULL,
@@ -60,6 +61,36 @@ class SqlitePublicDemoRepository {
         FOREIGN KEY (demo_id, version) REFERENCES public_demo_releases(demo_id, version) ON DELETE RESTRICT
       );
     `);
+    const releaseColumns = this.db.prepare("PRAGMA table_info(public_demo_releases)").all().map((column) => column.name);
+    if (!releaseColumns.includes("source_commit_sha")) this.db.exec("ALTER TABLE public_demo_releases ADD COLUMN source_commit_sha TEXT;");
+    this.migrateAssetConstraint();
+  }
+
+  migrateAssetConstraint() {
+    const schema = this.db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'public_demo_release_assets'").get()?.sql || "";
+    if (schema.includes("'otadata'")) return;
+    this.db.exec("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;");
+    try {
+      this.db.exec(`
+        ALTER TABLE public_demo_release_assets RENAME TO public_demo_release_assets_legacy;
+        CREATE TABLE public_demo_release_assets (
+          demo_id TEXT NOT NULL, version TEXT NOT NULL,
+          asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader', 'partitions', 'otadata', 'firmware')),
+          file_name TEXT NOT NULL, flash_offset INTEGER NOT NULL, content_blob BLOB NOT NULL,
+          size_bytes INTEGER NOT NULL, sha256 TEXT NOT NULL,
+          PRIMARY KEY (demo_id, version, asset_id),
+          FOREIGN KEY (demo_id, version) REFERENCES public_demo_releases(demo_id, version) ON DELETE RESTRICT
+        );
+        INSERT INTO public_demo_release_assets SELECT * FROM public_demo_release_assets_legacy;
+        DROP TABLE public_demo_release_assets_legacy;
+        COMMIT;
+      `);
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      throw error;
+    } finally {
+      this.db.exec("PRAGMA foreign_keys = ON;");
+    }
   }
 
   publish(input) {
@@ -93,10 +124,10 @@ class SqlitePublicDemoRepository {
       this.db.prepare(`
         INSERT INTO public_demo_releases (
           demo_id, version, firmware_file_name, firmware_blob, firmware_size_bytes,
-          firmware_sha256, source_build_sha256, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          firmware_sha256, source_build_sha256, source_commit_sha, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(demo.demo_id, demo.version, assets.firmware.file_name, assets.firmware.content, assets.firmware.size_bytes,
-        assets.firmware.sha256, optionalString(input.source_build_sha256), now);
+        assets.firmware.sha256, optionalString(input.source_build_sha256), optionalCommit(input.source_commit_sha), now);
       const assetStatement = this.db.prepare(`INSERT INTO public_demo_release_assets
         (demo_id, version, asset_id, file_name, flash_offset, content_blob, size_bytes, sha256)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -132,7 +163,7 @@ class SqlitePublicDemoRepository {
     `).get(demoId);
     if (!row) throw new PublicDemoError("demo_not_found", "Die öffentliche Demo wurde nicht gefunden.", 404);
     const releases = this.db.prepare(`
-      SELECT version, firmware_file_name, firmware_size_bytes, firmware_sha256, created_at
+      SELECT version, firmware_file_name, firmware_size_bytes, firmware_sha256, source_commit_sha, created_at
       FROM public_demo_releases WHERE demo_id = ? ORDER BY created_at DESC, version DESC
     `).all(demoId).map((release) => ({
       ...release,
@@ -149,7 +180,7 @@ class SqlitePublicDemoRepository {
     this.getPublicDemo(demoId);
     const assets = this.db.prepare(`SELECT asset_id, file_name, flash_offset, size_bytes, sha256
       FROM public_demo_release_assets WHERE demo_id = ? AND version = ? ORDER BY flash_offset`).all(demoId, version);
-    if (assets.length !== 3) throw new PublicDemoError("release_not_found", "Der vollständige Flash-Release wurde nicht gefunden.", 404);
+    if (!hasRequiredAssets(assets)) throw new PublicDemoError("release_not_found", "Der vollständige Flash-Release wurde nicht gefunden.", 404);
     return { demo_id: demoId, version, chip: "esp32s3", flash_mode: "dio", flash_freq: "80m", flash_size: "16MB",
       assets: assets.map((asset) => ({ ...asset, download_url: `/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(version)}/assets/${asset.asset_id}` })) };
   }
@@ -192,14 +223,32 @@ function normalizeAssets(input) {
   const definitions = {
     bootloader: { file_name: "bootloader.bin", flash_offset: 0x0 },
     partitions: { file_name: "partitions.bin", flash_offset: 0x8000 },
+    otadata: { file_name: "ota_data_initial.bin", flash_offset: 0xf000 },
     firmware: { file_name: "firmware.bin", flash_offset: 0x10000 },
   };
-  return Object.fromEntries(Object.entries(definitions).map(([asset_id, definition]) => {
-    const content = Buffer.from(input[`${asset_id}_base64`] || "", "base64");
-    if (!content.length || content.length > 16 * 1024 * 1024) throw new PublicDemoError("flash_asset_invalid", `${asset_id} fehlt oder ist zu groß.`);
+  const supplied = Array.isArray(input.flash_assets)
+    ? input.flash_assets
+    : ["bootloader", "partitions", "firmware"].map((asset_id) => ({ asset_id, base64: input[`${asset_id}_base64`] }));
+  const assets = {};
+  for (const item of supplied) {
+    const asset_id = String(item?.asset_id || "");
+    const definition = definitions[asset_id];
+    if (!definition || assets[asset_id]) throw new PublicDemoError("flash_asset_invalid", "Flash-Asset ist unbekannt oder doppelt vorhanden.");
+    const content = Buffer.from(item.base64 || "", "base64");
+    const flash_offset = item.flash_offset === undefined ? definition.flash_offset : Number(item.flash_offset);
+    if (!content.length || content.length > 16 * 1024 * 1024 || !Number.isInteger(flash_offset) || flash_offset < 0 || flash_offset >= 16 * 1024 * 1024) {
+      throw new PublicDemoError("flash_asset_invalid", `${asset_id} fehlt, ist zu groß oder hat einen ungültigen Offset.`);
+    }
     const sha256 = crypto.createHash("sha256").update(content).digest("hex");
-    return [asset_id, { asset_id, ...definition, content, size_bytes: content.length, sha256 }];
-  }));
+    assets[asset_id] = { asset_id, file_name: definition.file_name, flash_offset, content, size_bytes: content.length, sha256 };
+  }
+  if (!hasRequiredAssets(Object.values(assets))) throw new PublicDemoError("flash_asset_invalid", "Bootloader, Partitionstabelle und Firmware müssen enthalten sein.");
+  return assets;
+}
+
+function hasRequiredAssets(assets) {
+  const ids = new Set(assets.map((asset) => asset.asset_id));
+  return ids.has("bootloader") && ids.has("partitions") && ids.has("firmware");
 }
 
 function requiredString(value, field) {
@@ -211,6 +260,12 @@ function requiredString(value, field) {
 function optionalString(value) {
   const normalized = String(value || "").trim();
   return normalized || null;
+}
+
+function optionalCommit(value) {
+  const normalized = optionalString(value);
+  if (normalized && !/^[0-9a-f]{40}$/.test(normalized)) throw new PublicDemoError("invalid_source_commit", "source_commit_sha muss ein vollständiger Git-Commit sein.");
+  return normalized;
 }
 
 function publicCatalogRow(row) {
