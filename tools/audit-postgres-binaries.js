@@ -5,11 +5,11 @@ const path = require("node:path");
 const { Pool } = require(path.join(__dirname, "..", "services", "build-deploy-server", "node_modules", "pg"));
 
 const pool = new Pool({
-  host: process.env.RUNTIME_POSTGRES_HOST || process.env.IDENTITY_POSTGRES_HOST || "127.0.0.1",
-  port: Number(process.env.RUNTIME_POSTGRES_PORT || process.env.IDENTITY_POSTGRES_PORT || 5432),
-  database: process.env.RUNTIME_POSTGRES_DATABASE || process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_runtime",
-  user: process.env.RUNTIME_POSTGRES_USER || process.env.IDENTITY_POSTGRES_USER || "gernetix_runtime",
-  password: process.env.RUNTIME_POSTGRES_PASSWORD || process.env.IDENTITY_POSTGRES_PASSWORD || "",
+  host: process.env.RUNTIME_POSTGRES_HOST || process.env.BUILD_POSTGRES_HOST || process.env.IDENTITY_POSTGRES_HOST || "127.0.0.1",
+  port: Number(process.env.RUNTIME_POSTGRES_PORT || process.env.BUILD_POSTGRES_PORT || process.env.IDENTITY_POSTGRES_PORT || 5432),
+  database: process.env.RUNTIME_POSTGRES_DATABASE || process.env.BUILD_POSTGRES_DATABASE || process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_runtime",
+  user: process.env.RUNTIME_POSTGRES_USER || process.env.BUILD_POSTGRES_USER || process.env.IDENTITY_POSTGRES_USER || "gernetix_runtime",
+  password: process.env.RUNTIME_POSTGRES_PASSWORD || process.env.BUILD_POSTGRES_PASSWORD || process.env.IDENTITY_POSTGRES_PASSWORD || "",
   ssl: false,
 });
 
@@ -94,6 +94,28 @@ async function main() {
     artifact_count: Number(row.artifact_count),
     total_bytes: Number(row.total_bytes),
   }));
+  const sourceReferenceViolations = (await pool.query(`
+    SELECT 'build_artifacts' AS table_name, COUNT(*)::bigint AS violation_count
+    FROM build_artifacts
+    WHERE object_key IS NULL OR object_sha256 IS NULL OR BTRIM(source_path) = ''
+       OR source_version !~* '^(?:[a-f0-9]{40}|[a-f0-9]{64})$'
+    UNION ALL
+    SELECT 'public_demo_release_assets', COUNT(*)::bigint
+    FROM public_demo_release_assets AS assets
+    JOIN public_demo_releases AS releases USING (demo_id, version)
+    WHERE assets.object_key IS NULL OR assets.object_sha256 IS NULL OR BTRIM(releases.source_path) = ''
+       OR releases.source_version !~* '^(?:[a-f0-9]{40}|[a-f0-9]{64})$'
+    UNION ALL
+    SELECT 'identity_platform_download_releases', COUNT(*)::bigint
+    FROM identity_platform_download_releases
+    WHERE object_key IS NULL OR object_sha256 IS NULL OR BTRIM(source_path) = ''
+       OR source_version !~* '^(?:[a-f0-9]{40}|[a-f0-9]{64})$'
+    UNION ALL
+    SELECT 'identity_account_assets', COUNT(*)::bigint
+    FROM identity_account_assets
+    WHERE object_key IS NULL OR object_sha256 IS NULL OR BTRIM(source_path) = ''
+       OR source_version !~* '^(?:[a-f0-9]{40}|[a-f0-9]{64})$'
+  `)).rows.map((row) => ({ table_name: row.table_name, violation_count: Number(row.violation_count) }));
   const summary = {
     bytea_column_count: findings.length,
     populated_bytea_column_count: findings.filter((item) => item.populated_rows > 0).length,
@@ -109,8 +131,10 @@ async function main() {
     build_source_coverage: Object.fromEntries(Object.entries(buildSourceCoverage).map(([key, value]) => [key, Number(value)])),
     project_build_json_keys: projectBuildJsonKeys,
     unmatched_build_artifact_jobs: unmatchedBuildArtifactJobs,
+    source_reference_violations: sourceReferenceViolations,
   }, null, 2)}\n`);
-  if (summary.populated_bytea_rows > 0 || summary.postgres_large_object_count > 0) process.exitCode = 2;
+  if (summary.bytea_column_count > 0 || summary.postgres_large_object_count > 0
+    || sourceReferenceViolations.some((item) => item.violation_count > 0)) process.exitCode = 2;
 }
 
 function quote(identifier) {
