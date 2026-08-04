@@ -105,6 +105,24 @@ document.querySelector("#openProjectDebugButton")?.addEventListener("click", () 
   if (!state.activeProjectId) return;
   navigate(`/app/debug/?project=${encodeURIComponent(state.activeProjectId)}`);
 });
+document.querySelector("#ideBuildProfileSelect")?.addEventListener("change", async (event) => {
+  const project = projectById(state.activeProjectId);
+  if (!project || event.currentTarget.value !== "debug") return;
+  if (state.projectDebugSessions[project.id]?.session) return;
+  const accepted = window.confirm("Für eine Debug-Session müssen alle betroffenen IoT-Firmwares erneut als Debug-Firmware gebaut und anschließend per USB, OTA oder FlashBox geflasht werden. Debug-Session jetzt starten?");
+  if (!accepted) {
+    event.currentTarget.value = "standard";
+    return;
+  }
+  try {
+    await persistCurrentSource(project);
+    await GerNetiXDeviceDebug.startSession(project);
+    setFlashStatus("running", "Debug-Session gestartet. Baue jetzt alle Software-Einheiten und flashe anschließend die betroffenen IoT-Devices.");
+  } catch (error) {
+    event.currentTarget.value = "standard";
+    setFlashStatus("error", error.message);
+  }
+});
 document.querySelector("#communityRefreshButton")?.addEventListener("click", loadCommunity);
 document.querySelector("#communityRequestForm")?.addEventListener("submit", submitCommunityRequest);
 document.querySelector("#communityQuestionList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-question]"); if (button) openCommunityQuestion(button.dataset.communityQuestion); });

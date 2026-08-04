@@ -19,9 +19,14 @@ test("routes fixed-commit reads rename delete history diff and restore through t
   await request(app, `/api/projects/p1/repository/history?commit_sha=${sha}&limit=12`);
   await request(app, `/api/projects/p1/repository/commits/${sha}/diff`);
   await request(app, "/api/projects/p1/repository/restores", "POST", { expected_head_sha: sha, restore_commit_sha: sha });
+  await request(app, "/api/projects/p1/debug-session");
+  await request(app, "/api/projects/p1/debug-session", "POST", { device_ids: ["device-1"] });
+  await request(app, "/api/projects/p1/debug-session/activity", "POST", {});
+  await request(app, "/api/projects/p1/debug-session", "DELETE");
 
   assert.deepEqual(calls.map((call) => call.method), [
     "listSources", "getSource", "searchSources", "renameSource", "deleteSource", "repositoryHistory", "repositoryDiff", "restoreRepository",
+    "getDebugSession", "startDebugSession", "touchDebugSession", "endDebugSession",
   ]);
   assert.equal(calls[0].args[1].commit_sha, sha);
   assert.equal(calls[4].args[2].expected_head_sha, sha);
@@ -42,6 +47,6 @@ async function request(app, url, method = "GET", body = null) {
     app(req, res).catch(reject);
     req.end(body ? JSON.stringify(body) : "");
   });
-  assert.equal(response.status, method === "POST" && url.endsWith("restores") ? 201 : 200);
+  assert.equal(response.status, method === "POST" && (url.endsWith("restores") || url.endsWith("debug-session")) ? 201 : 200);
   return response.payload;
 }

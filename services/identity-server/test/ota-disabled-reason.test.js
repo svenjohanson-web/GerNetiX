@@ -48,7 +48,7 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);
   assert.match(app, /UsbFlashTargetModel\.selectionMode\(firmwareUnits\.length, state\.usbPorts\.length\)/);
   assert.match(html, /usb-flash-target-model\.js\?v=20260801-partial-usb-flash/);
-  assert.match(html, /app-device-build-controller\.js\?v=20260803-performance-1/);
+  assert.match(html, /app-device-build-controller\.js\?v=20260804-debug-session-1/);
   assert.doesNotMatch(html, /id="refreshUsbPortsButton"/);
   assert.doesNotMatch(html, /id="ideDeviceTools"[\s\S]*id="usbPortSelect"/);
   assert.match(html, /id="usbPortChoiceDialog"[\s\S]*id="usbPortSelect"/);

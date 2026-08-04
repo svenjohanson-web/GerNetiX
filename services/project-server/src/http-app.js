@@ -62,6 +62,25 @@ function createHttpApp(options) {
       return;
     }
 
+    const debugSession = path.match(new RegExp(`^${prefix}/([^/]+)/debug-session$`));
+    if (req.method === "GET" && debugSession) {
+      sendJson(res, 200, await service.getDebugSession(decodeURIComponent(debugSession[1])));
+      return;
+    }
+    if (req.method === "POST" && debugSession) {
+      sendJson(res, 201, await service.startDebugSession(decodeURIComponent(debugSession[1]), await readJsonBody(req)));
+      return;
+    }
+    if (req.method === "DELETE" && debugSession) {
+      sendJson(res, 200, await service.endDebugSession(decodeURIComponent(debugSession[1])));
+      return;
+    }
+    const debugSessionActivity = path.match(new RegExp(`^${prefix}/([^/]+)/debug-session/activity$`));
+    if (req.method === "POST" && debugSessionActivity) {
+      sendJson(res, 200, await service.touchDebugSession(decodeURIComponent(debugSessionActivity[1])));
+      return;
+    }
+
     const sources = path.match(new RegExp(`^${prefix}/([^/]+)/sources$`));
     if (req.method === "GET" && sources) {
       sendJson(res, 200, { items: await service.listSources(decodeURIComponent(sources[1]), {

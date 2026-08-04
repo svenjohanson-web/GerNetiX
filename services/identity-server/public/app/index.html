@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260803-forgejo-repository-card" />
+    <link rel="stylesheet" href="/app/app.css?v=20260804-debug-session-1" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -617,6 +617,12 @@
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
                 <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
                 <select id="flashboxDeviceSelect" class="hidden" aria-label="Ausgewaehlte FlashBox"></select>
+                <label class="ide-build-profile">Profil
+                  <select id="ideBuildProfileSelect" aria-label="Buildprofil">
+                    <option value="standard">Standard</option>
+                    <option value="debug">Debug</option>
+                  </select>
+                </label>
                 <button id="buildButton" type="button">Build</button>
                 <button id="cleanBuildButton" type="button" title="Löscht die inkrementellen Build-Zustände aller Software-Einheiten dieses Projekts.">Clean</button>
                 <button id="usbFlashButton" type="button">USB</button>
@@ -1536,15 +1542,15 @@
     <script defer src="/app/community-portal-controller.js?v=20260802-community-portal"></script>
     <script defer src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
     <script defer src="/app/app-project-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app-ide-controller.js?v=20260804-project-load-1"></script>
+    <script defer src="/app/app-ide-controller.js?v=20260804-debug-session-1"></script>
     <script defer src="/app/usb-flash-target-model.js?v=20260801-partial-usb-flash"></script>
-    <script defer src="/app/app-device-build-controller.js?v=20260803-performance-1"></script>
+    <script defer src="/app/app-device-build-controller.js?v=20260804-debug-session-1"></script>
     <script defer src="/app/app-billing-controller.js?v=20260803-storage-policy-1"></script>
     <script defer src="/app/app-runtime-utils.js?v=20260801-plantuml-contrast"></script>
     <script defer src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app.js?v=20260803-forgejo-repository-card"></script>
-    <script defer src="/app/device-debug-controller.js?v=20260802-debug-workspace"></script>
+    <script defer src="/app/app.js?v=20260804-debug-session-1"></script>
+    <script defer src="/app/device-debug-controller.js?v=20260804-debug-session-1"></script>
     <script defer src="/app/device-wifi-setup-dialog.js?v=20260801-shared-port-identification"></script>
-    <script defer src="/app/app-event-bindings.js?v=20260802-dashboard-community-messages"></script>
+    <script defer src="/app/app-event-bindings.js?v=20260804-debug-session-1"></script>
   </body>
 </html>

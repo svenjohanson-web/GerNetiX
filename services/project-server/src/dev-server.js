@@ -5,6 +5,11 @@ const { sendJson } = require("./http-app");
 const config = createConfig();
 async function bootstrap() {
   const service = await createDefaultProjectServer(config);
+  await service.cleanupExpiredDebugSessions();
+  const debugSessionCleanupTimer = setInterval(() => {
+    service.cleanupExpiredDebugSessions().catch((error) => console.error("Debug-Session-Bereinigung fehlgeschlagen:", error.message));
+  }, 15 * 60 * 1000);
+  debugSessionCleanupTimer.unref();
   const app = createHttpApp({ service });
 
   const server = http.createServer((req, res) => {

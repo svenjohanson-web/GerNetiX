@@ -620,6 +620,90 @@ class ProjectService {
     for (const source of sources) await this.repository.saveSource({ ...source, project_id: projectId, updated_at: new Date().toISOString() });
   }
 
+  async getDebugSession(projectId) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const session = await this.expireDebugSession(project);
+    return debugSessionEnvelope(project, session);
+  }
+
+  async startDebugSession(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    this.assertProjectBuildAllowed(project);
+    const current = await this.expireDebugSession(project);
+    if (current) return debugSessionEnvelope(project, current);
+    const now = new Date();
+    const policy = await this.policyFor(project.plan_id || "free");
+    const idleHours = positiveLimit(policy.debug_session_idle_hours, 48);
+    const binding = this.activeRepositoryBinding(project);
+    const sources = binding ? [] : await this.repository.listSources(project.project_id);
+    const session = {
+      debug_session_id: createId("debug_session"),
+      project_id: project.project_id,
+      user_id: project.user_id,
+      status: "build_required",
+      build_profile: "debug",
+      repository_id: binding?.repository_id || null,
+      commit_sha: binding?.head_sha || null,
+      snapshot_sha256: binding ? null : projectVersionHash(sanitizeProject(project), sources),
+      component_ids: safeIdentifiers(input.component_ids, 64),
+      software_unit_ids: safeIdentifiers(input.software_unit_ids, 64),
+      device_ids: safeIdentifiers(input.device_ids, 64),
+      build_jobs: [],
+      started_at: now.toISOString(),
+      last_user_activity_at: now.toISOString(),
+      expires_at: new Date(now.getTime() + idleHours * 60 * 60 * 1000).toISOString(),
+      inactivity_ttl_hours: idleHours,
+    };
+    await this.repository.saveProject({ ...project, debug_session: session, updated_at: now.toISOString() });
+    return debugSessionEnvelope(project, session);
+  }
+
+  async touchDebugSession(projectId) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const session = await this.expireDebugSession(project);
+    if (!session) throw new ProjectServerError("debug_session_not_found", "Es ist keine aktive Debug-Session vorhanden.", 404);
+    const now = new Date();
+    const next = {
+      ...session,
+      last_user_activity_at: now.toISOString(),
+      expires_at: new Date(now.getTime() + positiveLimit(session.inactivity_ttl_hours, 48) * 60 * 60 * 1000).toISOString(),
+    };
+    await this.repository.saveProject({ ...project, debug_session: next, updated_at: now.toISOString() });
+    return debugSessionEnvelope(project, next);
+  }
+
+  async endDebugSession(projectId) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const session = await this.expireDebugSession(project);
+    if (!session) return debugSessionEnvelope(project, null);
+    await this.repository.saveProject({ ...project, debug_session: null, updated_at: new Date().toISOString() });
+    return debugSessionEnvelope(project, null);
+  }
+
+  async expireDebugSession(project, at = new Date()) {
+    const session = project.debug_session && typeof project.debug_session === "object" ? project.debug_session : null;
+    if (!session) return null;
+    if (Date.parse(session.expires_at || 0) > at.getTime()) return session;
+    await this.repository.saveProject({ ...project, debug_session: null, updated_at: at.toISOString() });
+    project.debug_session = null;
+    return null;
+  }
+
+  async cleanupExpiredDebugSessions(at = new Date()) {
+    await this.ready;
+    let deleted = 0;
+    for (const project of await this.repository.listProjects()) {
+      if (!project.debug_session || Date.parse(project.debug_session.expires_at || 0) > at.getTime()) continue;
+      await this.expireDebugSession(project, at);
+      deleted += 1;
+    }
+    return { deleted, checked_at: at.toISOString() };
+  }
+
   async createBuildJob(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
@@ -635,6 +719,19 @@ class ProjectService {
       throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
     }
     const buildProfile = normalizeBuildProfile(input.build_profile);
+    const debugSession = buildProfile === "debug" ? await this.expireDebugSession(project) : null;
+    if (buildProfile === "debug" && !debugSession) {
+      throw new ProjectServerError("debug_session_required", "Ein Debug-Build benötigt eine aktive Debug-Session.", 409);
+    }
+    if (debugSession && binding && debugSession.commit_sha !== binding.head_sha) {
+      throw new ProjectServerError("debug_session_project_changed", "Der Projektstand hat sich seit dem Start der Debug-Session geändert. Starte die Session neu.", 409);
+    }
+    if (debugSession && !binding) {
+      const currentSnapshotSha256 = projectVersionHash(sanitizeProject(project), await this.repository.listSources(project.project_id));
+      if (debugSession.snapshot_sha256 !== currentSnapshotSha256) {
+        throw new ProjectServerError("debug_session_project_changed", "Der Projektstand hat sich seit dem Start der Debug-Session geändert. Starte die Session neu.", 409);
+      }
+    }
     const softwareUnits = softwareUnitsForProject(buildProject);
     const requestedSoftwareUnitId = String(input.software_unit_id || buildProject.active_software_unit_id || "").trim();
     const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === requestedSoftwareUnitId)
@@ -645,7 +742,7 @@ class ProjectService {
     if (softwareUnit && !isPlatformioSoftwareUnit(softwareUnit)) {
       throw new ProjectServerError("software_unit_builder_not_supported", `Das Build-System ${softwareUnit.build_system} ist noch nicht an einen Build-Runner angebunden.`, 409);
     }
-    const buildConfig = softwareUnit?.build_config || buildProject.build_config;
+    const buildConfig = debugBuildConfig(softwareUnit?.build_config || buildProject.build_config, buildProfile);
     if (!buildConfig) {
       throw new ProjectServerError("project_not_buildable", "Projekt besitzt keine Build-Konfiguration und kann nicht gebaut werden.", 400);
     }
@@ -671,7 +768,22 @@ class ProjectService {
       result: null,
       error: null,
     };
-    return this.repository.saveBuildJob(job);
+    const saved = await this.repository.saveBuildJob(job);
+    if (buildProfile === "debug" && debugSession) {
+      const buildJobs = [...(debugSession.build_jobs || []).filter((item) => item.build_job_id !== saved.build_job_id), {
+        build_job_id: saved.build_job_id,
+        software_unit_id: saved.software_unit_id || "",
+        device_id: saved.device_id || null,
+        status: saved.status,
+        build_id: "",
+      }].slice(-32);
+      await this.repository.saveProject({
+        ...project,
+        debug_session: { ...debugSession, status: "building", build_jobs: buildJobs },
+        updated_at: now,
+      });
+    }
+    return saved;
   }
 
   async getBuildJob(jobId) {
@@ -774,7 +886,7 @@ class ProjectService {
       throw new ProjectServerError("build_commit_software_unit_missing", "Die Softwareeinheit des BuildJobs fehlt im gebundenen Commit.", 409);
     }
     const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
-    const buildConfig = job.build_config || softwareUnit?.build_config || buildProject.build_config;
+    const buildConfig = debugBuildConfig(job.build_config || softwareUnit?.build_config || buildProject.build_config, job.build_profile);
     const contractProblems = firmwareSoftwareUnitProblems(softwareUnit, sources.map((source) => source.path), {
       pathsAreScoped: true,
       requireEntrypointSource: true,
@@ -802,6 +914,7 @@ class ProjectService {
       repository_id: job.repository_id || null,
       commit_sha: job.commit_sha || null,
       mode: job.mode,
+      build_profile: job.build_profile || "standard",
       device_id: job.device_id,
       software_unit_id: softwareUnit?.software_unit_id || "",
       software_unit_title: softwareUnit?.title || "Firmware",
@@ -862,6 +975,7 @@ class ProjectService {
   async recordBuildResult(jobId, input = {}) {
     await this.ready;
     const job = await this.getBuildJob(jobId);
+    const project = await this.requireProject(job.project_id);
     if (job.commit_sha && input.commit_sha && validateSha(input.commit_sha, "commit_sha") !== job.commit_sha) {
       throw new ProjectServerError("build_result_commit_mismatch", "Build-Ergebnis und BuildJob referenzieren unterschiedliche Commits.", 409);
     }
@@ -877,11 +991,13 @@ class ProjectService {
         package_sha256: job.package_sha256 || null,
         build: input.build || null,
         deploy: input.deploy || null,
+        flashbox: input.flashbox || null,
         logs: input.logs || [],
       },
       error: input.error || null,
     };
     await this.repository.saveBuildJob(next);
+    await this.updateDebugSessionForBuild(project, next);
     for (const artifact of input.artifacts || []) {
       await this.repository.saveArtifact({
         artifact_id: artifact.artifact_id || createId("artifact"),
@@ -898,6 +1014,41 @@ class ProjectService {
       });
     }
     return this.getBuildJob(jobId);
+  }
+
+  async updateDebugSessionForBuild(project, job) {
+    const session = await this.expireDebugSession(project);
+    const successfulFlash = job.status === "succeeded" && (
+      job.result?.build?.usb_flash?.status === "succeeded"
+      || ["rebooting", "confirmed", "delivered", "succeeded"].includes(job.result?.deploy?.status)
+      || ["accepted", "delivered", "confirmed", "succeeded"].includes(job.result?.flashbox?.status)
+    );
+    if (job.build_profile === "standard" && successfulFlash && job.device_id) {
+      const remaining = (project.debug_firmware_devices || []).filter((item) => item.device_id !== job.device_id);
+      await this.repository.saveProject({ ...project, debug_firmware_devices: remaining, updated_at: new Date().toISOString() });
+      return;
+    }
+    if (!session || job.build_profile !== "debug") return;
+    const buildId = String(job.result?.build?.build_id || "");
+    const buildJobs = (session.build_jobs || []).map((item) => item.build_job_id === job.build_job_id ? {
+      ...item,
+      status: job.status,
+      build_id: buildId,
+    } : item);
+    const allSucceeded = buildJobs.length > 0 && buildJobs.every((item) => item.status === "succeeded");
+    const firmwareDevices = successfulFlash && job.device_id
+      ? upsertDebugFirmwareDevice(project.debug_firmware_devices, job, session)
+      : project.debug_firmware_devices || [];
+    await this.repository.saveProject({
+      ...project,
+      debug_firmware_devices: firmwareDevices,
+      debug_session: {
+        ...session,
+        status: successfulFlash ? "active" : allSucceeded ? "ready_to_flash" : job.status === "failed" ? "build_failed" : session.status,
+        build_jobs: buildJobs,
+      },
+      updated_at: new Date().toISOString(),
+    });
   }
 
   async listArtifacts(query = {}) {
@@ -1340,6 +1491,7 @@ class ProjectService {
       max_storage_bytes: unlimitedOrPositiveLimit(input.max_storage_bytes, current.max_storage_bytes),
       storage_warning_threshold_percent: percentageLimit(input.storage_warning_threshold_percent, current.storage_warning_threshold_percent),
       max_monthly_traffic_bytes: unlimitedOrPositiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
+      debug_session_idle_hours: positiveLimit(input.debug_session_idle_hours, current.debug_session_idle_hours || 48),
       updated_at: now,
     };
     return this.repository.saveResourcePolicy(policy);
@@ -1900,9 +2052,9 @@ function percentageLimit(value, fallback = 80) {
 function defaultResourcePolicies() {
   const now = new Date().toISOString();
   return [
-    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 25 * 1024 * 1024 },
-    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
-    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024 },
+    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 25 * 1024 * 1024, debug_session_idle_hours: 48 },
+    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024, debug_session_idle_hours: 48 },
+    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024, debug_session_idle_hours: 48 },
   ].map((policy) => ({
     ...policy,
     policy_id: resourcePolicyId(policy.plan_id),
@@ -1925,7 +2077,49 @@ function normalizePersistedResourcePolicy(policy) {
     changed_by: policy.changed_by || "system",
     change_reason: policy.change_reason || "legacy_policy_migration",
     storage_warning_threshold_percent: percentageLimit(policy.storage_warning_threshold_percent, 80),
+    debug_session_idle_hours: positiveLimit(policy.debug_session_idle_hours, 48),
   };
+}
+
+function debugBuildConfig(input, buildProfile) {
+  const config = input && typeof input === "object" ? structuredClone(input) : input;
+  if (!config || buildProfile !== "debug") return config;
+  return {
+    ...config,
+    build_flags: Array.from(new Set([...(config.build_flags || []), "-D GERNETIX_DEBUG_SESSION=1"])),
+    platformio_options: {
+      ...(config.platformio_options || {}),
+      build_type: "debug",
+      debug_build_flags: "-Og -g3 -D GERNETIX_DEBUG_SESSION=1",
+    },
+  };
+}
+
+function safeIdentifiers(values, limit = 64) {
+  return Array.from(new Set((Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter((value) => /^[a-zA-Z0-9_.:-]{1,120}$/.test(value))))
+    .slice(0, limit);
+}
+
+function debugSessionEnvelope(project, session) {
+  return {
+    session: session ? structuredClone(session) : null,
+    debug_firmware_devices: structuredClone(project.debug_firmware_devices || []),
+  };
+}
+
+function upsertDebugFirmwareDevice(devices, job, session) {
+  const current = (devices || []).filter((item) => item.device_id !== job.device_id);
+  current.push({
+    device_id: job.device_id,
+    software_unit_id: job.software_unit_id || "",
+    build_job_id: job.build_job_id,
+    build_id: String(job.result?.build?.build_id || ""),
+    debug_session_id: session.debug_session_id,
+    installed_at: new Date().toISOString(),
+  });
+  return current.slice(-64);
 }
 
 function resourcePolicyId(planId) {

@@ -118,6 +118,7 @@ test("versions resource policies and requires an auditable change reason", async
   assert.equal(initial.policy_version, 1);
   assert.equal(initial.status, "active");
   assert.equal(initial.storage_warning_threshold_percent, 80);
+  assert.equal(initial.debug_session_idle_hours, 48);
 
   await assert.rejects(
     service.updateResourcePolicy("free", { max_projects: initial.max_projects }),
@@ -126,6 +127,7 @@ test("versions resource policies and requires an auditable change reason", async
   const changed = await service.updateResourcePolicy("free", {
     max_projects: initial.max_projects,
     storage_warning_threshold_percent: 75,
+    debug_session_idle_hours: 36,
     changed_by: "admin-test",
     change_reason: "Versionierung prüfen",
   });
@@ -134,6 +136,7 @@ test("versions resource policies and requires an auditable change reason", async
   assert.equal(changed.change_reason, "Versionierung prüfen");
   assert.equal(changed.status, "active");
   assert.equal(changed.storage_warning_threshold_percent, 75);
+  assert.equal(changed.debug_session_idle_hours, 36);
   assert.match(changed.effective_from, /^\d{4}-\d{2}-\d{2}T/);
 });
 
@@ -176,11 +179,73 @@ test("persists the selected build profile on project build jobs", async () => {
     build_config: { platform: "espressif32", board: "esp32dev", framework: "arduino" },
   });
   assert.equal((await service.createBuildJob(project.project_id)).build_profile, "standard");
+  await service.startDebugSession(project.project_id);
   assert.equal((await service.createBuildJob(project.project_id, { build_profile: "debug" })).build_profile, "debug");
   await assert.rejects(
     service.createBuildJob(project.project_id, { build_profile: "release" }),
     (error) => error.code === "invalid_build_profile",
   );
+});
+
+test("persists resumable debug sessions and binds instrumented builds plus flashed devices", async () => {
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository });
+  const project = await service.createProject({
+    project_id: "debug-session-project",
+    user_id: "debug-session-account",
+    title: "Debug-Session",
+    build_config: { platform: "espressif32", board: "esp32dev", framework: "arduino" },
+  });
+  const started = await service.startDebugSession(project.project_id, {
+    component_ids: ["iot-device-1"],
+    software_unit_ids: [project.active_software_unit_id],
+    device_ids: ["device-1"],
+  });
+  assert.equal(started.session.status, "build_required");
+  assert.equal(started.session.inactivity_ttl_hours, 48);
+  assert.match(started.session.expires_at, /^\d{4}-\d{2}-\d{2}T/);
+
+  const job = await service.createBuildJob(project.project_id, {
+    build_profile: "debug",
+    device_id: "device-1",
+  });
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
+  assert.equal(buildPackage.build_job.build_profile, "debug");
+  assert.match(buildPackage.platformio_ini, /build_type = debug/);
+  assert.match(buildPackage.platformio_ini, /GERNETIX_DEBUG_SESSION=1/);
+  assert.equal((await service.getDebugSession(project.project_id)).session.status, "building");
+
+  await service.recordBuildResult(job.build_job_id, {
+    status: "succeeded",
+    build: { build_id: "a".repeat(64), usb_flash: { status: "succeeded" } },
+  });
+  const active = await service.getDebugSession(project.project_id);
+  assert.equal(active.session.status, "active");
+  assert.equal(active.debug_firmware_devices[0].device_id, "device-1");
+  assert.equal(active.debug_firmware_devices[0].build_id, "a".repeat(64));
+
+  const ended = await service.endDebugSession(project.project_id);
+  assert.equal(ended.session, null);
+  assert.equal(ended.debug_firmware_devices.length, 1);
+
+  const standard = await service.createBuildJob(project.project_id, {
+    build_profile: "standard",
+    device_id: "device-1",
+  });
+  await service.recordBuildResult(standard.build_job_id, {
+    status: "succeeded",
+    build: { build_id: "b".repeat(64), usb_flash: { status: "succeeded" } },
+  });
+  assert.deepEqual((await service.getDebugSession(project.project_id)).debug_firmware_devices, []);
+
+  await service.startDebugSession(project.project_id);
+  const stored = await repository.findProject(project.project_id);
+  await repository.saveProject({
+    ...stored,
+    debug_session: { ...stored.debug_session, expires_at: "2020-01-01T00:00:00.000Z" },
+  });
+  assert.equal((await service.cleanupExpiredDebugSessions(new Date("2020-01-02T00:00:00.000Z"))).deleted, 1);
+  assert.equal((await service.getDebugSession(project.project_id)).session, null);
 });
 
 test("applies the account quota to projected configuration and legacy version restores", async () => {

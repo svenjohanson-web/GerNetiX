@@ -29,6 +29,11 @@ test("Debug & Diagnose is a separate project workspace and not a component-tree 
   assert.match(css, /\.device-debug-workspace/);
   assert.match(css, /\.device-debug-events/);
   assert.match(css, /\.debug-workspace-layout/);
+  assert.match(html, /id="ideBuildProfileSelect"/);
+  assert.match(controllerSource, /debug-session\/activity/);
+  assert.match(controllerSource, /Debug-Session fortsetzen/);
+  assert.match(controllerSource, /Browser-Schließen beendet sie nicht/);
+  assert.match(controllerSource, /Debug-Firmware möglicherweise noch installiert/);
 });
 
 test("local device debug uses read-only USB diagnostics and an explicit local export", () => {

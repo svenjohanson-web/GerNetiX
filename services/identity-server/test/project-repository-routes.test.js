@@ -17,6 +17,11 @@ function routeHarness({ requireSessionProject }) {
     registry,
     requireSession: async () => ({ account: { user_id: "account-1" } }),
     requireSessionProject,
+    readJsonBody: async (req) => req.body || {},
+    projectServerJson: async (...args) => {
+      calls.push(["projectServerJson", ...args]);
+      return { session: { debug_session_id: "debug-session-1" } };
+    },
     projectRepositoryRead,
     sendJson: (_res, status, body) => responses.push([status, body]),
   });
@@ -38,6 +43,29 @@ test("repository proxy authorizes the session project before invoking the read c
   assert.equal(harness.calls[0][1].project_server_id, "stored-project-1");
   assert.equal(harness.calls[0][2], "a".repeat(40));
   assert.equal(harness.responses[0][0], 200);
+});
+
+test("debug-session proxy authorizes the session project and forwards the server-side lifecycle", async () => {
+  const authorized = [];
+  const harness = routeHarness({ requireSessionProject: async (session, projectId) => {
+    authorized.push([session.account.user_id, projectId]);
+    return { project_server_id: "stored-project-1" };
+  } });
+  await harness.registry.dispatch({
+    req: { method: "POST", body: { device_ids: ["device-1"] } }, res: {},
+    url: new URL("http://localhost/api/user-ide/projects/ui-project-1/debug-session"),
+  });
+  await harness.registry.dispatch({
+    req: { method: "POST", body: {} }, res: {},
+    url: new URL("http://localhost/api/user-ide/projects/ui-project-1/debug-session/activity"),
+  });
+  assert.deepEqual(authorized, [["account-1", "ui-project-1"], ["account-1", "ui-project-1"]]);
+  const forwarded = harness.calls.filter((call) => call[0] === "projectServerJson");
+  assert.equal(forwarded[0][1], "/api/projects/stored-project-1/debug-session");
+  assert.deepEqual(forwarded[0][2].body, { device_ids: ["device-1"] });
+  assert.equal(forwarded[1][1], "/api/projects/stored-project-1/debug-session/activity");
+  assert.equal(harness.responses[0][0], 201);
+  assert.equal(harness.responses[1][0], 200);
 });
 
 test("foreign projects are denied before commit or file identifiers reach the contract", async () => {

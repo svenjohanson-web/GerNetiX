@@ -3853,6 +3853,7 @@ function toProjectBuildResult(buildDeployJob) {
     status: buildDeployJob.status,
     build: buildDeployJob.result?.build || null,
     deploy: buildDeployJob.result?.deploy || null,
+    flashbox: buildDeployJob.result?.flashbox || null,
     error: buildDeployJob.error || null,
     artifacts: Object.values(artifacts).map((artifact) => ({
       file_name: artifact.file_name,

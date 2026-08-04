@@ -139,6 +139,25 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/event-configuration$/, ({ req, res, match, session }) => (
     dependencies.handleProjectEventConfiguration(req, res, session, decodeURIComponent(match[1]))
   ));
+  for (const method of ["GET", "POST", "DELETE"]) {
+    registerProjectPattern(method, /^\/api\/user-ide\/projects\/([^/]+)\/debug-session$/, async ({ req, res, match, session }) => {
+      const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+      const body = method === "POST" ? await readJsonBody(req) : undefined;
+      const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/debug-session`, {
+        method,
+        ...(body ? { body } : {}),
+      });
+      sendJson(res, method === "POST" ? 201 : 200, result);
+    });
+  }
+  registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/debug-session\/activity$/, async ({ res, match, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/debug-session/activity`, {
+      method: "POST",
+      body: {},
+    });
+    sendJson(res, 200, result);
+  });
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/basissoftware-incidents$/, async ({ req, res, match, session }) => {
     const projectId = decodeURIComponent(match[1]);
     const project = await requireSessionProject(session, projectId);

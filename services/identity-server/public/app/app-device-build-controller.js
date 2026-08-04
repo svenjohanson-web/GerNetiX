@@ -6,6 +6,9 @@ const usbFirmwarePortAssignments = new Map();
 let usbFlashAssignmentBatch = null;
 let usbFlashPortDetector = null;
 let usbFlashPortIdentification = null;
+function selectedBuildProfile(project = projectById(state.activeProjectId)) {
+  return window.GerNetiXDeviceDebug?.buildProfile(project) || "standard";
+}
 function prepareFlashTarget(project, action, targetConfirmed = false) {
   const allUnits = projectSoftwareUnits(project);
   const flashableUnits = allUnits.filter((unit) => unit.build_system === "platformio");
@@ -71,6 +74,7 @@ async function startBuild() {
       software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || "",
       mode: "build",
+      build_profile: selectedBuildProfile(project),
     })));
     const acceptedBuilds = submissions.flatMap((result, index) => result.status === "fulfilled"
       ? [{ build: result.value, softwareUnit: buildTargets[index] }]
@@ -291,6 +295,7 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
         software_unit_id: softwareUnit?.software_unit_id || "",
         device_id: device?.device_id || "",
         mode: "build_and_usb_flash",
+        build_profile: selectedBuildProfile(project),
       });
       activeBuild = await waitForCompletedBuild(build);
       state.builds.unshift(activeBuild);
@@ -339,12 +344,14 @@ async function reusableBuildForUsbFlash(project, softwareUnit) {
   const latestBuild = state.builds
     .filter((build) => build.status === "succeeded"
       && projectIds.has(String(build.project_server_id || build.project_id || build.project_slug || ""))
+      && String(build.build_profile || "standard") === selectedBuildProfile(project)
       && String(build.software_unit_id || "") === String(softwareUnit?.software_unit_id || ""))
     .sort((left, right) => Date.parse(right.finished_at || right.created_at || 0) - Date.parse(left.finished_at || left.created_at || 0))[0] || null;
   if (!latestBuild?.build_job_id) return null;
   try {
     return await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(latestBuild.build_job_id)}/reuse-usb-flash`, {
       software_unit_id: softwareUnit?.software_unit_id || "",
+      build_profile: selectedBuildProfile(project),
     });
   } catch (error) {
     if (error.status === 409) return null;
@@ -590,6 +597,7 @@ async function startOtaFlash(targetConfirmed = false) {
       software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device.device_id,
       mode: "build_and_flash",
+      build_profile: selectedBuildProfile(project),
     });
     const completed = await waitForCompletedBuild(build);
     state.builds.unshift(completed);
@@ -638,6 +646,7 @@ async function startFlashBoxFlash(targetConfirmed = false) {
       software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device.device_id,
       mode: "build",
+      build_profile: selectedBuildProfile(project),
       flash_transport: "flashbox",
       flashbox_device_id: flashbox.device_id,
     });

@@ -68,6 +68,22 @@ eigener Kundenprojektzustand.
 - Ein Standardbuild publiziert nur die zum Flashen erforderlichen Artefakte.
 - Ein expliziter Debug-Build darf ELF, Map und weitere Diagnoseartefakte
   publizieren, wenn die effektive Policy dies erlaubt.
+- Eine Debug-Session ist kein dauerhafter Projektmodus. Sie wird im Project
+  Server an Projektstand, Debug-BuildJobs, Software-Einheiten und Zielgeraete
+  gebunden. Das Schliessen des Browsers beendet sie nicht. Nur bewusste
+  Debug-Nutzung verlaengert `last_user_activity_at`; reine Geraetetelemetrie
+  tut dies nicht. Nach der pro Tarif im Admin Tool konfigurierbaren
+  Inaktivitaetsfrist wird die Session durch einen unabhaengigen
+  Bereinigungslauf entfernt. Ein Geraet mit zuvor bestaetigtem Debug-Flash
+  bleibt bis zu einem erfolgreichen Standard-Flash entsprechend markiert.
+  Bereits publizierte Build-Artefakte folgen unabhaengig davon ihrer eigenen,
+  im Admin Tool sichtbaren Retention-Policy; das Sessionende verlaengert oder
+  verkuerzt diese Aufbewahrung nicht.
+- Das Debugprofil veraendert die Firmware reproduzierbar ueber PlatformIO
+  `build_type = debug`, Debugsymbole und `GERNETIX_DEBUG_SESSION=1`. Deshalb
+  muessen betroffene IoT-Firmwares nach dem Wechsel neu gebaut und geflasht
+  werden. Ein veraenderter Projekt-Commit beziehungsweise Snapshot verlangt
+  eine neue Debug-Session.
 - Ein erfolgreicher, commitgebundener Build wird nur durch eine bewusste
   Promotion zum dauerhaften Release.
 - Release, Build und Artefakt speichern die angewendete Policy-Version. Ein

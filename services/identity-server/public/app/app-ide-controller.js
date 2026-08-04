@@ -34,6 +34,7 @@ async function loadIdeProject() {
     renderIdeEmptyState();
     return;
   }
+  await GerNetiXDeviceDebug.loadServerSession(project);
   state.activeSoftwareUnitIds[project.id] ||= project.activeSoftwareUnitId || project.softwareUnits?.[0]?.software_unit_id || "";
   state.activeDeviceId = state.devices.some((device) => device.device_id === project.linkedDeviceId)
     ? project.linkedDeviceId

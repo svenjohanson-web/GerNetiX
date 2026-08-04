@@ -73,6 +73,10 @@ function registerBuildRoutes({
         sendJson(res, 409, { error: "build_target_mismatch", message: "Der Build gehört zu einer anderen Firmware-Einheit." });
         return;
       }
+      if (String(body.build_profile || "standard") !== String(projectJob.build_profile || "standard")) {
+        sendJson(res, 409, { error: "build_profile_mismatch", message: "Der vorhandene Build besitzt ein anderes Buildprofil." });
+        return;
+      }
       const reuse = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/reuse-status`);
       if (!reuse.reusable) {
         sendJson(res, 409, {
@@ -151,6 +155,7 @@ function registerBuildRoutes({
         build_job_id: jobId,
         build_deploy_job_id: jobId,
         status: job.status,
+        build_profile: projectJob?.build_profile || job.build_profile || "standard",
         flash_status: job.mode === "build_and_flash"
           ? (job.result?.deploy?.status || "nicht angefordert")
           : (job.result?.build?.usb_flash?.status || "nicht angefordert"),

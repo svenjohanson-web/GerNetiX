@@ -34,6 +34,97 @@ const GerNetiXDeviceDebug = (() => {
     return sessionFor(project, state.activeIdeComponentId || "primary-iot-device");
   }
 
+  async function loadServerSession(project) {
+    if (!project?.id) return null;
+    const envelope = await getJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/debug-session`);
+    state.projectDebugSessions[project.id] = { ...envelope, resumed: false };
+    syncBuildProfile(project);
+    return envelope.session || null;
+  }
+
+  function serverSessionState(project) {
+    return state.projectDebugSessions[project?.id] || { session: null, debug_firmware_devices: [], resumed: false };
+  }
+
+  function buildProfile(project) {
+    const selected = document.querySelector("#ideBuildProfileSelect")?.value;
+    if (selected === "debug" || selected === "standard") return selected;
+    return serverSessionState(project).session ? "debug" : "standard";
+  }
+
+  function syncBuildProfile(project) {
+    const select = document.querySelector("#ideBuildProfileSelect");
+    if (!select) return;
+    const active = Boolean(serverSessionState(project).session);
+    select.value = active ? "debug" : "standard";
+    select.dataset.debugActive = String(active);
+  }
+
+  async function startServerSession(project) {
+    const components = ideDeviceConfigurationComponents(project).filter((item) => item.abstract_type === "iot_device");
+    const units = projectSoftwareUnits(project).filter((unit) => unit.build_system === "platformio");
+    const envelope = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/debug-session`, {
+      component_ids: components.map((item) => item.component_id),
+      software_unit_ids: units.map((item) => item.software_unit_id),
+      device_ids: Array.from(new Set([
+        ...components.map((item) => item.inventory_device_id),
+        ...units.map((item) => item.device_id),
+      ].filter(Boolean))),
+    });
+    state.projectDebugSessions[project.id] = { ...envelope, resumed: true };
+    syncBuildProfile(project);
+    renderWorkspace(project);
+  }
+
+  async function continueServerSession(project) {
+    const envelope = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/debug-session/activity`, {});
+    state.projectDebugSessions[project.id] = { ...envelope, resumed: true };
+    syncBuildProfile(project);
+    renderWorkspace(project);
+  }
+
+  async function recordUserActivity(project) {
+    if (!serverSessionState(project).session) return;
+    const envelope = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/debug-session/activity`, {});
+    state.projectDebugSessions[project.id] = { ...envelope, resumed: true };
+  }
+
+  async function endServerSession(project) {
+    const envelope = await deleteJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/debug-session`);
+    state.projectDebugSessions[project.id] = { ...envelope, resumed: false };
+    syncBuildProfile(project);
+    renderWorkspace(project);
+  }
+
+  function renderServerSession(project) {
+    const server = serverSessionState(project);
+    const session = server.session;
+    const installed = server.debug_firmware_devices || [];
+    if (!session) {
+      const installedWarning = installed.length
+        ? `<p>Auf ${installed.length} Gerät${installed.length === 1 ? "" : "en"} kann noch Debug-Firmware installiert sein. Baue und flashe Standard-Firmware, um den normalen Zustand wiederherzustellen.</p>`
+        : "<p>Eine Debug-Session verwendet instrumentierte Firmware und bewahrt ELF, Map und Build-Log zeitlich begrenzt auf.</p>";
+      return `<section class="device-debug-session ${installed.length ? "warning" : ""}">
+        <header><div><p class="eyebrow">Debug-Session</p><h4>${installed.length ? "Debug-Firmware möglicherweise noch installiert" : "Keine Debug-Session aktiv"}</h4></div></header>
+        ${installedWarning}
+        <p>Beim Start müssen alle betroffenen IoT-Firmwares erneut gebaut und anschließend per USB, OTA oder FlashBox geflasht werden.</p>
+        <div class="device-debug-session-actions"><button type="button" class="primary" data-debug-session-start>Debug-Session starten</button><a class="button-link" href="/app/ide/?project=${encodeURIComponent(project.id)}">Standard-Firmware bauen</a></div>
+      </section>`;
+    }
+    const expires = new Date(session.expires_at).toLocaleString("de-DE");
+    const status = ({ build_required: "Debug-Build und Flash erforderlich", building: "Debug-Build läuft", ready_to_flash: "Debug-Build bereit – jetzt flashen", active: "Debug-Firmware aktiv", build_failed: "Debug-Build fehlgeschlagen" })[session.status] || session.status;
+    return `<section class="device-debug-session active">
+      <header><div><p class="eyebrow">Debug-Session</p><h4>${escapeHtml(status)}</h4></div><span class="device-debug-mode-badge">bis ${escapeHtml(expires)}</span></header>
+      <p>Die Session ist an den Projektstand und ihre Debug-Builds gebunden. Browser-Schließen beendet sie nicht.</p>
+      ${["build_required", "ready_to_flash", "build_failed"].includes(session.status) ? "<p><strong>Hinweis:</strong> Für die Debug-Funktionen muss die Debug-Firmware auf die betroffenen IoT-Devices geflasht werden.</p>" : ""}
+      <div class="device-debug-session-actions">
+        ${server.resumed ? "" : '<button type="button" class="primary" data-debug-session-continue>Debug-Session fortsetzen</button>'}
+        <a class="button-link primary" href="/app/ide/?project=${encodeURIComponent(project.id)}">Debug bauen &amp; flashen</a>
+        <button type="button" data-debug-session-end>Session beenden</button>
+      </div>
+    </section>`;
+  }
+
   function renderTarget() {
     return document.querySelector("#debugDeviceView");
   }
@@ -79,6 +170,7 @@ const GerNetiXDeviceDebug = (() => {
           <div><p class="eyebrow">Lokale Diagnosesitzung</p><h3>${escapeHtml(component?.label || "IoT-Device")}</h3><p>Produktive Basisdiagnose lesen, ohne Projektzustand oder Credentials zu verändern.</p></div>
           <span class="device-debug-mode-badge">Lokal · lesend</span>
         </header>
+        ${renderServerSession(project)}
         <section class="device-debug-connection" aria-label="Diagnoseverbindung">
           <label>Verbindung<select data-device-debug-connection>
             <option value="usb" ${session.connection === "usb" ? "selected" : ""}>USB / Serial Service</option>
@@ -413,6 +505,7 @@ const GerNetiXDeviceDebug = (() => {
     const session = activeSession(project);
     if (!project || session.refreshing) return;
     session.refreshing = true;
+    if (!options.silent) await recordUserActivity(project).catch(() => {});
     if (!options.silent) {
       session.message = "Diagnose wird gelesen…";
       session.messageKind = "running";
@@ -534,6 +627,7 @@ const GerNetiXDeviceDebug = (() => {
       return;
     }
     session.running = true;
+    void recordUserActivity(project);
     session.message = "Live-Ansicht aktiv. Die Diagnose wird alle zwei Sekunden gelesen.";
     session.messageKind = "running";
     render(project);
@@ -566,6 +660,7 @@ const GerNetiXDeviceDebug = (() => {
       uptime_ms: null,
     });
     session.events = session.events.slice(-256);
+    void recordUserActivity(project);
     render(project);
   }
 
@@ -608,6 +703,9 @@ const GerNetiXDeviceDebug = (() => {
     target.addEventListener("click", (event) => {
       const project = projectById(state.activeProjectId);
       if (event.target.closest("[data-device-debug-refresh-ports]")) void refreshPorts(project);
+      else if (event.target.closest("[data-debug-session-start]")) void startServerSession(project);
+      else if (event.target.closest("[data-debug-session-continue]")) void continueServerSession(project);
+      else if (event.target.closest("[data-debug-session-end]")) void endServerSession(project);
       else if (event.target.closest("[data-device-debug-refresh]")) void refresh(project);
       else if (event.target.closest("[data-device-debug-toggle-live]")) toggleLive(project);
       else if (event.target.closest("[data-device-debug-marker]")) addMarker(project);
@@ -675,6 +773,7 @@ const GerNetiXDeviceDebug = (() => {
       return;
     }
     state.activeProjectId = project.id;
+    await loadServerSession(project);
     const devices = ideDeviceConfigurationComponents(project)
       .filter((component) => component.abstract_type === "iot_device");
     if (devices.length) await loadProjectSources(project);
@@ -689,7 +788,7 @@ const GerNetiXDeviceDebug = (() => {
     if (selected) await refreshPorts(project);
   }
 
-  return { appendEvents, basissoftwareCriticalIncidents, bind, diagnosticLogStats, diagnosticsForStatus, loadWorkspace, normalizeLog, refresh, render, statusUptime, stopAllPolling };
+  return { appendEvents, basissoftwareCriticalIncidents, bind, buildProfile, diagnosticLogStats, diagnosticsForStatus, loadServerSession, loadWorkspace, normalizeLog, refresh, render, startSession: startServerSession, statusUptime, stopAllPolling };
 })();
 
 function stopIdeDeviceDebugPolling() {

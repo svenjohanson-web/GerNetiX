@@ -2077,6 +2077,13 @@ button.danger:hover {
 .debug-workspace-empty { display: grid; place-content: center; justify-items: start; gap: 8px; min-height: 300px; color: #cbd5e1; }
 .debug-workspace-empty p { margin: 0; color: #94a3b8; }
 .device-debug-workspace { display: grid; gap: 12px; min-height: 100%; align-content: start; }
+.device-debug-session { display: grid; gap: 9px; border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0b1018; }
+.device-debug-session.active { border-color: #0891b2; background: #0f2530; }
+.device-debug-session.warning { border-color: #b45309; background: rgba(120, 53, 15, .15); }
+.device-debug-session header { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.device-debug-session h4, .device-debug-session p { margin: 0; }
+.device-debug-session p { color: #cbd5e1; }
+.device-debug-session-actions { display: flex; flex-wrap: wrap; gap: 7px; }
 .device-debug-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .device-debug-head h3 { margin: 2px 0 4px; font-size: 1.15rem; }
 .device-debug-head p { margin: 0; color: #94a3b8; }
@@ -2353,6 +2360,8 @@ button.danger:hover {
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.ide-build-profile { display: flex; align-items: center; gap: 5px; color: #9ca3af; font-size: 10px; font-weight: 800; }
+.ide-build-profile select[data-debug-active="true"] { border-color: #22d3ee; color: #a5f3fc; }
 .ide-build-actions button,
 .ide-build-actions select {
   min-height: 26px;
