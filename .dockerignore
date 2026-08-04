@@ -4,7 +4,9 @@
 **/node_modules
 tools/yaml-graph-sqlite/out
 generated
-projects
+projects/*
+!projects/waveshare-voice-lab/
+!projects/waveshare-voice-lab/**
 basissoftware/*
 !basissoftware/esp32
 !basissoftware/esp32/**
