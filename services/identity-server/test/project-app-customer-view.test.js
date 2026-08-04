@@ -5,6 +5,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
+const { normalizeAppPath } = require("../src/dev/http-utils");
+
 function read(relativePath) {
   return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
 }
@@ -19,6 +21,11 @@ test("wires the generic Project-App into the authenticated platform shell", () =
   assert.match(html, /project-app-renderer\.js/);
   assert.match(html, /project-app-controller\.js/);
   assert.match(read("public/app/project-app-controller.js"), /bindings: snapshot\.bindings \|\| \{\}/);
+  assert.match(read("public/app/project-app-controller.js"), /project-app\?refresh=\$\{cacheKey\}/);
+});
+
+test("serves the Project-App as a direct authenticated SPA entry point", () => {
+  assert.equal(normalizeAppPath("/app/project-app/"), "/index.html");
 });
 
 test("offers the Project-App only for personal projects that contain its manifest", () => {

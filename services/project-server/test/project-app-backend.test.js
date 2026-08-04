@@ -107,6 +107,13 @@ test("loads the versioned manifest and stores account-bound runtime settings wit
   assert.equal(saved.manifest.app_id, "nexi");
   assert.deepEqual(saved.values, { cloud_enabled: true, voice: "warm", volume: 5 });
 
+  const savedAgain = await service.updateProjectAppSettings("project-nexi", {
+    account_id: "account-1", manifest_version: 1, expected_revision: 1,
+    values: { cloud_enabled: false },
+  });
+  assert.equal(savedAgain.revision, 2);
+  assert.deepEqual(savedAgain.values, { cloud_enabled: false, voice: "warm", volume: 5 });
+
   await assert.rejects(() => service.updateProjectAppSettings("project-nexi", {
     account_id: "account-1", manifest_version: 1, expected_revision: 0,
     values: { volume: 2 },
@@ -156,8 +163,8 @@ test("PostgreSQL schema and write use cascade ownership and atomic revision comp
     values: {}, created_at: "2026-08-04T10:00:00.000Z", updated_at: "2026-08-04T10:01:00.000Z",
   }, 1);
   assert.equal(result.saved, true);
-  assert.match(pool.calls[1].text, /SELECT \$1,\$2,\$3,\$4,\$5,\$6,\$7\s+WHERE \$8=0/);
-  assert.match(pool.calls[1].text, /WHERE project_app_settings\.revision=\$8/);
+  assert.match(pool.calls[1].text, /UPDATE project_app_settings SET[\s\S]+revision=\$8/);
+  assert.match(pool.calls[1].text, /WHERE \$8=0 AND NOT EXISTS/);
   assert.equal(pool.calls[1].values[7], 1);
 });
 

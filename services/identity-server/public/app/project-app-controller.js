@@ -17,7 +17,8 @@
       }
       target.innerHTML = '<section class="panel"><p>Projekt-App wird geladen …</p></section>';
       try {
-        snapshot = await getJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app`);
+        const cacheKey = Date.now();
+        snapshot = await getJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app?refresh=${cacheKey}`);
         draw(target);
       } catch (error) {
         target.innerHTML = `<section class="panel"><h2>Projekt-App nicht verfügbar</h2><p>${escapeHtml(error.message || "Die Projekt-App konnte nicht geladen werden.")}</p></section>`;

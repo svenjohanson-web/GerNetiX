@@ -373,17 +373,27 @@ class PostgresProjectRepository {
 
   async compareAndSetProjectAppSettings(settings, expectedRevision) {
     const result = await this.pool.query(`
-      INSERT INTO project_app_settings
-        (project_id, account_id, manifest_version, revision, raw_json, created_at, updated_at)
-      SELECT $1,$2,$3,$4,$5,$6,$7
-      WHERE $8=0
-      ON CONFLICT (project_id, account_id) DO UPDATE SET
-        manifest_version=EXCLUDED.manifest_version,
-        revision=EXCLUDED.revision,
-        raw_json=EXCLUDED.raw_json,
-        updated_at=EXCLUDED.updated_at
-      WHERE project_app_settings.revision=$8
-      RETURNING raw_json
+      WITH updated AS (
+        UPDATE project_app_settings SET
+          manifest_version=$3,
+          revision=$4,
+          raw_json=$5,
+          updated_at=$7
+        WHERE project_id=$1 AND account_id=$2 AND revision=$8
+        RETURNING raw_json
+      ), inserted AS (
+        INSERT INTO project_app_settings
+          (project_id, account_id, manifest_version, revision, raw_json, created_at, updated_at)
+        SELECT $1,$2,$3,$4,$5,$6,$7
+        WHERE $8=0 AND NOT EXISTS (
+          SELECT 1 FROM project_app_settings WHERE project_id=$1 AND account_id=$2
+        )
+        ON CONFLICT (project_id, account_id) DO NOTHING
+        RETURNING raw_json
+      )
+      SELECT raw_json FROM updated
+      UNION ALL
+      SELECT raw_json FROM inserted
     `, [
       settings.project_id, settings.account_id, settings.manifest_version, settings.revision,
       settings, settings.created_at, settings.updated_at, expectedRevision,

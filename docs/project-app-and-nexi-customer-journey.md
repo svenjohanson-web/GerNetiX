@@ -91,9 +91,14 @@ definieren.
 
 Ein kontrollierter Browserdurchstich prueft den echten Renderer und Controller
 mit einer angemeldeten Testhuelle: Status, aktueller Messwert, Verlauf und eine
-revisionsgeschuetzte Einstellungs-Aenderung funktionieren gemeinsam. Der
-Live-Nachweis gegen Remote-Dev-PostgreSQL und die VPS-Domaenendienste bleibt ein
-eigener Betriebsnachweis und setzt den kontrollierten Tunnel voraus.
+revisionsgeschuetzte Einstellungs-Aenderung funktionieren gemeinsam. Am
+2026-08-04 wurde Nexi ausserdem mit einer echten Passkey-Sitzung ueber den
+kontrollierten Remote-Dev-Tunnel gegen Project Server, AI Usage und
+PostgreSQL auf Staging geoeffnet. Der direkte Wiedereinstieg ueber
+`/app/project-app/` ist Bestandteil dieses Nachweises. Dynamische JSON-Antworten
+werden nicht im Browsercache gehalten; Projekt-App-Leseaufrufe verwenden
+zusaetzlich einen eindeutigen Cache-Schluessel. Wiederholte PostgreSQL-Updates
+sind durch eine atomare Compare-and-Set-Abfrage und Regressionstests abgedeckt.
 
 ## Nexi-Projekt-App
 

@@ -47,7 +47,7 @@ function normalizeAppPath(pathname) {
   const stripped = pathname.replace(/^\/app\/?/, "/");
   if (stripped === "/" || stripped === "") return "/index.html";
   if (/^\/auth\/?$/.test(stripped)) return "/auth/index.html";
-  if (/^\/(auth|dashboard|learn|learning-project|development-platform(?:\/hardware)?|ide|projects|devices|device-management(?:\/(?:provisioning|inventory|recovery))?|builds|downloads|shop|billing|community|help|account-setup|about)\/?$/.test(stripped)) return "/index.html";
+  if (/^\/(auth|dashboard|learn|learning-project|development-platform(?:\/hardware)?|ide|project-app|projects|devices|device-management(?:\/(?:provisioning|inventory|recovery))?|builds|downloads|shop|billing|community|help|account-setup|about)\/?$/.test(stripped)) return "/index.html";
   return stripped;
 }
 
@@ -81,7 +81,10 @@ function clearSessionCookie(res) {
 }
 
 function sendJson(res, status, payload) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8",
+  });
   res.end(JSON.stringify(payload));
 }
 
