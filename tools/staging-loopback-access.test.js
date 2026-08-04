@@ -46,4 +46,5 @@ test("Identity reaches the public demo catalog through its internal service name
   const block = serviceBlock("identity-server");
   assert.match(block, /\n      PUBLIC_DEMO_BASE_URL: http:\/\/public-demo-server:4920\n/);
   assert.match(block, /\n      public-demo-server: \{ condition: service_healthy \}\n/);
+  assert.match(compose, /public-demo-server:[\s\S]*?ports:\n      - "127\.0\.0\.1:4920:4920"/);
 });

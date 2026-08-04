@@ -18,6 +18,7 @@ test("remote identity dev mode forces local 4300 and central PostgreSQL", () => 
   assert.equal(config.AI_USAGE_BASE_URL, "http://127.0.0.1:5001");
   assert.equal(config.BUILD_DEPLOY_BASE_URL, "http://127.0.0.1:4400");
   assert.equal(config.BUILD_WORKER_POOL_BASE_URL, "http://127.0.0.1:14400");
+  assert.equal(config.PUBLIC_DEMO_BASE_URL, "http://127.0.0.1:4920");
 });
 
 test("remote identity dev mode refuses to start without a database secret", () => {

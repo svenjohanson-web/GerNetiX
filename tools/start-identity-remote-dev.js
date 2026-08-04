@@ -38,6 +38,7 @@ function loadRemoteDevConfig(environment = process.env, options = {}) {
     BUILD_WORKER_POOL_BASE_URL: config.BUILD_WORKER_POOL_BASE_URL || "http://127.0.0.1:14400",
     DEVICE_MANAGEMENT_BASE_URL: config.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700",
     HARDWARE_SHOP_BASE_URL: config.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900",
+    PUBLIC_DEMO_BASE_URL: config.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920",
     HARDWARE_CATALOG_BASE_URL: config.HARDWARE_CATALOG_BASE_URL || "http://10.77.0.1:4910",
     AI_USAGE_BASE_URL: config.AI_USAGE_BASE_URL || "http://127.0.0.1:5001",
     AI_CONTEXT_BASE_URL: config.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500",

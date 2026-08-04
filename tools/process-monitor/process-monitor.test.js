@@ -268,6 +268,7 @@ test("monitor defines a fixed SSH diagnostic tunnel from the staging configurati
   assert.ok(definition.args.includes("127.0.0.1:14600:127.0.0.1:4610"));
   assert.ok(definition.args.includes("127.0.0.1:14300:127.0.0.1:8080"));
   assert.ok(definition.args.includes("127.0.0.1:14400:127.0.0.1:14400"));
+  assert.ok(definition.args.includes("127.0.0.1:4920:127.0.0.1:4920"));
   assert.ok(definition.args.includes("127.0.0.1:25432:10.77.0.1:25432"));
   assert.equal(definition.args.at(-1),"root@gernetix-vps");
   assert.match(desktopPreload,/tunnelStart/);

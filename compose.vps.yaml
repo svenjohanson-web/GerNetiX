@@ -521,6 +521,8 @@ services:
       PUBLIC_DEMO_PUBLISHER_TOKEN: ${PUBLIC_DEMO_PUBLISHER_TOKEN:?PUBLIC_DEMO_PUBLISHER_TOKEN muss gesetzt sein}
       ARTIFACT_STORE_DIR: /var/lib/gernetix/build/artifacts
     expose: ["4920"]
+    ports:
+      - "127.0.0.1:4920:4920"
     volumes:
       - build_state:/var/lib/gernetix/build
     depends_on:
