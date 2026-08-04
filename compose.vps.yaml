@@ -834,6 +834,7 @@ services:
       AI_USAGE_BASE_URL: http://ai-usage-server:5000
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
       COMMUNITY_PLATFORM_BASE_URL: http://community-platform:5200
+      PUBLIC_DEMO_BASE_URL: http://public-demo-server:4920
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
       COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT: ${COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT:-}
       ADMIN_TOOL_BASE_URL: http://admin-tool:4600
@@ -856,6 +857,7 @@ services:
       ai-usage-server: { condition: service_healthy }
       ai-context-server: { condition: service_healthy }
       community-platform: { condition: service_healthy }
+      public-demo-server: { condition: service_healthy }
 
   mqtt-broker:
     image: eclipse-mosquitto:2.0

@@ -41,3 +41,9 @@ test("AI Context warmup does not fail the staging deployment prematurely", () =>
   assert.match(block, /\n    healthcheck:\n      test: \["CMD", "node", "\/app\/docker\/healthcheck\.js"\]\n/);
   assert.match(block, /\n      start_period: 120s\n/);
 });
+
+test("Identity reaches the public demo catalog through its internal service name", () => {
+  const block = serviceBlock("identity-server");
+  assert.match(block, /\n      PUBLIC_DEMO_BASE_URL: http:\/\/public-demo-server:4920\n/);
+  assert.match(block, /\n      public-demo-server: \{ condition: service_healthy \}\n/);
+});
