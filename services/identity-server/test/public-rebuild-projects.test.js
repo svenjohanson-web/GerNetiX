@@ -111,6 +111,7 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiProject, /id="flash-status"[^>]*>Noch nicht möglich: Zuerst muss der geprüfte Release geladen und ein USB-Port gewählt werden\./);
   assert.doesNotMatch(nexiProject, /id="flash-step" hidden/);
   assert.match(nexiProject, /nexi-flash\.js/);
+  assert.match(nexiProject, /nexi-flash\.js\?v=20260804-auto-helper-1/);
   assert.match(nexiFlash, /const DEMO_ID = "nexi-basic-waveshare-s3"/);
   assert.match(nexiFlash, /manifest\.chip !== "esp32s3"/);
   assert.match(nexiFlash, /manifest\.flash_size !== "16MB"/);
