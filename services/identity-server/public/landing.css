@@ -526,8 +526,36 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
 .maker-project-tile h3, .maker-project-tile p { margin: 0; }
 .maker-project-tile h3 { font-size: clamp(18px, 2vw, 22px); }
 .maker-project-tile p { color: var(--muted); line-height: 1.5; }
+.maker-project-tile-action { margin-top: 7px; color: #67e8f9; font-weight: 850; }
 .maker-project-series-tile { border-color: #0e7490; background: radial-gradient(circle at 100% 0%, rgba(34, 211, 238, .13), transparent 15rem), var(--panel); }
 .maker-project-series-label { color: #67e8f9; font-size: 11px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.rebuild-delivery-summary { display: grid; gap: 10px; padding: 19px; border: 1px solid rgba(103, 232, 249, .48); border-radius: 12px; background: rgba(7, 11, 18, .5); }
+.rebuild-delivery-summary span { color: #67e8f9; font-size: 11px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.rebuild-delivery-summary strong { font-size: clamp(18px, 2.2vw, 23px); line-height: 1.25; }
+.rebuild-delivery-summary p { margin: 0; color: #cbd5e1; line-height: 1.5; }
+.rebuild-delivery-summary .primary-action { width: fit-content; margin-top: 3px; }
+.rebuild-install-panel { scroll-margin-top: 96px; border-color: #0891b2; box-shadow: inset 0 1px 0 rgba(103, 232, 249, .08); }
+.rebuild-project-story, .rebuild-usage-guide, .rebuild-technical-notes { display: grid; gap: 14px; }
+.rebuild-project-story h2, .rebuild-project-story p, .rebuild-usage-guide h2, .rebuild-technical-notes h2 { margin: 0; }
+.rebuild-story-lead { max-width: 980px; color: #dbeafe; font-size: clamp(16px, 1.7vw, 19px); line-height: 1.65; }
+.rebuild-feature-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 5px 0 0; padding: 0; list-style: none; }
+.rebuild-feature-list li { display: grid; gap: 7px; padding: 5px 20px; border-left: 1px solid #334155; }
+.rebuild-feature-list li:first-child { padding-left: 0; border-left: 0; }
+.rebuild-feature-list strong { color: #ecfeff; font-size: 17px; }
+.rebuild-feature-list span { color: var(--muted); line-height: 1.55; }
+.rebuild-story-note { padding-top: 13px; border-top: 1px solid #334155; color: #cbd5e1; line-height: 1.55; }
+.rebuild-use-steps { display: grid; gap: 0; margin: 3px 0 0; padding: 0; list-style: none; }
+.rebuild-use-steps li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 14px; padding: 15px 0; border-top: 1px solid #334155; }
+.rebuild-use-steps li > span { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #0e7490; border-radius: 50%; background: #0c2130; color: #67e8f9; font-weight: 900; }
+.rebuild-use-steps li div { display: grid; gap: 4px; }
+.rebuild-use-steps p { margin: 0; color: var(--muted); line-height: 1.55; }
+.rebuild-controls { display: grid; gap: 10px; margin-top: 4px; padding-top: 17px; border-top: 1px solid #475569; }
+.rebuild-controls h3, .rebuild-controls dl { margin: 0; }
+.rebuild-controls dl { display: grid; gap: 7px; }
+.rebuild-controls dl div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
+.rebuild-controls dt { color: #67e8f9; font-weight: 900; }
+.rebuild-controls dd { margin: 0; color: #cbd5e1; line-height: 1.5; }
+.rebuild-technical-notes ul { display: grid; gap: 9px; margin: 0; padding-left: 20px; color: #cbd5e1; line-height: 1.55; }
 .project-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 4px; color: var(--muted); font-size: 13px; }
 .project-breadcrumb a { color: #67e8f9; font-weight: 800; }
 .project-breadcrumb a:hover { color: #ecfeff; }
@@ -669,7 +697,8 @@ footer {
   .product-split-grid,
   .product-decision-map ol,
   .product-delivery-grid { grid-template-columns: 1fr; }
-  .maker-download-hero, .maker-release-process > div, .maker-release-layout, .maker-project-grid, .maker-project-list { grid-template-columns: 1fr; }
+  .maker-download-hero, .maker-release-process > div, .maker-release-layout, .maker-project-grid, .maker-project-list, .rebuild-feature-list { grid-template-columns: 1fr; }
+  .rebuild-feature-list li, .rebuild-feature-list li:first-child { padding: 13px 0; border-top: 1px solid #334155; border-left: 0; }
   .maker-release-card dl div { grid-template-columns: 1fr; gap: 3px; }
   .motor-safety, .motor-parts-grid, .motor-build-step { grid-template-columns: 1fr; }
   .printed-motor-grid, .compact-motor-project-grid { grid-template-columns: 1fr; }

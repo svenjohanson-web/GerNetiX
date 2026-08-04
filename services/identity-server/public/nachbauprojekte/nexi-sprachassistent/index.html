@@ -8,7 +8,7 @@
   <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
   <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
   <title>Nexi Sprachassistent nachbauen · GerNetiX</title>
-  <link rel="stylesheet" href="/landing.css?v=20260804-nexi-rebuild-1" />
+  <link rel="stylesheet" href="/landing.css?v=20260804-rebuild-flash-pattern-1" />
   <link rel="stylesheet" href="/s3-touch-spielesammlung/app.css?v=20260804-nexi-flash-1" />
 </head>
 <body>
@@ -28,8 +28,26 @@
       <div>
         <p class="eyebrow">Nachbauprojekt · ESP32-S3 · Audio</p>
         <h1 id="project-title">Baue Nexi – dein eigenes lokales Stimmenstudio.</h1>
-        <p class="lead">Nexi Basic nimmt deine Stimme nur während des Tastendrucks auf, verändert sie lokal und spielt sie über den angeschlossenen Lautsprecher wieder ab. Die lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter.</p>
+        <p class="lead">Ein spielerisches Audioprojekt zum Aufnehmen, Verändern und Wiedergeben deiner eigenen Stimme – direkt auf dem Board.</p>
       </div>
+      <aside class="rebuild-delivery-summary" aria-label="Installationsstatus">
+        <span>Installationsstatus</span>
+        <strong>Fertig gebaut und direkt flashbar</strong>
+        <p>Für das Waveshare ESP32-S3 Audio Board mit 16&nbsp;MB Flash. Kein Konto und kein eigener Build erforderlich.</p>
+        <a class="primary-action" href="#installieren">Jetzt flashen →</a>
+      </aside>
+    </section>
+
+    <section class="panel rebuild-project-story" aria-labelledby="about-nexi-title">
+      <p class="eyebrow">Das Projekt</p>
+      <h2 id="about-nexi-title">Was ist Nexi?</h2>
+      <p class="rebuild-story-lead">Nexi ist ein Sprach- und Soundprojekt für das Waveshare-Audioboard. <strong>Nexi Basic</strong> ist die fertig installierbare, vollständig lokale Grundversion: Du sprichst in die eingebauten Mikrofone, das Board verändert deine Stimme und gibt sie direkt über den Lautsprecher wieder. So wird hörbar, wie Mikrofone, digitale Audioverarbeitung, Tasten, LEDs und Lautsprecher zusammenspielen.</p>
+      <ul class="rebuild-feature-list" aria-label="Möglichkeiten mit Nexi Basic">
+        <li><strong>Stimme aufnehmen</strong><span>Halte die Aufnahmetaste gedrückt und sprich. Nexi nimmt nur so lange auf, wie du die Taste hältst.</span></li>
+        <li><strong>Effekte ausprobieren</strong><span>Wechsle zwischen Normal, Roboter, Monster, Helium und Echo und höre dieselbe Aufnahme sofort mit dem neuen Effekt.</span></li>
+        <li><strong>Direkt am Board spielen</strong><span>Drei Tasten steuern Aufnahme, Effekt und Lautstärke. Die sieben LEDs zeigen verständlich, was Nexi gerade macht.</span></li>
+      </ul>
+      <p class="rebuild-story-note"><strong>Alles läuft lokal:</strong> Die Aufnahme wird nicht hochgeladen und bleibt nur vorübergehend im Arbeitsspeicher. Die lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter.</p>
     </section>
 
     <section class="panel" aria-labelledby="equipment-title">
@@ -38,45 +56,16 @@
       <ul>
         <li>Waveshare ESP32-S3 AI Smart Speaker Development Board mit 16 MB Flash</li>
         <li>Geeigneter passiver Lautsprecher am vorgesehenen Lautsprecheranschluss</li>
-        <li>USB-Datenkabel und Computer zum direkten Flashen und seriellen Funktionstest</li>
+        <li>USB-Datenkabel und einen Computer zum direkten Flashen</li>
       </ul>
       <p><strong>Auf dem Board vorhanden:</strong> zwei Mikrofone, ES7210-Aufnahmecodec, ES8311-Wiedergabecodec, NS4150B-Verstärker, drei Funktionstasten und sieben RGB-LEDs.</p>
-      <p><strong>Lautstärkehinweis:</strong> Beginne beim ersten Test mit Abstand zum Lautsprecher. Der Hardwaretest kann den Codec-Ausgang bis 100&nbsp;% ansteuern.</p>
+      <p><strong>Für den ersten Test:</strong> Beginne mit etwas Abstand zum Lautsprecher und stelle die Lautstärke anschließend mit KEY3 passend ein.</p>
     </section>
 
-    <section class="maker-project-categories" aria-labelledby="steps-title">
-      <h2 id="steps-title">Der Nachbau in sechs prüfbaren Schritten</h2>
-      <div class="maker-project-list">
-        <article class="panel maker-project-tile"><h3>1. Hardware anschließen</h3><p>Lautsprecher spannungsfrei anschließen, Board per USB verbinden und keine BOOT- oder RESET-Taste gedrückt halten.</p></article>
-        <article class="panel maker-project-tile"><h3>2. Audiobausteine prüfen</h3><p>Der serielle Starttest muss ES8311, TCA9555, ES7210 und PCF85063 erkennen. Fehlende Bausteine werden nicht übergangen.</p></article>
-        <article class="panel maker-project-tile"><h3>3. Fertige Firmware flashen</h3><p>GerNetiX stellt den geprüften Nexi-Release bereits passend für das Waveshare-Audioboard bereit. Du verbindest das Board, wählst den USB-Port und flashst ohne Konto und ohne eigenen Build.</p></article>
-        <article class="panel maker-project-tile"><h3>4. Push-to-talk testen</h3><p>KEY2 gedrückt halten, sprechen und loslassen. Während der Aufnahme leuchten die LEDs rot, bei der Wiedergabe blau.</p></article>
-        <article class="panel maker-project-tile"><h3>5. Effekte und Lautstärke prüfen</h3><p>KEY1 wechselt Normal, Roboter, Monster, Helium und Echo. KEY3 schaltet durch fünf Lautstärkestufen; langes Drücken schaltet stumm.</p></article>
-        <article class="panel maker-project-tile"><h3>6. Datenschutz kontrollieren</h3><p>Die letzte Aufnahme bleibt nur flüchtig im PSRAM. Sie wird beim Überschreiben oder Ausschalten verworfen und nicht hochgeladen.</p></article>
-      </div>
-    </section>
-
-    <section class="panel" aria-labelledby="controls-title">
-      <p class="eyebrow">Bedienung</p>
-      <h2 id="controls-title">Drei Tasten, eindeutige Zustände.</h2>
-      <ul>
-        <li><strong>KEY1:</strong> nächsten Stimmeffekt wählen; lang drücken, um zur Modusauswahl zurückzukehren.</li>
-        <li><strong>KEY2:</strong> Auswahl bestätigen; im Stimmenstudio nur während des Gedrückthaltens aufnehmen.</li>
-        <li><strong>KEY3:</strong> nächste Lautstärkestufe; lang drücken für stumm beziehungsweise wieder hörbar.</li>
-      </ul>
-      <p>Grün bedeutet bereit, Rot Aufnahme, Blau Wiedergabe und Violett einen noch nicht freigegebenen KI-Modus. Ohne aktiven Provider sendet Nexi keine Aufnahme.</p>
-    </section>
-
-    <section class="panel" aria-labelledby="status-title">
-      <p class="eyebrow">Ehrlicher Softwarestand</p>
-      <h2 id="status-title">Nexi Basic ist lokal funktionsfähig; Cloud-KI bleibt getrennt.</h2>
-      <p>Der lokale Audiopfad, fünf Effekte, LED-Rückmeldung, Push-to-talk und fünf Lautstärkestufen sind implementiert. Ein produktiver KI-Sprachmodus wird erst angeboten, wenn Provider, Kinderschutzprüfung, Kontingent und Betreiberfreigabe gemeinsam aktiv sind.</p>
-    </section>
-
-    <section class="panel flash-flow" aria-labelledby="flash-title">
-      <p class="eyebrow">Fertig gebaut · direkt installieren</p>
-      <h2 id="flash-title">Nexi Basic auf das Waveshare-Board flashen</h2>
-      <p>Dieser unveränderliche Release ist bereits für das <strong>Waveshare ESP32-S3 AI Smart Speaker Development Board (16 MB Flash)</strong> konfiguriert und gebaut. Ein GerNetiX-Konto ist nicht erforderlich.</p>
+    <section id="installieren" class="panel flash-flow rebuild-install-panel" aria-labelledby="flash-title">
+      <p class="eyebrow">Installation</p>
+      <h2 id="flash-title">Nexi auf dein Board bringen</h2>
+      <p>Die Firmware ist bereits für das <strong>Waveshare ESP32-S3 AI Smart Speaker Development Board mit 16&nbsp;MB Flash</strong> konfiguriert und gebaut. Verbinde das Board, wähle den USB-Port und starte den Flashvorgang – ohne Konto und ohne eigenen Build.</p>
       <p class="safety"><strong>Achtung:</strong> Das Flashen ersetzt die aktuell installierte Firmware des angeschlossenen Boards. Verwende diesen Release nur für das oben genannte Board.</p>
       <div id="port-step">
         <select id="serial-service-port" class="serial-service-port" aria-label="USB-Port des installierten Serial Helpers" hidden></select>
@@ -88,6 +77,35 @@
         <p id="flash-status" class="step-status" aria-live="polite"></p>
       </div>
       <p class="step-status">Chrome oder Edge können USB direkt verwenden. In Safari kann auf macOS der GerNetiX Serial Helper verwendet werden.</p>
+    </section>
+
+    <section class="panel rebuild-usage-guide" aria-labelledby="usage-title">
+      <p class="eyebrow">Bedienungsanleitung</p>
+      <h2 id="usage-title">Deine erste Aufnahme in vier Schritten</h2>
+      <ol class="rebuild-use-steps">
+        <li><span>1</span><div><strong>Nexi einschalten</strong><p>Nach dem Start leuchten die LEDs grün. Nexi ist bereit und wartet auf deine Aufnahme.</p></div></li>
+        <li><span>2</span><div><strong>Aufnehmen</strong><p>Halte KEY2 gedrückt und sprich. Während der Aufnahme leuchten die LEDs rot.</p></div></li>
+        <li><span>3</span><div><strong>Anhören</strong><p>Lass KEY2 los. Nexi beendet die Aufnahme und spielt sie mit dem gewählten Effekt ab; dabei leuchten die LEDs blau.</p></div></li>
+        <li><span>4</span><div><strong>Effekt wechseln</strong><p>Drücke KEY1. Nexi wählt den nächsten Stimmeffekt und spielt deine letzte Aufnahme damit erneut ab.</p></div></li>
+      </ol>
+      <div class="rebuild-controls" aria-labelledby="button-title">
+        <h3 id="button-title">Die drei Funktionstasten</h3>
+        <dl>
+          <div><dt>KEY1</dt><dd>Nächster Stimmeffekt: Normal, Roboter, Monster, Helium oder Echo.</dd></div>
+          <div><dt>KEY2</dt><dd>Gedrückt halten zum Aufnehmen; loslassen zum Abspielen.</dd></div>
+          <div><dt>KEY3</dt><dd>Nächste Lautstärkestufe; lang drücken für stumm oder wieder hörbar.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="panel rebuild-technical-notes" aria-labelledby="technical-title">
+      <p class="eyebrow">Gut zu wissen</p>
+      <h2 id="technical-title">Was Nexi im Hintergrund macht</h2>
+      <ul>
+        <li><strong>Hardwareprüfung:</strong> Beim Start prüft Nexi Lautsprechercodec, Mikrofoncodec, Tasten-/LED-Baustein und Echtzeituhr. Erwartet werden ES8311, ES7210, TCA9555 und PCF85063.</li>
+        <li><strong>Flüchtige Aufnahme:</strong> Die letzte Stimme bleibt nur im PSRAM. Eine neue Aufnahme überschreibt sie; beim Ausschalten verschwindet sie.</li>
+        <li><strong>Kein Cloud-Zwang:</strong> Nexi Basic arbeitet vollständig lokal. Ohne aktiven Provider sendet Nexi keine Aufnahme. Ein späterer KI-Sprachmodus ist eine getrennte Erweiterung und gehört nicht zu dieser Basisversion.</li>
+      </ul>
     </section>
 
     <section class="panel product-cta maker-download-cta">
