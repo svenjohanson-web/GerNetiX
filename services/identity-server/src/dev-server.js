@@ -4452,11 +4452,23 @@ async function resolveProvisioningFirmwareArtifact({ profile, hardwareProfileId,
     error.code = "provisioning_firmware_variant_not_available";
     throw error;
   }
+  const artifactPath = path.join(provisioningFirmwareRoot, release.relative_file_path);
+  let sizeBytes = 0;
+  let sha256 = "";
+  if (fs.existsSync(artifactPath)) {
+    const content = await fs.promises.readFile(artifactPath);
+    sizeBytes = content.length;
+    sha256 = crypto.createHash("sha256").update(content).digest("hex");
+  }
   return {
     id: release.artifact_id,
     label: release.label,
     fileName: release.file_name,
-    path: path.join(provisioningFirmwareRoot, release.relative_file_path),
+    path: artifactPath,
+    sizeBytes,
+    sha256,
+    sourcePath: release.source_path,
+    sourceVersion: release.source_version,
     firmwareBuildTargetId: targetId,
     version: release.version || "",
     flashMode: release.flash_mode || "dio",

@@ -6,6 +6,51 @@ const usbFirmwarePortAssignments = new Map();
 let usbFlashAssignmentBatch = null;
 let usbFlashPortDetector = null;
 let usbFlashPortIdentification = null;
+let ideFlashDialog = null;
+let provisioningFlashDialog = null;
+
+function latestIdeFlashArtifact(project, softwareUnit) {
+  const projectIds = new Set([project?.id, project?.slug, project?.project_server_id].filter(Boolean).map(String));
+  const build = state.builds
+    .filter((item) => item.status === "succeeded"
+      && projectIds.has(String(item.project_server_id || item.project_id || item.project_slug || ""))
+      && String(item.software_unit_id || "") === String(softwareUnit?.software_unit_id || ""))
+    .sort((left, right) => Date.parse(right.finished_at || right.created_at || 0) - Date.parse(left.finished_at || left.created_at || 0))[0];
+  const firmware = build?.artifacts?.find((artifact) => artifact.file_name === "firmware.bin")
+    || build?.artifacts?.find((artifact) => /\.(?:bin|hex)$/i.test(artifact.file_name || ""));
+  return firmware ? {
+    name: firmware.file_name,
+    version: build.version || build.build_job_id,
+    sizeBytes: firmware.size_bytes,
+    sha256: firmware.sha256,
+  } : { name: `${softwareUnit?.title || "Projekt-Firmware"} · wird bei Bedarf gebaut` };
+}
+
+function openIdeFlashDialog() {
+  const project = projectById(state.activeProjectId);
+  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  const softwareUnit = activeIdeSoftwareUnit(project);
+  const device = allocatedIdeDevice(project);
+  const flashboxes = inventoryFlashboxes();
+  const flashable = usbFirmwareUnits(project).length > 0 || !projectSoftwareUnits(project).length;
+  const otaReady = Boolean(device && device.connectivity_status === "online" && device.ota_status === "ready");
+  ideFlashDialog ||= window.GerNetiXFlashDialog.create();
+  ideFlashDialog.open({
+    title: `${project.title || project.name || "Projekt"} flashen`,
+    description: "Flash-Datei und Übertragungsweg werden hier verbindlich zusammengeführt. Status und Fehler erscheinen im Terminal.",
+    artifact: latestIdeFlashArtifact(project, softwareUnit),
+    methods: {
+      usb: { enabled: flashable, reason: "Für dieses Projekt ist kein Firmware-Runner angeschlossen." },
+      ota: { enabled: flashable && otaReady, reason: !device ? "Kein Device zugeordnet." : device.connectivity_status !== "online" ? `Device ist nicht online (${device.connectivity_status || "unknown"}).` : `Device ist nicht OTA-ready (${device.ota_status || "unknown"}).` },
+      flashbox: { enabled: flashable && flashboxes.length > 0, reason: flashboxes.length ? "Für dieses Projekt ist kein Firmware-Runner angeschlossen." : "Keine FlashBox im Inventar verfügbar." },
+    },
+    async onExecute(method) {
+      if (method === "usb") await startUsbFlash();
+      if (method === "ota") await startOtaFlash();
+      if (method === "flashbox") await startFlashBoxFlash();
+    },
+  });
+}
 function selectedBuildProfile(project = projectById(state.activeProjectId)) {
   return window.GerNetiXDeviceDebug?.buildProfile(project) || "standard";
 }
@@ -846,8 +891,32 @@ async function selectProvisioningSerialPort() {
   return deviceOnboarding().selectProvisioningSerialPort();
 }
 
-async function flashProvisioningBasissoftware() {
-  return deviceOnboarding().flashProvisioningBasissoftware();
+async function flashProvisioningBasissoftware(options) {
+  return deviceOnboarding().flashProvisioningBasissoftware(options);
+}
+
+function openProvisioningFlashDialog() {
+  const availability = state.provisioningFirmwareAvailability || {};
+  const artifact = availability.artifact || {};
+  const usbReasons = deviceOnboarding().provisioningUsbFlashDisabledReasons();
+  const usbReady = usbReasons.length === 0;
+  const reason = usbReady ? "" : `Noch erforderlich: ${usbReasons.join(" · ")}`;
+  provisioningFlashDialog ||= window.GerNetiXFlashDialog.create();
+  provisioningFlashDialog.open({
+    title: "Basissoftware flashen",
+    description: "Provisioning verwendet denselben Flash-Auftrag wie IDE und Nachbauprojekte.",
+    artifact: { name: artifact.filename || "merged-firmware.bin", version: artifact.version, sizeBytes: artifact.size_bytes, sha256: artifact.sha256,
+      sourcePath: artifact.source_path, sourceVersion: artifact.source_version },
+    methods: {
+      usb: { enabled: usbReady, reason },
+      ota: { enabled: false, reason: "Die Erstinstallation ist noch nicht OTA-fähig." },
+      flashbox: { enabled: false, reason: "Für diesen Provisioning-Vorgang ist keine FlashBox ausgewählt." },
+    },
+    async onExecute(_method, terminal) {
+      await flashProvisioningBasissoftware({ terminal });
+      terminal.write("ok", "Der gemeinsame Flash-Auftrag ist abgeschlossen. Provisioning bereitet jetzt WLAN und Account-Zuordnung vor.");
+    },
+  });
 }
 
 async function scanProvisioningWifiNetworks() {
@@ -1863,6 +1932,7 @@ function appendIdeTerminal(kind, text) {
   const terminal = document.querySelector("#ideTerminalOutput");
   if (!terminal || !text) return;
   const normalizedText = String(text).replace(/\x1b\[[0-9;]*m/g, "").trim();
+  ideFlashDialog?.write(kind, normalizedText);
   const previous = terminal.querySelector(".terminal-line:last-of-type");
   if (previous?.dataset.message === `${kind}:${normalizedText}`) return;
   if (kind === "running" && previous?.classList.contains("terminal-running")) {

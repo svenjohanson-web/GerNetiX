@@ -1554,16 +1554,14 @@ const DeviceOnboardingController = (() => {
       GerNetiXFlashProgress.render(status, kind, message, percent);
     }
 
-    async function flashProvisioningBasissoftware() {
-      if (state.provisioningUsbFlashRunning) return;
-      updateProvisioningUsbFlashButton();
-      const button = document.querySelector("#flashProvisioningBasissoftwareButton");
-      if (!button || button.disabled) return;
+    async function flashProvisioningBasissoftware({ terminal = null } = {}) {
+      if (state.provisioningUsbFlashRunning) throw new Error("Der Provisioning-Flash läuft bereits.");
+      const disabledReasons = provisioningUsbFlashDisabledReasons();
+      if (disabledReasons.length) throw new Error(`Provisioning noch nicht bereit: ${disabledReasons.join(" · ")}`);
       state.provisioningUsbFlashRunning = true;
       state.provisioningUsbFlashSucceeded = false;
       updateProvisioningUsbFlashButton();
       setProvisioningUsbFlashStatus("running", "Factory-Basissoftware wird geladen...");
-      let transport = null;
       try {
         const firmwareRequest = provisioningFirmwareRequestDetails();
         if (!firmwareRequest) throw new Error("Die Firmware-Konfiguration ist nicht vollstaendig.");
@@ -1571,79 +1569,44 @@ const DeviceOnboardingController = (() => {
         const artifact = availability.requestKey === firmwareRequest.key && availability.state === "available"
           ? availability.artifact
           : await getJson(`/api/platform/provisioning-firmware?profile=${encodeURIComponent(firmwareRequest.profile)}&hardware_profile_id=${encodeURIComponent(firmwareRequest.hardwareProfileId)}&flash_size_mb=${firmwareRequest.flashSizeMb}`);
-        const response = await fetch(artifact.content_url, { credentials: "same-origin" });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.message || `Firmware konnte nicht geladen werden (${response.status}).`);
-        }
-        const firmware = new Uint8Array(await response.arrayBuffer());
-        if (isDaemonPort(state.provisioningSerialPort)) {
-          setProvisioningUsbFlashStatus("running", "Board wird über den GerNetiX Serial Service verbunden...");
-          const probe = await state.serialService.probe(state.provisioningSerialPort.path);
-          const result = await state.serialService.flash({
-            port: state.provisioningSerialPort.path,
-            chip: "auto",
-            files: [{ name: artifact.filename || "merged-firmware.bin", data: firmware, address: Number(artifact.flash_offset || 0) }],
-            flashMode: artifact.flash_mode || "dio",
-            flashFreq: artifact.flash_freq || "40m",
-            flashSize: artifact.flash_size || "keep",
-            onProgress(job) {
-              GerNetiXFlashProgress.renderJob("#provisioningUsbFlashStatus", job, `${probe.chipName || "ESP32"}: Basissoftware wird geschrieben...`);
-            },
-          });
-          if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash fehlgeschlagen.");
-          state.provisioningUsbFlashSucceeded = true;
-          setProvisioningUsbFlashStatus("ok", `Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wurde erfolgreich geflasht. WLAN-Einrichtung wird vorbereitet.`);
-          void waitForProvisioningSerialReady();
-          prepareProvisioningWifiSetup().catch((setupError) => {
-            setProvisioningWifiStatus("error", `${setupError.message || "Sichere Account-Zuordnung konnte noch nicht vorbereitet werden."} WLANs können weiterhin lokal gesucht werden.`);
-          });
-          renderNetworkDiscovery();
-          return;
-        }
-        const { ESPLoader, Transport } = await loadIdeEsptoolModule();
-        transport = new Transport(state.provisioningSerialPort, false);
-        const loader = new ESPLoader({
-          transport,
-          baudrate: 115200,
-          terminal: { clean() {}, writeLine() {}, write() {} },
-          debugLogging: false,
-        });
-        setProvisioningUsbFlashStatus("running", "Board wird verbunden...");
-        const portInfo = state.provisioningSerialPort.getInfo ? state.provisioningSerialPort.getInfo() : {};
-        const usesNativeUsbSerialJtag = portInfo.usbVendorId === 0x303A && portInfo.usbProductId === 0x1001;
-        const chipName = await loader.main(usesNativeUsbSerialJtag ? "usb_reset" : "default_reset");
-        await loader.writeFlash({
-          fileArray: [{ data: firmware, address: Number(artifact.flash_offset || 0) }],
-          flashMode: artifact.flash_mode || "dio",
-          flashFreq: artifact.flash_freq || "40m",
-          flashSize: artifact.flash_size || "keep",
-          eraseAll: false,
-          compress: true,
-          reportProgress: (_index, written, total) => {
-            const percent = Math.min(100, Math.round((written / Math.max(total, 1)) * 100));
-            setProvisioningUsbFlashStatus("running", `${chipName || "ESP32"}: Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wird geschrieben`, percent);
+        const displayArtifact = {
+          name: artifact.filename || "merged-firmware.bin",
+          version: artifact.version,
+          sizeBytes: artifact.size_bytes,
+          sha256: artifact.sha256,
+          sourcePath: artifact.source_path,
+          sourceVersion: artifact.source_version,
+        };
+        terminal?.setArtifact?.(displayArtifact);
+        await window.GerNetiXFlashExecutor.executeUsb({
+          port: isDaemonPort(state.provisioningSerialPort)
+            ? { ...state.provisioningSerialPort, source: "gernetix_serial_service" }
+            : state.provisioningSerialPort,
+          serialService: state.serialService,
+          artifact: displayArtifact,
+          files: [{
+            name: displayArtifact.name,
+            url: artifact.content_url,
+            address: Number(artifact.flash_offset || 0),
+            sizeBytes: artifact.size_bytes,
+            sha256: artifact.sha256,
+            sourcePath: artifact.source_path,
+            sourceVersion: artifact.source_version,
+          }],
+          loadEsptool: loadIdeEsptoolModule,
+          validateChip(chipName) {
+            const expected = String(firmwareRequest.processorVariant || "ESP32").replace(/[\s_-]/g, "").toLowerCase();
+            const actual = String(chipName || "").replace(/[\s_-]/g, "").toLowerCase();
+            if (expected.includes("esp32s3") && !actual.includes("esp32s3")) throw new Error(`Erwartet wird ein ESP32-S3, erkannt wurde ${chipName || "ein anderes Board"}. Es wird nichts geschrieben.`);
+            if (expected.includes("esp32c6") && !actual.includes("esp32c6")) throw new Error(`Erwartet wird ein ESP32-C6, erkannt wurde ${chipName || "ein anderes Board"}. Es wird nichts geschrieben.`);
           },
-        });
-        setProvisioningUsbFlashStatus("running", "Firmware geschrieben. Board wird neu gestartet...");
-        // The USB-JTAG reset sequence used before `loader.main("usb_reset")`
-        // enters download mode.  To leave it, release the boot pin, pulse
-        // reset, then release reset again: the same electrical sequence as a
-        // manual reset button press while GPIO0 is not held low.
-        if (usesNativeUsbSerialJtag) {
-          await transport.setDTR(false);
-          await transport.setRTS(true);
-          await delay(100);
-          await transport.setRTS(false);
-          await delay(300);
-        } else {
-          await loader.after("hard_reset");
-        }
-        await transport.disconnect();
-        transport = null;
-        // Der USB-Port wird erst bei der konkreten WLAN-Abfrage geöffnet. Das
-        // verhindert, dass ein noch auslaufender Bootloader-Handle den Flash-
-        // Ablauf blockiert.
+          nativeUsbReset: true,
+          flash: { mode: artifact.flash_mode, frequency: artifact.flash_freq, size: artifact.flash_size },
+          successMessage: `Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wurde erfolgreich geflasht.`,
+          onProgress(percent) {
+            if (Number.isFinite(percent)) setProvisioningUsbFlashStatus("running", `Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wird geschrieben`, percent);
+          },
+        }, terminal || {});
         state.provisioningUsbFlashSucceeded = true;
         setProvisioningUsbFlashStatus("ok", `Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wurde erfolgreich geflasht. WLAN-Einrichtung wird vorbereitet.`);
         void waitForProvisioningSerialReady();
@@ -1652,8 +1615,8 @@ const DeviceOnboardingController = (() => {
         });
         renderNetworkDiscovery();
       } catch (error) {
-        try { await transport?.disconnect(); } catch {}
         setProvisioningUsbFlashStatus("error", `${error.message || "USB-Flash fehlgeschlagen."} Das Board kann erneut geflasht oder unter Recovery gerettet werden.`);
+        throw error;
       } finally {
         state.provisioningUsbFlashRunning = false;
         updateProvisioningUsbFlashButton();
@@ -1877,6 +1840,7 @@ const DeviceOnboardingController = (() => {
       scanProvisioningWifiNetworks,
       selectProvisioningSerialPort,
       flashProvisioningBasissoftware,
+      provisioningUsbFlashDisabledReasons,
       renderNetworkDiscovery,
       searchDevicesForInventory,
       selectDeviceDiscoveryMethod,

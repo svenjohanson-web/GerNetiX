@@ -13,25 +13,23 @@ const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"
 
 test("build and flash actions expose their concrete prerequisite without becoming inert", () => {
   assert.match(html, /id="ideActionReason"/);
-  assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 3);
+  assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 2);
   assert.match(html, /id="ideBuildConsole"/);
   assert.match(html, /flash-progress\.js\?v=20260802-flash-progress/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
-  assert.match(html, /id="usbFlashButton"[^>]*>USB</);
-  assert.doesNotMatch(html, /id="usbFlashButton"[^>]*aria-describedby="ideActionReason"/);
-  assert.match(html, /id="otaFlashButton"[^>]*>OTA</);
-  assert.match(html, /id="flashBoxFlashButton"[^>]*>FlashBox</);
+  assert.match(html, /id="flashButton"[^>]*aria-describedby="ideActionReason"[^>]*>Flashen…</);
+  assert.doesNotMatch(html, /id="usbFlashButton"|id="otaFlashButton"|id="flashBoxFlashButton"/);
   assert.match(app, /function ideActionUnavailableReason/);
   assert.match(app, /Für OTA ist kein kompatibles Board im Inventar/);
   assert.match(app, /Build und direkter USB-Flash funktionieren auch ohne diese Zuordnung/);
   assert.match(app, /meldet den OTA-Status/);
   assert.match(app, /function updateBuildActionButton[\s\S]*button\.disabled = false/);
-  assert.match(app, /usbButton\.disabled = !supportedFlashTarget/);
-  assert.match(app, /otaButton\.disabled = !supportedFlashTarget \|\| !allocated/);
-  assert.match(app, /flashBoxButton\.disabled = !supportedFlashTarget \|\| !flashboxes\.length/);
+  assert.match(app, /flashButton\.disabled = !supportedFlashTarget/);
+  assert.match(app, /ota:\s*\{ enabled: flashable && otaReady, reason:/);
+  assert.match(app, /flashbox:\s*\{ enabled: flashable && flashboxes\.length > 0, reason:/);
   assert.match(html, /id="checkOtaConnectivityButton"/);
-  assert.match(app, /Direkter USB-Flash verwendet die Projekt-Boardkonfiguration/);
+  assert.match(app, /Öffnet den einheitlichen Flash-Dialog/);
   assert.match(app, /navigator\.serial\.requestPort/);
   assert.match(app, /flashBuildViaSerialService/);
   assert.match(app, /state\.serialService\.flash/);

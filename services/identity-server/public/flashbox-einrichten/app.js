@@ -8,11 +8,12 @@ const state = {
   hardwareAcknowledged: false,
 };
 const expected = { chip: "ESP32-S3" };
+const flashDialog = window.GerNetiXFlashDialog.create();
 
 const $ = (selector) => document.querySelector(selector);
 $("#autoSearchButton").addEventListener("click", () => findFlashbox(true));
 $("#manualPortButton").addEventListener("click", () => findFlashbox(false));
-$("#flashButton").addEventListener("click", flashInitialImage);
+$("#flashButton").addEventListener("click", openFlashDialog);
 $("#inventoryLaterButton").addEventListener("click", () => { $("#inventoryLaterStatus").textContent = "Kein Problem. Du kannst die FlashBox später unter Geräte → Inventar mit deinem Account verbinden."; });
 $("#hardwareConfirmation").addEventListener("change", updateFlashButton);
 $("#hardwareCheckContinueButton").addEventListener("click", confirmHardwareCheck);
@@ -160,9 +161,24 @@ async function probeEsp32S3(port) {
   }
 }
 
-async function flashInitialImage() {
+function openFlashDialog() {
+  if (!state.release) return;
+  flashDialog.open({
+    title: "FlashBox-Initialimage flashen",
+    description: "Das freigegebene Initialimage wird nach der Hardwareprüfung über den zentralen GerNetiX-Flashprozess geschrieben.",
+    artifact: { name: state.release.file_name, version: state.release.version, sizeBytes: state.release.size_bytes, sha256: state.release.sha256 },
+    methods: {
+      usb: { enabled: Boolean(state.port && state.probe && state.hardwareAcknowledged && $("#hardwareConfirmation").checked), reason: "USB-Hardwareprüfung und Bestätigung müssen abgeschlossen sein." },
+      ota: { enabled: false, reason: "Ein neues FlashBox-Board besitzt noch keine OTA-Verbindung." },
+      flashbox: { enabled: false, reason: "Eine FlashBox kann ihr eigenes Initialimage nicht über eine andere FlashBox erhalten." },
+    },
+    async onExecute(_method, terminal) { await flashInitialImage(terminal.write); },
+  });
+}
+
+async function flashInitialImage(log = () => {}) {
   if (!state.port || !state.probe || !state.release || !$("#hardwareConfirmation").checked) return;
-  setBusy(true); showOnlyStage(3); markActive("stepFlash"); status("#flashStatus", "running", "Initialimage wird geladen und gepr&uuml;ft …");
+  setBusy(true); showOnlyStage(3); markActive("stepFlash"); status("#flashStatus", "running", "Initialimage wird geladen und gepr&uuml;ft …"); log("running", "Initialimage wird geladen und geprüft …");
   let transport;
   try {
     const response = await fetch(state.release.content_url, { credentials: "same-origin", cache: "no-store" });
@@ -175,11 +191,12 @@ async function flashInitialImage() {
         files: [{ name: state.release.file_name || "flashbox-initial.bin", data: bytes, address: 0 }],
         onProgress(job) {
           const progressLine = [...(job.logs || [])].reverse().find((line) => /Writing at|%|Hash of data verified/i.test(line));
-          status("#flashStatus", "running", progressLine || "Initialimage wird über den GerNetiX Serial Helper geschrieben …");
+          const message = progressLine || "Initialimage wird über den GerNetiX Serial Helper geschrieben …"; status("#flashStatus", "running", message); log("running", message);
         },
       });
       if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash über den Serial Helper fehlgeschlagen.");
       status("#flashStatus", "ok", `FlashBox-Initialimage ${state.release.version} wurde über den Serial Helper erfolgreich geschrieben.`);
+      log("ok", `FlashBox-Initialimage ${state.release.version} wurde erfolgreich geschrieben.`);
       $("#inventoryNext").hidden = false;
       markDone("stepFlash");
       markActive("stepAccount");
@@ -191,13 +208,14 @@ async function flashInitialImage() {
     const info = state.port.getInfo?.() || {};
     const chipName = await loader.main(info.usbVendorId === 0x303A && info.usbProductId === 0x1001 ? "usb_reset" : "default_reset");
     if (!/ESP32[- ]?S3/i.test(chipName || "")) throw new Error("USB-Verbindung hat kein ESP32-S3 gemeldet. Es wird nichts geschrieben.");
-    await loader.writeFlash({ fileArray: [{ data: bytes, address: 0 }], flashMode: "dio", flashFreq: "40m", flashSize: "keep", eraseAll: false, compress: true, reportProgress: (_index, written, total) => status("#flashStatus", "running", `Initialimage wird geschrieben: ${Math.min(100, Math.round(written / Math.max(total, 1) * 100))} %`) });
+    await loader.writeFlash({ fileArray: [{ data: bytes, address: 0 }], flashMode: "dio", flashFreq: "40m", flashSize: "keep", eraseAll: false, compress: true, reportProgress: (_index, written, total) => { const message = `Initialimage wird geschrieben: ${Math.min(100, Math.round(written / Math.max(total, 1) * 100))} %`; status("#flashStatus", "running", message); log("running", message); } });
     await loader.after("hard_reset");
     status("#flashStatus", "ok", `FlashBox-Initialimage ${state.release.version} wurde erfolgreich geschrieben. Als N&auml;chstes kannst du die FlashBox nach der Anmeldung aktivieren.`);
+    log("ok", `FlashBox-Initialimage ${state.release.version} wurde erfolgreich geschrieben.`);
     $("#inventoryNext").hidden = false;
     markDone("stepFlash");
     markActive("stepAccount");
-  } catch (error) { status("#flashStatus", "error", error.message || "USB-Flash fehlgeschlagen."); }
+  } catch (error) { const message = error.message || "USB-Flash fehlgeschlagen."; status("#flashStatus", "error", message); log("error", message); }
   finally { try { await transport?.disconnect(); } catch {} try { if (state.port?.readable || state.port?.writable) await state.port.close(); } catch {} setBusy(false); updateFlashButton(); }
 }
 

@@ -165,7 +165,7 @@ button:disabled {
   color: var(--muted);
   background: #f8fafc;
 }
-button.primary, .entry-card.primary, #saveSourceButton, #buildButton, #usbFlashButton, #openIdeButton, #lessonNextButton {
+button.primary, .entry-card.primary, #saveSourceButton, #buildButton, #flashButton, #openIdeButton, #lessonNextButton {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -5751,7 +5751,7 @@ button.primary,
 #saveSourceButton,
 #buildButton,
 #cleanBuildButton,
-#usbFlashButton,
+#flashButton,
 #openIdeButton,
 #lessonNextButton { border-color: #0891b2; background: #0e7490; color: #ecfeff; }
 #buildButton.build-cancel-active {

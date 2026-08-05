@@ -259,9 +259,7 @@ document.querySelector("#ideSoftwareUnitSelect").addEventListener("change", (eve
   state.activeSoftwareUnitIds[state.activeProjectId] = event.target.value;
   updateIdeProjectTools(projectById(state.activeProjectId));
 });
-document.querySelector("#usbFlashButton").addEventListener("click", () => startUsbFlash());
-document.querySelector("#otaFlashButton").addEventListener("click", () => startOtaFlash());
-document.querySelector("#flashBoxFlashButton").addEventListener("click", () => startFlashBoxFlash());
+document.querySelector("#flashButton").addEventListener("click", openIdeFlashDialog);
 document.querySelector("#checkOtaConnectivityButton").addEventListener("click", checkAllocatedDeviceConnectivity);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
@@ -345,7 +343,7 @@ document.querySelector("#scanProvisioningSerialPortsButton").addEventListener("c
 document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", selectProvisioningSerialPort);
 document.querySelector("#provisioningSerialServicePortSelect").addEventListener("change", selectProvisioningSerialPort);
 document.querySelector("#checkProvisioningSerialPortButton").addEventListener("click", identifyEsp32Bootloader);
-document.querySelector("#flashProvisioningBasissoftwareButton").addEventListener("click", flashProvisioningBasissoftware);
+document.querySelector("#flashProvisioningBasissoftwareButton").addEventListener("click", openProvisioningFlashDialog);
 document.querySelector("#scanProvisioningWifiButton").addEventListener("click", scanProvisioningWifiNetworks);
 document.querySelector("#connectProvisioningWifiButton").addEventListener("click", connectProvisioningWifi);
 document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);

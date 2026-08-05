@@ -111,10 +111,12 @@ class PostgresPublicDemoRepository {
   getFirmware(demoId,version) { return this.getAsset(demoId,version,"firmware"); }
   async getFlashManifest(demoId,version) {
     await this.getPublicDemo(demoId);
+    const release=(await this.pool.query(`SELECT source_path,source_version FROM public_demo_releases WHERE demo_id=$1 AND version=$2`,[demoId,version])).rows[0];
+    if(!release) throw new PublicDemoError("release_not_found","Der vollständige Flash-Release wurde nicht gefunden.",404);
     const assets=(await this.pool.query(`SELECT asset_id,file_name,flash_offset,size_bytes::bigint AS size_bytes,sha256
       FROM public_demo_release_assets WHERE demo_id=$1 AND version=$2 ORDER BY flash_offset`,[demoId,version])).rows;
     if(!hasRequiredAssets(assets)) throw new PublicDemoError("release_not_found","Der vollständige Flash-Release wurde nicht gefunden.",404);
-    return {demo_id:demoId,version,chip:"esp32s3",flash_mode:"dio",flash_freq:"80m",flash_size:"16MB",
+    return {demo_id:demoId,version,source_path:release.source_path,source_version:release.source_version,chip:"esp32s3",flash_mode:"dio",flash_freq:"80m",flash_size:"16MB",
       assets:assets.map((a)=>({...a,size_bytes:Number(a.size_bytes),download_url:`/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(version)}/assets/${a.asset_id}`}))};
   }
   async getAsset(demoId,version,assetId) {

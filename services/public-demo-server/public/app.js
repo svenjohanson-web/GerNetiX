@@ -1,210 +1,111 @@
 const DEMO_ID = "touch-spielesammlung";
 const title = document.querySelector("#flash-title");
-const portStep = document.querySelector("#port-step");
-const portButton = document.querySelector("#choose-port");
-const portStatus = document.querySelector("#port-status");
-const flashStep = document.querySelector("#flash-step");
-const flashButton = document.querySelector("#flash-button");
-const flashStatus = document.querySelector("#flash-status");
-const serialServicePort = document.querySelector("#serial-service-port");
-const transportButtons = Array.from(document.querySelectorAll("[data-transport]"));
-const usbTransport = document.querySelector("#usb-transport");
-const accountTransport = document.querySelector("#account-transport");
-const accountTransportCopy = document.querySelector("#account-transport-copy");
-const accountTransportLink = document.querySelector("#account-transport-link");
-const serialSupportDialog = document.querySelector("#serial-support-dialog");
-const serialSupportCopy = document.querySelector("#serial-support-copy");
-const macSerialHelperOption = document.querySelector("#mac-serial-helper-option");
+const openFlashButton = document.querySelector("#open-flash-dialog");
+const flashEntryStatus = document.querySelector("#flash-entry-status");
 const serialService = window.GerNetiXSerialService?.create?.() || null;
+const flashDialog = window.GerNetiXFlashDialog.create();
 let selectedDemo = null;
 let selectedPort = null;
+let releaseUnavailableReason = "";
 
 loadGameCollection();
 
-transportButtons.forEach((button) => button.addEventListener("click", () => selectTransport(button.dataset.transport)));
-serialSupportDialog.addEventListener("click", (event) => {
-  if (event.target === event.currentTarget || event.target.closest("[data-close-serial-support]")) {
-    closeSerialSupportDialog();
-  }
-});
-
-function selectTransport(transport) {
-  const isUsb = transport === "usb";
-  transportButtons.forEach((button) => {
-    const selected = button.dataset.transport === transport;
-    button.classList.toggle("active", selected);
-    button.setAttribute("aria-pressed", String(selected));
-  });
-  usbTransport.hidden = !isUsb;
-  accountTransport.hidden = isUsb;
-  if (isUsb) return;
-
-  const isOta = transport === "ota";
-  accountTransportCopy.textContent = isOta
-    ? "OTA ist für ein Board gedacht, das bereits mit GerNetiX eingerichtet, im WLAN und online ist. Nach der Anmeldung wählst du dieses Board aus deinem Inventar aus."
-    : "Die FlashBox übernimmt den USB-Flash am Zielgerät. Nach der Anmeldung wählst du deine inventarisierte FlashBox und das Zielboard aus.";
-  const next = `/app/dashboard/?install=${encodeURIComponent(DEMO_ID)}&transport=${transport}`;
-  accountTransportLink.href = `/app/auth/?next=${encodeURIComponent(next)}`;
-  accountTransportLink.textContent = isOta ? "Anmelden und OTA vorbereiten" : "Anmelden und FlashBox auswählen";
-}
-
 async function loadGameCollection() {
+  setEntryEnabled(false, "Release wird geprüft …");
   try {
-    const response = await fetch(`api/public/demos/${DEMO_ID}`);
-    if (!response.ok) throw new Error("Release nicht verfügbar");
+    const response = await fetch(`api/public/demos/${DEMO_ID}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Release nicht verfügbar (HTTP ${response.status})`);
     selectedDemo = await response.json();
     const release = selectedDemo.releases?.[0];
     if (!release) throw new Error("Kein veröffentlichter Release vorhanden");
     title.textContent = `S3 Touch-Spielesammlung installieren · Version ${release.version}`;
-    portButton.disabled = false;
-    portStatus.textContent = "Wähle jetzt den COM-Port des angeschlossenen Boards.";
-  } catch {
-    portStatus.textContent = "Die Spielesammlung ist gerade nicht verfügbar. Bitte versuche es später erneut.";
+    setEntryEnabled(true, `Release ${release.version} ist bereit. Flashen öffnet den gemeinsamen GerNetiX-Flashdialog.`);
+  } catch (error) {
+    releaseUnavailableReason = error.message || "Die Spielesammlung ist gerade nicht verfügbar.";
+    setEntryEnabled(true, `Flashdialog verfügbar. Der Release fehlt noch: ${releaseUnavailableReason}`);
   }
 }
 
-portButton.addEventListener("click", async () => {
-  if (!navigator.serial) {
-    await selectSerialServicePort();
-    return;
-  }
-  try {
+openFlashButton.addEventListener("click", () => {
+  const release = selectedDemo?.releases?.[0];
+  const releaseReady = Boolean(release);
+  const missingReleaseReason = `Kein veröffentlichter Release verfügbar${releaseUnavailableReason ? ` (${releaseUnavailableReason})` : ""}.`;
+  flashDialog.open({
+    title: "S3 Touch-Spielesammlung flashen",
+    description: "Der veröffentlichte Release ist für das ESP32-S3 ES3C28P Touch-Board gebaut. Wähle den Übertragungsweg.",
+    artifact: releaseReady
+      ? { name: release.firmware_file_name || "firmware.bin", version: release.version, sizeBytes: release.firmware_size_bytes, sha256: release.firmware_sha256 }
+      : { name: "Noch keine Flash-Datei veröffentlicht" },
+    methods: {
+      usb: { enabled: releaseReady, reason: missingReleaseReason },
+      ota: { enabled: releaseReady, reason: missingReleaseReason },
+      flashbox: { enabled: releaseReady, reason: missingReleaseReason },
+    },
+    async onExecute(method, terminal) {
+      if (method === "usb") {
+        await ensureUsbPort(terminal.write);
+        await flashSelectedDemo(terminal.write, terminal.setArtifact);
+        return;
+      }
+      const next = `/app/dashboard/?install=${encodeURIComponent(DEMO_ID)}&transport=${method}`;
+      terminal.write("running", method === "ota"
+        ? "Für OTA wird jetzt das online erreichbare Board aus deinem Inventar ausgewählt."
+        : "Für FlashBox wird jetzt deine inventarisierte FlashBox mit Zielboard ausgewählt.");
+      window.location.assign(`/app/auth/?next=${encodeURIComponent(next)}`);
+    },
+  });
+});
+
+async function ensureUsbPort(log) {
+  if (selectedPort) return selectedPort;
+  if (navigator.serial) {
+    log("running", "USB-Gerät im Browser auswählen …");
     selectedPort = await navigator.serial.requestPort();
-    const info = selectedPort.getInfo();
-    portStatus.textContent = `COM-Port ausgewählt (USB ${hex(info.usbVendorId)}:${hex(info.usbProductId)}).`;
-    flashStep.hidden = false;
-    flashButton.disabled = false;
-    flashStatus.textContent = "Der Port ist ausgewählt. Die Spielesammlung kann jetzt geflasht werden.";
-  } catch (error) {
-    portStatus.textContent = error.name === "NotFoundError" ? "Es wurde kein COM-Port ausgewählt." : "Der COM-Port konnte nicht geöffnet werden.";
+    return selectedPort;
   }
-});
-
-async function selectSerialServicePort() {
-  portButton.disabled = true;
-  portStatus.textContent = "Installierter GerNetiX Serial Helper wird geprüft …";
-  try {
-    if (!serialService || !await serialService.available()) {
-      portStatus.textContent = "Kein laufender Serial Helper gefunden. Wähle im Dialog die Installation oder einen kompatiblen Browser.";
-      showSerialSupportDialog();
-      return;
-    }
-    const ports = await serialService.ports();
-    if (!ports.length) {
-      portStatus.textContent = "Der GerNetiX Serial Helper läuft, findet aber noch kein USB-Gerät. Prüfe Datenkabel und Verbindung.";
-      return;
-    }
-    renderSerialServicePorts(ports);
-    const selectedPath = serialServicePort.value;
-    const port = ports.find((item) => item.path === selectedPath) || ports[0];
-    selectedPort = { ...port, source: "gernetix_serial_service" };
-    const probe = await serialService.probe(selectedPort.path);
-    portStatus.textContent = `${probe.chipName || "USB-Board"} über den installierten GerNetiX Serial Helper erkannt (${selectedPort.path}).`;
-    flashStep.hidden = false;
-    flashButton.disabled = false;
-    flashStatus.textContent = "Der lokale Serial Helper ist bereit. Die Spielesammlung kann jetzt geflasht werden.";
-  } catch (error) {
-    portStatus.textContent = error.message || "Der installierte Serial Helper konnte den USB-Port nicht prüfen.";
-  } finally {
-    portButton.disabled = !selectedDemo;
-  }
+  if (!serialService || !await serialService.available()) throw new Error("Kein laufender GerNetiX Serial Helper gefunden. Installiere den Helper oder verwende Chrome/Edge.");
+  const ports = await serialService.ports();
+  if (!ports.length) throw new Error("Der Serial Helper findet kein USB-Gerät. Prüfe Datenkabel und Verbindung.");
+  if (ports.length > 1) throw new Error("Mehrere USB-Geräte gefunden. Trenne die anderen Geräte vorübergehend und starte erneut.");
+  selectedPort = { ...ports[0], source: "gernetix_serial_service" };
+  const probe = await serialService.probe(selectedPort.path);
+  validateChip(probe.chipName);
+  log("ok", `${probe.chipName || "ESP32-S3"} erkannt (${selectedPort.path}).`);
+  return selectedPort;
 }
 
-function renderSerialServicePorts(ports) {
-  serialServicePort.innerHTML = ports.map((port) =>
-    `<option value="${escapeHtml(port.path)}">${escapeHtml(port.displayName || port.path)}</option>`).join("");
-  serialServicePort.hidden = ports.length < 2;
-}
-
-function showSerialSupportDialog() {
-  const mac = isMacPlatform();
-  macSerialHelperOption.hidden = !mac;
-  serialSupportCopy.textContent = mac
-    ? "Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Auf dem Mac hast du zwei Möglichkeiten:"
-    : "Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Verwende Chrome oder Edge auf einem Desktop-Rechner.";
-  if (typeof serialSupportDialog.showModal === "function") serialSupportDialog.showModal();
-  else serialSupportDialog.setAttribute("open", "");
-}
-
-function closeSerialSupportDialog() {
-  if (typeof serialSupportDialog.close === "function") serialSupportDialog.close();
-  else serialSupportDialog.removeAttribute("open");
-}
-
-function isMacPlatform() {
-  const platform = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
-  return /Mac/i.test(platform);
-}
-
-flashButton.addEventListener("click", () => {
-  if (!selectedPort || !selectedDemo) return;
-  flashStatus.textContent = "Flash-Manifest wird geladen …";
-  flashSelectedDemo().catch((error) => { flashStatus.textContent = `Flash fehlgeschlagen: ${error.message || "unbekannter Fehler"}`; });
-});
-
-async function flashSelectedDemo() {
+async function flashSelectedDemo(log, setArtifact) {
   const release = selectedDemo.releases?.[0];
   if (!release) throw new Error("Kein veröffentlichter Release vorhanden.");
+  log("running", "Flash-Manifest wird geladen …");
   const manifestResponse = await fetch(`api/public/demos/${DEMO_ID}/releases/${encodeURIComponent(release.version)}/flash-manifest`);
   if (!manifestResponse.ok) throw new Error("Flash-Manifest konnte nicht geladen werden.");
   const manifest = await manifestResponse.json();
-  flashStatus.textContent = "Board wird verbunden …";
-  const fileArray = await Promise.all(manifest.assets.map(async (asset) => {
-    const relativeAssetPath = asset.download_url.replace(/^\//, "");
-    const assetUrl = new URL(relativeAssetPath, new URL(".", location.href));
-    const response = await fetch(assetUrl);
-    if (!response.ok) throw new Error(`${asset.file_name} konnte nicht geladen werden (${response.status}).`);
-    const data = new Uint8Array(await response.arrayBuffer());
-    if (data.byteLength !== asset.size_bytes) throw new Error(`${asset.file_name} hat eine unerwartete Größe.`);
-    return { name: asset.file_name, address: asset.flash_offset, data };
-  }));
-  if (selectedPort.source === "gernetix_serial_service") {
-    const result = await serialService.flash({
-      port: selectedPort.path,
-      files: fileArray,
-      onProgress(job) {
-        const progressLine = [...(job.logs || [])].reverse().find((line) => /Writing at|%|Hash of data verified/i.test(line));
-        flashStatus.textContent = progressLine || "Spielesammlung wird über den GerNetiX Serial Helper geschrieben …";
-      },
-    });
-    if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash über den Serial Helper fehlgeschlagen.");
-    flashStatus.textContent = "Spielesammlung wurde über den GerNetiX Serial Helper erfolgreich geflasht und neu gestartet.";
-    return;
-  }
-  const { Transport, ESPLoader } = await import("/vendor/esptool-js/bundle.js");
-  const transport = new Transport(selectedPort, false);
-  const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean: () => {}, writeLine: () => {}, write: () => {} } });
-  await loader.main();
-  flashStatus.textContent = "Übertragung wird vorbereitet …";
-  await loader.writeFlash({
-    fileArray,
-    flashMode: manifest.flash_mode,
-    flashFreq: manifest.flash_freq,
-    flashSize: manifest.flash_size,
-    compress: true,
-    reportProgress(fileIndex, written, total) {
-      const asset = manifest.assets[fileIndex];
-      const assetPercent = total ? Math.round((written / total) * 100) : 0;
-      const overallPercent = Math.min(99, Math.round(((fileIndex + (total ? written / total : 0)) / manifest.assets.length) * 100));
-      flashStatus.textContent = `Übertrage ${asset.file_name}: ${assetPercent}% (${overallPercent}% gesamt) …`;
-    },
-  });
-  flashStatus.textContent = "Board wird neu gestartet …";
-  const resetSucceeded = await resetFlashedBoard(loader);
-  await transport.disconnect();
-  flashStatus.textContent = resetSucceeded
-    ? "Spielfläche wurde erfolgreich auf das Board geflasht und neu gestartet."
-    : "Spielfläche wurde erfolgreich geflasht. Bitte drücke jetzt einmal die RESET-Taste am Board.";
+  const mainAsset = manifest.assets.find((asset) => asset.file_name === "firmware.bin") || manifest.assets[0];
+  const artifact = { name: mainAsset.file_name, version: release.version, sizeBytes: mainAsset.size_bytes, sha256: mainAsset.sha256,
+    sourcePath: manifest.source_path, sourceVersion: manifest.source_version };
+  setArtifact(artifact);
+  await window.GerNetiXFlashExecutor.executeUsb({
+    port: selectedPort,
+    serialService,
+    artifact,
+    files: manifest.assets.map((asset) => ({
+      name: asset.file_name,
+      url: new URL(asset.download_url.replace(/^\//, ""), new URL(".", location.href)),
+      address: asset.flash_offset,
+      sizeBytes: asset.size_bytes,
+      sha256: asset.sha256,
+      sourcePath: manifest.source_path,
+      sourceVersion: manifest.source_version,
+    })),
+    loadEsptool: () => import("/vendor/esptool-js/bundle.js"),
+    validateChip,
+    resetStrategy: "custom-reset",
+    nativeUsbReset: false,
+    flash: { mode: manifest.flash_mode, frequency: manifest.flash_freq, size: manifest.flash_size },
+    successMessage: "Spielesammlung wurde erfolgreich geflasht und neu gestartet.",
+  }, { write: log, setArtifact });
 }
 
-async function resetFlashedBoard(loader) {
-  try {
-    await loader.after("custom_reset", false, "D0|R1|W120|R0|W120");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function hex(value) { return value === undefined ? "unbekannt" : `0x${value.toString(16).padStart(4, "0")}`; }
-function escapeHtml(value) { return String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]); }
+function validateChip(chipName) { if (!/ESP32[- ]?S3/i.test(chipName || "")) throw new Error("Das verbundene Gerät ist kein ESP32-S3. Es wird nichts geschrieben."); }
+function setEntryEnabled(enabled, message) { openFlashButton.disabled = !enabled; openFlashButton.title = enabled ? "" : message; flashEntryStatus.textContent = message; }

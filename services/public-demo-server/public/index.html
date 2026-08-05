@@ -9,6 +9,7 @@
     <title>S3 Touch-Spielesammlung · GerNetiX</title>
     <link rel="stylesheet" href="/landing.css?v=20260726-responsive-1">
     <link rel="stylesheet" href="app.css?v=20260726-responsive-1">
+    <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260804-unified-flash-1">
   </head>
   <body>
     <header class="site-header">
@@ -30,56 +31,16 @@
       <section class="flash-flow" aria-labelledby="flash-title">
         <p class="eyebrow">Installation</p>
         <h2 id="flash-title">S3 Touch-Spielesammlung installieren</h2>
-        <p class="step-status">Wähle zuerst den Weg, der zu deinem Board und deinem Arbeitsplatz passt.</p>
-        <div class="flash-transport-choice" role="group" aria-label="Flash-Weg auswählen">
-          <button class="transport-card active" type="button" data-transport="usb" aria-pressed="true"><strong>Direktes USB</strong><span>Board ist an diesem Computer angeschlossen.</span></button>
-          <button class="transport-card" type="button" data-transport="ota" aria-pressed="false"><strong>OTA über WLAN</strong><span>Für bereits eingerichtete, online erreichbare Boards.</span></button>
-          <button class="transport-card" type="button" data-transport="flashbox" aria-pressed="false"><strong>Mit FlashBox</strong><span>Das Zielboard steckt am USB-Port deiner FlashBox.</span></button>
-        </div>
-        <div id="usb-transport" class="transport-panel">
-          <p class="step-status">Verbinde das Board mit einem Daten-USB-Kabel. WebSerial funktioniert mit Chrome oder Edge auf einem Desktop-PC.</p>
-          <div id="port-step">
-            <select id="serial-service-port" class="serial-service-port" aria-label="USB-Port des installierten Serial Helpers" hidden></select>
-            <button id="choose-port" class="action-button" type="button" disabled>COM-Port wählen</button>
-            <p id="port-status" class="step-status" aria-live="polite">Release wird geprüft …</p>
-          </div>
-          <div id="flash-step" hidden>
-            <button id="flash-button" class="action-button" type="button" disabled>Spielesammlung flashen</button>
-            <p id="flash-status" class="step-status" aria-live="polite"></p>
-          </div>
-        </div>
-        <div id="account-transport" class="transport-panel" hidden aria-live="polite">
-          <p id="account-transport-copy" class="step-status"></p>
-          <a id="account-transport-link" class="action-button account-action" href="/app/auth/?next=%2Fapp%2Fdashboard%2F">Anmelden und fortfahren</a>
-        </div>
+        <p class="step-status">Flash-Datei, USB, OTA, FlashBox und alle Statusmeldungen werden im einheitlichen GerNetiX-Flashdialog zusammengeführt.</p>
+        <button id="open-flash-dialog" class="action-button" type="button" aria-describedby="flash-entry-status" disabled>Flashen…</button>
+        <p id="flash-entry-status" class="step-status" aria-live="polite">Release wird geprüft …</p>
       </section>
     </main>
-    <dialog id="serial-support-dialog" class="serial-support-dialog" aria-labelledby="serial-support-title">
-      <div class="serial-support-header">
-        <div>
-          <p class="eyebrow">USB-Verbindung</p>
-          <h2 id="serial-support-title">Wie möchtest du das Board verbinden?</h2>
-        </div>
-        <button class="dialog-button compact" type="button" data-close-serial-support aria-label="Dialog schließen">Schließen</button>
-      </div>
-      <p id="serial-support-copy">Dieser Browser kann nicht direkt auf den USB-Port zugreifen.</p>
-      <section class="serial-support-options">
-        <article id="mac-serial-helper-option" class="recommended">
-          <span class="recommendation">Empfohlen für macOS</span>
-          <h3>GerNetiX Serial Helper</h3>
-          <p>Installiere den GerNetiX Serial Service einmalig. Damit steht dir der lokale USB-/Serial-Zugriff in GerNetiX zur Verfügung.</p>
-          <a class="dialog-button primary" href="/app/downloads/">Serial Helper für macOS laden</a>
-        </article>
-        <article>
-          <h3>Browser mit Web Serial</h3>
-          <p>Öffne diese Spielesammlung in Chrome oder Edge auf deinem Mac und starte den USB-Schritt dort erneut.</p>
-          <button class="dialog-button" type="button" data-close-serial-support>Chrome oder Edge verwenden</button>
-        </article>
-      </section>
-    </dialog>
     <footer class="shell">© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</footer>
     <script src="/landing.js?v=20260719-01"></script>
     <script src="/app/serial-service-client.js?v=20260719-02"></script>
-    <script src="app.js"></script>
+    <script src="/app/unified-flash-dialog.js?v=20260804-unified-flash-1"></script>
+    <script src="/app/unified-flash-executor.js?v=20260804-unified-flash-2"></script>
+    <script src="app.js?v=20260804-unified-flash-2"></script>
   </body>
 </html>

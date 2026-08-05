@@ -55,7 +55,9 @@ function registerDownloadRoutes({
         artifact_id: artifact.id, profile: request.profile, hardware_profile_id: request.hardwareProfileId,
         firmware_build_target_id: artifact.firmwareBuildTargetId, version: artifact.version,
         flash_size_mb: request.flashSizeMb, flash_mode: artifact.flashMode, flash_freq: artifact.flashFreq,
-        flash_size: artifact.flashSize, flash_offset: 0,
+        flash_size: artifact.flashSize, flash_offset: 0, filename: artifact.fileName,
+        size_bytes: artifact.sizeBytes, sha256: artifact.sha256,
+        source_path: artifact.sourcePath, source_version: artifact.sourceVersion,
         content_url: `/api/platform/provisioning-firmware/content?profile=${encodeURIComponent(request.profile)}&hardware_profile_id=${encodeURIComponent(request.hardwareProfileId)}&flash_size_mb=${request.flashSizeMb}`,
       });
     },

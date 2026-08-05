@@ -177,11 +177,14 @@ class SqlitePublicDemoRepository {
   }
 
   getFlashManifest(demoId, version) {
-    this.getPublicDemo(demoId);
+    const demo = this.getPublicDemo(demoId);
+    const release = demo.releases.find((item) => item.version === version);
+    if (!release) throw new PublicDemoError("release_not_found", "Der vollständige Flash-Release wurde nicht gefunden.", 404);
     const assets = this.db.prepare(`SELECT asset_id, file_name, flash_offset, size_bytes, sha256
       FROM public_demo_release_assets WHERE demo_id = ? AND version = ? ORDER BY flash_offset`).all(demoId, version);
     if (!hasRequiredAssets(assets)) throw new PublicDemoError("release_not_found", "Der vollständige Flash-Release wurde nicht gefunden.", 404);
-    return { demo_id: demoId, version, chip: "esp32s3", flash_mode: "dio", flash_freq: "80m", flash_size: "16MB",
+    return { demo_id: demoId, version, source_path: `public-demos/${demoId}`, source_version: release.source_commit_sha || version,
+      chip: "esp32s3", flash_mode: "dio", flash_freq: "80m", flash_size: "16MB",
       assets: assets.map((asset) => ({ ...asset, download_url: `/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(version)}/assets/${asset.asset_id}` })) };
   }
 

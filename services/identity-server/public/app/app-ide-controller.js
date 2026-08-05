@@ -177,12 +177,10 @@ function updateIdeProjectTools(project) {
   const actionReason = ideActionUnavailableReason(project, allocated);
   const buildButton = document.querySelector("#buildButton");
   const cleanBuildButton = document.querySelector("#cleanBuildButton");
-  const usbButton = document.querySelector("#usbFlashButton");
-  const otaButton = document.querySelector("#otaFlashButton");
-  const flashBoxButton = document.querySelector("#flashBoxFlashButton");
+  const flashButton = document.querySelector("#flashButton");
   const flashboxSelect = document.querySelector("#flashboxDeviceSelect");
   const flashboxes = inventoryFlashboxes();
-  [usbButton, otaButton, flashBoxButton, document.querySelector("#checkOtaConnectivityButton")]
+  [flashButton, document.querySelector("#checkOtaConnectivityButton")]
     .forEach((element) => element?.classList.toggle("hidden", !hardwareTools));
   const otaReason = !allocated
     ? "OTA nicht verfügbar: Kein Device zugeordnet."
@@ -195,9 +193,7 @@ function updateIdeProjectTools(project) {
   const unsupportedProjectUnits = projectSoftwareUnits(project).filter((unit) => unit.build_system !== "platformio");
   const flashTargetReason = supportedFlashTarget ? "" : "Flash nicht verfügbar: Das Projekt besitzt keine Software-Einheit mit angeschlossenem Firmware-Runner.";
   cleanBuildButton.disabled = false;
-  usbButton.disabled = !supportedFlashTarget;
-  otaButton.disabled = !supportedFlashTarget || !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
-  flashBoxButton.disabled = !supportedFlashTarget || !flashboxes.length;
+  flashButton.disabled = !supportedFlashTarget;
   flashboxSelect.classList.toggle("hidden", !flashboxes.length);
   flashboxSelect.disabled = !flashboxes.length;
   buildButton.dataset.idleTitle = unsupportedProjectUnits.length
@@ -205,11 +201,7 @@ function updateIdeProjectTools(project) {
     : "Baut alle Software-Einheiten des Projekts als gemeinsamen Gesamtbuild.";
   updateBuildActionButton();
   cleanBuildButton.title = "Löscht die inkrementellen Build-Zustände aller Software-Einheiten dieses Projekts.";
-  usbButton.title = flashTargetReason || "Direkter USB-Flash verwendet die Projekt-Boardkonfiguration und das angeschlossene USB-Gerät.";
-  otaButton.title = flashTargetReason || actionReason || otaReason;
-  flashBoxButton.title = flashTargetReason || actionReason || (!flashboxes.length
-    ? "Keine FlashBox im Inventar verfügbar."
-    : "FlashBox: Der WLAN-zu-USB-Helper flasht das angeschlossene Zielgerät.");
+  flashButton.title = flashTargetReason || "Öffnet den einheitlichen Flash-Dialog für USB, OTA und FlashBox.";
   renderIdeProjectInformation(project);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
 }

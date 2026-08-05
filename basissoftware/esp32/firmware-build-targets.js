@@ -46,6 +46,8 @@ const factoryFirmwareReleases = Object.freeze([
     label: "ESP32 Classic / FULL / 4 MB",
     file_name: "gernetix-esp32-classic-qspi-4mb-full.bin",
     relative_file_path: "esp32-classic-qspi-4mb/full/merged-firmware.bin",
+    source_path: "basissoftware/esp32",
+    source_version: "factory-release-full",
   },
   {
     firmware_build_target_id: "firmware_build_target.esp32_s3_opi_n16r8",
@@ -61,6 +63,8 @@ const factoryFirmwareReleases = Object.freeze([
     flash_size: "16MB",
     file_name: "gernetix-esp32-s3-opi-n16r8-full.bin",
     relative_file_path: "esp32-s3-opi-n16r8/full/merged-firmware.bin",
+    source_path: "basissoftware/esp32",
+    source_version: "0.3.1",
   },
 ]);
 

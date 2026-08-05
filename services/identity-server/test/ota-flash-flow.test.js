@@ -31,8 +31,9 @@ test("IDE can actively probe the allocated board and refresh OTA readiness", () 
   assert.match(server, /reachable: true/);
 });
 
-test("OTA button requires an online and ready device", () => {
-  assert.match(app, /otaButton\.disabled = !supportedFlashTarget \|\| !allocated \|\| allocated\.ota_status !== "ready" \|\| allocated\.connectivity_status !== "online"/);
+test("central flash dialog requires an online and ready device for OTA", () => {
+  assert.match(app, /const otaReady = Boolean\(device && device\.connectivity_status === "online" && device\.ota_status === "ready"\)/);
+  assert.match(app, /ota:\s*\{ enabled: flashable && otaReady, reason:/);
   assert.match(app, /Das zugeordnete Device ist nicht online/);
   assert.match(server, /mode === "build_and_flash" && device\.connectivity_status !== "online"/);
   assert.match(server, /error: "device_not_online"/);

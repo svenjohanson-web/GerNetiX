@@ -10,6 +10,7 @@
   <title>Nexi Sprachassistent nachbauen · GerNetiX</title>
   <link rel="stylesheet" href="/landing.css?v=20260804-disabled-reason-1" />
   <link rel="stylesheet" href="/s3-touch-spielesammlung/app.css?v=20260804-nexi-flash-1" />
+  <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260804-unified-flash-1" />
 </head>
 <body>
   <header class="site-header">
@@ -67,16 +68,9 @@
       <h2 id="flash-title">Nexi auf dein Board bringen</h2>
       <p>Die Firmware ist bereits für das <strong>Waveshare ESP32-S3 AI Smart Speaker Development Board mit 16&nbsp;MB Flash</strong> konfiguriert und gebaut. Verbinde das Board, wähle den USB-Port und starte den Flashvorgang – ohne Konto und ohne eigenen Build.</p>
       <p class="safety"><strong>Achtung:</strong> Das Flashen ersetzt die aktuell installierte Firmware des angeschlossenen Boards. Verwende diesen Release nur für das oben genannte Board.</p>
-      <div id="port-step">
-        <select id="serial-service-port" class="serial-service-port" aria-label="USB-Port des installierten Serial Helpers" hidden></select>
-        <button id="choose-port" class="action-button" type="button" aria-describedby="port-status" disabled>USB-Port wählen</button>
-        <p id="port-status" class="step-status" aria-live="polite">Geprüfter Release wird geladen …</p>
-      </div>
-      <div id="flash-step">
-        <button id="flash-button" class="action-button" type="button" aria-describedby="flash-status" disabled>Nexi Basic jetzt flashen</button>
-        <p id="flash-status" class="step-status disabled-action-reason" aria-live="polite">Noch nicht möglich: Zuerst muss der geprüfte Release geladen und ein USB-Port gewählt werden.</p>
-      </div>
-      <p class="step-status">Chrome oder Edge können USB direkt verwenden. In Safari kann auf macOS der GerNetiX Serial Helper verwendet werden.</p>
+      <button id="open-flash-dialog" class="action-button" type="button" aria-describedby="flash-entry-status" disabled>Flashen…</button>
+      <p id="flash-entry-status" class="step-status disabled-action-reason" aria-live="polite">Noch nicht möglich: Der geprüfte Release wird geladen.</p>
+      <p class="step-status">Im Flash-Dialog werden Flash-Datei, USB, OTA, FlashBox und das gemeinsame Terminal angezeigt.</p>
     </section>
 
     <section class="panel rebuild-usage-guide" aria-labelledby="usage-title">
@@ -124,6 +118,7 @@
   <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav></footer>
   <script src="/landing.js?v=20260731-about-us-1"></script>
   <script src="/app/serial-service-client.js?v=20260719-02"></script>
-  <script src="nexi-flash.js?v=20260804-auto-helper-1"></script>
+  <script src="/app/unified-flash-dialog.js?v=20260804-unified-flash-1"></script>
+  <script src="nexi-flash.js?v=20260804-unified-flash-1"></script>
 </body>
 </html>

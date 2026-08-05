@@ -4,6 +4,8 @@ const nodePath = require("node:path");
 const { PublicDemoError } = require("./errors");
 
 function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__dirname, "..", "public") }) {
+  const identityPublicDir = nodePath.join(__dirname, "..", "..", "identity-server", "public");
+  const sharedAppAssets = new Set(["serial-service-client.js", "unified-flash-dialog.css", "unified-flash-dialog.js", "unified-flash-executor.js"]);
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const path = url.pathname;
@@ -13,6 +15,10 @@ function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__di
     }
     if (req.method === "GET" && (path === "/" || path === "/index.html" || path === "/app.js" || path === "/app.css" || path === "/gernetix-gx.svg" || path === "/gernetix-logo.png" || path === "/gernetix-wordmark.png")) {
       return serveStatic(res, publicDir, path === "/" ? "/index.html" : path);
+    }
+    if (req.method === "GET" && path === "/landing.js") return serveStatic(res, identityPublicDir, path);
+    if (req.method === "GET" && path.startsWith("/app/") && sharedAppAssets.has(nodePath.basename(path))) {
+      return serveStatic(res, nodePath.join(identityPublicDir, "app"), `/${nodePath.basename(path)}`);
     }
     if (req.method === "GET" && path.startsWith("/vendor/esptool-js/")) {
       return serveStatic(res, nodePath.join(__dirname, "..", "..", "identity-server", "node_modules", "esptool-js"), path.replace("/vendor/esptool-js", ""));

@@ -8,7 +8,8 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260804-nexi-complete-1" />
+    <link rel="stylesheet" href="/app/app.css?v=20260804-unified-flash-1" />
+    <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260804-unified-flash-1" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -687,9 +688,7 @@
                 </label>
                 <button id="buildButton" type="button">Build</button>
                 <button id="cleanBuildButton" type="button" title="Löscht die inkrementellen Build-Zustände aller Software-Einheiten dieses Projekts.">Clean</button>
-                <button id="usbFlashButton" type="button">USB</button>
-                <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA</button>
-                <button id="flashBoxFlashButton" type="button" aria-describedby="ideActionReason">FlashBox</button>
+                <button id="flashButton" type="button" aria-describedby="ideActionReason">Flashen…</button>
                 <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
               </div>
               <div class="ide-console-tabs" role="tablist" aria-label="Untere IDE-Ansicht">
@@ -1571,6 +1570,8 @@
     <script defer src="/app/dom-utils.js?v=20260803-performance-1"></script>
     <script defer src="/app/serial-service-client.js?v=20260801-bootable-flash-2"></script>
     <script defer src="/app/flash-progress.js?v=20260802-flash-progress"></script>
+    <script defer src="/app/unified-flash-dialog.js?v=20260804-unified-flash-1"></script>
+    <script defer src="/app/unified-flash-executor.js?v=20260804-unified-flash-2"></script>
     <script defer src="/app/usb-port-disconnect-detector.js?v=20260801-shared-1"></script>
     <script defer src="/app/device-onboarding-model.js?v=20260803-performance-1"></script>
     <script defer src="/app/board-configuration-plugin.js?v=20260731-board-source-groups-1"></script>

@@ -11,6 +11,7 @@ const GuidedProjectView = (() => {
       escapeAttribute,
       meta,
     } = deps;
+    let guidedFlashDialog = null;
 
     function renderProjectViewManifest(project, targetSelector = "#ideProjectViewManifest") {
       const target = document.querySelector(targetSelector);
@@ -1032,6 +1033,10 @@ if (digitalRead(BUTTON_PIN) == LOW) {
         await buildGuidedSoftwareUnit(project, view, targetSelector);
         return;
       }
+      if (["flash_usb", "flash_ota", "flash_webserver_usb", "flash_webserver_ota"].includes(action)) {
+        openGuidedFlashDialog(project, view, targetSelector, { selectedMethod: action.endsWith("_ota") ? "ota" : "usb", webserver: action.includes("webserver") });
+        return;
+      }
       if (action === "flash_usb" || action === "flash_ota") {
         const ota = action === "flash_ota";
         lab.flashed = true;
@@ -1060,6 +1065,33 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       }
       if ((action === "flash_usb" || action === "flash_ota") && lab.flashed) startGuidedRuntimeStream(project, view, targetSelector);
       renderProjectViewManifest(project, targetSelector);
+    }
+
+    function openGuidedFlashDialog(project, view, targetSelector, options = {}) {
+      const lab = projectLabState(view);
+      guidedFlashDialog ||= window.GerNetiXFlashDialog.create();
+      guidedFlashDialog.open({
+        title: `${view.title || "Geführtes Projekt"} flashen`,
+        description: "Auch der geführte Lernablauf verwendet den zentralen Flash-Dialog. Das Terminal zeigt hier die didaktische Simulation.",
+        artifact: { name: "firmware.bin", version: lab.buildVersion || "Lern-Build" },
+        selectedMethod: options.selectedMethod,
+        methods: {
+          usb: { enabled: Boolean(lab.built), reason: "Die Firmware muss zuerst gebaut werden." },
+          ota: { enabled: Boolean(lab.built), reason: "Die Firmware muss zuerst gebaut werden." },
+          flashbox: { enabled: false, reason: "Für dieses geführte Labor ist keine FlashBox zugeordnet." },
+        },
+        async onExecute(method, terminal) {
+          lab.flashed = true;
+          lab.transport = method === "ota" ? "OTA ueber GerNetiX Backend" : "USB-Seriell";
+          const lines = options.webserver
+            ? (method === "ota" ? ["Projekt-Firmware wird übertragen.", "Flash erfolgreich. Board startet neu.", "Lokaler Projekt-Webserver ist bereit."] : ["Projekt-Firmware wird geschrieben.", "Flash erfolgreich. Board startet neu.", "Lokaler Projekt-Webserver ist bereit."])
+            : (method === "ota" ? ["Board meldet sich beim GerNetiX Backend.", "firmware.bin wird übertragen.", "Flash erfolgreich. Laufzeitstream wird verbunden."] : ["ESP32 verbunden.", "firmware.bin wird geschrieben.", "Flash erfolgreich."]);
+          lab.lines = lines.map((line) => `[${method.toUpperCase()}] ${line}`);
+          lab.lines.forEach((line) => terminal.write(line.includes("erfolgreich") ? "ok" : "running", line));
+          if (!options.webserver) startGuidedRuntimeStream(project, view, targetSelector);
+          renderProjectViewManifest(project, targetSelector);
+        },
+      });
     }
 
     function saveGuidedWebserverConfiguration(event, project, view, targetSelector) {

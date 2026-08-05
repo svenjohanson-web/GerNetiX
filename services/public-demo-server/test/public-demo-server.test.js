@@ -79,6 +79,8 @@ test("ein Nexi-Release bewahrt die vier ESP-IDF-Images und ihre Board-Offsets", 
   assert.deepEqual(manifest.assets.map(({ asset_id, flash_offset }) => [asset_id, flash_offset]), [
     ["bootloader", 0x0], ["partitions", 0x8000], ["otadata", 0xf000], ["firmware", 0x20000],
   ]);
+  assert.equal(manifest.source_path, "public-demos/nexi-basic-waveshare-s3");
+  assert.equal(manifest.source_version, "0123456789abcdef0123456789abcdef01234567");
   repository.close();
 });
 
@@ -129,45 +131,45 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
   assert.equal(catalog.status, 200);
   assert.equal((await catalog.json()).items[0].demo_id, "touch-spielesammlung");
 
+  const executorAsset = await fetch(`http://127.0.0.1:${port}/app/unified-flash-executor.js`);
+  assert.equal(executorAsset.status, 200);
+  assert.match(await executorAsset.text(), /GerNetiXFlashExecutor/);
+
   await new Promise((resolve) => server.close(resolve));
   repository.close();
 });
 
-test("WebSerial pulses the reset pin after flashing", () => {
+test("the game collection delegates verified USB flashing and reset to the unified executor", () => {
   assert.match(browserStyles, /\.hero h1 \{ font-size:clamp\(2rem,4vw,2\.5rem\)/);
   assert.doesNotMatch(browserStyles, /5\.8rem/);
   assert.match(browserPage, /S3 Touch-Spielesammlung installieren/);
-  assert.match(browserPage, /data-transport="ota"/);
-  assert.match(browserPage, /data-transport="flashbox"/);
-  assert.match(browserPage, /id="account-transport"/);
+  assert.match(browserPage, /id="open-flash-dialog"/);
+  assert.match(browserPage, /unified-flash-dialog\.js/);
+  assert.match(browserPage, /unified-flash-executor\.js/);
   assert.match(browserPage, /id="publicMenuButton"/);
   assert.match(browserPage, /href="\/s3-touch-spielesammlung\/" aria-current="page"/);
   assert.match(browserPage, /\/landing\.js/);
   assert.doesNotMatch(browserPage, /Verfügbare Demos/);
   assert.match(browserApp, /api\/public\/demos\/\$\{DEMO_ID\}/);
-  assert.match(browserApp, /OTA ist für ein Board gedacht/);
-  assert.match(browserApp, /FlashBox übernimmt den USB-Flash/);
+  assert.match(browserApp, /GerNetiXFlashDialog\.create\(\)/);
+  assert.match(browserApp, /methods:\s*\{[\s\S]*usb:[\s\S]*ota:[\s\S]*flashbox:/);
+  assert.match(browserApp, /Noch keine Flash-Datei veröffentlicht/);
+  assert.match(browserApp, /setEntryEnabled\(true, `Flashdialog verfügbar\. Der Release fehlt noch:/);
   assert.match(browserApp, /app\/auth\/\?next=/);
   assert.doesNotMatch(browserApp, /fetch\("api\/public\/demos"\)/);
-  assert.match(browserApp, /loader\.after\("custom_reset", false, "D0\|R1\|W120\|R0\|W120"\)/);
-  assert.doesNotMatch(browserApp, /loader\.after\("hard_reset"\)/);
-  assert.match(browserApp, /RESET-Taste am Board/);
+  assert.match(browserApp, /GerNetiXFlashExecutor\.executeUsb\(/);
+  assert.match(browserApp, /resetStrategy: "custom-reset"/);
+  assert.doesNotMatch(browserApp, /loader\.writeFlash|loader\.after/);
 });
 
-test("unsupported macOS browsers offer the Serial Helper or a Web Serial browser", () => {
-  assert.match(browserPage, /id="serial-support-dialog"/);
-  assert.match(browserPage, /Empfohlen für macOS/);
-  assert.match(browserPage, /GerNetiX Serial Helper/);
-  assert.match(browserPage, /href="\/app\/downloads\/"/);
-  assert.match(browserPage, /Chrome oder Edge verwenden/);
-  assert.match(browserApp, /if \(!navigator\.serial\)/);
-  assert.match(browserApp, /showSerialSupportDialog\(\)/);
-  assert.match(browserApp, /navigator\.userAgentData\?\.platform/);
-  assert.match(browserApp, /serialSupportDialog\.showModal\(\)/);
+test("unsupported browsers use the Serial Helper adapter from the same dialog", () => {
+  assert.doesNotMatch(browserPage, /id="serial-support-dialog"|id="choose-port"|id="flash-button"/);
+  assert.match(browserApp, /if \(navigator\.serial\)[\s\S]*navigator\.serial\.requestPort\(\)/);
   assert.match(browserPage, /serial-service-client\.js/);
-  assert.match(browserPage, /id="serial-service-port"/);
   assert.match(browserApp, /serialService\.available\(\)/);
   assert.match(browserApp, /serialService\.ports\(\)/);
   assert.match(browserApp, /serialService\.probe\(selectedPort\.path\)/);
-  assert.match(browserApp, /serialService\.flash\(/);
+  assert.match(browserApp, /GerNetiXFlashExecutor\.executeUsb\(/);
+  assert.doesNotMatch(browserApp, /serialService\.flash\(/);
+  assert.match(browserApp, /if \(ports\.length > 1\)/);
 });

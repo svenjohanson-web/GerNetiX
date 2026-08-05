@@ -43,6 +43,7 @@ test("USB provisioning prefers the background service without leaving GerNetiX",
   const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
   const app = readPlatformAppSource();
   const onboarding = fs.readFileSync(path.join(appRoot, "device-onboarding-controller.js"), "utf8");
+  const flashExecutor = fs.readFileSync(path.join(appRoot, "unified-flash-executor.js"), "utf8");
   const serialServiceClient = fs.readFileSync(path.join(appRoot, "serial-service-client.js"), "utf8");
   const server = serverSource;
 
@@ -64,7 +65,8 @@ test("USB provisioning prefers the background service without leaving GerNetiX",
   assert.match(onboarding, /state\.serialService\.ports\(\)/);
   assert.match(onboarding, /preferredSerialServicePorts\(await state\.serialService\.ports\(\)\)/);
   assert.match(onboarding, /state\.serialService\.probe\(port\.path\)/);
-  assert.match(onboarding, /state\.serialService\.flash/);
+  assert.match(onboarding, /window\.GerNetiXFlashExecutor\.executeUsb/);
+  assert.match(flashExecutor, /serialService\.flash/);
   assert.match(onboarding, /state\.serialService\.serialRequest/);
   assert.match(app, /loadPlatformDownloads\(\)/);
   assert.match(app, /showSerialServiceChoiceDialog\(\)/);
