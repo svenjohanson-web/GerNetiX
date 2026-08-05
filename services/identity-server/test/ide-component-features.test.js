@@ -8,6 +8,7 @@ const vm = require("node:vm");
 const app = readPlatformAppSource();
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const boardPlugin = fs.readFileSync(path.resolve(__dirname, "../public/app/board-configuration-plugin.js"), "utf8");
+const shell = fs.readFileSync(path.resolve(__dirname, "../public/app/app-shell-controller.js"), "utf8");
 const server = ["dev-server.js", path.join("dev", "server", "project-routes.js")]
   .map((file) => fs.readFileSync(path.resolve(__dirname, "../src", file), "utf8"))
   .join("\n");
@@ -140,7 +141,8 @@ test("project browser separates implementation and header files below the compon
 });
 
 test("IDE embeds the same board configuration plugin used by provisioning", () => {
-  assert.match(html, /board-configuration-plugin\.js/);
+  assert.doesNotMatch(html, /board-configuration-plugin\.js/);
+  assert.match(shell, /loadGuidedProjectAssets[\s\S]*board-configuration-plugin\.js/);
   assert.match(app, /BoardConfigurationPlugin\.mount\(pluginRoot/);
   assert.match(app, /Änderungen werden als eigener, vollständiger Projektsnapshot gespeichert/);
   assert.match(app, /configuration_scope: "project"/);

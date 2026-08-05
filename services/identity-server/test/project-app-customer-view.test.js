@@ -18,8 +18,11 @@ test("wires the generic Project-App into the authenticated platform shell", () =
   assert.match(app, /"project-app": "projectAppView"/);
   assert.match(shell, /projectApp\(\)\.render/);
   assert.match(html, /id="projectAppView"/);
-  assert.match(html, /project-app-renderer\.js/);
-  assert.match(html, /project-app-controller\.js/);
+  assert.doesNotMatch(html, /<script[^>]+project-app-renderer\.js/);
+  assert.doesNotMatch(html, /<script[^>]+project-app-controller\.js/);
+  assert.match(shell, /async function loadProjectAppAssets\(\)/);
+  assert.match(shell, /loadPlatformScript\("\/app\/project-app-renderer\.js/);
+  assert.match(shell, /loadPlatformScript\("\/app\/project-app-controller\.js/);
   assert.match(read("public/app/project-app-controller.js"), /bindings: snapshot\.bindings \|\| \{\}/);
   assert.match(read("public/app/project-app-controller.js"), /project-app\?refresh=\$\{cacheKey\}/);
 });

@@ -137,8 +137,8 @@ test("keeps in-memory test repositories account-partitioned", () => {
 });
 
 test("exposes entitlement-filtered updates and an authenticated read endpoint", () => {
-  assert.match(server, /knowledge_updates: knowledgeState\.updates/);
-  assert.match(server, /knowledge_history: knowledgeState\.history/);
+  assert.match(server, /payload\.knowledge_updates = knowledgeState\.updates/);
+  assert.match(server, /payload\.knowledge_history = knowledgeState\.history/);
   assert.match(server, /unreadKnowledgeChapterReleases\(reads, entitlements\)/);
   assert.match(server, /knowledgeChapterHistory\(reads, entitlements\)/);
   assert.match(server, /registerKnowledgeRoutes/);

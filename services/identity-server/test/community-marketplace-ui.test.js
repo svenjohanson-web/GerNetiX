@@ -6,6 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
+const app = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app-shell-controller.js"), "utf8");
 const marketplace = fs.readFileSync(path.join(__dirname, "..", "public", "app", "community-marketplace-controller.js"), "utf8");
 const development = fs.readFileSync(path.join(__dirname, "..", "public", "app", "development-platform.js"), "utf8");
 const ideas = fs.readFileSync(path.join(__dirname, "..", "public", "app", "community-ideas-controller.js"), "utf8");
@@ -29,7 +30,8 @@ test("templates and development projects expose ratings and improvement suggesti
   assert.match(development, /data-feedback-template/);
   assert.match(development, /data-rate-development-project/);
   assert.match(development, /data-suggest-development-project/);
-  assert.match(html, /project-feedback-ui\.js/);
+  assert.doesNotMatch(html, /<script[^>]+project-feedback-ui\.js/);
+  assert.match(app, /loadPlatformScript\("\/app\/project-feedback-ui\.js\?v=20260802-project-feedback"\)/);
 });
 
 test("community contains a separate project ideas workshop with discussion", () => {

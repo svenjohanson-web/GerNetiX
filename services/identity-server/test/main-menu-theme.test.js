@@ -22,7 +22,7 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(html, /data-route="dashboard"[^>]*>Übersicht/);
   assert.match(html, /<summary data-i18n="platform\.menu\.learn_develop">Lernen &amp; Entwickeln<\/summary>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.boards_tools">Boards &amp; Werkzeuge<\/summary>/);
-  assert.match(html, /id="hardwareLabMenuLink"[^>]*href="\/app\/hardware-lab\/"[^>]*data-route="hardware-lab"[^>]*>KI-Hardware-Labor<\/a>/);
+  assert.match(html, /id="hardwareLabMenuLink"[^>]*href="\/app\/hardware-lab\/"[^>]*data-route="hardware-lab"[^>]*>KI-Hardware-Assistent<\/a>/);
   assert.doesNotMatch(html, /127\.0\.0\.1:5100/);
   assert.match(html, /<summary data-i18n="platform\.menu\.service_shop">Service &amp; Shop<\/summary>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.account">Konto<\/summary>/);
@@ -33,6 +33,11 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.doesNotMatch(css, /body\.public-help-page #mainMenu \.app-menu-group-private/);
   assert.doesNotMatch(css, /body\.public-help-page #mainMenu a:not\(\.public-information-link\)/);
   assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
+});
+
+test("invalidates cached route assets when the hardware lab route is introduced", () => {
+  assert.match(html, /app-shell-controller\.js\?v=20260805-knowledge-chapter-lazy-1/);
+  assert.match(html, /app\.js\?v=20260805-hardware-lab-route-1/);
 });
 
 test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {

@@ -23,9 +23,13 @@ test("offers a dedicated internal quiz route from navigation and dashboard", () 
   assert.match(html, /href="\/app\/quiz\/" data-route="quiz" data-i18n="platform\.nav\.quiz">Quiz<\/a>/);
   assert.match(html, /data-open-route="\/app\/quiz\/"[\s\S]*data-i18n="dashboard\.quiz\.title">Quiz/);
   assert.match(html, /id="quizView"[\s\S]*id="quizMount"/);
-  assert.match(html, /quiz-data\.js[\s\S]*quiz\.js[\s\S]*app\.js/);
+  assert.doesNotMatch(html, /<script[^>]+quiz-data\.js/);
+  assert.doesNotMatch(html, /<script[^>]+\/quiz\.js/);
+  assert.match(app, /async function loadQuizAssets\(\)/);
+  assert.match(app, /loadPlatformScript\("\/app\/quiz-data\.js/);
+  assert.match(app, /loadPlatformScript\("\/app\/quiz\.js/);
   assert.match(app, /quiz: "quizView"/);
-  assert.match(app, /if \(route === "quiz"\) quiz\(\)\.render\(\)/);
+  assert.match(app, /if \(route === "quiz"\) void loadQuizAssets\(\)\.then\(\(\) => quiz\(\)\.render\(\)\)/);
   assert.match(css, /\.quiz-category-grid/);
   assert.match(css, /\.quiz-option\.is-correct/);
   assert.match(css, /\.quiz-result/);

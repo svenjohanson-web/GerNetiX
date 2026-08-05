@@ -25,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260804-ai-board-playground-1/);
+  assert.match(publicApp, /loadPlatformScript\("\/app\/development-platform\.js\?v=20260805-route-lazy-development-1"\)/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -61,7 +61,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260804-unified-flash-1/);
+  assert.match(publicHtml, /app\.css\?v=20260805-knowledge-chapter-lazy-1/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -109,12 +109,12 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.createdAt\)/);
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.updatedAt\)/);
   assert.doesNotMatch(publicController, /project\.description \|\| "Keine Beschreibung\."/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260804-ai-board-playground-1/);
+  assert.doesNotMatch(publicHtml, /<script[^>]+development-platform\.js/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
-  assert.match(devServer, /development_project_templates: developmentProjectTemplateCatalog\(\)/);
-  assert.match(devServer, /development_project_template_previews: developmentProjectTemplatePreviews\(\)/);
+  assert.match(devServer, /if \(sections\.has\("development"\)\) \{[\s\S]*payload\.development_project_templates = developmentProjectTemplateCatalog\(\)/);
+  assert.match(devServer, /payload\.development_project_template_previews = developmentProjectTemplatePreviews\(\)/);
   assert.match(publicApp, /summary\.development_project_template_previews \|\| \[\]/);
   assert.match(publicController, /function setProjectTemplates/);
   assert.match(publicController, /projectTemplates = Object\.fromEntries/);
@@ -178,7 +178,7 @@ test("refreshes legacy camera template architecture to IoT-device aggregates wit
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260804-ai-board-playground-1/);
+  assert.match(publicApp, /developmentPlatform\(\)\.init\(\)/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -279,7 +279,7 @@ test("refreshes legacy templates without exposing infrastructure components", ()
 test("separates project start and initial architecture from configuration", () => {
   assert.match(publicHtml, /id="continueDevelopmentConfigurationButton"[^>]*>Weiter zur Konfiguration<\/button>/);
   assert.match(publicHtml, /development-requirements-panel development-configuration-only/);
-  assert.match(publicHtml, /development-chat-sidebar development-configuration-only hidden/);
+  assert.match(publicHtml, /development-chat-sidebar development-configuration-only[^\"]*hidden/);
   assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern<\/button>/);
   assert.match(publicHtml, /acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware<\/button>/);
   assert.match(publicController, /workflowStep: "project_start"/);
@@ -369,7 +369,7 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicRuntimeUtils, /skinparam backgroundColor transparent/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBackgroundColor #1E3A5F/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBorderColor #67E8F9/);
-  assert.match(publicHtml, /app\.css\?v=20260804-unified-flash-1/);
+  assert.match(publicHtml, /app\.css\?v=20260805-knowledge-chapter-lazy-1/);
   assert.match(publicCss, /\.development-workspace-active \.development-page-actions button \{[\s\S]*font-size: 12px/);
 });
 
@@ -495,7 +495,7 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(devServer, /error: "hardware_catalog_unreachable"/);
   assert.match(devServer, /Sensorarten konnten nicht aus dem Hardware Catalog geladen werden/);
   assert.ok(devServer.indexOf('/api/platform/hardware/sensors') < devServer.indexOf('async function handleDevelopmentProjectDialogSave'));
-  assert.match(publicHtml, /development-hardware-model\.js/);
+  assert.match(publicApp, /loadPlatformScript\("\/app\/development-hardware-model\.js/);
   assert.match(publicController, /hardware-configuration`/);
   assert.match(devServer, /handleDevelopmentProjectHardwareSave/);
   assert.match(devServer, /id: "hardware-configuration"/);

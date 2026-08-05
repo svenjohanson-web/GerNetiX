@@ -7,7 +7,8 @@ const test = require("node:test");
 const publicRoot = path.resolve(__dirname, "../public/app");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(publicRoot, "app.css"), "utf8");
-const app = readPlatformAppSource();
+const app = `${readPlatformAppSource()}\n${fs.readFileSync(path.join(publicRoot, "app-device-build-controller.js"), "utf8")}`;
+const shell = fs.readFileSync(path.join(publicRoot, "app-shell-controller.js"), "utf8");
 const flashProgress = fs.readFileSync(path.join(publicRoot, "flash-progress.js"), "utf8");
 const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
 
@@ -15,7 +16,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(html, /id="ideActionReason"/);
   assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 2);
   assert.match(html, /id="ideBuildConsole"/);
-  assert.match(html, /flash-progress\.js\?v=20260802-flash-progress/);
+  assert.doesNotMatch(html, /flash-progress\.js/);
+  assert.match(shell, /loadBuildWorkbenchAssets[\s\S]*flash-progress\.js/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
   assert.match(html, /id="flashButton"[^>]*aria-describedby="ideActionReason"[^>]*>Flashen…</);
@@ -45,8 +47,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /browser-usb-flash-result/);
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);
   assert.match(app, /UsbFlashTargetModel\.selectionMode\(firmwareUnits\.length, state\.usbPorts\.length\)/);
-  assert.match(html, /usb-flash-target-model\.js\?v=20260801-partial-usb-flash/);
-  assert.match(html, /app-device-build-controller\.js\?v=20260804-debug-artifact-protection-1/);
+  assert.doesNotMatch(html, /usb-flash-target-model\.js|app-device-build-controller\.js/);
+  assert.match(shell, /loadBuildWorkbenchAssets[\s\S]*usb-flash-target-model\.js[\s\S]*app-device-build-controller\.js/);
   assert.doesNotMatch(html, /id="refreshUsbPortsButton"/);
   assert.doesNotMatch(html, /id="ideDeviceTools"[\s\S]*id="usbPortSelect"/);
   assert.match(html, /id="usbPortChoiceDialog"[\s\S]*id="usbPortSelect"/);

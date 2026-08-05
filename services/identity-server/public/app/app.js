@@ -138,7 +138,7 @@ function deviceOnboarding() {
       loadBoardFeatureCatalog,
       renderDashboard,
       renderDevices,
-      renderIdeShell,
+      renderIdeShell: (...args) => typeof renderIdeShell === "function" ? renderIdeShell(...args) : undefined,
       escapeHtml,
       meta,
       openHelpTopic: InformationView.openDialog,

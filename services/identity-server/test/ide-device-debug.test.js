@@ -11,6 +11,7 @@ const app = readPlatformAppSource();
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const controllerSource = fs.readFileSync(path.resolve(__dirname, "../public/app/device-debug-controller.js"), "utf8");
+const shell = fs.readFileSync(path.resolve(__dirname, "../public/app/app-shell-controller.js"), "utf8");
 
 test("Debug & Diagnose is a separate project workspace and not a component-tree entry", () => {
   assert.doesNotMatch(app, /`Komponenten\/\$\{label\}\/In Debug öffnen`/);
@@ -25,7 +26,8 @@ test("Debug & Diagnose is a separate project workspace and not a component-tree 
   assert.match(html, /id="debugDeviceList"/);
   assert.match(html, /id="debugDeviceView"/);
   assert.match(html, /id="openProjectDebugButton"/);
-  assert.match(html, /device-debug-controller\.js\?v=20260804-debug-artifact-protection-1/);
+  assert.doesNotMatch(html, /device-debug-controller\.js/);
+  assert.match(shell, /loadIdeWorkbenchAssets[\s\S]*device-debug-controller\.js/);
   assert.match(css, /\.device-debug-workspace/);
   assert.match(css, /\.device-debug-events/);
   assert.match(css, /\.debug-workspace-layout/);

@@ -1,3 +1,31 @@
+let communityPortalEventsBound = false;
+
+function bindCommunityPortalEvents() {
+  if (communityPortalEventsBound) return;
+  communityPortalEventsBound = true;
+  document.querySelector("#communityPortalSearch")?.addEventListener("input", renderCommunityPortal);
+  document.querySelector("#communityActivityList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-community-activity]");
+    if (!button) return;
+    if (button.dataset.communityActivity === "idea") openProjectIdea(button.dataset.communityActivityId);
+    if (button.dataset.communityActivity === "showcase") openProjectShowcase(button.dataset.communityActivityId);
+    if (button.dataset.communityActivity === "question") openCommunityQuestion(button.dataset.communityActivityId);
+  });
+  document.querySelector("#communityPortalNav")?.addEventListener("click", scrollToCommunityTarget);
+  document.querySelector(".community-challenge")?.addEventListener("click", scrollToCommunityTarget);
+  document.querySelector("#projectShowcaseForm")?.addEventListener("submit", submitProjectShowcase);
+  document.querySelector("#projectShowcaseRefreshButton")?.addEventListener("click", () => loadCommunityPortal(true));
+  document.querySelector("#projectShowcaseList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-project-showcase]");
+    if (button) openProjectShowcase(button.dataset.projectShowcase);
+  });
+}
+
+function scrollToCommunityTarget(event) {
+  const button = event.target.closest("[data-community-target]");
+  if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function loadCommunityPortal(force = false) {
   if (state.projectShowcases.loading || (state.projectShowcases.loaded && !force)) return;
   state.projectShowcases.loading = true;

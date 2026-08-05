@@ -11,17 +11,96 @@ const html = fs.readFileSync(path.join(root, "public", "app", "index.html"), "ut
 const webRoutes = fs.readFileSync(path.join(root, "src", "dev", "server", "web-routes.js"), "utf8");
 const ide = fs.readFileSync(path.join(root, "public", "app", "app-ide-controller.js"), "utf8");
 const builds = fs.readFileSync(path.join(root, "public", "app", "app-device-build-controller.js"), "utf8");
+const projects = fs.readFileSync(path.join(root, "public", "app", "app-project-controller.js"), "utf8");
 const devServer = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const shell = fs.readFileSync(path.join(root, "public", "app", "app-shell-controller.js"), "utf8");
+const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
+const knowledgeContent = fs.readFileSync(path.join(root, "public", "app", "knowledge-content.js"), "utf8");
+const hardwareFragment = fs.readFileSync(path.join(root, "public", "app", "fragments", "hardware-lab.html"), "utf8");
+const messagesFragment = fs.readFileSync(path.join(root, "public", "app", "fragments", "messages.html"), "utf8");
 
-test("platform scripts download in parallel and use versioned immutable URLs", () => {
+test("platform scripts download in parallel and route-only knowledge assets stay out of the common path", () => {
   const scripts = [...html.matchAll(/<script\b([^>]*)src="([^"]+)"[^>]*><\/script>/g)];
-  assert.ok(scripts.length >= 50);
-  assert.equal(scripts.every((match) => /\bdefer\b/.test(match[1])), true);
+  const synchronousScripts = scripts.filter((match) => !/\bdefer\b/.test(match[1]));
+  assert.ok(scripts.length < 50);
+  assert.equal(scripts.some((match) => match[2].includes("knowledge-articles-")), false);
+  assert.equal(scripts.some((match) => match[2].includes("knowledge-content.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("quiz-data.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("/quiz.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("project-app-renderer.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("project-app-controller.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("hardware-lab-controller.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("app-community-controller.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("community-portal-controller.js")), false);
+  assert.equal(scripts.some((match) => match[2].includes("community-marketplace-controller.js")), false);
+  assert.deepEqual(synchronousScripts.map((match) => match[2].split("?")[0]), ["/app/initial-view-router.js"]);
   assert.equal(scripts.every((match) => match[2].includes("?v=")), true);
   assert.match(webRoutes, /versioned: url\.searchParams\.has\("v"\)/);
   assert.equal(staticCacheControl("/app/app.js", { versioned: true }), "public, max-age=31536000, immutable");
   assert.equal(staticCacheControl("/app/app.js"), "no-store");
   assert.equal(staticCacheControl("/app/index.html", { versioned: true }), "no-store");
+});
+
+test("renders only the active route and prefetches knowledge after an idle dashboard load", () => {
+  const renderAll = shell.match(/function renderAll\(\)[\s\S]*?\n}/)?.[0] || "";
+  assert.match(renderAll, /const route = routeName\(\)/);
+  assert.match(renderAll, /if \(route === "dashboard"\) renderDashboard\(\)/);
+  assert.match(renderAll, /if \(route === "hardware-lab"\) GerNetiXHardwareLab\.render\(\)/);
+  assert.match(renderAll, /if \(route === "account-setup"\) renderAccountSetup\(\)/);
+  assert.match(renderAll, /if \(route === "learn"\)/);
+  assert.match(renderAll, /if \(route === "learning-project-overview"\) renderLearningProjectOverview\(\)/);
+  assert.match(renderAll, /if \(route === "learning-project"\) learningProject\(\)\.render\(\)/);
+  assert.match(shell, /if \(route === "dashboard"\) scheduleKnowledgeContentPrefetch\(\)/);
+  assert.match(shell, /connection\?\.saveData/);
+  assert.match(shell, /requestIdleCallback\(prefetch, \{ timeout: 5_000 \}\)/);
+  assert.match(shell, /link\.rel = "prefetch"/);
+  assert.match(shell, /return \["knowledge-chapter-index\.js", "knowledge-content\.js"\]/);
+  assert.match(shell, /knowledge-chapters\/from-problem-to-system\.js/);
+  assert.match(shell, /async function loadQuizAssets\(\)/);
+  assert.match(shell, /async function loadProjectAppAssets\(\)/);
+});
+
+test("renders each active route once and enters lazy routes only after their assets are ready", () => {
+  assert.match(shell, /renderAll\(\);\s*renderRoute\(\{ contentRendered: true \}\)/);
+  const initialRender = shell.match(/function renderInitialRoute\(\)[\s\S]*?\n}/)?.[0] || "";
+  assert.doesNotMatch(initialRender, /GerNetiXHardwareLab\.render\(\)/);
+  const hydration = shell.match(/async function hydrateRouteAfterNavigation[\s\S]*?\n}/)?.[0] || "";
+  assert.match(hydration, /Promise\.all/);
+  assert.equal((hydration.match(/renderAll\(\)/g) || []).length, 1);
+  assert.match(hydration, /loadRouteAssets\(activeRoute\)/);
+  assert.match(hydration, /if \(enterAfterHydration\) renderRoute\(\{ contentRendered \}\)/);
+  assert.match(shell, /hardware-lab-controller\.js\?v=\$\{version\}/);
+  assert.match(shell, /app-community-controller\.js\?v=\$\{version\}/);
+  assert.match(shell, /community-marketplace-controller\.js\?v=\$\{version\}/);
+  assert.match(shell, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
+  assert.match(shell, /loadRouteFragment\("messagesView", `\/app\/fragments\/messages\.html\?v=\$\{version\}`\)/);
+  assert.match(shell, /route === "hardware-lab"\)[\s\S]*!document\.querySelector\("#hardwareLabView"\)/);
+  assert.match(shell, /route === "messages"\)[\s\S]*!document\.querySelector\("#messagesView"\)/);
+});
+
+test("keeps route HTML fragments out of the shell and rejects executable fragment content", () => {
+  assert.doesNotMatch(html, /id="hardwareLabView"|id="messagesView"/);
+  assert.match(hardwareFragment, /^<section id="hardwareLabView"/);
+  assert.match(messagesFragment, /^<section id="messagesView"/);
+  assert.doesNotMatch(hardwareFragment + messagesFragment, /<script\b/i);
+  assert.match(shell, /if \(parsed\.querySelector\("script"\)\) throw new Error/);
+  assert.match(shell, /roots\.length !== 1 \|\| roots\[0\]\.id !== id/);
+  assert.match(shell, /footer\.before\(document\.importNode\(roots\[0\], true\)\)/);
+});
+
+test("loads one knowledge chapter at a time and only prefetches its neighbors", () => {
+  assert.match(knowledgeContent, /function loadArticle\(articleId\)/);
+  assert.match(knowledgeContent, /script\.dataset\.knowledgeArticle = articleId/);
+  assert.match(knowledgeContent, /function adjacentArticleIds\(chapterId\)/);
+  assert.match(informationView, /const article = portal \? content\.loadedArticle\(selected\.articleId\)/);
+  assert.match(informationView, /await KnowledgeContent\.loadArticle\(articleId\)/);
+  assert.match(informationView, /KnowledgeContent\.adjacentArticleIds\(chapterId\)\.forEach\(KnowledgeContent\.prefetchArticle\)/);
+  assert.doesNotMatch(informationView, /topics\.map\([\s\S]*renderArticle\(chapter, child/);
+});
+
+test("loads knowledge release state only where it is visible", () => {
+  assert.match(shell, /isPublicKnowledgePage[\s\S]*\? "account,knowledge,subscription"[\s\S]*: "account,subscription"/);
+  assert.match(shell, /route === "dashboard"[\s\S]*"knowledge"/);
 });
 
 test("IDE contents do not wait for USB discovery or start a duplicate route load", () => {
@@ -36,9 +115,9 @@ test("IDE contents do not wait for USB discovery or start a duplicate route load
   assert.match(ide, /const projectSourceContentLoads = new Map\(\)/);
   assert.match(ide, /if \(loadedIdeSourceKey === key\) return/);
 
-  const openStart = builds.indexOf("async function openProjectInIde(projectId)");
-  const openEnd = builds.indexOf("\nfunction continueLastProject", openStart);
-  const openBody = builds.slice(openStart, openEnd);
+  const openStart = projects.indexOf("async function openProjectInIde(projectId)");
+  const openEnd = projects.indexOf("\nfunction", openStart + 1);
+  const openBody = projects.slice(openStart, openEnd);
   assert.match(openBody, /navigate\(`\/app\/ide\//);
   assert.doesNotMatch(openBody, /loadIdeProject\(/);
 });

@@ -47,6 +47,15 @@ Kunden-Workern, Grundlast-/Burst-Messung, privaten Rechnern, Cloud-Burst und
 Kubernetes steht in der
 [elastischen Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md).
 
+Das verbindliche, domaenenuebergreifende Bedien- und Markup-Modell fuer
+Architektur-, Code-, Help- und Hardware-KI steht im
+[Standard-KI-Chat-Pattern](standard-ai-chat-pattern.md).
+
+Die verbindliche Trennung des Plattform-Startpfads in kritischen Bootstrap,
+routenbezogene Summary-Abschnitte, eigene Domaenenendpunkte und lazy geladene
+Browsermodule steht im
+[routenbezogenen Laden der Plattform](platform-route-loading.md).
+
 Die akzeptierte Portabilitaetsgrenze fuer eine spaetere eigenstaendige
 School-Deployment-Zelle sowie die Regel fuer standardmaessig deaktivierte
 externe KI und ausschliesslich lokal verwaltetes BYOK steht in

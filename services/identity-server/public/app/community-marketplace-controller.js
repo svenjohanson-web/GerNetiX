@@ -1,3 +1,16 @@
+let communityMarketplaceEventsBound = false;
+
+function bindCommunityMarketplaceEvents() {
+  if (communityMarketplaceEventsBound) return;
+  communityMarketplaceEventsBound = true;
+  document.querySelector("#refreshCommunityMarketplaceButton")?.addEventListener("click", () => loadCommunityMarketplace(true));
+  document.querySelector("#communityMarketplaceForm")?.addEventListener("submit", submitCommunityMarketplaceListing);
+  document.querySelector("#communityMarketplaceListings")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-marketplace-listing]");
+    if (button) openCommunityMarketplaceListing(button.dataset.marketplaceListing);
+  });
+}
+
 async function loadCommunityMarketplace(force = false) {
   if (state.marketplace.loading || (state.marketplace.loaded && !force)) return;
   state.marketplace.loading = true;

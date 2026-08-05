@@ -1,4 +1,14 @@
 // GerNetiX platform module extracted from app.js.
+async function openProjectInIde(projectId) {
+  state.activeProjectId = projectId;
+  await postJson("/api/platform/workspace-state", {
+    lastProjectId: projectId,
+    lastMode: "ide",
+    lastRoute: `/app/ide/?project=${encodeURIComponent(projectId)}`,
+  });
+  navigate(`/app/ide/?project=${encodeURIComponent(projectId)}`);
+}
+
 function renderProjects() {
   const projectList = document.querySelector("#projectList");
   if (!projectList) return;

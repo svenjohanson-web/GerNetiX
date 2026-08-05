@@ -39,6 +39,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && path === `${prefix}/dashboard-summary`) {
+      sendJson(res, 200, await service.dashboardSummary(actor));
+      return;
+    }
+
     if (req.method === "GET" && path === `${prefix}/capabilities`) {
       sendJson(res, 200, { project_snapshot_attachment: true, community_marketplace: true });
       return;

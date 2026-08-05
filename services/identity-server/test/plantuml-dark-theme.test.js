@@ -16,6 +16,7 @@ test("all PlantUML renderers use the shared dark theme", () => {
   const development = read("development-platform.js");
   const css = read("app.css");
   const html = read("index.html");
+  const shell = read("app-shell-controller.js");
 
   assert.match(runtime, /function themedPlantUmlSource/);
   assert.match(runtime, /TextEncoder\(\)\.encode\(themedPlantUmlSource\(source\)\)/);
@@ -28,7 +29,8 @@ test("all PlantUML renderers use the shared dark theme", () => {
   assert.match(css, /\.plantuml-viewer \{[\s\S]*?background: #111827/);
   assert.match(css, /\.plantuml-diagram \{[\s\S]*?background: #111827/);
   assert.doesNotMatch(css, /\.plantuml-(?:viewer|diagram)[^}]*background: #fff/);
-  assert.match(html, /guided-project-view\.js\?v=20260801-dark-plantuml/);
+  assert.doesNotMatch(html, /guided-project-view\.js/);
+  assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
   assert.match(html, /app-runtime-utils\.js\?v=20260801-plantuml-contrast/);
 });
 

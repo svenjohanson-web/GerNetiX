@@ -145,19 +145,19 @@ const GuidedProjectView = (() => {
       const hasPremiumAi = Boolean(state.billing?.entitlements?.includes("ai_assistant"));
       const gameProject = isTouchscreenGameProject(project);
       return `
-        <section class="code-explorer-chat">
+        <section class="code-explorer-chat ai-chat ai-chat--compact">
           <div class="code-explorer-chat-head">
             <p class="eyebrow">KI-Chat</p>
             <strong>${gameProject ? "Spielesammlung per KI erweitern" : "Code gemeinsam verstehen"}</strong>
             ${renderCodeExplorerUsage()}
           </div>
           <p class="code-explorer-chat-section-label">Verlauf</p>
-          <div class="code-explorer-chat-messages" aria-live="polite">
+          <div class="code-explorer-chat-messages ai-chat__messages" aria-live="polite">
             ${messages.length ? messages.map((message) => `
-              <article class="code-explorer-chat-message ${message.role}">
+              <article class="code-explorer-chat-message ai-chat__message ${message.role} ${message.pending ? "is-pending" : ""} ${message.error ? "is-error" : ""}">
                 <span>${message.role === "assistant" ? "KI" : "Du"}</span>
                 ${message.pending
-                  ? `<p class="code-explorer-chat-waiting" aria-label="${escapeHtml(message.status || "KI antwortet")}"><span>${escapeHtml(message.status || "KI verarbeitet die Anfrage")}</span><i></i><i></i><i></i></p>`
+                  ? `<p class="code-explorer-chat-waiting ai-chat__status" aria-label="${escapeHtml(message.status || "KI antwortet")}"><span>${escapeHtml(message.status || "KI verarbeitet die Anfrage")}</span><i></i><i></i><i></i></p>`
                   : `<p>${escapeHtml(message.content)}</p>`}
                 ${message.role === "assistant" && !message.pending ? renderCodeExplorerResponseMeta(message.responseMeta) : ""}
                 ${message.fileEdits?.length ? `<div class="code-explorer-edits">
@@ -170,12 +170,12 @@ const GuidedProjectView = (() => {
               </article>
             `).join("") : `<p class="helper-text">${gameProject ? "Beschreibe ein neues Spiel. Die KI liest Katalog und Auswahl, bereitet die neue Spieldatei vor und zeigt jede Änderung vor der Übernahme." : "Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten."}</p>`}
           </div>
-          <form data-code-explorer-chat>
+          <form class="ai-chat__composer" data-code-explorer-chat data-ai-chat-form>
             <p class="code-explorer-chat-section-label">Eingabe</p>
             <label class="code-explorer-chat-input"><span>Frage zum Code</span>
-              <span class="code-explorer-chat-input-box">
-                <textarea rows="3" name="message" placeholder="${hasPremiumAi ? (gameProject ? "Erstelle ein neues Spiel …" : "Was passiert in dieser Funktion?") : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${hasPremiumAi ? "" : "disabled"}></textarea>
-                <button class="code-explorer-send-button" type="submit" aria-label="Frage senden" title="Frage senden" ${waiting || !hasPremiumAi ? "disabled" : ""}>&uarr;</button>
+              <span class="code-explorer-chat-input-box ai-chat__input-box">
+                <textarea class="ai-chat__input" data-ai-chat-input rows="3" name="message" placeholder="${hasPremiumAi ? (gameProject ? "Erstelle ein neues Spiel …" : "Was passiert in dieser Funktion?") : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${hasPremiumAi ? "" : "disabled"}></textarea>
+                <button class="code-explorer-send-button ai-chat__send" data-ai-chat-send type="submit" aria-label="Frage senden" title="Frage senden" ${waiting || !hasPremiumAi ? "disabled" : ""}>&uarr;</button>
               </span>
             </label>
             ${hasPremiumAi ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/hilfe/#ai-premium">Warum?</a></p>'}
@@ -238,6 +238,7 @@ const GuidedProjectView = (() => {
             : `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}`,
           responseMeta: { responder: "System / Fehler" },
           pending: false,
+          error: true,
         });
       } finally {
         clearTimeout(delayedStatus);

@@ -270,19 +270,38 @@ const KnowledgeContent = (() => {
       ],
     },
   ];
-  const articles = Object.assign(
+  const assetVersion = "20260805-knowledge-chapter-lazy-1";
+  const articleLoadPromises = new Map();
+  const registryRoot = typeof window === "undefined" ? globalThis : window;
+  const authoredArticles = Object.assign(
     {},
-    KnowledgeArticlesEngineering,
-    KnowledgeArticlesElectricalEngineering,
-    KnowledgeArticlesSensorsActuators,
-    KnowledgeArticlesEmbedded,
-    KnowledgeArticlesRadio,
-    KnowledgeArticlesSoftware,
-    KnowledgeArticlesDistributedSystems,
-    KnowledgeArticlesAi,
-    KnowledgeArticlesCrossCutting,
-    KnowledgeArticlesGlossary,
+    typeof KnowledgeArticlesEngineering === "undefined" ? {} : KnowledgeArticlesEngineering,
+    typeof KnowledgeArticlesElectricalEngineering === "undefined" ? {} : KnowledgeArticlesElectricalEngineering,
+    typeof KnowledgeArticlesSensorsActuators === "undefined" ? {} : KnowledgeArticlesSensorsActuators,
+    typeof KnowledgeArticlesEmbedded === "undefined" ? {} : KnowledgeArticlesEmbedded,
+    typeof KnowledgeArticlesRadio === "undefined" ? {} : KnowledgeArticlesRadio,
+    typeof KnowledgeArticlesSoftware === "undefined" ? {} : KnowledgeArticlesSoftware,
+    typeof KnowledgeArticlesDistributedSystems === "undefined" ? {} : KnowledgeArticlesDistributedSystems,
+    typeof KnowledgeArticlesAi === "undefined" ? {} : KnowledgeArticlesAi,
+    typeof KnowledgeArticlesCrossCutting === "undefined" ? {} : KnowledgeArticlesCrossCutting,
+    typeof KnowledgeArticlesGlossary === "undefined" ? {} : KnowledgeArticlesGlossary,
   );
+  const chapterIndex = typeof KnowledgeChapterIndex === "undefined"
+    ? Object.fromEntries(Object.entries(authoredArticles).map(([articleId, article]) => [articleId, {
+      asset: `/app/knowledge-chapters/${articleId}.js`,
+      title: article.title,
+      summary: article.summary,
+      sections: (article.sections || []).filter((section) => section.id).map((section) => ({ id: section.id, heading: section.heading })),
+    }]))
+    : KnowledgeChapterIndex;
+  registryRoot.KnowledgeArticleRegistry = Object.assign(registryRoot.KnowledgeArticleRegistry || {}, authoredArticles);
+  const articles = Object.fromEntries(Object.entries(chapterIndex).map(([articleId, metadata]) => [articleId,
+    authoredArticles[articleId] || {
+      title: metadata.title,
+      summary: metadata.summary,
+      sections: metadata.sections.map((section) => ({ id: section.id, heading: section.heading })),
+    },
+  ]));
 
   topics
     .flatMap((topic) => topic.children || [])
@@ -290,10 +309,66 @@ const KnowledgeContent = (() => {
       const article = articles[chapter.articleId];
       if (!article) return;
       article.access = chapter.access || "premium";
-      chapter.subchapters = (article.sections || [])
+      chapter.subchapters = article.sections
         .filter((section) => section.id)
         .map((section) => ({ id: section.id, title: section.heading }));
     });
+
+  function loadedArticle(articleId) {
+    const article = registryRoot.KnowledgeArticleRegistry[articleId] || null;
+    if (article) article.access = articles[articleId]?.access || "premium";
+    return article;
+  }
+
+  function loadArticle(articleId) {
+    const loaded = loadedArticle(articleId);
+    if (loaded) return Promise.resolve(loaded);
+    if (!chapterIndex[articleId]) return Promise.reject(new Error(`Unknown knowledge article: ${articleId}`));
+    if (articleLoadPromises.has(articleId)) return articleLoadPromises.get(articleId);
+    const promise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = `${chapterIndex[articleId].asset}?v=${assetVersion}`;
+      script.dataset.knowledgeArticle = articleId;
+      script.addEventListener("load", () => {
+        const article = loadedArticle(articleId);
+        if (article) resolve(article);
+        else reject(new Error(`Knowledge article did not register: ${articleId}`));
+      }, { once: true });
+      script.addEventListener("error", () => reject(new Error(`Knowledge article could not be loaded: ${articleId}`)), { once: true });
+      document.head.append(script);
+    }).catch((error) => {
+      articleLoadPromises.delete(articleId);
+      throw error;
+    });
+    articleLoadPromises.set(articleId, promise);
+    return promise;
+  }
+
+  function prefetchArticle(articleId) {
+    const metadata = chapterIndex[articleId];
+    if (!metadata || loadedArticle(articleId)) return;
+    const href = `${metadata.asset}?v=${assetVersion}`;
+    if (document.querySelector(`link[rel="prefetch"][href="${CSS.escape(href)}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "script";
+    link.href = href;
+    document.head.append(link);
+  }
+
+  function findChapterForAnchor(anchorId) {
+    for (const topic of topics) {
+      const chapter = topic.children?.find((item) => item.id === anchorId || item.subchapters?.some((section) => section.id === anchorId));
+      if (chapter) return chapter;
+    }
+    return null;
+  }
+
+  function adjacentArticleIds(chapterId) {
+    const chapters = topics.flatMap((topic) => topic.children || []);
+    const index = chapters.findIndex((chapter) => chapter.id === chapterId);
+    return [chapters[index - 1]?.articleId, chapters[index + 1]?.articleId].filter(Boolean);
+  }
 
   function findTopic(topicId) {
     for (const topic of topics) {
@@ -308,5 +383,15 @@ const KnowledgeContent = (() => {
     return topics.find((topic) => topic.children?.some((item) => item.id === topicId)) || null;
   }
 
-  return { topics, articles, findTopic, findParentTopic };
+  return {
+    topics,
+    articles,
+    findTopic,
+    findParentTopic,
+    findChapterForAnchor,
+    loadedArticle,
+    loadArticle,
+    prefetchArticle,
+    adjacentArticleIds,
+  };
 })();

@@ -32,7 +32,7 @@ test("renders the project assistant in the visible IDE workbench", () => {
 
 test("separates chat history from input before the first message", () => {
   assert.match(guidedView, />Verlauf<\/p>[\s\S]*code-explorer-chat-messages/);
-  assert.match(guidedView, /<form data-code-explorer-chat>[\s\S]*>Eingabe<\/p>/);
+  assert.match(guidedView, /<form[^>]*data-code-explorer-chat[^>]*>[\s\S]*>Eingabe<\/p>/);
 });
 
 test("code explorer chat uses a compact arrow send button inside the input", () => {
@@ -47,7 +47,7 @@ test("code explorer chat uses a compact arrow send button inside the input", () 
 
 test("shows the submitted question immediately and an animated waiting answer", () => {
   assert.match(guidedView, /messages\.push\(\{ role: "user", content \}\);[\s\S]*pending: true[\s\S]*renderProjectAssistant\(project\);/);
-  assert.match(guidedView, /code-explorer-chat-waiting[\s\S]*<i><\/i><i><\/i><i><\/i>/);
+  assert.match(guidedView, /code-explorer-chat-waiting ai-chat__status[\s\S]*<i><\/i><i><\/i><i><\/i>/);
   assert.match(guidedView, /messages: messages\.filter\(\(message\) => !message\.pending\)/);
   assert.match(guidedView, /Object\.assign\(pendingMessage,[\s\S]*pending: false/);
   assert.match(guidedView, /scrollCodeExplorerChatToEnd/);

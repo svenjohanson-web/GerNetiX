@@ -5,6 +5,7 @@ const DevelopmentPlatform = (() => {
   let projectTemplatePreviews = {};
 
   function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic, repositoryCard }) {
+    let initialized = false;
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
@@ -33,6 +34,8 @@ const DevelopmentPlatform = (() => {
     if (!state.developmentPlatform.componentDraftBrowserAccessScope) state.developmentPlatform.componentDraftBrowserAccessScope = "local_network";
 
     function init() {
+      if (initialized) return;
+      initialized = true;
       repositoryCard?.init();
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
       document.querySelector("#continueDevelopmentProjectButton").addEventListener("click", continueLastProject);
@@ -248,9 +251,9 @@ const DevelopmentPlatform = (() => {
         content: defaultAssistantMessage(),
       }];
       document.querySelector("#developmentChatMessages").innerHTML = messages.map((message) => `
-        <article class="chat-message ${escapeHtml(message.role)}">
+        <article class="chat-message ai-chat__message ${escapeHtml(message.role)} ${message.pending ? "is-pending" : ""} ${message.error ? "is-error" : ""}">
           <span>${message.role === "user" ? "Du" : "Architektur-KI"}</span>
-          <p>${escapeHtml(message.content)}</p>
+          ${message.pending ? `<p class="ai-chat__status" aria-label="${escapeHtml(message.status || "KI antwortet")}"><span>${escapeHtml(message.status || "KI verarbeitet die Anfrage")}</span><i></i><i></i><i></i></p>` : `<p>${escapeHtml(message.content)}</p>`}
           ${message.routing ? `<div class="chat-routing ${message.routing.local ? "local" : "api"}">
             <strong>${escapeHtml(routingLabel(message.routing))}</strong>
             <small>${escapeHtml(routingDetail(message.routing))}</small>
@@ -1681,6 +1684,8 @@ const DevelopmentPlatform = (() => {
         return;
       }
       state.developmentPlatform.chat.push({ role: "user", content: normalizedContent });
+      const pendingMessage = { role: "assistant", content: "", pending: true, status: "Architekturkontext wird vorbereitet" };
+      state.developmentPlatform.chat.push(pendingMessage);
       submit.disabled = true;
       renderRequirementsText();
       renderChatMessages();
@@ -1688,7 +1693,7 @@ const DevelopmentPlatform = (() => {
       try {
         const response = await postJson("/api/platform/development-assistant/chat", {
           projectId: activeProjectId(),
-          messages: state.developmentPlatform.chat,
+          messages: state.developmentPlatform.chat.filter((message) => !message.pending),
           architectureDiagram: state.developmentPlatform.architectureDiagram,
           assistantMode: state.developmentPlatform.assistantMode,
           homeAutomationConfiguration: state.developmentPlatform.homeAutomationConfiguration,
@@ -1698,17 +1703,18 @@ const DevelopmentPlatform = (() => {
           state.developmentPlatform.architectureDiagram = sanitizeArchitectureDiagram(response.architectureDiagram);
         }
         state.developmentPlatform.lastRouting = response.routing || null;
-        state.developmentPlatform.chat.push({
-          role: "assistant",
+        Object.assign(pendingMessage, {
           content: response.message?.content || "Keine Antwort erhalten.",
           usage: response.usage || null,
           routing: response.routing || null,
+          pending: false,
         });
         await persistDevelopmentDialog();
       } catch (error) {
-        state.developmentPlatform.chat.push({
-          role: "assistant",
+        Object.assign(pendingMessage, {
           content: `Ich konnte den Architektur-Assistenten nicht erreichen: ${error.message}`,
+          pending: false,
+          error: true,
         });
         state.developmentPlatform.architectureDiagram = null;
         await persistDevelopmentDialog();

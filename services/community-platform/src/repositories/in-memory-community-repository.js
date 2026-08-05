@@ -37,6 +37,23 @@ class InMemoryCommunityRepository {
     });
   }
 
+  dashboardSummary(userId) {
+    const questions = Array.from(this.questions.values()).filter((question) => question.author_user_id === userId);
+    const activeThreadIds = new Set(Array.from(this.threadMembers.values())
+      .filter((member) => member.user_id === userId && !member.left_at && !member.archived_at)
+      .map((member) => member.thread_id));
+    const unreadThreadIds = new Set(Array.from(this.inboxEntries.values())
+      .filter((entry) => entry.recipient_user_id === userId && entry.state === "unread" && activeThreadIds.has(entry.thread_id))
+      .map((entry) => entry.thread_id));
+    return {
+      questions: summarizeQuestions(questions),
+      messages: {
+        unread: unreadThreadIds.size,
+        threads: activeThreadIds.size,
+      },
+    };
+  }
+
   saveAnswer(answer) {
     this.answers.set(answer.answer_id, answer);
     return answer;
@@ -167,6 +184,21 @@ class InMemoryCommunityRepository {
     for (const entry of inboxEntries) this.saveInboxEntry(entry);
     return clone({ broadcast, inboxEntries });
   }
+}
+
+function summarizeQuestions(questions) {
+  const summary = {
+    total: 0,
+    public: { open: 0, closed: 0 },
+    private: { open: 0, closed: 0 },
+  };
+  for (const question of questions) {
+    const visibility = question.visibility === "private" ? "private" : "public";
+    const lifecycle = ["closed", "resolved"].includes(String(question.status || "").toLowerCase()) ? "closed" : "open";
+    summary[visibility][lifecycle] += 1;
+    summary.total += 1;
+  }
+  return summary;
 }
 
 function clone(value) {

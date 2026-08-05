@@ -69,7 +69,6 @@ const {
   setSessionCookie,
 } = require("./dev/http-utils");
 const { createDevServiceClients } = require("./dev/service-clients");
-const { summarizeCommunityQuestions } = require("./dev/community-summary");
 const { createRouteRegistry } = require("./dev/server/route-registry");
 const { createSessionAccess } = require("./dev/server/session-access");
 const { createRequestHandler } = require("./dev/server/request-handler");
@@ -365,6 +364,9 @@ const projectServerSeedPromises = new Map();
 const accountResourcePlanCache = new Map();
 const accountResourcePlanLoads = new Map();
 const accountResourcePlanCacheMs = 15_000;
+const userIdeProjectsCache = new Map();
+const userIdeProjectLoads = new Map();
+const userIdeProjectsCacheMs = 2_500;
 const routeRegistry = createRouteRegistry();
 const sessionAccess = createSessionAccess({ resolveSession: readSession, sendJson });
 
@@ -483,6 +485,7 @@ registerHardwareLabRoutes({
   hardwareLabService,
   hardwareLabRepository,
   buildDeployBaseUrl,
+  aiUsageJson,
 });
 registerProjectRoutes({
   registry: routeRegistry,
@@ -1143,16 +1146,31 @@ async function handleUserIdeSummary(res, session) {
   });
 }
 
-async function handlePlatformSummary(res, session) {
+const platformSummarySections = new Set(["projects", "devices", "builds", "ai", "community", "account", "knowledge", "billing", "subscription", "progress", "development"]);
+const platformBootstrapSections = new Set(["projects", "development"]);
+
+function requestedPlatformSummarySections(value) {
+  if (value === null || value === undefined || value === "") return new Set(platformSummarySections);
+  return new Set(String(value).split(",").map((item) => item.trim()).filter((item) => platformSummarySections.has(item)));
+}
+
+function requestedPlatformBootstrapSections(value) {
+  if (value === null || value === undefined || value === "") return new Set(platformBootstrapSections);
+  return new Set(String(value).split(",").map((item) => item.trim()).filter((item) => platformBootstrapSections.has(item)));
+}
+
+async function handlePlatformSummary(res, session, requestedSections = null) {
+  const sections = requestedPlatformSummarySections(requestedSections);
   const serviceStatus = {};
-  const projectsPromise = loadUserIdeProjects(session).then((items) => {
+  const needsProjects = ["projects", "builds", "progress"].some((section) => sections.has(section));
+  const projectsPromise = needsProjects ? loadUserIdeProjects(session).then((items) => {
     serviceStatus.project_server = { ok: true };
     return items;
   }).catch((error) => {
     serviceStatus.project_server = { ok: false, error: error.message || String(error) };
     return [];
-  });
-  const devicesPromise = loadUserIdeDevices(session).then((items) => {
+  }) : Promise.resolve([]);
+  const devicesPromise = sections.has("devices") ? loadUserIdeDevices(session).then((items) => {
     serviceStatus.device_management = { ok: true };
     return items;
   }).catch((error) => {
@@ -1174,42 +1192,48 @@ async function handlePlatformSummary(res, session) {
       },
     });
     return [];
-  });
-  const aiUsagePromise = loadAiUsageSummary(session).then((summary) => {
+  }) : Promise.resolve([]);
+  const needsAiUsage = sections.has("ai") || sections.has("billing");
+  const aiUsagePromise = needsAiUsage ? loadAiUsageSummary(session).then((summary) => {
     serviceStatus.ai_usage = { ok: summary.available !== false };
     return summary;
   }).catch((error) => {
     serviceStatus.ai_usage = { ok: false, error: error.message || String(error) };
     return null;
-  });
-  const communitySummaryPromise = loadCommunityDashboardSummary(session).then((summary) => {
+  }) : Promise.resolve(null);
+  const communitySummaryPromise = sections.has("community") ? loadCommunityDashboardSummary(session).then((summary) => {
     serviceStatus.community = { ok: true };
     return summary;
   }).catch((error) => {
     serviceStatus.community = { ok: false, error: error.message || String(error) };
-    return { ...summarizeCommunityQuestions([]), available: false };
-  });
-  const accountPromise = createAccountSummary(session);
-  const knowledgeStatePromise = loadKnowledgeState(session);
+    return {
+      available: false,
+      total: 0,
+      public: { open: 0, closed: 0 },
+      private: { open: 0, closed: 0 },
+      messages: { unread: 0, threads: 0 },
+    };
+  }) : Promise.resolve(null);
+  const knowledgeStatePromise = sections.has("knowledge") ? loadKnowledgeState(session) : Promise.resolve(null);
   const projects = await projectsPromise;
-  const buildsPromise = loadProjectBuilds(projects, session).then((items) => {
+  const buildsPromise = sections.has("builds") ? loadProjectBuilds(projects, session).then((items) => {
     serviceStatus.builds = { ok: true };
     return items;
   }).catch((error) => {
     serviceStatus.builds = { ok: false, error: error.message || String(error) };
     return [];
-  });
-  const [devices, builds, aiUsage, communitySummary, account, knowledgeState] = await Promise.all([
+  }) : Promise.resolve([]);
+  const progressPromise = sections.has("progress") ? listLearningProgress(projectServerUserId(session), projects) : Promise.resolve([]);
+  const [devices, builds, aiUsage, communitySummary, knowledgeState, learningProgress] = await Promise.all([
     devicesPromise,
     buildsPromise,
     aiUsagePromise,
     communitySummaryPromise,
-    accountPromise,
     knowledgeStatePromise,
+    progressPromise,
   ]);
   const userId = projectServerUserId(session);
-  sendJson(res, 200, {
-    account,
+  const payload = {
     routes: {
       auth: "/app/auth/",
       dashboard: "/app/dashboard/",
@@ -1221,31 +1245,42 @@ async function handlePlatformSummary(res, session) {
       billing: "/app/billing/",
     },
     workspace_state: getWorkspaceState(userId),
-    development_assistant: developmentAssistant.config(),
-    development_project_templates: developmentProjectTemplateCatalog().map((template) => ({
+    service_status: serviceStatus,
+  };
+  if (sections.has("development")) {
+    payload.development_assistant = developmentAssistant.config();
+    payload.development_project_templates = developmentProjectTemplateCatalog().map((template) => ({
       ...template,
       available: hasEntitlements(session, template.required_entitlements),
-    })),
-    development_project_template_previews: developmentProjectTemplatePreviews(),
-    projects: projects.map(toPlatformProject),
-    learning_progress: await listLearningProgress(userId, projects),
-    devices,
-    builds,
-    community_summary: communitySummary,
-    knowledge_updates: knowledgeState.updates,
-    knowledge_history: knowledgeState.history,
-    billing: await loadBillingSummary(session, aiUsage),
-    ai_usage: aiUsage,
-    service_status: serviceStatus,
-  });
+    }));
+    payload.development_project_template_previews = developmentProjectTemplatePreviews();
+  }
+  if (sections.has("account")) payload.account = await createAccountSummary(session, aiUsage, { includeAiCredits: needsAiUsage });
+  if (sections.has("projects")) payload.projects = projects.map(toPlatformProject);
+  if (sections.has("progress")) payload.learning_progress = learningProgress;
+  if (sections.has("devices")) payload.devices = devices;
+  if (sections.has("builds")) payload.builds = builds;
+  if (sections.has("community")) payload.community_summary = communitySummary;
+  if (sections.has("knowledge")) {
+    payload.knowledge_updates = knowledgeState.updates;
+    payload.knowledge_history = knowledgeState.history;
+  }
+  if (sections.has("billing")) payload.billing = await loadBillingSummary(session, aiUsage);
+  else if (sections.has("subscription")) {
+    const subscription = accountSubscription(session);
+    payload.billing = { plan: subscription.plan, entitlements: subscription.entitlements };
+  }
+  if (sections.has("ai")) payload.ai_usage = aiUsage;
+  sendJson(res, 200, payload);
 }
 
-async function handlePlatformBootstrap(res, session) {
+async function handlePlatformBootstrap(res, session, requestedSections = null) {
   const startedAt = Date.now();
-  const projects = await loadUserIdeProjects(session);
+  const sections = requestedPlatformBootstrapSections(requestedSections);
+  const projects = sections.has("projects") ? await loadUserIdeProjects(session) : [];
   const userId = projectServerUserId(session);
   const subscription = accountSubscription(session);
-  sendJson(res, 200, {
+  const payload = {
     account: {
       username: session.account.username || "",
       user_id: userId,
@@ -1253,13 +1288,6 @@ async function handlePlatformBootstrap(res, session) {
       capabilities: ["ide_flash_usb", "ide_flash_ota", "cloud_flash"],
     },
     workspace_state: getWorkspaceState(userId),
-    development_assistant: developmentAssistant.config(),
-    development_project_templates: developmentProjectTemplateCatalog().map((template) => ({
-      ...template,
-      available: hasEntitlements(session, template.required_entitlements),
-    })),
-    development_project_template_previews: developmentProjectTemplatePreviews(),
-    projects: projects.map(toPlatformProject),
     billing: {
       plan: subscription.plan,
       entitlements: subscription.entitlements,
@@ -1267,7 +1295,17 @@ async function handlePlatformBootstrap(res, session) {
       ai_credit_packages: [],
     },
     bootstrap_duration_ms: Date.now() - startedAt,
-  });
+  };
+  if (sections.has("projects")) payload.projects = projects.map(toPlatformProject);
+  if (sections.has("development")) {
+    payload.development_assistant = developmentAssistant.config();
+    payload.development_project_templates = developmentProjectTemplateCatalog().map((template) => ({
+      ...template,
+      available: hasEntitlements(session, template.required_entitlements),
+    }));
+    payload.development_project_template_previews = developmentProjectTemplatePreviews();
+  }
+  sendJson(res, 200, payload);
 }
 
 async function loadKnowledgeState(session) {
@@ -1306,17 +1344,7 @@ async function loadCommunityDashboardSummary(session) {
     "X-GerNetiX-Community-Actor": session.account.user_id,
     "X-GerNetiX-Community-Operator": "false",
   };
-  const [questions, messages] = await Promise.all([
-    communityJson("/api/community/questions?mine=true", { headers }),
-    communityJson("/api/community/message-threads", { headers }),
-  ]);
-  return {
-    ...summarizeCommunityQuestions(questions.items),
-    messages: {
-      unread: Number(messages.unread_count || 0),
-      threads: Array.isArray(messages.items) ? messages.items.length : 0,
-    },
-  };
+  return communityJson("/api/community/dashboard-summary", { headers });
 }
 
 function externalLoginMessage(error) {
@@ -3008,6 +3036,20 @@ function recoveryCheckItem(checkId, ok, message) {
 
 async function loadUserIdeProjects(session) {
   const userId = projectServerUserId(session);
+  const cached = userIdeProjectsCache.get(userId);
+  if (cached && cached.expires_at > Date.now()) return cached.value;
+  if (userIdeProjectLoads.has(userId)) return userIdeProjectLoads.get(userId);
+  const load = loadUserIdeProjectsUncached(session, userId)
+    .then((value) => {
+      userIdeProjectsCache.set(userId, { value, expires_at: Date.now() + userIdeProjectsCacheMs });
+      return value;
+    })
+    .finally(() => userIdeProjectLoads.delete(userId));
+  userIdeProjectLoads.set(userId, load);
+  return load;
+}
+
+async function loadUserIdeProjectsUncached(session, userId) {
   await ensureAccountResourcePlan(session);
   scheduleProjectServerDemoProjects(session);
   const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
@@ -3988,15 +4030,15 @@ function projectServerUserId(session) {
   return userId;
 }
 
-async function createAccountSummary(session) {
-  const aiUsage = await loadAiUsageSummary(session);
+async function createAccountSummary(session, existingAiUsage = null, { includeAiCredits = true } = {}) {
+  const aiUsage = includeAiCredits ? (existingAiUsage || await loadAiUsageSummary(session)) : null;
   const subscription = accountSubscription(session);
   return {
     username: session.account.username || "",
     user_id: projectServerUserId(session),
     plan: subscription.plan,
     capabilities: ["ide_flash_usb", "ide_flash_ota", "cloud_flash"],
-    ai_credits: aiUsage.credits.available_credits,
+    ai_credits: aiUsage?.credits?.available_credits || 0,
     consent_summary: "1 aktiver Device-Support-Consent",
     project_server: projectServerBaseUrl,
     build_deploy_server: buildDeployBaseUrl,

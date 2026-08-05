@@ -7,13 +7,15 @@ const test = require("node:test");
 
 const read = (relativePath) => fs.readFileSync(path.resolve(__dirname, "..", relativePath), "utf8");
 const html = read("public/app/index.html");
+const app = read("public/app/app-shell-controller.js");
 const card = read("public/app/project-repository-card.js");
 const css = read("public/app/app.css");
 const platform = read("public/app/development-platform.js");
 
 test("development area contains the read-only Git repository card and all required views", () => {
   assert.match(html, /id="projectRepositoryCard"[^>]*aria-label="Git-Repository"/);
-  assert.match(html, /project-repository-card\.js\?v=20260803-forgejo-contract-v1/);
+  assert.doesNotMatch(html, /<script[^>]+project-repository-card\.js/);
+  assert.match(app, /loadPlatformScript\("\/app\/project-repository-card\.js\?v=20260803-forgejo-contract-v1"\)/);
   for (const label of ["Git-Repository", "Status", "Branch", "Head", "Dateibaum", "Datei", "Historie", "Commit-Diff"]) {
     assert.match(card, new RegExp(label));
   }

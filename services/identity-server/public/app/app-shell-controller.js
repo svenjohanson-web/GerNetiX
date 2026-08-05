@@ -1,8 +1,12 @@
 // GerNetiX platform module extracted from app.js.
 async function bootstrap() {
   if (isPublicInformationPage) {
+    const informationAssetsPromise = isPublicKnowledgePage ? loadKnowledgeContentAssets() : Promise.resolve();
     try {
-      const summary = await getJson("/api/platform/summary");
+      const publicSummarySections = isPublicKnowledgePage
+        ? "account,knowledge,subscription"
+        : "account,subscription";
+      const summary = await getJson(`/api/platform/summary?include=${publicSummarySections}`);
       state.account = summary.account;
       state.billing = summary.billing;
       state.knowledgeUpdates = summary.knowledge_updates || [];
@@ -11,6 +15,7 @@ async function bootstrap() {
       state.account = null;
       state.billing = null;
     }
+    await informationAssetsPromise;
     document.body.classList.toggle("public-information-anonymous", !state.account);
     await initializePlatformI18n();
     document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : (isPublicKnowledgePage ? "Wissensportal" : "Öffentliche Hilfe");
@@ -18,12 +23,315 @@ async function bootstrap() {
     renderRoute();
     return;
   }
-  developmentPlatform().init();
-  await refreshBootstrap();
+  renderInitialRoute();
+  const initialRoute = routeName();
+  await Promise.all([refreshBootstrap(initialRoute), loadRouteAssets(initialRoute)]);
   await initializePlatformI18n();
   renderAll();
-  renderRoute();
-  void hydratePlatformState();
+  renderRoute({ contentRendered: true });
+  void hydratePlatformState(initialRoute).then((changed) => {
+    if (changed && routeName() === initialRoute) renderAll();
+  });
+}
+
+function loadPlatformScript(src) {
+  const existing = document.querySelector(`script[data-lazy-src="${CSS.escape(src)}"]`);
+  if (existing) return existing.dataset.loaded === "true"
+    ? Promise.resolve()
+    : new Promise((resolve, reject) => {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+    });
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.dataset.lazySrc = src;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      resolve();
+    }, { once: true });
+    script.addEventListener("error", (error) => {
+      script.remove();
+      reject(error);
+    }, { once: true });
+    document.head.append(script);
+  });
+}
+
+function loadPlatformStyle(href) {
+  const existing = document.querySelector(`link[data-lazy-href="${CSS.escape(href)}"]`);
+  if (existing) return existing.dataset.loaded === "true"
+    ? Promise.resolve()
+    : new Promise((resolve, reject) => {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+    });
+  return new Promise((resolve, reject) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.dataset.lazyHref = href;
+    link.addEventListener("load", () => {
+      link.dataset.loaded = "true";
+      resolve();
+    }, { once: true });
+    link.addEventListener("error", (error) => {
+      link.remove();
+      reject(error);
+    }, { once: true });
+    document.head.append(link);
+  });
+}
+
+const routeFragmentLoads = new Map();
+
+function loadRouteFragment(id, src) {
+  if (document.querySelector(`#${CSS.escape(id)}`)) return Promise.resolve();
+  if (routeFragmentLoads.has(id)) return routeFragmentLoads.get(id);
+  const load = fetch(src, { credentials: "same-origin" })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Route fragment could not be loaded: ${response.status}`);
+      return response.text();
+    })
+    .then((html) => {
+      const parsed = new DOMParser().parseFromString(html, "text/html");
+      if (parsed.querySelector("script")) throw new Error("Route fragment must not contain scripts.");
+      const roots = Array.from(parsed.body.children);
+      if (roots.length !== 1 || roots[0].id !== id) throw new Error(`Route fragment root must be #${id}.`);
+      const footer = document.querySelector(".platform-footer");
+      if (!footer) throw new Error("Platform footer is missing.");
+      footer.before(document.importNode(roots[0], true));
+    })
+    .catch((error) => {
+      routeFragmentLoads.delete(id);
+      throw error;
+    });
+  routeFragmentLoads.set(id, load);
+  return load;
+}
+
+async function loadKnowledgeContentAssets() {
+  const urls = knowledgeContentAssetUrls();
+  await Promise.all(urls.slice(0, -1).map(loadPlatformScript));
+  await loadPlatformScript(urls.at(-1));
+}
+
+function knowledgeContentAssetUrls() {
+  const version = "20260805-knowledge-chapter-lazy-1";
+  return ["knowledge-chapter-index.js", "knowledge-content.js"].map((file) => `/app/${file}?v=${version}`);
+}
+
+function knowledgePrefetchAssetUrls() {
+  return [
+    ...knowledgeContentAssetUrls(),
+    "/app/knowledge-chapters/from-problem-to-system.js?v=20260805-knowledge-chapter-lazy-1",
+  ];
+}
+
+function scheduleKnowledgeContentPrefetch() {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)) return;
+  const prefetch = () => knowledgePrefetchAssetUrls().forEach((href) => {
+    if (document.querySelector(`link[rel="prefetch"][href="${CSS.escape(href)}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "script";
+    link.href = href;
+    document.head.append(link);
+  });
+  if (typeof requestIdleCallback === "function") requestIdleCallback(prefetch, { timeout: 5_000 });
+  else setTimeout(prefetch, 2_500);
+}
+
+async function loadQuizAssets() {
+  await Promise.all([
+    loadPlatformScript("/app/quiz-data.js?v=20260805-route-lazy-2"),
+    loadPlatformScript("/app/quiz.js?v=20260805-route-lazy-2"),
+  ]);
+}
+
+async function loadProjectAppAssets() {
+  await Promise.all([
+    loadPlatformScript("/app/project-app-renderer.js?v=20260805-route-lazy-2"),
+    loadPlatformScript("/app/project-app-controller.js?v=20260805-route-lazy-2"),
+  ]);
+}
+
+const lazyAssetVersions = {
+  boardConfiguration: "20260731-board-source-groups-1",
+  build: "20260804-debug-artifact-protection-1",
+  flashDialog: "20260804-unified-flash-1",
+  flashExecutor: "20260804-unified-flash-2",
+  flashProgress: "20260802-flash-progress",
+  guidedProject: "20260805-standard-ai-chat-3",
+  onboarding: "20260719-04",
+  onboardingModel: "20260803-performance-1",
+  usbDisconnect: "20260801-shared-1",
+  usbTarget: "20260801-partial-usb-flash",
+  wifiSetup: "20260801-shared-port-identification",
+};
+
+async function loadBuildWorkbenchAssets() {
+  await Promise.all([
+    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
+    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`),
+    loadPlatformScript(`/app/usb-flash-target-model.js?v=${lazyAssetVersions.usbTarget}`),
+  ]);
+  await loadPlatformScript(`/app/app-device-build-controller.js?v=${lazyAssetVersions.build}`);
+}
+
+async function loadGuidedProjectAssets() {
+  await Promise.all([
+    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
+  ]);
+  await loadPlatformScript(`/app/guided-project-view.js?v=${lazyAssetVersions.guidedProject}`);
+}
+
+async function loadIdeWorkbenchAssets() {
+  await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
+  await loadPlatformScript(`/app/app-ide-controller.js?v=${lazyAssetVersions.build}`);
+  initializeIdeWorkspaceResize();
+  await loadPlatformScript(`/app/device-debug-controller.js?v=${lazyAssetVersions.build}`);
+}
+
+async function loadDeviceOnboardingAssets() {
+  await Promise.all([
+    loadPlatformScript(`/app/device-onboarding-model.js?v=${lazyAssetVersions.onboardingModel}`),
+    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
+    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
+    loadPlatformScript(`/app/unified-flash-executor.js?v=${lazyAssetVersions.flashExecutor}`),
+    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`),
+  ]);
+  await loadPlatformScript(`/app/device-onboarding-controller.js?v=${lazyAssetVersions.onboarding}`);
+}
+
+async function loadDeviceWifiSetupAssets() {
+  await loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`);
+  await loadPlatformScript(`/app/device-wifi-setup-dialog.js?v=${lazyAssetVersions.wifiSetup}`);
+  GerNetiXDeviceWifiSetup.bind();
+}
+
+function routeAssetsMissing(route) {
+  if (["development-platform", "development-hardware"].includes(route)) {
+    return typeof DevelopmentPlatform === "undefined"
+      || typeof DevelopmentHardwareModel === "undefined"
+      || typeof DevelopmentComponentMetamodel === "undefined"
+      || typeof ProjectFeedbackUI === "undefined"
+      || typeof ProjectRepositoryCard === "undefined";
+  }
+  if (route === "hardware-lab") return !document.querySelector("#hardwareLabView")
+    || !document.querySelector('link[data-lazy-href*="/hardware-lab-route.css"][data-loaded="true"]')
+    || typeof GerNetiXHardwareLab === "undefined";
+  if (route === "community") return !document.querySelector('link[data-lazy-href*="/community-routes.css"][data-loaded="true"]')
+    || typeof loadCommunityPortal === "undefined";
+  if (route === "messages") return !document.querySelector("#messagesView")
+    || !document.querySelector('link[data-lazy-href*="/community-routes.css"][data-loaded="true"]')
+    || typeof loadMessages === "undefined";
+  if (route === "shop") return !document.querySelector('link[data-lazy-href*="/community-routes.css"][data-loaded="true"]')
+    || typeof loadCommunityMarketplace === "undefined";
+  if (["ide", "debug"].includes(route)) return typeof renderIdeShell === "undefined"
+    || typeof GerNetiXDeviceDebug === "undefined"
+    || typeof GuidedProjectView === "undefined"
+    || typeof startBuild === "undefined";
+  if (route === "learning-project") return typeof GuidedProjectView === "undefined"
+    || typeof startBuild === "undefined";
+  if (["device-inventory", "device-recovery"].includes(route)) return typeof startBuild === "undefined";
+  if (route === "device-provisioning") return typeof startBuild === "undefined"
+    || typeof DeviceOnboardingController === "undefined";
+  return false;
+}
+
+async function loadRouteAssets(route) {
+  const version = "20260805-route-lazy-3";
+  if (["development-platform", "development-hardware"].includes(route)) {
+    await Promise.all([
+      loadPlatformScript("/app/development-hardware-model.js?v=20260731-profile-inheritance-1"),
+      loadPlatformScript("/app/development-component-metamodel.js?v=20260801-hardware-connection-types"),
+      loadPlatformScript("/app/project-feedback-ui.js?v=20260802-project-feedback"),
+      loadPlatformScript("/app/project-repository-card.js?v=20260803-forgejo-contract-v1"),
+    ]);
+    await loadPlatformScript("/app/development-platform.js?v=20260805-route-lazy-development-1");
+    developmentPlatform().init();
+    applyDevelopmentSummary();
+    return;
+  }
+  if (["ide", "debug"].includes(route)) {
+    await loadIdeWorkbenchAssets();
+    return;
+  }
+  if (route === "learning-project") {
+    await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
+    return;
+  }
+  if (["device-inventory", "device-recovery"].includes(route)) {
+    await loadBuildWorkbenchAssets();
+    return;
+  }
+  if (route === "device-provisioning") {
+    await Promise.all([loadBuildWorkbenchAssets(), loadDeviceOnboardingAssets()]);
+    return;
+  }
+  if (route === "hardware-lab") {
+    await Promise.all([
+      loadRouteFragment("hardwareLabView", `/app/fragments/hardware-lab.html?v=${version}`),
+      loadPlatformStyle(`/app/hardware-lab-route.css?v=${version}`),
+      loadPlatformScript(`/app/hardware-lab-controller.js?v=${version}`),
+    ]);
+    GerNetiXHardwareLab.bind();
+    return;
+  }
+  if (route === "community") {
+    await Promise.all([
+      loadPlatformStyle(`/app/community-routes.css?v=${version}`),
+      loadPlatformScript(`/app/app-community-controller.js?v=${version}`),
+      loadPlatformScript(`/app/community-ideas-controller.js?v=${version}`),
+      loadPlatformScript(`/app/community-portal-controller.js?v=${version}`),
+    ]);
+    bindCommunityCoreEvents();
+    bindCommunityIdeaEvents();
+    bindCommunityPortalEvents();
+    return;
+  }
+  if (route === "messages") {
+    await Promise.all([
+      loadRouteFragment("messagesView", `/app/fragments/messages.html?v=${version}`),
+      loadPlatformStyle(`/app/community-routes.css?v=${version}`),
+      loadPlatformScript(`/app/app-community-controller.js?v=${version}`),
+    ]);
+    bindCommunityMessageEvents();
+    return;
+  }
+  if (route === "shop") {
+    await Promise.all([
+      loadPlatformStyle(`/app/community-routes.css?v=${version}`),
+      loadPlatformScript(`/app/community-marketplace-controller.js?v=${version}`),
+    ]);
+    bindCommunityMarketplaceEvents();
+  }
+}
+
+function applyDevelopmentSummary(summary = null) {
+  if (summary && Object.hasOwn(summary, "development_assistant")) {
+    state.developmentAssistantConfig = summary.development_assistant;
+  }
+  if (summary && Object.hasOwn(summary, "development_project_templates")) {
+    state.developmentProjectTemplates = summary.development_project_templates;
+    state.developmentProjectTemplatePreviews = summary.development_project_template_previews || [];
+  }
+  if (typeof DevelopmentPlatform === "undefined") return;
+  const controller = developmentPlatform();
+  if (Object.hasOwn(state, "developmentAssistantConfig")) {
+    controller.setAssistantConfig(state.developmentAssistantConfig, state.billing);
+  }
+  if (Object.hasOwn(state, "developmentProjectTemplates")) {
+    controller.setProjectTemplates(
+      state.developmentProjectTemplates,
+      state.developmentProjectTemplatePreviews || [],
+    );
+  }
 }
 
 async function initializePlatformI18n() {
@@ -89,7 +397,8 @@ function configureSerialServiceInstallLink(link) {
   return link;
 }
 
-function showSerialServiceChoiceDialog() {
+async function showSerialServiceChoiceDialog() {
+  if (!state.platformDownloads.length) await loadPlatformDownloads();
   const dialog = document.querySelector("#serialServiceChoiceDialog");
   const install = document.querySelector("#serialServiceChoiceInstall");
   const status = document.querySelector("#serialServiceChoiceStatus");
@@ -103,32 +412,53 @@ function showSerialServiceChoiceDialog() {
   if (!dialog.open) dialog.showModal();
 }
 
-async function refresh() {
-  const summary = await getJson("/api/platform/summary");
-  state.account = summary.account;
-  state.projects = summary.projects;
-  state.devices = summary.devices;
-  state.builds = summary.builds;
-  state.communitySummary = summary.community_summary || { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 }, messages: { unread: 0, threads: 0 } };
-  state.knowledgeUpdates = summary.knowledge_updates || [];
-  state.knowledgeHistory = summary.knowledge_history || [];
-  state.billing = summary.billing;
-  state.aiUsage = summary.ai_usage || null;
-  state.progress = summary.learning_progress;
+function platformSummarySectionsForRoute(route) {
+  if (route === "dashboard") return ["devices", "builds", "ai", "community", "knowledge", "billing", "progress"];
+  if (["development-platform", "development-hardware", "ide", "debug", "project-app"].includes(route)) return ["devices", "builds", "progress"];
+  if (["learn", "learning-project-overview", "learning-project"].includes(route)) return ["progress"];
+  if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return ["devices", "builds"];
+  if (route === "billing") return ["ai", "billing"];
+  return [];
+}
+
+const loadedPlatformBootstrapSections = new Set();
+
+function platformBootstrapSectionsForRoute(route) {
+  const sections = [];
+  if ([
+    "dashboard", "development-platform", "development-hardware", "ide", "debug", "project-app",
+    "learn", "learning-project-overview", "learning-project", "device-management", "device-provisioning",
+    "device-inventory", "device-recovery", "billing", "community", "messages",
+  ].includes(route)) sections.push("projects");
+  if (["development-platform", "development-hardware"].includes(route)) sections.push("development");
+  return sections;
+}
+
+async function refresh(sections = platformSummarySectionsForRoute(routeName())) {
+  if (!sections.length) return;
+  const summary = await getJson(`/api/platform/summary?include=${encodeURIComponent(sections.join(","))}`);
+  if (summary.account) state.account = summary.account;
+  if (summary.projects) state.projects = summary.projects;
+  if (summary.devices) state.devices = summary.devices;
+  if (summary.builds) state.builds = summary.builds;
+  if (summary.community_summary) state.communitySummary = summary.community_summary;
+  if (summary.knowledge_updates) state.knowledgeUpdates = summary.knowledge_updates;
+  if (summary.knowledge_history) state.knowledgeHistory = summary.knowledge_history;
+  if (summary.billing) state.billing = summary.billing;
+  if (summary.ai_usage) state.aiUsage = summary.ai_usage;
+  if (summary.learning_progress) state.progress = summary.learning_progress;
   state.workspace = summary.workspace_state;
   state.serviceStatus = summary.service_status || {};
-  developmentPlatform().setAssistantConfig(summary.development_assistant || null, state.billing);
-  developmentPlatform().setProjectTemplates(
-    summary.development_project_templates || [],
-    summary.development_project_template_previews || [],
-  );
+  applyDevelopmentSummary(summary);
   state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
   state.activeDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
   state.activeRecoveryDeviceId = state.activeRecoveryDeviceId || state.activeDeviceId;
 }
 
-async function refreshBootstrap() {
-  const summary = await getJson("/api/platform/bootstrap");
+async function refreshBootstrap(route = routeName()) {
+  const sections = platformBootstrapSectionsForRoute(route);
+  const include = sections.length ? sections.join(",") : "none";
+  const summary = await getJson(`/api/platform/bootstrap?include=${include}`);
   state.account = summary.account;
   state.projects = summary.projects || [];
   state.workspace = summary.workspace_state || {};
@@ -137,42 +467,62 @@ async function refreshBootstrap() {
   state.builds = [];
   state.progress = [];
   state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
-  developmentPlatform().setAssistantConfig(summary.development_assistant || null, state.billing);
-  developmentPlatform().setProjectTemplates(
-    summary.development_project_templates || [],
-    summary.development_project_template_previews || [],
-  );
+  applyDevelopmentSummary(summary);
+  sections.forEach((section) => loadedPlatformBootstrapSections.add(section));
 }
 
-async function hydratePlatformState() {
-  await Promise.all([
-    loadPlatformDownloads(),
-    refresh().then(() => {
-      renderAll();
-      renderRoute();
-    }),
-  ]).catch(() => {});
+async function hydratePlatformBootstrap(route = routeName()) {
+  const missing = platformBootstrapSectionsForRoute(route).filter((section) => !loadedPlatformBootstrapSections.has(section));
+  if (!missing.length) return false;
+  const summary = await getJson(`/api/platform/bootstrap?include=${encodeURIComponent(missing.join(","))}`);
+  if (summary.account) state.account = summary.account;
+  if (summary.workspace_state) state.workspace = summary.workspace_state;
+  if (summary.billing) state.billing = summary.billing;
+  if (Object.hasOwn(summary, "projects")) state.projects = summary.projects;
+  applyDevelopmentSummary(summary);
+  missing.forEach((section) => loadedPlatformBootstrapSections.add(section));
+  state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
+  return true;
+}
+
+async function hydratePlatformState(route = routeName()) {
+  const sections = platformSummarySectionsForRoute(route);
+  if (!sections.length) return false;
+  try {
+    await refresh(sections);
+    if (route === "dashboard") scheduleKnowledgeContentPrefetch();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function renderAll() {
   document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : "";
-  renderDashboard();
-  renderAccountSetup();
-  renderProjects();
-  renderLearn();
-  developmentPlatform().render();
-  renderIdeShell();
-  renderDeviceRecovery();
-  renderNetworkDiscovery();
-  renderDevices();
-  renderBuilds();
-  renderShopConfiguration();
-  renderBilling();
-  GerNetiXHardwareLab.render();
+  const route = routeName();
+  if (route === "dashboard") renderDashboard();
+  if (route === "account-setup") renderAccountSetup();
+  if (route === "development-platform" && lastRenderedRoute === "development-platform") developmentPlatform().render();
+  if (route === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+  if (route === "learn") {
+    renderProjects();
+    renderLearn();
+  }
+  if (route === "learning-project-overview") renderLearningProjectOverview();
+  if (route === "learning-project") learningProject().render();
+  if (route === "ide") renderIdeShell();
+  if (route === "device-recovery") renderDeviceRecovery();
+  if (route === "device-inventory") {
+    renderDevices();
+  }
+  if (route === "shop") renderShopConfiguration();
+  if (route === "billing") renderBilling();
+  if (route === "hardware-lab") GerNetiXHardwareLab.render();
 }
 
-function renderRoute() {
+function renderRoute({ contentRendered = false } = {}) {
   const route = routeName();
+  document.body.classList.remove("route-assets-loading");
   if (lastRenderedRoute === "debug" && route !== "debug") stopIdeDeviceDebugPolling();
   const enteringDevelopmentPlatform = route === "development-platform" && lastRenderedRoute !== "development-platform";
   const routeQuery = new URLSearchParams(window.location.search);
@@ -181,18 +531,20 @@ function renderRoute() {
   document.body.classList.toggle("debug-workspace-active", route === "debug");
   document.body.classList.toggle("development-workspace-active", route === "development-platform");
   document.body.classList.toggle("development-hardware-active", route === "development-hardware");
+  document.body.classList.toggle("hardware-lab-active", route === "hardware-lab");
   renderBreadcrumb(route);
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
   document.querySelectorAll("#mainMenu .app-menu-group").forEach((group) => {
     group.open = Boolean(group.querySelector("a.active"));
   });
+  document.documentElement.classList.remove("initial-hardware-lab-route");
   document.querySelectorAll("[data-device-management-route]").forEach((button) => {
     button.classList.toggle("active", deviceManagementRouteFor(route) === button.dataset.deviceManagementRoute);
   });
   if (route === "development-platform" && requestedArchitectureProjectId) developmentPlatform().openArchitecture(requestedArchitectureProjectId);
   else if (enteringDevelopmentPlatform) developmentPlatform().enterProjectStart();
-  else if (route === "development-platform") developmentPlatform().render();
+  else if (route === "development-platform" && !contentRendered) developmentPlatform().render();
   if (route === "development-platform") {
     loadProcessorBoardCatalog();
     loadBoardFeatureCatalog();
@@ -201,31 +553,48 @@ function renderRoute() {
     loadProcessorBoardCatalog();
     loadBoardFeatureCatalog();
     loadSensorCatalog();
-    developmentPlatform().renderHardwareConfiguration();
+    if (!contentRendered) developmentPlatform().renderHardwareConfiguration();
   }
   if (route === "ide") loadIdeProject();
   if (route === "debug") loadDeviceDebugWorkspace();
   if (route === "learn") {
     loadProcessorBoardCatalog();
-    renderProjects();
-    renderLearn();
+    if (!contentRendered) {
+      renderProjects();
+      renderLearn();
+    }
   }
-  if (route === "learning-project-overview") renderLearningProjectOverview();
-  if (route === "learning-project") learningProject().render();
-  if (route === "project-app") projectApp().render(new URLSearchParams(window.location.search).get("project") || "");
-  if (route === "quiz") quiz().render();
+  if (route === "learning-project-overview" && !contentRendered) renderLearningProjectOverview();
+  if (route === "learning-project" && !contentRendered) learningProject().render();
+  if (route === "project-app") void loadProjectAppAssets().then(() => projectApp().render(new URLSearchParams(window.location.search).get("project") || ""));
+  if (route === "quiz") void loadQuizAssets().then(() => quiz().render());
   if (route === "device-recovery") {
-    renderDeviceRecovery();
+    if (!contentRendered) renderDeviceRecovery();
     refreshUsbPorts(false);
   }
   if (route === "device-provisioning") loadDevicePageTools();
-  if (route === "hardware-lab") GerNetiXHardwareLab.enter();
+  if (route === "hardware-lab") {
+    if (!contentRendered) GerNetiXHardwareLab.render();
+    GerNetiXHardwareLab.enter();
+  }
   if (route === "downloads") renderDownloads();
   if (route === "shop") loadCommunityMarketplace();
   if (route === "community") loadCommunityPortal();
   if (route === "messages") loadMessages();
   if (["help", "knowledge"].includes(route)) renderInformationTopic();
   lastRenderedRoute = route;
+}
+
+function renderInitialRoute() {
+  const route = routeName();
+  document.body.classList.toggle("route-assets-loading", routeAssetsMissing(route));
+  document.body.classList.toggle("hardware-lab-active", route === "hardware-lab");
+  document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
+  document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
+  renderBreadcrumb(route);
+  if (route !== "hardware-lab" || document.querySelector("#hardwareLabView")) {
+    document.documentElement.classList.remove("initial-hardware-lab-route");
+  }
 }
 
 function learningProject() {
@@ -322,7 +691,7 @@ function currentLocationTrail(route) {
     ],
     "hardware-lab": [
       { label: "Plattform", route: "/app/dashboard/" },
-      { label: "KI-Hardware-Labor", route: "" },
+      { label: "KI-Hardware-Assistent", route: "" },
     ],
     learn: [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -462,7 +831,29 @@ function navigate(route) {
     return;
   }
   history.pushState({}, "", route);
-  renderRoute();
+  activateCurrentRoute();
+}
+
+function activateCurrentRoute() {
+  const activeRoute = routeName();
+  const waitingForAssets = routeAssetsMissing(activeRoute);
+  if (waitingForAssets) renderInitialRoute();
+  else renderRoute();
+  void hydrateRouteAfterNavigation(activeRoute, { enterAfterHydration: waitingForAssets });
+}
+
+async function hydrateRouteAfterNavigation(activeRoute = routeName(), { enterAfterHydration = false } = {}) {
+  const assetsChanged = routeAssetsMissing(activeRoute);
+  const [, bootstrapChanged, stateChanged] = await Promise.all([
+    loadRouteAssets(activeRoute),
+    hydratePlatformBootstrap(activeRoute).catch(() => false),
+    hydratePlatformState(activeRoute),
+  ]);
+  if (routeName() !== activeRoute) return false;
+  const contentRendered = assetsChanged || bootstrapChanged || stateChanged;
+  if (contentRendered) renderAll();
+  if (enterAfterHydration) renderRoute({ contentRendered });
+  return contentRendered;
 }
 
 async function renderDownloads() {
@@ -518,6 +909,31 @@ function renderShopConfiguration() {
     </dl>
     <p class="helper-text">Mock: Diese Auswahl wird noch nicht gespeichert und erzeugt keine Bestellung.</p>
   `;
+}
+
+async function claimFlashboxFromCode(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const claimCode = String(new FormData(form).get("claim_code") || "").trim();
+  if (!claimCode) return setFlashboxClaimStatus("error", "Bitte gib den Claim-Code der Flashbox ein.");
+  setFlashboxClaimStatus("running", "Flashbox wird deinem Account zugeordnet...");
+  try {
+    const result = await postJson("/api/platform/flashbox/claim", { claim_code: claimCode });
+    state.devices = state.devices.filter((item) => item.account_device_id !== result.device.account_device_id).concat(result.device);
+    state.activeDeviceId ||= result.device.device_id;
+    renderDashboard();
+    form.reset();
+    setFlashboxClaimStatus("ok", `${result.device.display_name} ist jetzt im Inventar.`);
+  } catch (error) {
+    setFlashboxClaimStatus("error", error.message || "Flashbox konnte nicht uebernommen werden.");
+  }
+}
+
+function setFlashboxClaimStatus(kind, text) {
+  const status = document.querySelector("#flashboxClaimStatus");
+  if (!status) return;
+  status.className = `flash-status ${kind}`;
+  status.textContent = text;
 }
 
 async function createFlashboxMockOrder() {

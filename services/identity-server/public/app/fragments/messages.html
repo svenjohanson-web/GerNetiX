@@ -1,0 +1,32 @@
+<section id="messagesView" class="view hidden">
+  <header class="messages-header">
+    <div><p class="eyebrow">Interne Nachrichten</p><h1>Nachrichten</h1></div>
+    <button id="messageComposeButton" class="primary" type="button">Neue Nachricht</button>
+  </header>
+  <section class="messages-shell">
+    <nav id="messageFolders" class="message-folders" aria-label="Nachrichtenordner">
+      <button type="button" data-message-folder="inbox" class="active"><span>Posteingang</span><strong id="messageUnreadCount">0</strong></button>
+      <button type="button" data-message-folder="outbox"><span>Postausgang</span><strong>0</strong></button>
+      <button type="button" data-message-folder="sent"><span>Gesendet</span></button>
+      <button type="button" data-message-folder="support"><span>Support</span></button>
+      <button type="button" data-message-folder="archive"><span>Archiv</span></button>
+    </nav>
+    <section class="message-list-column">
+      <header><h2 id="messageFolderTitle">Posteingang</h2><button id="messageRefreshButton" type="button">Aktualisieren</button></header>
+      <div id="messageThreadList" class="message-thread-list"><p class="helper-text">Nachrichten werden geladen …</p></div>
+    </section>
+    <section id="messageReadingPane" class="message-reading-pane">
+      <div class="message-empty-state"><strong>Wähle eine Nachricht</strong><p>Die Unterhaltung wird hier geöffnet.</p></div>
+    </section>
+  </section>
+  <dialog id="messageComposeDialog" class="message-compose-dialog">
+    <form id="messageComposeForm" method="dialog">
+      <header><div><p class="eyebrow">Neue Unterhaltung</p><h2>Nachricht verfassen</h2></div><button type="button" data-close-message-compose>Schließen</button></header>
+      <label>Nickname des Empfängers<input name="recipient_username" required maxlength="80" autocomplete="off" /></label>
+      <label>Betreff<input name="subject" required maxlength="160" /></label>
+      <label>Nachricht<textarea name="body" required maxlength="8000" rows="9"></textarea></label>
+      <p id="messageComposeStatus" class="helper-text" aria-live="polite"></p>
+      <footer><button class="primary" type="submit">Senden</button></footer>
+    </form>
+  </dialog>
+</section>

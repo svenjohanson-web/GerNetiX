@@ -9,8 +9,21 @@ function registerHardwareLabRoutes({
   hardwareLabService,
   hardwareLabRepository,
   buildDeployBaseUrl,
+  aiUsageJson,
   fetchImpl = fetch,
 }) {
+  registry.register({
+    method: "GET",
+    path: "/api/platform/hardware-lab/ai-usage",
+    async handler({ req, res }) {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      const accountId = projectServerUserId(session);
+      const rating = await aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`);
+      sendJson(res, 200, { rating });
+    },
+  });
+
   registry.register({
     method: "GET",
     path: "/api/platform/hardware-lab/sessions",
@@ -41,6 +54,7 @@ function registerHardwareLabRoutes({
   });
 
   registerAction("analyze-sources", (id) => hardwareLabService.analyzeHardwareLabSources(id, { actor: "identity-hardware-lab" }));
+  registerAction("chat", (id, body) => hardwareLabService.chatHardwareLab(id, { ...body, actor: "identity-hardware-lab" }));
   registerAction("discovery-firmware-build", (id) => hardwareLabService.requestDiscoveryFirmwareBuild(id, { actor: "identity-hardware-lab" }));
   registerAction("discovery-firmware-build-status", (id) => hardwareLabService.synchronizeDiscoveryFirmwareBuild(id));
   registerAction("examination-report", (id, body) => hardwareLabService.recordHardwareExamination(id, { ...body, actor: "identity-hardware-lab" }));

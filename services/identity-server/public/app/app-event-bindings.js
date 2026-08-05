@@ -1,6 +1,5 @@
 // GerNetiX platform module extracted from app.js.
 bootstrap();
-GerNetiXHardwareLab.bind();
 
 document.querySelector("#mainMenuButton").addEventListener("click", (event) => {
   event.stopPropagation();
@@ -11,6 +10,16 @@ document.querySelector("#logoutButton").addEventListener("click", async () => {
   window.location.href = "/app/auth/";
 });
 document.querySelector("#platformLanguage")?.addEventListener("change", changePlatformLocale);
+document.querySelector("#deviceWifiSetupMenuButton")?.addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    await loadDeviceWifiSetupAssets();
+    await GerNetiXDeviceWifiSetup.open({ source: "menu" });
+  } finally {
+    button.disabled = false;
+  }
+});
 
 document.querySelectorAll("[data-open-route]").forEach((button) => {
   button.addEventListener("click", () => navigate(button.dataset.openRoute));
@@ -124,24 +133,6 @@ document.querySelector("#ideBuildProfileSelect")?.addEventListener("change", asy
     setFlashStatus("error", error.message);
   }
 });
-document.querySelector("#communityRefreshButton")?.addEventListener("click", loadCommunity);
-document.querySelector("#communityRequestForm")?.addEventListener("submit", submitCommunityRequest);
-document.querySelector("#communityQuestionList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-question]"); if (button) openCommunityQuestion(button.dataset.communityQuestion); });
-document.querySelector("#communityThread")?.addEventListener("submit", submitCommunityAnswer);
-document.querySelector("#communityThread")?.addEventListener("click", (event) => { const button = event.target.closest("[data-copy-community-link]"); if (button) copyCommunityQuestionLink(button.dataset.copyCommunityLink); });
-document.querySelector("#projectIdeaForm")?.addEventListener("submit", submitProjectIdea);
-document.querySelector("#projectIdeaRefreshButton")?.addEventListener("click", () => loadProjectIdeas(true));
-document.querySelector("#projectIdeaList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-project-idea]"); if (button) openProjectIdea(button.dataset.projectIdea); });
-document.querySelector("#communityPortalSearch")?.addEventListener("input", renderCommunityPortal);
-document.querySelector("#communityActivityList")?.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-community-activity]");
-  if (!button) return;
-  if (button.dataset.communityActivity === "idea") openProjectIdea(button.dataset.communityActivityId);
-  if (button.dataset.communityActivity === "showcase") openProjectShowcase(button.dataset.communityActivityId);
-  if (button.dataset.communityActivity === "question") openCommunityQuestion(button.dataset.communityActivityId);
-});
-document.querySelector("#communityPortalNav")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-target]"); if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
-document.querySelector(".community-challenge")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-target]"); if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
 document.querySelector("#dashboardCommunitySummary")?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-dashboard-community-route]");
   if (!button) return;
@@ -153,32 +144,6 @@ document.querySelector("#dashboardCommunitySummary")?.addEventListener("click", 
 document.querySelector("[data-open-community-marketplace]")?.addEventListener("click", () => {
   navigate("/app/shop/");
   window.setTimeout(() => document.querySelector("#communityMarketplace")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-});
-document.querySelector("#projectShowcaseForm")?.addEventListener("submit", submitProjectShowcase);
-document.querySelector("#projectShowcaseRefreshButton")?.addEventListener("click", () => loadCommunityPortal(true));
-document.querySelector("#projectShowcaseList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-project-showcase]"); if (button) openProjectShowcase(button.dataset.projectShowcase); });
-document.querySelector("#refreshCommunityMarketplaceButton")?.addEventListener("click", () => loadCommunityMarketplace(true));
-document.querySelector("#communityMarketplaceForm")?.addEventListener("submit", submitCommunityMarketplaceListing);
-document.querySelector("#communityMarketplaceListings")?.addEventListener("click", (event) => { const button = event.target.closest("[data-marketplace-listing]"); if (button) openCommunityMarketplaceListing(button.dataset.marketplaceListing); });
-document.querySelector("#messageFolders")?.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-message-folder]");
-  if (!button) return;
-  state.messages.folder = button.dataset.messageFolder;
-  state.messages.activeThreadId = "";
-  document.querySelector("#messageReadingPane").innerHTML = `<div class="message-empty-state"><strong>Wähle eine Nachricht</strong><p>Die Unterhaltung wird hier geöffnet.</p></div>`;
-  loadMessages();
-});
-document.querySelector("#messageThreadList")?.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-message-thread]");
-  if (button) openMessageThread(button.dataset.messageThread);
-});
-document.querySelector("#messageReadingPane")?.addEventListener("submit", submitMessageReply);
-document.querySelector("#messageReadingPane")?.addEventListener("click", (event) => { if (event.target.closest("[data-message-archive]")) toggleMessageArchive(); });
-document.querySelector("#messageRefreshButton")?.addEventListener("click", loadMessages);
-document.querySelector("#messageComposeButton")?.addEventListener("click", () => document.querySelector("#messageComposeDialog").showModal());
-document.querySelector("#messageComposeForm")?.addEventListener("submit", submitNewMessage);
-document.querySelector("#messageComposeDialog")?.addEventListener("click", (event) => {
-  if (event.target === event.currentTarget || event.target.closest("[data-close-message-compose]")) event.currentTarget.close();
 });
 document.querySelector("#flashboxDeviceSelect").addEventListener("change", () => {
   state.activeFlashboxDeviceId = document.querySelector("#flashboxDeviceSelect").value;
@@ -272,7 +237,6 @@ document.querySelector("#projectVersionDialog")?.addEventListener("click", (even
 });
 document.querySelector("#showIdeProjectHintsButton").addEventListener("click", () => setIdeConsoleView("hints"));
 document.querySelector("#sourceEditor").addEventListener("input", () => markIdeSourceDirty());
-initializeIdeWorkspaceResize();
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
   if (document.querySelector("#ideView")?.classList.contains("hidden") || !state.activeProjectId) return;
@@ -366,5 +330,7 @@ document.querySelector("#serialServiceChoiceInstall")?.addEventListener("click",
 document.querySelector("#flashboxConfigForm")?.addEventListener("change", renderShopConfiguration);
 document.querySelector("#createFlashboxMockOrderButton")?.addEventListener("click", createFlashboxMockOrder);
 document.querySelector("#flashboxClaimForm")?.addEventListener("submit", claimFlashboxFromCode);
-window.addEventListener("popstate", renderRoute);
+window.addEventListener("popstate", () => {
+  activateCurrentRoute();
+});
 document.addEventListener("click", closeMainMenu);

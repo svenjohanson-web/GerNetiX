@@ -9,8 +9,9 @@ const test = require("node:test");
 
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
+const fragment = fs.readFileSync(path.join(root, "public", "app", "fragments", "messages.html"), "utf8");
 const client = readPlatformAppSource();
-const css = fs.readFileSync(path.join(root, "public", "app", "app.css"), "utf8");
+const css = fs.readFileSync(path.join(root, "public", "app", "community-routes.css"), "utf8");
 
 test("keeps Messages permanently visible outside the authenticated hamburger groups", () => {
   const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
@@ -23,8 +24,9 @@ test("keeps Messages permanently visible outside the authenticated hamburger gro
 });
 
 test("renders an Outlook-like folder, list and reading layout", () => {
-  assert.match(html, /id="messagesView"[\s\S]*Posteingang[\s\S]*Postausgang[\s\S]*Gesendet[\s\S]*Support[\s\S]*Archiv/);
-  assert.match(html, /id="messageThreadList"[\s\S]*id="messageReadingPane"/);
+  assert.doesNotMatch(html, /id="messagesView"/);
+  assert.match(fragment, /id="messagesView"[\s\S]*Posteingang[\s\S]*Postausgang[\s\S]*Gesendet[\s\S]*Support[\s\S]*Archiv/);
+  assert.match(fragment, /id="messageThreadList"[\s\S]*id="messageReadingPane"/);
   assert.match(css, /\.messages-shell\s*\{[\s\S]*grid-template-columns: 210px minmax\(280px, 370px\) minmax\(420px, 1fr\)/);
 });
 

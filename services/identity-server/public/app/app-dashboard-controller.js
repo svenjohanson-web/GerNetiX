@@ -18,7 +18,7 @@ async function loadBoardFeatureCatalog({ force = false } = {}) {
         state: "ready",
         message: state.boardFeatureCatalog.length ? "" : "Der Hardware Catalog enthält keine Ausstattungsoptionen.",
       };
-      renderNetworkDiscovery();
+      if (routeName() === "device-provisioning" && typeof renderNetworkDiscovery === "function") renderNetworkDiscovery();
       if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
       if (routeName() === "development-platform") developmentPlatform().render();
     })
@@ -28,7 +28,7 @@ async function loadBoardFeatureCatalog({ force = false } = {}) {
         state: "error",
         message: error.message || "Hardware-Katalog nicht erreichbar.",
       };
-      renderNetworkDiscovery();
+      if (routeName() === "device-provisioning" && typeof renderNetworkDiscovery === "function") renderNetworkDiscovery();
       if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
       if (routeName() === "development-platform") developmentPlatform().render();
     })
@@ -51,7 +51,7 @@ async function loadProcessorBoardCatalog({ force = false } = {}) {
         state: "ready",
         message: state.processorBoards.length ? "" : "Der Hardware-Katalog enthält keine provisionierbaren Boards.",
       };
-      renderNetworkDiscovery();
+      if (routeName() === "device-provisioning" && typeof renderNetworkDiscovery === "function") renderNetworkDiscovery();
       if (routeName() === "development-platform") developmentPlatform().render();
       if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
       if (["learn", "learning-project"].includes(routeName())) {
@@ -65,8 +65,8 @@ async function loadProcessorBoardCatalog({ force = false } = {}) {
         state: "error",
         message: error.message || "Hardware-Katalog nicht erreichbar.",
       };
-      renderNetworkDiscovery();
-      setInventoryStatus("error", state.processorBoardCatalogStatus.message);
+      if (routeName() === "device-provisioning" && typeof renderNetworkDiscovery === "function") renderNetworkDiscovery();
+      if (routeName() === "device-inventory" && typeof setInventoryStatus === "function") setInventoryStatus("error", state.processorBoardCatalogStatus.message);
     })
     .finally(() => {
       processorBoardCatalogLoadPromise = null;

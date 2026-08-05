@@ -1,4 +1,48 @@
 // GerNetiX platform module extracted from app.js.
+let communityCoreEventsBound = false;
+let communityMessageEventsBound = false;
+
+function bindCommunityCoreEvents() {
+  if (communityCoreEventsBound) return;
+  communityCoreEventsBound = true;
+  document.querySelector("#communityRefreshButton")?.addEventListener("click", loadCommunity);
+  document.querySelector("#communityRequestForm")?.addEventListener("submit", submitCommunityRequest);
+  document.querySelector("#communityQuestionList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-community-question]");
+    if (button) openCommunityQuestion(button.dataset.communityQuestion);
+  });
+  document.querySelector("#communityThread")?.addEventListener("submit", submitCommunityAnswer);
+  document.querySelector("#communityThread")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-copy-community-link]");
+    if (button) copyCommunityQuestionLink(button.dataset.copyCommunityLink);
+  });
+}
+
+function bindCommunityMessageEvents() {
+  if (communityMessageEventsBound) return;
+  communityMessageEventsBound = true;
+  document.querySelector("#messageFolders")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-message-folder]");
+    if (!button) return;
+    state.messages.folder = button.dataset.messageFolder;
+    state.messages.activeThreadId = "";
+    document.querySelector("#messageReadingPane").innerHTML = `<div class="message-empty-state"><strong>Wähle eine Nachricht</strong><p>Die Unterhaltung wird hier geöffnet.</p></div>`;
+    loadMessages();
+  });
+  document.querySelector("#messageThreadList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-message-thread]");
+    if (button) openMessageThread(button.dataset.messageThread);
+  });
+  document.querySelector("#messageReadingPane")?.addEventListener("submit", submitMessageReply);
+  document.querySelector("#messageReadingPane")?.addEventListener("click", (event) => { if (event.target.closest("[data-message-archive]")) toggleMessageArchive(); });
+  document.querySelector("#messageRefreshButton")?.addEventListener("click", loadMessages);
+  document.querySelector("#messageComposeButton")?.addEventListener("click", () => document.querySelector("#messageComposeDialog").showModal());
+  document.querySelector("#messageComposeForm")?.addEventListener("submit", submitNewMessage);
+  document.querySelector("#messageComposeDialog")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget || event.target.closest("[data-close-message-compose]")) event.currentTarget.close();
+  });
+}
+
 async function loadCommunity() {
   const target = document.querySelector("#communityQuestionList");
   if (!target) return;

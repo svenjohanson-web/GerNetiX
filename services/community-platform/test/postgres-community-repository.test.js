@@ -33,10 +33,35 @@ test("stores queryable Community ownership and visibility", async () => {
   assert.deepEqual(pool.calls[0].values.slice(0, 6), ["q1", "u1", "p1", "private", "open", "new"]);
 });
 
+test("aggregates the account dashboard summary in SQL without loading content rows", async () => {
+  const pool = new RecordingPool([
+    { rows: [{ total: 3, public_open: 1, public_closed: 1, private_open: 1, private_closed: 0 }] },
+    { rows: [{ threads: 2, unread: 1 }] },
+  ]);
+  const repository = new PostgresCommunityRepository(pool);
+
+  const summary = await repository.dashboardSummary("account-1");
+
+  assert.deepEqual(summary, {
+    questions: {
+      total: 3,
+      public: { open: 1, closed: 1 },
+      private: { open: 1, closed: 0 },
+    },
+    messages: { unread: 1, threads: 2 },
+  });
+  assert.equal(pool.calls.length, 2);
+  assert.deepEqual(pool.calls.map((call) => call.values), [["account-1"], ["account-1"]]);
+  assert.match(pool.calls[0].text, /COUNT\(\*\).*FILTER/s);
+  assert.doesNotMatch(pool.calls[0].text, /raw_json/);
+  assert.match(pool.calls[1].text, /COUNT\(DISTINCT m\.thread_id\)/);
+  assert.doesNotMatch(pool.calls[1].text, /raw_json|community_messages/);
+});
+
 class RecordingPool {
-  constructor() { this.calls = []; }
+  constructor(results = []) { this.calls = []; this.results = results; }
   async query(text, values = []) {
     this.calls.push({ text, values });
-    return { rows: [], rowCount: 0 };
+    return this.results.shift() || { rows: [], rowCount: 0 };
   }
 }

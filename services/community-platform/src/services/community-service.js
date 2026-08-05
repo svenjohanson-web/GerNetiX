@@ -259,6 +259,16 @@ class CommunityService {
     return { items };
   }
 
+  async dashboardSummary(actor = {}) {
+    const userId = required(actor.user_id, "actor_user_id");
+    const summary = await this.repository.dashboardSummary(userId);
+    return {
+      available: true,
+      ...summary.questions,
+      messages: summary.messages,
+    };
+  }
+
   async getQuestion(questionId, actor = {}) {
     const question = await this.requireQuestion(questionId);
     requireAccess(question, actor);

@@ -45,9 +45,10 @@ test("shows the personal message overview on the dashboard", () => {
   assert.match(app, /data-dashboard-community-route="\/app\/messages\/"/);
 });
 
-test("loads only the authenticated account's requests and messages for the dashboard summary", () => {
-  assert.match(server, /communityJson\("\/api\/community\/questions\?mine=true"/);
-  assert.match(server, /communityJson\("\/api\/community\/message-threads"/);
+test("loads one compact account-scoped Community summary for the dashboard", () => {
+  assert.match(server, /communityJson\("\/api\/community\/dashboard-summary"/);
+  assert.doesNotMatch(server, /communityJson\("\/api\/community\/questions\?mine=true"/);
+  assert.doesNotMatch(server, /communityJson\("\/api\/community\/message-threads"/);
   assert.match(server, /const headers = \{[\s\S]*"X-GerNetiX-Community-Actor": session\.account\.user_id/);
-  assert.match(server, /community_summary: communitySummary/);
+  assert.match(server, /if \(sections\.has\("community"\)\) payload\.community_summary = communitySummary/);
 });

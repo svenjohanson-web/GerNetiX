@@ -2,6 +2,7 @@ const InformationView = (() => {
   let selectedTopicId = "quick-start";
   let messages = [];
   let bound = false;
+  let chatBusy = false;
   let access = {
     hasAccount: true,
     premium: false,
@@ -11,7 +12,8 @@ const InformationView = (() => {
     onKnowledgeChapterOpen: null,
   };
   let surface = "help";
-  let knowledgeScrollHandler = null;
+  let knowledgeArticleLoadingId = "";
+  let knowledgeArticleError = "";
 
   function render(nextAccess = access) {
     access = { ...access, ...nextAccess };
@@ -20,12 +22,15 @@ const InformationView = (() => {
     if (!mount) return;
     const content = contentForSurface(surface);
     const visibleTopics = content.topics;
+    const portal = surface === "knowledge";
     const requested = window.location.hash.replace(/^#/, "");
-    if (requested && visibleTopics.some((topic) => topic.children?.some((child) => child.id === requested))) selectedTopicId = requested;
+    const requestedChapter = portal ? content.findChapterForAnchor(requested) : null;
+    if (requestedChapter) selectedTopicId = requestedChapter.id;
+    else if (requested && visibleTopics.some((topic) => topic.children?.some((child) => child.id === requested))) selectedTopicId = requested;
     if (!visibleTopics.some((topic) => topic.children?.some((child) => child.id === selectedTopicId))) selectedTopicId = visibleTopics[0]?.children?.[0]?.id || "quick-start";
     const selected = content.findTopic(selectedTopicId);
-    const article = content.articles[selected.articleId];
-    const portal = surface === "knowledge";
+    const article = portal ? content.loadedArticle(selected.articleId) : content.articles[selected.articleId];
+    if (portal && !article && knowledgeArticleLoadingId !== selected.articleId) void loadKnowledgeArticle(selected);
     mount.innerHTML = `
       <header class="section-head help-page-head">
         <div>
@@ -35,7 +40,7 @@ const InformationView = (() => {
         </div>
       </header>
       ${portal && access.showKnowledgeHistory ? renderKnowledgeHistory() : ""}
-      ${portal ? renderKnowledgeBook(visibleTopics) : `<div class="help-layout">
+      ${portal ? renderKnowledgeBook(visibleTopics, selected, article) : `<div class="help-layout">
         <nav class="panel help-topic-navigation" aria-label="${portal ? "Wissensportal-Themen" : "Hilfethemen"}">
           <p class="eyebrow">${portal ? "Themenbereiche" : "Hilfethemen"}</p>
           ${visibleTopics.map(renderTopic).join("")}
@@ -44,24 +49,48 @@ const InformationView = (() => {
           ${renderArticle(article, selected)}
         </article>
       </div>`}
-      ${portal ? "" : `<section class="panel help-chat" aria-labelledby="helpChatTitle">
+      ${portal ? "" : `<section class="panel help-chat ai-chat ai-chat--regular" aria-labelledby="helpChatTitle">
         <header class="help-chat-head">
           <div><p class="eyebrow">Dedicated help assistant</p><h3 id="helpChatTitle">Ask GerNetiX Help</h3></div>
           <p>Ask about using GerNetiX or a basic technical topic. This is separate from your project and programming chats.</p>
         </header>
-        <div class="help-chat-messages" aria-live="polite">
+        <div class="help-chat-messages ai-chat__messages" aria-live="polite">
           ${messages.length ? messages.map(renderMessage).join("") : '<p class="helper-text">Try: “How do I pair my ESP32?” or “Which ESP32 should I use?”</p>'}
         </div>
-        <form id="helpChatForm" class="help-chat-form">
+        <form id="helpChatForm" class="help-chat-form ai-chat__composer" data-ai-chat-form>
           <label for="helpChatInput">Your question</label>
-          <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="${access.hasAccount ? "Enter your question about GerNetiX..." : "Bitte melde dich an, um GerNetiX Help zu fragen."}" ${access.hasAccount ? "" : "disabled"}></textarea><button class="primary" type="submit" ${access.hasAccount ? "" : "disabled"}>Send</button></span>
+          <span class="help-chat-input-box ai-chat__input-box"><textarea id="helpChatInput" class="ai-chat__input" data-ai-chat-input rows="2" placeholder="${access.hasAccount ? "Enter your question about GerNetiX..." : "Bitte melde dich an, um GerNetiX Help zu fragen."}" ${access.hasAccount && !chatBusy ? "" : "disabled"}></textarea><button class="help-chat-send-button ai-chat__send" data-ai-chat-send type="submit" aria-label="Frage senden" title="Frage senden" ${access.hasAccount && !chatBusy ? "" : "disabled"}>&uarr;</button></span>
           <p class="chat-premium-hint">GerNetiX Help verwendet ausschließlich das lokale Hilfe-Modell und ist für angemeldete Konten kostenlos.</p>
         </form>
       </section>`}`;
-    if (article.hardwareCatalog) loadHardwareCatalog(mount);
-    if (portal) activateKnowledgeBook(mount, selectedTopicId);
-    if (portal && requested) notifyKnowledgeChapterOpen(requested);
+    if (article?.hardwareCatalog) loadHardwareCatalog(mount);
+    if (portal) activateKnowledgeBook(mount, selectedTopicId, requested);
+    if (portal && article) notifyKnowledgeChapterOpen(selectedTopicId);
     if (!bound) bind(mount);
+  }
+
+  async function loadKnowledgeArticle(chapter) {
+    const articleId = chapter.articleId;
+    knowledgeArticleLoadingId = articleId;
+    knowledgeArticleError = "";
+    try {
+      await KnowledgeContent.loadArticle(articleId);
+    } catch (error) {
+      knowledgeArticleError = error.message || "Das Kapitel konnte nicht geladen werden.";
+    } finally {
+      if (knowledgeArticleLoadingId === articleId) knowledgeArticleLoadingId = "";
+    }
+    if (surface !== "knowledge" || selectedTopicId !== chapter.id) return;
+    render();
+    scheduleAdjacentKnowledgePrefetch(chapter.id);
+  }
+
+  function scheduleAdjacentKnowledgePrefetch(chapterId) {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)) return;
+    const prefetch = () => KnowledgeContent.adjacentArticleIds(chapterId).forEach(KnowledgeContent.prefetchArticle);
+    if (typeof requestIdleCallback === "function") requestIdleCallback(prefetch, { timeout: 5_000 });
+    else setTimeout(prefetch, 2_500);
   }
 
   function renderKnowledgeHistory() {
@@ -106,19 +135,33 @@ const InformationView = (() => {
       : new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
   }
 
-  function renderKnowledgeBook(topics) {
+  function renderKnowledgeBook(topics, selectedChapter, article) {
+    const topicIndex = topics.findIndex((topic) => topic.children?.some((chapter) => chapter.id === selectedChapter.id));
+    const topic = topics[topicIndex] || topics[0];
+    const chapterIndex = topic?.children?.findIndex((chapter) => chapter.id === selectedChapter.id) ?? 0;
+    const chapterNumber = `${topicIndex + 1}.${chapterIndex + 1}`;
     return `<div class="knowledge-book-layout">
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
         <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary><a class="knowledge-part-link" href="#knowledge-part-${escapeHtml(topic.id)}" data-knowledge-part="${escapeHtml(topic.id)}"><span>${topicIndex + 1}</span><strong>${escapeHtml(topic.title)}</strong></a></summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
-        ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
-          const chapter = KnowledgeContent.articles[child.articleId];
-          const chapterNumber = `${index + 1}.${childIndex + 1}`;
-          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderNewChapterBadge(child.id)}</div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
-        }).join("")}</section>`).join("")}
+        <section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}">
+          <header><p class="eyebrow">Hauptkapitel ${topicIndex + 1}</p><h2>${topicIndex + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>
+          <article id="${escapeHtml(selectedChapter.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(selectedChapter.id)}">
+            <div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderNewChapterBadge(selectedChapter.id)}</div>
+            ${article ? renderArticle(article, selectedChapter, { showRelated: false, chapterNumber }) : renderKnowledgeArticleLoading(selectedChapter)}
+          </article>
+        </section>
       </main>
     </div>`;
+  }
+
+  function renderKnowledgeArticleLoading(chapter) {
+    if (knowledgeArticleError) {
+      return `<section class="knowledge-chapter-load-state is-error" role="alert"><h3>${escapeHtml(chapter.title)}</h3><p>${escapeHtml(knowledgeArticleError)}</p><button type="button" data-knowledge-retry="${escapeHtml(chapter.id)}">Erneut laden</button></section>`;
+    }
+    const metadata = KnowledgeContent.articles[chapter.articleId];
+    return `<section class="knowledge-chapter-load-state" aria-live="polite" aria-busy="true"><p class="eyebrow">Kapitel wird geladen</p><h3>${escapeHtml(metadata?.title || chapter.title)}</h3><p>${escapeHtml(metadata?.summary || "Der Inhalt wird vorbereitet.")}</p><span class="knowledge-loading-bar" aria-hidden="true"></span></section>`;
   }
 
   function renderKnowledgeChapterToc(chapter, topicIndex, chapterIndex) {
@@ -149,40 +192,15 @@ const InformationView = (() => {
     if (access.newChapterIds?.includes(chapterId)) access.onKnowledgeChapterOpen?.(chapterId);
   }
 
-  function activateKnowledgeBook(mount, topicId) {
-    if (knowledgeScrollHandler) window.removeEventListener("scroll", knowledgeScrollHandler);
-    const updateActiveChapter = (nextTopicId) => {
-      selectedTopicId = nextTopicId;
-      mount.querySelectorAll("[data-knowledge-topic]").forEach((link) => {
-        const active = link.dataset.knowledgeTopic === nextTopicId;
-        link.classList.toggle("active", active);
-        link.toggleAttribute("aria-current", active);
-      });
-    };
-    const chapters = [...mount.querySelectorAll("[data-knowledge-chapter]")];
-    let activeTopicId = "";
-    const syncChapterWithScroll = () => {
-      const readingLine = 132;
-      const current = chapters.reduce((latest, chapter) => chapter.getBoundingClientRect().top <= readingLine ? chapter : latest, chapters[0]);
-      const nextTopicId = current?.dataset.knowledgeChapter;
-      if (!nextTopicId || nextTopicId === activeTopicId) return;
-      activeTopicId = nextTopicId;
-      updateActiveChapter(nextTopicId);
-      history.replaceState({}, "", `/wissen/#${nextTopicId}`);
-    };
-    let animationFrame = 0;
-    knowledgeScrollHandler = () => {
-      if (animationFrame) return;
-      animationFrame = requestAnimationFrame(() => {
-        animationFrame = 0;
-        syncChapterWithScroll();
-      });
-    };
-    window.addEventListener("scroll", knowledgeScrollHandler, { passive: true });
-    const requested = mount.querySelector(`[data-knowledge-chapter="${topicId}"]`);
+  function activateKnowledgeBook(mount, topicId, requestedAnchor = "") {
+    mount.querySelectorAll("[data-knowledge-topic]").forEach((link) => {
+      const active = link.dataset.knowledgeTopic === topicId;
+      link.classList.toggle("active", active);
+      link.toggleAttribute("aria-current", active);
+    });
     requestAnimationFrame(() => {
-      if (requested && window.location.hash) requested.scrollIntoView({ block: "start" });
-      syncChapterWithScroll();
+      const targetId = requestedAnchor && document.getElementById(requestedAnchor) ? requestedAnchor : topicId;
+      if (window.location.hash) mount.querySelector(`#${CSS.escape(targetId)}`)?.scrollIntoView({ block: "start" });
     });
   }
 
@@ -422,7 +440,7 @@ const InformationView = (() => {
   }
 
   function renderMessage(message) {
-    return `<article class="help-chat-message ${message.role}"><strong>${message.role === "user" ? "You" : "GerNetiX Help"}</strong><p>${escapeHtml(message.text)}</p>${message.relatedTopics?.length ? `<div class="help-chat-related"><span>Related help topics</span>${message.relatedTopics.map(renderRelatedTopic).join("")}</div>` : ""}</article>`;
+    return `<article class="help-chat-message ai-chat__message ${message.role} ${message.pending ? "is-pending" : ""} ${message.error ? "is-error" : ""}"><strong>${message.role === "user" ? "You" : "GerNetiX Help"}</strong>${message.pending ? `<p class="ai-chat__status" aria-label="${escapeHtml(message.status || "KI antwortet")}"><span>${escapeHtml(message.status || "GerNetiX Help verarbeitet die Frage")}</span><i></i><i></i><i></i></p>` : `<p>${escapeHtml(message.text)}</p>`}${message.relatedTopics?.length ? `<div class="help-chat-related"><span>Related help topics</span>${message.relatedTopics.map(renderRelatedTopic).join("")}</div>` : ""}</article>`;
   }
 
   function renderRelatedTopic(topicId) {
@@ -465,23 +483,38 @@ const InformationView = (() => {
       if (knowledgePart) {
         event.preventDefault();
         event.stopPropagation();
-        const part = mount.querySelector(`#knowledge-part-${knowledgePart.dataset.knowledgePart}`);
-        part?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const firstChapter = KnowledgeContent.topics.find((topic) => topic.id === knowledgePart.dataset.knowledgePart)?.children?.[0];
+        if (firstChapter) selectTopic(firstChapter.id);
         return;
       }
       const knowledgeTopic = event.target.closest("[data-knowledge-topic]");
       if (knowledgeTopic) {
         event.preventDefault();
         event.stopPropagation();
-        const chapter = mount.querySelector(`[data-knowledge-chapter="${knowledgeTopic.dataset.knowledgeTopic}"]`);
-        chapter?.scrollIntoView({ behavior: "smooth", block: "start" });
-        notifyKnowledgeChapterOpen(knowledgeTopic.dataset.knowledgeTopic);
+        selectTopic(knowledgeTopic.dataset.knowledgeTopic);
         return;
       }
       const knowledgeSubchapter = event.target.closest("[data-knowledge-subchapter]");
       if (knowledgeSubchapter) {
         event.preventDefault();
-        mount.querySelector(`#${knowledgeSubchapter.dataset.knowledgeSubchapter}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const anchorId = knowledgeSubchapter.dataset.knowledgeSubchapter;
+        const chapter = KnowledgeContent.findChapterForAnchor(anchorId);
+        if (!chapter) return;
+        selectedTopicId = chapter.id;
+        history.replaceState({}, "", `/wissen/#${anchorId}`);
+        if (KnowledgeContent.loadedArticle(chapter.articleId)) {
+          mount.querySelector(`#${CSS.escape(anchorId)}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          render();
+        }
+        return;
+      }
+      const knowledgeRetry = event.target.closest("[data-knowledge-retry]");
+      if (knowledgeRetry) {
+        knowledgeArticleError = "";
+        knowledgeArticleLoadingId = "";
+        const chapter = KnowledgeContent.findTopic(knowledgeRetry.dataset.knowledgeRetry);
+        if (chapter?.articleId) render();
         return;
       }
       const topic = event.target.closest("[data-help-topic]");
@@ -496,27 +529,32 @@ const InformationView = (() => {
       if (event.target.id !== "helpChatForm") return;
       event.preventDefault();
       const input = mount.querySelector("#helpChatInput");
-      if (!access.hasAccount) return;
+      if (!access.hasAccount || chatBusy) return;
       const question = input.value.trim();
       if (!question) return;
       messages.push({ role: "user", text: question });
+      const pendingMessage = { role: "assistant", text: "", pending: true, status: "GerNetiX Help verarbeitet die Frage" };
+      messages.push(pendingMessage);
+      chatBusy = true;
       input.value = "";
       render();
       try {
-        const response = await HelpChatService.answer(question, messages.slice(0, -1).map((message) => ({ role: message.role, content: message.text })));
-        messages.push({ role: "assistant", text: response.answer, relatedTopics: response.relatedTopics || [] });
+        const response = await HelpChatService.answer(question, messages.filter((message) => !message.pending).slice(0, -1).map((message) => ({ role: message.role, content: message.text })));
+        Object.assign(pendingMessage, { text: response.answer, relatedTopics: response.relatedTopics || [], pending: false });
         if (response.openTopicId) selectedTopicId = response.openTopicId;
       } catch (error) {
         const creditExhausted = error?.code === "ai_usage_rejected"
           && error?.payload?.usagePreflight?.rejection_reason === "insufficient_credits";
         if (creditExhausted) {
-          messages.push({ role: "assistant", text: "Keine KI-Credits mehr verfügbar. Bitte Tokens kaufen, um den KI-Chat weiter zu verwenden.", relatedTopics: [] });
+          Object.assign(pendingMessage, { text: "Keine KI-Credits mehr verfügbar. Bitte Tokens kaufen, um den KI-Chat weiter zu verwenden.", relatedTopics: [], pending: false, error: true });
           window.dispatchEvent(new CustomEvent("ai-credit-purchase-required", {
             detail: { usagePreflight: error.payload?.usagePreflight || {} },
           }));
         } else {
-          messages.push({ role: "assistant", text: error.message || "The local help assistant is not available right now.", relatedTopics: [] });
+          Object.assign(pendingMessage, { text: error.message || "The local help assistant is not available right now.", relatedTopics: [], pending: false, error: true });
         }
+      } finally {
+        chatBusy = false;
       }
       render();
     });
@@ -539,6 +577,10 @@ const InformationView = (() => {
   function openDialog(topicId) {
     const content = findContentForTopic(topicId);
     const topic = content?.findTopic(topicId);
+    if (content === KnowledgeContent && topic?.articleId) {
+      window.navigate(`/wissen/#${topicId}`);
+      return;
+    }
     const article = topic?.articleId ? content.articles[topic.articleId] : null;
     if (!article) return;
     let dialog = document.querySelector("#helpTopicDialog");

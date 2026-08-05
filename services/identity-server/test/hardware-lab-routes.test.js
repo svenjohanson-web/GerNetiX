@@ -35,6 +35,21 @@ test("lists only hardware-lab sessions owned by the authenticated Identity user"
   assert.deepEqual(response.payload.items.map((item) => item.recovery_session_id), ["lab-1"]);
 });
 
+test("loads the hardware assistant AI rating without waiting for the platform summary", async () => {
+  const requested = [];
+  const response = await dispatch(createService(), {
+    method: "GET",
+    pathname: "/api/platform/hardware-lab/ai-usage",
+    aiUsageJson: async (path) => {
+      requested.push(path);
+      return { used_percent: 12, sources: [{ source_id: "openai_gpt", month_tokens: 120 }] };
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(requested, ["/api/ai-usage/accounts/acct-owner/rating"]);
+  assert.equal(response.payload.rating.used_percent, 12);
+});
+
 test("does not expose or execute another account's hardware-lab session", async () => {
   let analyzed = false;
   const service = createService({
@@ -47,12 +62,30 @@ test("does not expose or execute another account's hardware-lab session", async 
   assert.equal(analyzed, false);
 });
 
+test("sends hardware-lab chat messages through the owned session and strips client identity", async () => {
+  let received;
+  const service = createService({
+    chatHardwareLab(id, input) {
+      received = { id, input };
+      return labSession(id, "acct-owner");
+    },
+  });
+  const response = await dispatch(service, {
+    method: "POST",
+    pathname: "/api/platform/hardware-lab/sessions/lab-1/chat",
+    body: { message: "Welche I2C-Pins sind noch offen?", account_id: "attacker", actor: "attacker" },
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(received, { id: "lab-1", input: { message: "Welche I2C-Pins sind noch offen?", actor: "identity-hardware-lab" } });
+});
+
 function createService(overrides = {}) {
   return {
     listSessions: () => ({ items: [] }),
     getSession: () => labSession("lab-1", "acct-owner"),
     createHardwareLabSession: () => labSession("lab-1", "acct-owner"),
     analyzeHardwareLabSources: () => labSession("lab-1", "acct-owner"),
+    chatHardwareLab: () => labSession("lab-1", "acct-owner"),
     requestDiscoveryFirmwareBuild: () => labSession("lab-1", "acct-owner"),
     synchronizeDiscoveryFirmwareBuild: () => labSession("lab-1", "acct-owner"),
     recordHardwareExamination: () => labSession("lab-1", "acct-owner"),
@@ -76,6 +109,7 @@ async function dispatch(hardwareLabService, request) {
     projectServerUserId: (session) => session.account.user_id,
     hardwareLabService,
     buildDeployBaseUrl: "http://127.0.0.1:4400",
+    aiUsageJson: request.aiUsageJson || (async () => ({ sources: [] })),
   });
   const handled = await registry.dispatch({ req: { method: request.method }, res: {}, url: new URL(`http://identity.local${request.pathname}`) });
   assert.equal(handled, true);

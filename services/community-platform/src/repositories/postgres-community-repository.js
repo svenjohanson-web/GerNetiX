@@ -210,6 +210,43 @@ class PostgresCommunityRepository {
     return filter.tag ? items.filter((question) => question.tags.includes(filter.tag)) : items;
   }
 
+  async dashboardSummary(userId) {
+    const [questionResult, messageResult] = await Promise.all([
+      this.pool.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE visibility = 'public' AND status NOT IN ('closed', 'resolved'))::int AS public_open,
+          COUNT(*) FILTER (WHERE visibility = 'public' AND status IN ('closed', 'resolved'))::int AS public_closed,
+          COUNT(*) FILTER (WHERE visibility = 'private' AND status NOT IN ('closed', 'resolved'))::int AS private_open,
+          COUNT(*) FILTER (WHERE visibility = 'private' AND status IN ('closed', 'resolved'))::int AS private_closed
+        FROM community_questions
+        WHERE author_user_id=$1
+      `, [userId]),
+      this.pool.query(`
+        SELECT
+          COUNT(DISTINCT m.thread_id)::int AS threads,
+          COUNT(DISTINCT CASE WHEN inbox.state = 'unread' THEN m.thread_id END)::int AS unread
+        FROM community_message_thread_members m
+        LEFT JOIN community_inbox_entries inbox
+          ON inbox.thread_id=m.thread_id AND inbox.recipient_user_id=m.user_id
+        WHERE m.user_id=$1 AND m.left_at IS NULL AND m.archived_at IS NULL
+      `, [userId]),
+    ]);
+    const questions = questionResult.rows[0] || {};
+    const messages = messageResult.rows[0] || {};
+    return {
+      questions: {
+        total: Number(questions.total || 0),
+        public: { open: Number(questions.public_open || 0), closed: Number(questions.public_closed || 0) },
+        private: { open: Number(questions.private_open || 0), closed: Number(questions.private_closed || 0) },
+      },
+      messages: {
+        unread: Number(messages.unread || 0),
+        threads: Number(messages.threads || 0),
+      },
+    };
+  }
+
   async saveAnswer(answer) {
     await this.pool.query(`
       INSERT INTO community_answers

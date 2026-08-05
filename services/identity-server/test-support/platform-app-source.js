@@ -18,6 +18,12 @@ const platformAppFiles = [
   "device-debug-controller.js",
   "app-event-bindings.js",
 ];
+const routeLazyPlatformAppFiles = new Set([
+  "app-community-controller.js",
+  "app-ide-controller.js",
+  "app-device-build-controller.js",
+  "device-debug-controller.js",
+]);
 
 function readPlatformAppSource() {
   const appRoot = path.resolve(__dirname, "../public/app");
@@ -26,4 +32,4 @@ function readPlatformAppSource() {
     .join("\n");
 }
 
-module.exports = { platformAppFiles, readPlatformAppSource };
+module.exports = { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles };

@@ -85,3 +85,16 @@ test("public web and authentication requests are rate limited per source", () =>
   assert.match(tls, /limit_req_zone \$binary_remote_addr zone=gernetix_build_per_ip:10m rate=30r\/s/);
   assert.match(tls, /limit_req zone=gernetix_build_per_ip burst=100 nodelay/);
 });
+
+test("compresses sizeable text responses on diagnostic HTTP and private TLS", () => {
+  for (const config of [http, tls]) {
+    assert.match(config, /gzip on;/);
+    assert.match(config, /gzip_comp_level 5;/);
+    assert.match(config, /gzip_min_length 1024;/);
+    assert.match(config, /gzip_vary on;/);
+    assert.match(config, /gzip_proxied any;/);
+    for (const type of ["text/css", "application/javascript", "application/json", "application/manifest+json", "image/svg+xml"]) {
+      assert.match(config, new RegExp(type.replace(/[+]/g, "\\+")));
+    }
+  }
+});

@@ -1,4 +1,5 @@
 const GerNetiXDeviceWifiSetup = (() => {
+  let eventsBound = false;
   let currentContext = {};
   let networks = [];
   let running = false;
@@ -300,7 +301,8 @@ const GerNetiXDeviceWifiSetup = (() => {
   }
 
   function bind() {
-    element("#deviceWifiSetupMenuButton")?.addEventListener("click", () => open({ source: "menu" }));
+    if (eventsBound) return;
+    eventsBound = true;
     element("#deviceWifiSetupDialog")?.addEventListener("click", (event) => {
       if (event.target === event.currentTarget || event.target.closest("[data-close-device-wifi-setup]")) close();
     });
@@ -324,5 +326,4 @@ const GerNetiXDeviceWifiSetup = (() => {
   return { bind, close, connect, identifyPortByDisconnect, open, refreshPorts, scan };
 })();
 
-GerNetiXDeviceWifiSetup.bind();
 window.GerNetiXDeviceWifiSetup = GerNetiXDeviceWifiSetup;

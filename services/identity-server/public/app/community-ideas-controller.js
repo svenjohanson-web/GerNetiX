@@ -85,3 +85,15 @@ function projectIdeaStageLabel(value) {
 function projectIdeaLookingForLabel(value) {
   return ({ feedback: "Feedback", collaborators: "Mitstreiter", hardware: "Hardwarewissen", software: "Softwarewissen", testing: "Tester" })[value] || value;
 }
+let communityIdeaEventsBound = false;
+
+function bindCommunityIdeaEvents() {
+  if (communityIdeaEventsBound) return;
+  communityIdeaEventsBound = true;
+  document.querySelector("#projectIdeaForm")?.addEventListener("submit", submitProjectIdea);
+  document.querySelector("#projectIdeaRefreshButton")?.addEventListener("click", () => loadProjectIdeas(true));
+  document.querySelector("#projectIdeaList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-project-idea]");
+    if (button) openProjectIdea(button.dataset.projectIdea);
+  });
+}

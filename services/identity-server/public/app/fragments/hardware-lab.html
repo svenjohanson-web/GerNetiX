@@ -1,0 +1,55 @@
+<section id="hardwareLabView" class="view hidden hardware-lab-view" aria-labelledby="hardwareLabTitle">
+  <header class="hardware-lab-hero">
+    <p class="eyebrow">Boards erkennen und einrichten</p>
+    <h1 id="hardwareLabTitle">KI-Hardware-Assistent</h1>
+    <p>Wenn dein selbst gekauftes Board noch nicht im GerNetiX-Hardwarekatalog vorhanden ist, begleitet dich die KI vom Datenblatt bis zum geprüften Boardprofil. Sie erkennt Prozessor, Speicher, GPIOs, Taster, Displays, Audio und weitere Bauteile, stellt Rückfragen und kann passende sichere Testsoftware vorschlagen.</p>
+    <p class="hardware-lab-scope"><strong>So funktioniert es:</strong> Du erzählst der KI einfach, was du über das Board weißt, und kannst Links direkt in den Chat einfügen. Sie erkennt die Angaben, stellt die nächsten offenen Fragen und baut rechts Schritt für Schritt das Boardprofil auf. Aktive Pin- oder Bustests werden nie ungefragt ausgeführt.</p>
+  </header>
+
+  <div class="hardware-lab-layout">
+    <section class="panel hardware-lab-chat ai-chat ai-chat--large" aria-label="KI-Dialog zum Board">
+      <header class="hardware-lab-chat-header">
+        <div><span class="hardware-lab-ai-mark" aria-hidden="true">AI</span><div><strong>GerNetiX Hardware-Assistent</strong><small>OpenAI · Boardanalyse und Discovery</small></div></div>
+        <span id="labChatConnection" class="hardware-lab-connection">Bereit</span>
+      </header>
+      <div id="labAiUsage" class="hardware-lab-ai-usage" aria-label="KI-Nutzung"></div>
+      <div id="labChatMessages" class="hardware-lab-chat-messages ai-chat__messages" aria-live="polite"></div>
+      <div id="labStatusBox" class="hardware-lab-status hidden" role="status"></div>
+      <div id="labSuggestedActions" class="hardware-lab-suggested-actions hidden">
+        <button id="labBuildButton" class="primary" type="button" disabled>Sichere Testsoftware bauen</button>
+        <button id="labBuildStatusButton" type="button" disabled>Buildstatus prüfen</button>
+        <a id="labFirmwareDownload" class="button-link hidden" href="#">Testsoftware herunterladen</a>
+      </div>
+      <form id="labChatForm" class="hardware-lab-composer ai-chat__composer" data-ai-chat-form>
+        <span class="hardware-lab-composer-box ai-chat__input-box">
+          <textarea id="labChatInput" class="ai-chat__input" data-ai-chat-input rows="2" maxlength="12000" placeholder="Beschreibe dein Board, füge einen Link ein oder frage nach dem nächsten Schritt …" aria-label="Nachricht an den Hardware-Assistenten"></textarea>
+          <button id="labChatSendButton" class="hardware-lab-send-button ai-chat__send" data-ai-chat-send type="submit" aria-label="Nachricht senden" title="Nachricht senden">&uarr;</button>
+        </span>
+      </form>
+      <p class="hardware-lab-chat-note">Die KI kann Fehler machen. Elektrische Tests werden deshalb nur vorgeschlagen und benötigen deine Bestätigung.</p>
+    </section>
+
+    <aside class="panel hardware-lab-profile" aria-label="Erkanntes Boardprofil">
+      <header class="hardware-lab-profile-header">
+        <div><p class="eyebrow">Live-Boardprofil</p><h2 id="labProfileTitle">Noch kein Board</h2></div>
+        <span id="labProfileProgress" class="hardware-lab-profile-progress">0 % erkannt</span>
+      </header>
+      <p id="labProfileIdentity" class="hardware-lab-profile-identity">Die erkannten Eigenschaften erscheinen hier während des Dialogs.</p>
+      <dl id="labSessionMeta" class="hardware-lab-key-facts"></dl>
+      <section class="hardware-lab-profile-section"><h3>Speicher &amp; Prozessor</h3><div id="labProfileMemory" class="hardware-lab-property-grid"></div></section>
+      <section class="hardware-lab-profile-section"><h3>Schnittstellen &amp; Ausstattung</h3><div id="labProfileCapabilities" class="hardware-lab-tag-list"></div><div id="labProfilePeripherals" class="hardware-lab-peripheral-list"></div></section>
+      <section class="hardware-lab-profile-section"><h3>Bestätigte GPIO-Zuordnungen</h3><div id="labProfilePins" class="hardware-lab-pin-list"></div></section>
+      <section class="hardware-lab-profile-section"><h3>Aktuelle Frage</h3><ul id="labProfileQuestions" class="hardware-lab-question-list"></ul></section>
+      <section id="labProposedTestsSection" class="hardware-lab-profile-section hidden"><h3>Vorgeschlagene Tests</h3><div id="labProposedTests" class="hardware-lab-test-list"></div></section>
+      <section class="hardware-lab-profile-section hardware-lab-discovery"><h3>Sichere Hardwareprüfung</h3><ol id="labPhaseList" class="hardware-lab-phases"></ol></section>
+      <details class="hardware-lab-verification">
+        <summary>Freiwillige GerNetiX-Gegenprüfung</summary>
+        <p>Nach bestandener Untersuchung kannst du das Profil zur unabhängigen Gegenprüfung melden. Es werden keine Versanddaten erhoben.</p>
+        <label class="hardware-lab-consent"><input id="labVerificationConsent" type="checkbox" /> Profil und Prüfbericht zweckgebunden übermitteln</label>
+        <label>Nachricht<textarea id="labVerificationMessage" rows="2" placeholder="optional"></textarea></label>
+        <button id="labVerificationButton" type="button" disabled>Zur Gegenprüfung melden</button>
+      </details>
+      <details class="hardware-lab-details"><summary>Technische Rohdaten</summary><pre id="labDetailsBox"></pre></details>
+    </aside>
+  </div>
+</section>

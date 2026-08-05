@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Dialog und Executor vereinheitlichen Flash-Datei, USB, OTA, FlashBox, Sperrgruende, Terminal, Integritaetspruefung, Schreiben und Reset; Produktbereiche liefern nur fachlichen Kontext. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories, Binaries im Artifact Store. Das KI-gefuehrte Hardware-Labor ist Teil der Identity-Plattform. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
+  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Dialog und Executor vereinheitlichen Flash-Datei, USB, OTA, FlashBox, Sperrgruende, Terminal, Integritaetspruefung, Schreiben und Reset; Produktbereiche liefern nur fachlichen Kontext. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories, Binaries im Artifact Store. Der KI-Hardware-Assistent ist Teil der Identity-Plattform. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -47,7 +47,7 @@
 
     <rect class="node app" x="265" y="150" width="260" height="92" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">IDE · Projekt-App · KI-Hardware-Labor · Konfiguration</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">IDE · Projekt-App · KI-Hardware-Assistent · Konfiguration</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">Zentraler Flash-Dialog: Datei · USB · OTA · FlashBox · Terminal</text>
 
     <text class="smallText" x="395" y="234" text-anchor="middle">Provisioning: lokaler WLAN-Scan + USB-Transfer</text>
@@ -273,11 +273,11 @@
   <path class="line" d="M 1145 262 L 1385 177"/>
   <path class="line" d="M 1360 262 L 1385 177"/>
   <path class="line" d="M 855 179 L 1265 204"/>
-  <text class="label" x="965" y="170">Hardware-Labor Discovery-Build</text>
+  <text class="label" x="965" y="170">Hardware-Assistent Discovery-Build</text>
   <path class="line" d="M 855 179 L 1265 320"/>
-  <text class="label" x="980" y="258">Hardware-Labor Preflight + Tokens</text>
+  <text class="label" x="980" y="258">Hardware-Assistent Preflight + Tokens</text>
   <path class="line dashed" d="M 855 179 C 1080 300, 1320 700, 1445 914"/>
-  <text class="label" x="1130" y="560">Hardware-Labor Structured Profile · store=false</text>
+  <text class="label" x="1130" y="560">Hardware-Assistent Structured Profile · store=false</text>
   <path class="line" d="M 1360 432 L 1170 347"/>
   <path class="line" d="M 1170 432 L 1145 432"/>
   <path class="line" d="M 1265 204 L 1530 795"/>

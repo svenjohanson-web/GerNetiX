@@ -43,6 +43,27 @@ function hardwareLabOverrides() {
           },
         };
       },
+      async chat(input) {
+        return {
+          answer: "GPIO 8 und 9 sind als I2C-Kandidaten dokumentiert. Vor einem aktiven Scan brauche ich deine Bestätigung.",
+          profile_updates: {
+            facts: [], capabilities: [], peripherals: [],
+            pins: [
+              { function: "i2c_sda", gpio: 8, direction: "bus", active_test_allowed: false, source_url: input.source_urls[0], confidence: "documented" },
+              { function: "i2c_scl", gpio: 9, direction: "bus", active_test_allowed: false, source_url: input.source_urls[0], confidence: "documented" },
+            ],
+            resolved_questions: [], open_questions: [],
+          },
+          next_step: "complete",
+          next_question: null,
+          completed: true,
+          suggested_actions: ["build_discovery_firmware"],
+          proposed_tests: [{ id: "i2c-scan", title: "Passiver I2C-Scan", description: "Erkannte Adressen lesen", risk: "passive", requires_confirmation: true }],
+          model: "gpt-test",
+          response_id: "resp-chat",
+          usage: { total_tokens: 80 },
+        };
+      },
     },
     buildDeployClient: {
       async submit(request) { return { job_id: request.job_id, status: "running" }; },
@@ -142,6 +163,20 @@ test("creates hardware lab session with mandatory physical discovery", () => {
   assert.equal(session.discovery.verification_status, "discovery_pending");
   assert.equal(session.candidate_profile.board_origin, "customer_purchased_community_board");
   assert.equal(session.candidate_profile.source_evidence.length, 2);
+  assert.equal(session.lab_chat.assistant_state.step, "sources");
+  assert.match(session.lab_chat.assistant_state.current_question, /Herstellerquelle/);
+});
+
+test("starts a hardware-lab session from one natural-language message without requiring form fields", () => {
+  const service = createService();
+  const session = service.createHardwareLabSession({
+    account_id: "acct-lab",
+    initial_message: "Ich habe hier ein ESP32-S3-Board mit Display, weiß aber noch nicht von welchem Hersteller.",
+  });
+
+  assert.equal(session.candidate_profile.board_name, "Noch unbekanntes Board");
+  assert.match(session.candidate_profile.notes, /ESP32-S3-Board mit Display/);
+  assert.deepEqual(session.candidate_profile.source_evidence, []);
 });
 
 test("requires successful discovery build and all examination phases", async () => {
@@ -158,6 +193,11 @@ test("requires successful discovery build and all examination phases", async () 
   );
 
   await service.analyzeHardwareLabSources(session.recovery_session_id);
+  await assert.rejects(
+    () => service.requestDiscoveryFirmwareBuild(session.recovery_session_id),
+    (error) => error.code === "hardware_lab_dialog_incomplete",
+  );
+  await service.chatHardwareLab(session.recovery_session_id, { message: "Die erkannten Angaben stimmen. Einrichtung abschließen." });
   await service.requestDiscoveryFirmwareBuild(session.recovery_session_id);
   const built = await service.synchronizeDiscoveryFirmwareBuild(session.recovery_session_id);
 
@@ -172,6 +212,30 @@ test("requires successful discovery build and all examination phases", async () 
     }),
     (error) => error.code === "hardware_examination_incomplete" && error.details.missing_phases.length === 4,
   );
+});
+
+test("persists the OpenAI hardware-lab conversation and updates the structured board profile", async () => {
+  const service = createService(hardwareLabOverrides());
+  const session = service.createHardwareLabSession({ account_id: "acct-lab", board_name: "Example Board", source_urls: ["https://example.test/board"] });
+  await service.analyzeHardwareLabSources(session.recovery_session_id);
+  const chatted = await service.chatHardwareLab(session.recovery_session_id, { message: "Kannst du SDA und SCL bestimmen?" });
+
+  assert.deepEqual(chatted.lab_chat.messages.map((message) => message.role), ["user", "assistant"]);
+  assert.equal(chatted.lab_chat.proposed_tests[0].requires_confirmation, true);
+  assert.deepEqual(chatted.candidate_profile.pin_candidates.map((pin) => pin.gpio), [8, 9]);
+  assert.equal(chatted.lab_chat.assistant_state.completed, true);
+  assert.equal(chatted.lab_chat.assistant_state.step, "complete");
+  assert.equal(chatted.actions.at(-1).type, "hardware_lab_ai_chat_completed");
+});
+
+test("recognizes a manufacturer link inside the chat and analyzes it without a URL form", async () => {
+  const service = createService(hardwareLabOverrides());
+  const session = service.createHardwareLabSession({ account_id: "acct-lab", initial_message: "Ich möchte ein unbekanntes Board anlegen." });
+  const chatted = await service.chatHardwareLab(session.recovery_session_id, { message: "Das könnte dieses Board sein: https://example.test/board" });
+
+  assert.deepEqual(chatted.candidate_profile.source_evidence, [{ source_url: "https://example.test/board", review_status: "analyzed" }]);
+  assert.equal(chatted.ai_analysis.status, "completed");
+  assert.match(chatted.lab_chat.messages[1].content, /GPIO 8 und 9/);
 });
 
 test("allows GerNetiX verification request only after examined hardware and consent", async () => {
@@ -190,6 +254,7 @@ test("allows GerNetiX verification request only after examined hardware and cons
   );
 
   await service.analyzeHardwareLabSources(session.recovery_session_id);
+  await service.chatHardwareLab(session.recovery_session_id, { message: "Die Board-Akte ist vollständig. Einrichtung abschließen." });
   await service.requestDiscoveryFirmwareBuild(session.recovery_session_id);
   const built = await service.synchronizeDiscoveryFirmwareBuild(session.recovery_session_id);
   const examined = service.recordHardwareExamination(session.recovery_session_id, {

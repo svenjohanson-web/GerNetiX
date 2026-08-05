@@ -1,0 +1,111 @@
+.hardware-lab-view { display: grid; gap: 18px; max-width: 1500px; margin: 0 auto; }
+.hardware-lab-view.hidden { display: none; }
+html.initial-hardware-lab-route #dashboardView { display: none; }
+html.initial-hardware-lab-route #hardwareLabView.hidden { display: grid; }
+.hardware-lab-active .app-shell, html.initial-hardware-lab-route .app-shell { padding-top: 0; }
+.hardware-lab-active .topbar, html.initial-hardware-lab-route .topbar { position: fixed; top: 0; right: 22px; left: 22px; z-index: 60; }
+.hardware-lab-active #hardwareLabView, html.initial-hardware-lab-route #hardwareLabView { padding-top: 92px; }
+.hardware-lab-hero { padding: 4px 2px 2px; }
+.hardware-lab-hero h1 { max-width: 900px; margin: 4px 0 8px; font-size: clamp(1.55rem, 2.6vw, 2.15rem); font-weight: 720; letter-spacing: -.025em; }
+.hardware-lab-hero > p { max-width: 1050px; margin: 0; color: var(--muted); line-height: 1.55; }
+.hardware-lab-scope { margin-top: 10px !important; padding: 10px 13px; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; background: var(--soft); }
+.hardware-lab-layout { display: grid; grid-template-columns: minmax(480px, 1.1fr) minmax(360px, .9fr); gap: 16px; align-items: start; }
+.hardware-lab-chat, .hardware-lab-profile { min-width: 0; overflow: hidden; padding: 0; }
+.hardware-lab-chat { display: grid; grid-template-rows: auto auto minmax(310px, 52vh) auto auto auto auto; }
+.hardware-lab-chat-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.hardware-lab-chat-header > div { display: flex; align-items: center; gap: 10px; }
+.hardware-lab-chat-header strong, .hardware-lab-chat-header small { display: block; }
+.hardware-lab-chat-header small { margin-top: 2px; color: var(--muted); }
+.hardware-lab-ai-usage { padding: 10px 16px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--soft) 22%, transparent); }
+.hardware-lab-ai-usage .ide-ai-rating-head p { margin: 0; }
+.hardware-lab-ai-usage .ide-ai-rating-head strong { font-size: 13px; }
+.hardware-lab-ai-usage .ai-rating-grid.compact { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; margin-top: 7px; }
+.hardware-lab-ai-usage .ai-rating-card { gap: 2px; padding: 7px 9px; }
+.hardware-lab-ai-usage .ai-rating-card strong { font-size: 14px; }
+.hardware-lab-ai-usage .usage-bar { height: 5px; }
+.hardware-lab-usage-loading { display: flex; justify-content: space-between; gap: 12px; margin: 0; color: var(--muted); font-size: 12px; }
+.hardware-lab-usage-loading span { color: var(--accent); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.hardware-lab-usage-loading strong { color: var(--text); }
+.hardware-lab-usage-loading.is-error { color: #fbbf24; }
+.hardware-lab-last-usage { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; margin: 7px 0 0; color: var(--muted); font-size: 11px; }
+.hardware-lab-last-usage strong { color: var(--text); }
+.hardware-lab-ai-mark { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 10px; background: linear-gradient(135deg, #0f766e, #2563eb); color: white; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.hardware-lab-connection { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.hardware-lab-connection::before { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; content: ""; }
+.hardware-lab-connection.is-busy::before { background: #f59e0b; box-shadow: 0 0 0 4px color-mix(in srgb, #f59e0b 18%, transparent); }
+.hardware-lab-chat-messages { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding: 20px 18px; background: color-mix(in srgb, var(--soft) 38%, transparent); scroll-behavior: smooth; }
+.hardware-lab-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 9px; max-width: 88%; align-self: flex-start; }
+.hardware-lab-message > span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #0f766e; color: white; font-size: 10px; font-weight: 800; }
+.hardware-lab-message p { margin: 0; padding: 11px 13px; border: 1px solid #334155; border-radius: 4px 13px 13px 13px; background: #172131; color: #e5e7eb; line-height: 1.55; }
+.ai-chat .hardware-lab-message > p { padding: var(--ai-chat-message-padding); }
+.hardware-lab-message.is-user { grid-template-columns: minmax(0, 1fr) 30px; align-self: flex-end; }
+.hardware-lab-message.is-user > span { grid-column: 2; background: #334155; }
+.hardware-lab-message.is-user p { grid-column: 1; grid-row: 1; border-color: #0e7490; border-radius: 13px 4px 13px 13px; background: #164e63; color: #ecfeff; }
+.hardware-lab-message p small { display: block; margin-top: 5px; color: #94a3b8; font-size: 11px; }
+.hardware-lab-message.is-failed p { border-color: #ef4444; }
+.ai-chat .hardware-lab-message.is-error > p { border-color: #d97706; background: color-mix(in srgb, #d97706 9%, #172131); }
+.hardware-lab-status { margin: 0 16px 10px; padding: 9px 11px; border-radius: 8px; background: var(--soft); font-size: 13px; }
+.hardware-lab-status.running { border: 1px solid #f59e0b; }
+.hardware-lab-status.ok { border: 1px solid #16a34a; }
+.hardware-lab-status.notice { border: 1px solid #d97706; background: color-mix(in srgb, #d97706 12%, var(--soft)); }
+.hardware-lab-status.error { border: 1px solid #dc2626; }
+.hardware-lab-intake { display: grid; gap: 11px; padding: 16px 18px; border-top: 1px solid var(--line); }
+.hardware-lab-intake > p { margin: 0 0 2px; }
+.hardware-lab-intake > p span, .hardware-lab-intake label > span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.hardware-lab-intake-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hardware-lab-intake label { display: grid; gap: 5px; font-size: 13px; font-weight: 650; }
+.hardware-lab-intake input, .hardware-lab-intake textarea, .hardware-lab-composer textarea { width: 100%; resize: vertical; }
+.hardware-lab-suggested-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line); }
+.hardware-lab-suggested-actions button, .hardware-lab-suggested-actions .button-link { min-height: 36px; padding: 7px 11px; font-size: 13px; }
+.hardware-lab-composer { display: block; padding: 12px 16px 8px; border-top: 1px solid var(--line); }
+.hardware-lab-composer-box { position: relative; display: block; }
+.hardware-lab-composer textarea { min-height: 58px; max-height: 150px; border-radius: 14px; padding-right: 58px; }
+.hardware-lab-send-button { position: absolute; right: 10px; bottom: 10px; display: inline-grid; place-items: center; width: 36px; height: 36px; min-height: 36px; padding: 0; border: 1px solid #0891b2; border-radius: 999px; background: #0e7490; color: #ecfeff; font-size: 20px; font-weight: 900; line-height: 1; }
+.hardware-lab-send-button:hover:not(:disabled) { border-color: #22d3ee; background: #0891b2; }
+.hardware-lab-send-button:disabled { cursor: not-allowed; opacity: .45; }
+.hardware-lab-chat-note { margin: 0; padding: 2px 16px 12px; color: var(--muted); font-size: 11px; }
+.hardware-lab-profile { padding: 17px; }
+.hardware-lab-profile-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.hardware-lab-profile-header h2 { margin: 2px 0 0; font-size: 1.25rem; }
+.hardware-lab-profile-progress { padding: 6px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--soft)); color: var(--accent); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.hardware-lab-profile-identity { margin: 7px 0 14px; color: var(--muted); }
+.hardware-lab-key-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0; }
+.hardware-lab-key-facts > div { min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 9px; }
+.hardware-lab-key-facts dt { color: var(--muted); font-size: 11px; }
+.hardware-lab-key-facts dd { overflow: hidden; margin: 3px 0 0; font-weight: 700; text-overflow: ellipsis; }
+.hardware-lab-profile-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.hardware-lab-profile-section h3 { margin: 0 0 9px; font-size: .92rem; }
+.hardware-lab-property-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.hardware-lab-property-grid > div { padding: 9px; border-radius: 8px; background: var(--soft); }
+.hardware-lab-property-grid span, .hardware-lab-property-grid strong { display: block; }
+.hardware-lab-property-grid span { color: var(--muted); font-size: 11px; }
+.hardware-lab-property-grid strong { margin-top: 3px; }
+.hardware-lab-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.hardware-lab-tag-list > span { padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 12px; }
+.hardware-lab-peripheral-list, .hardware-lab-pin-list, .hardware-lab-test-list { display: grid; gap: 7px; margin-top: 9px; }
+.hardware-lab-peripheral-list > div { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 9px; border-radius: 8px; background: var(--soft); }
+.hardware-lab-peripheral-list span { grid-column: 1; color: var(--muted); font-size: 12px; }
+.hardware-lab-peripheral-list small { grid-column: 2; grid-row: 1 / 3; align-self: center; color: var(--muted); }
+.hardware-lab-pin-list > div { display: grid; grid-template-columns: 72px 1fr auto; gap: 7px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.hardware-lab-pin-list code { color: var(--accent); font-weight: 700; }
+.hardware-lab-pin-list span, .hardware-lab-pin-list small { color: var(--muted); font-size: 11px; }
+.hardware-lab-pin-list small { grid-column: 2; }
+.hardware-lab-question-list { display: grid; gap: 6px; margin: 0; padding-left: 19px; color: var(--muted); }
+.hardware-lab-question-list .is-empty { list-style: none; margin-left: -19px; }
+.hardware-lab-test-list article { padding: 10px; border-left: 3px solid #f59e0b; border-radius: 6px; background: var(--soft); }
+.hardware-lab-test-list p { margin: 4px 0; color: var(--muted); font-size: 12px; }
+.hardware-lab-test-list span { font-size: 11px; font-weight: 700; }
+.hardware-lab-empty { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; }
+.hardware-lab-phases { display: grid; gap: 6px; margin: 0; padding-left: 22px; color: var(--muted); font-size: 12px; }
+.hardware-lab-phases li.is-complete { color: #16a34a; text-decoration: line-through; }
+.hardware-lab-verification, .hardware-lab-details { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.hardware-lab-verification summary, .hardware-lab-details summary { cursor: pointer; font-weight: 700; }
+.hardware-lab-verification p { color: var(--muted); font-size: 12px; }
+.hardware-lab-consent, .hardware-lab-verification > label:not(.hardware-lab-consent) { display: grid; gap: 6px; margin: 10px 0; font-size: 12px; }
+.hardware-lab-consent { grid-template-columns: auto 1fr; align-items: start; }
+.hardware-lab-details pre { overflow: auto; max-height: 340px; padding: 12px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font-size: 11px; white-space: pre-wrap; }
+.hardware-lab-intake.hidden, .hardware-lab-suggested-actions.hidden, .hardware-lab-composer.hidden, .hardware-lab-profile-section.hidden, .hardware-lab-status.hidden, .hardware-lab-suggested-actions .hidden { display: none; }
+
+@media (max-width: 1050px) { .hardware-lab-layout { grid-template-columns: 1fr; } .hardware-lab-chat { grid-template-rows: auto auto minmax(300px, 48vh) auto auto auto auto; } }
+@media (max-width: 760px) { .hardware-lab-active #hardwareLabView, html.initial-hardware-lab-route #hardwareLabView { padding-top: 150px; } }
+@media (max-width: 620px) { .hardware-lab-intake-grid, .hardware-lab-property-grid { grid-template-columns: 1fr; } .hardware-lab-key-facts { grid-template-columns: 1fr; } .hardware-lab-message { max-width: 96%; } }

@@ -20,12 +20,12 @@ function registerPlatformRoutes({
   registry.register({
     method: "*",
     path: "/api/platform/summary",
-    handler: ({ req, res }) => withSession(req, res, (session) => handleSummary(res, session)),
+    handler: ({ req, res, url }) => withSession(req, res, (session) => handleSummary(res, session, url.searchParams.get("include"))),
   });
   registry.register({
     method: "*",
     path: "/api/platform/bootstrap",
-    handler: ({ req, res }) => withSession(req, res, (session) => handleBootstrap(res, session)),
+    handler: ({ req, res, url }) => withSession(req, res, (session) => handleBootstrap(res, session, url.searchParams.get("include"))),
   });
   registry.register({
     method: "POST",

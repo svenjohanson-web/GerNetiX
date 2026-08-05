@@ -2,6 +2,7 @@
 const projectSourceListLoads = new Map();
 const projectSourceContentLoads = new Map();
 let loadedIdeSourceKey = "";
+let ideWorkspaceResizeInitialized = false;
 
 function renderIdeShell() {
   document.querySelector("#ideDeviceSelect").innerHTML = state.devices.map((device) => `
@@ -407,8 +408,10 @@ function setIdeConsoleView(view) {
 }
 
 function initializeIdeWorkspaceResize() {
+  if (ideWorkspaceResizeInitialized) return;
   const handle = document.querySelector("#ideWorkspaceResizeHandle");
   if (!handle) return;
+  ideWorkspaceResizeInitialized = true;
   handle.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     const consolePanel = document.querySelector("#ideBuildConsole");

@@ -51,11 +51,9 @@ class RecoveryService {
     if (["demo", "unknown", "anonymous"].includes(accountId.toLowerCase())) {
       throw new RecoveryToolError("hardware_lab_identity_fallback_forbidden", "Eine Demo- oder Fallback-ID ist fuer das Hardware-Labor nicht erlaubt.", 400);
     }
-    const boardName = requiredText(input.board_name, "board_name_required", "Bitte einen Board-Namen angeben.");
+    const initialMessage = String(input.initial_message || "").trim().slice(0, 12000);
+    const boardName = String(input.board_name || "").trim() || "Noch unbekanntes Board";
     const sources = normalizeSourceUrls(input.source_urls || input.sources);
-    if (sources.length === 0) {
-      throw new RecoveryToolError("hardware_sources_required", "Mindestens eine Herstellerseite oder Datenblatt-URL ist erforderlich.", 400);
-    }
     const session = {
       recovery_session_id: createId("hardware_lab"),
       recovery_type: "ai_guided_hardware_lab",
@@ -72,7 +70,7 @@ class RecoveryService {
         board_name: boardName,
         manufacturer: String(input.manufacturer || "").trim(),
         board_origin: "customer_purchased_community_board",
-        notes: String(input.notes || "").trim(),
+        notes: String(input.notes || initialMessage).trim(),
         source_evidence: sources.map((source_url) => ({ source_url, review_status: "pending_ai_analysis" })),
       },
       discovery: {
@@ -91,6 +89,17 @@ class RecoveryService {
       },
       capabilities: [],
       guided_questions: [],
+      lab_chat: {
+        messages: [],
+        assistant_state: {
+          step: sources.length ? "sources" : "intake",
+          current_question: sources.length ? "Soll ich diese Herstellerquelle jetzt auswerten?" : "Hast du einen Link zur Produktseite oder eine sichtbare Beschriftung auf dem Board?",
+          completed: false,
+          revision: 0,
+        },
+        suggested_actions: ["analyze_sources"],
+        proposed_tests: [],
+      },
       actions: [{
         type: "hardware_lab_source_submitted",
         occurred_at: now,
@@ -126,7 +135,7 @@ class RecoveryService {
       const completedAt = new Date().toISOString();
       const next = {
         ...session,
-        status: "ai_profile_ready",
+        status: "ai_dialog_in_progress",
         updated_at: completedAt,
         candidate_profile: {
           ...session.candidate_profile,
@@ -136,13 +145,22 @@ class RecoveryService {
         },
         source_read_results: sources.map(redactSourceReadResult),
         ai_analysis: {
-          status: "completed",
+          status: "source_analyzed",
           completed_at: completedAt,
           provider: analysis.provider,
           model: analysis.model,
           response_id: analysis.response_id,
           usage: analysis.usage,
           profile: analysis.profile,
+        },
+        lab_chat: {
+          ...session.lab_chat,
+          assistant_state: {
+            step: nextHardwareLabAssistantStep(analysis.profile),
+            current_question: null,
+            completed: false,
+            revision: Number(session.lab_chat?.assistant_state?.revision || 0) + 1,
+          },
         },
         actions: session.actions.concat({
           type: "ai_source_analysis_completed",
@@ -166,9 +184,88 @@ class RecoveryService {
     }
   }
 
+  async chatHardwareLab(sessionId, input = {}) {
+    let session = this.requireHardwareLabSession(sessionId);
+    if (!this.hardwareLabAi?.chat) throw new RecoveryToolError("hardware_lab_chat_not_configured", "Der KI-Dialog des Hardware-Labors ist nicht konfiguriert.", 503);
+    const message = requiredText(input.message, "hardware_lab_chat_message_required", "Bitte gib eine Nachricht für den KI-Assistenten ein.").slice(0, 12000);
+    const messageUrls = normalizeSourceUrls(extractUrls(message));
+    const knownUrls = new Set((session.candidate_profile.source_evidence || []).map((item) => item.source_url));
+    const newUrls = messageUrls.filter((url) => !knownUrls.has(url));
+    if (newUrls.length > 0) {
+      session = this.repository.saveSession({
+        ...session,
+        candidate_profile: {
+          ...session.candidate_profile,
+          source_evidence: (session.candidate_profile.source_evidence || []).concat(newUrls.map((source_url) => ({ source_url, review_status: "pending_ai_analysis" }))),
+        },
+        updated_at: new Date().toISOString(),
+      });
+      try {
+        session = await this.analyzeHardwareLabSources(sessionId, { actor: input.actor || "recovery-tool" });
+      } catch {
+        session = this.requireHardwareLabSession(sessionId);
+      }
+    }
+    const now = new Date().toISOString();
+    const existingMessages = Array.isArray(session.lab_chat?.messages) ? session.lab_chat.messages : [];
+    const userMessage = { message_id: createId("lab_message"), role: "user", content: message, created_at: now };
+    const result = await this.hardwareLabAi.chat({
+      account_id: session.account_id,
+      message,
+      profile: session.ai_analysis?.profile || session.candidate_profile,
+      source_urls: (session.candidate_profile.source_evidence || []).map((item) => item.source_url),
+      assistant_state: session.lab_chat?.assistant_state,
+      workflow: { status: session.status, discovery: session.discovery },
+    });
+    const answeredAt = new Date().toISOString();
+    const assistantMessage = {
+      message_id: createId("lab_message"),
+      role: "assistant",
+      content: result.answer,
+      created_at: answeredAt,
+      model: result.model,
+      response_id: result.response_id,
+    };
+    const currentProfile = session.ai_analysis?.profile || session.candidate_profile;
+    const profile = applyHardwareLabProfileUpdates(currentProfile, result.profile_updates, (session.candidate_profile.source_evidence || []).map((item) => item.source_url));
+    const completed = result.completed === true && hardwareLabProfileReadyForDiscovery(profile);
+    const assistantState = {
+      step: completed ? "complete" : result.next_step || nextHardwareLabAssistantStep(profile),
+      current_question: completed ? null : result.next_question || null,
+      completed,
+      revision: Number(session.lab_chat?.assistant_state?.revision || 0) + 1,
+    };
+    return this.repository.saveSession({
+      ...session,
+      status: completed ? "ai_profile_ready" : "ai_dialog_in_progress",
+      updated_at: answeredAt,
+      candidate_profile: { ...session.candidate_profile, ...profile, board_origin: "customer_purchased_community_board", source_evidence: session.candidate_profile.source_evidence },
+      ai_analysis: {
+        ...(session.ai_analysis || {}),
+        status: completed ? "completed" : "dialog_in_progress",
+        provider: result.provider,
+        model: result.model,
+        response_id: result.response_id,
+        usage: result.usage,
+        profile,
+      },
+      lab_chat: {
+        messages: existingMessages.concat(userMessage, assistantMessage).slice(-60),
+        assistant_state: assistantState,
+        suggested_actions: result.suggested_actions || [],
+        proposed_tests: result.proposed_tests || [],
+        usage: result.usage,
+      },
+      actions: session.actions.concat({ type: "hardware_lab_ai_chat_completed", occurred_at: answeredAt, actor: input.actor || "recovery-tool", model: result.model }),
+    });
+  }
+
   async requestDiscoveryFirmwareBuild(sessionId, input = {}) {
     const session = this.requireHardwareLabSession(sessionId);
     if (!session.ai_analysis?.profile) throw new RecoveryToolError("hardware_ai_analysis_required", "Bitte zuerst die Herstellerquellen mit der KI analysieren.", 409);
+    if (session.lab_chat?.assistant_state?.completed !== true) {
+      throw new RecoveryToolError("hardware_lab_dialog_incomplete", "Bitte schließe zuerst die schrittweise Board-Einrichtung im KI-Assistenten ab.", 409);
+    }
     if (!this.buildDeployClient) throw new RecoveryToolError("hardware_discovery_build_not_configured", "Build-&-Deploy ist fuer das Hardware-Labor nicht konfiguriert.", 503);
     const now = new Date().toISOString();
     if (session.discovery.examination.status === "passed") {
@@ -605,6 +702,84 @@ function normalizeSourceUrls(value) {
     urls.push(parsed.toString());
   }
   return Array.from(new Set(urls)).slice(0, 8);
+}
+
+function applyHardwareLabProfileUpdates(currentProfile = {}, updates = {}, sourceUrls = []) {
+  const profile = {
+    ...currentProfile,
+    platformio: { ...(currentProfile.platformio || {}) },
+    capabilities: [...(currentProfile.capabilities || [])],
+    integrated_peripherals: [...(currentProfile.integrated_peripherals || [])],
+    pin_candidates: [...(currentProfile.pin_candidates || [])],
+    evidence: [...(currentProfile.evidence || [])],
+    unresolved_questions: [...(currentProfile.unresolved_questions || [])],
+  };
+  const allowedSources = new Set(sourceUrls);
+  const textFields = new Set(["board_name", "manufacturer", "processor_family", "mcu_variant", "module_name"]);
+  const numberFields = new Set(["flash_bytes", "psram_bytes", "ram_bytes"]);
+  const platformFields = {
+    platformio_platform: "platform",
+    platformio_board: "board",
+    platformio_framework: "framework",
+    platformio_environment: "environment",
+  };
+  for (const fact of Array.isArray(updates.facts) ? updates.facts : []) {
+    if (textFields.has(fact.field)) {
+      if (fact.field !== "processor_family" || ["esp32", "esp8266", "avr", "unknown"].includes(fact.value)) profile[fact.field] = String(fact.value).trim().slice(0, 240);
+    } else if (numberFields.has(fact.field)) {
+      const number = Number(fact.value);
+      if (Number.isSafeInteger(number) && number >= 0) profile[fact.field] = number;
+    } else if (platformFields[fact.field]) {
+      if (fact.field !== "platformio_framework" || ["arduino", "espidf"].includes(fact.value)) profile.platformio[platformFields[fact.field]] = String(fact.value).trim().slice(0, 240);
+    }
+    if (fact.source_url && allowedSources.has(fact.source_url)) {
+      profile.evidence.push({ property: fact.field, value: String(fact.value), source_url: fact.source_url, confidence: fact.confidence || "documented" });
+    }
+  }
+  profile.capabilities = uniqueHardwareLabStrings([...profile.capabilities, ...(updates.capabilities || [])]).slice(0, 40);
+  profile.integrated_peripherals = mergeHardwareLabObjects(profile.integrated_peripherals, updates.peripherals, (item) => `${item.name}:${item.kind}`).slice(0, 40);
+  const safePins = (Array.isArray(updates.pins) ? updates.pins : []).map((pin) => ({
+    ...pin,
+    active_test_allowed: false,
+    source_url: allowedSources.has(pin.source_url) ? pin.source_url : null,
+  }));
+  profile.pin_candidates = mergeHardwareLabObjects(profile.pin_candidates, safePins, (pin) => `${pin.function}:${pin.gpio ?? "unknown"}`).slice(0, 48);
+  const resolved = new Set(uniqueHardwareLabStrings(updates.resolved_questions).map((question) => question.toLowerCase()));
+  profile.unresolved_questions = uniqueHardwareLabStrings([
+    ...profile.unresolved_questions.filter((question) => !resolved.has(String(question).toLowerCase())),
+    ...(updates.open_questions || []),
+  ]).slice(0, 8);
+  profile.evidence = mergeHardwareLabObjects([], profile.evidence, (item) => `${item.property}:${item.value}:${item.source_url}`).slice(0, 80);
+  return profile;
+}
+
+function mergeHardwareLabObjects(current, additions, keyOf) {
+  const merged = new Map();
+  for (const item of [...(Array.isArray(current) ? current : []), ...(Array.isArray(additions) ? additions : [])]) {
+    if (!item || typeof item !== "object") continue;
+    merged.set(keyOf(item), item);
+  }
+  return [...merged.values()];
+}
+
+function uniqueHardwareLabStrings(value) {
+  return Array.from(new Set((Array.isArray(value) ? value : []).map((item) => String(item || "").trim()).filter(Boolean)));
+}
+
+function nextHardwareLabAssistantStep(profile = {}) {
+  if (!profile.board_name || profile.board_name === "Noch unbekanntes Board" || !profile.manufacturer) return "identity";
+  if (!profile.processor_family || profile.processor_family === "unknown" || (!profile.mcu_variant && !profile.module_name)) return "processor";
+  if (![profile.flash_bytes, profile.psram_bytes, profile.ram_bytes].some(Number.isFinite)) return "memory";
+  if (!(profile.capabilities || []).length && !(profile.integrated_peripherals || []).length) return "interfaces";
+  return "discovery";
+}
+
+function hardwareLabProfileReadyForDiscovery(profile = {}) {
+  return profile.processor_family === "esp32" && Boolean(profile.mcu_variant || profile.module_name);
+}
+
+function extractUrls(value) {
+  return String(value || "").match(/https?:\/\/[^\s<>"']+/gi)?.map((url) => url.replace(/[),.;!?]+$/, "")) || [];
 }
 
 function validateSha256(value) {

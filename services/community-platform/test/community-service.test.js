@@ -63,6 +63,8 @@ test("retains private message threads and read state after a SQLite restart", as
     );
     assert.equal((await restartedService.listMessageThreads(member)).unread_count, 0);
     assert.equal((await restartedService.listMessageThreads({ user_id: "user-2" })).unread_count, 1);
+    assert.deepEqual((await restartedService.dashboardSummary(member)).messages, { unread: 0, threads: 1 });
+    assert.deepEqual((await restartedService.dashboardSummary({ user_id: "user-2" })).messages, { unread: 1, threads: 1 });
     await assert.rejects(
       restartedService.getMessageThread(thread.thread_id, { user_id: "user-3" }),
       /nicht zugreifbar/,
@@ -456,6 +458,57 @@ test("reports content-free operational counts for admin monitoring", async () =>
   assert.equal(summary.answers.total, 1);
   assert.equal(summary.knowledge_documents.total, 1);
   assert.doesNotMatch(JSON.stringify(summary), /Öffentlicher Inhalt|Privater Inhalt|user-1/);
+});
+
+test("returns a compact dashboard summary scoped to the authenticated member", async () => {
+  const service = await createService();
+  await service.createQuestion({ title: "Meine offene Frage", body: "Inhalt", visibility: "public" }, member);
+  const closed = await service.createQuestion({ title: "Meine erledigte Frage", body: "Inhalt", visibility: "private" }, member);
+  await service.repository.saveQuestion({ ...closed, status: "resolved" });
+  await service.createQuestion({ title: "Fremde Frage", body: "Fremder Inhalt", visibility: "private" }, { user_id: "user-2" });
+  const thread = await service.createDirectThread({
+    recipient_user_id: "user-2", sender_label: "Ada", subject: "Projekt", body: "Hallo",
+  }, member);
+  await service.appendThreadMessage(thread.thread_id, { sender_label: "Bob", body: "Antwort" }, { user_id: "user-2" });
+
+  const summary = await service.dashboardSummary(member);
+  const strangerSummary = await service.dashboardSummary({ user_id: "user-3" });
+
+  assert.deepEqual(summary, {
+    available: true,
+    total: 2,
+    public: { open: 1, closed: 0 },
+    private: { open: 0, closed: 1 },
+    messages: { unread: 1, threads: 1 },
+  });
+  assert.deepEqual(strangerSummary, {
+    available: true,
+    total: 0,
+    public: { open: 0, closed: 0 },
+    private: { open: 0, closed: 0 },
+    messages: { unread: 0, threads: 0 },
+  });
+  assert.doesNotMatch(JSON.stringify(summary), /Inhalt|Fremde Frage|user-2/);
+});
+
+test("exposes only the calling member's compact dashboard summary through HTTP", async () => {
+  const service = await createService();
+  await service.createQuestion({ title: "Nur für mich", body: "Privat", visibility: "private" }, member);
+  const app = createHttpApp({ service });
+
+  const owner = await requestJson(app, "/api/community/dashboard-summary", {
+    "x-gernetix-community-actor": "user-1",
+  });
+  const stranger = await requestJson(app, "/api/community/dashboard-summary", {
+    "x-gernetix-community-actor": "user-2",
+  });
+
+  assert.equal(owner.status, 200);
+  assert.equal(owner.body.total, 1);
+  assert.equal(stranger.status, 200);
+  assert.equal(stranger.body.total, 0);
+  assert.deepEqual(Object.keys(owner.body).sort(), ["available", "messages", "private", "public", "total"]);
+  assert.doesNotMatch(JSON.stringify(owner.body), /Nur für mich|Privat|user-1/);
 });
 
 test("protects the operational summary with the internal Community token", async () => {

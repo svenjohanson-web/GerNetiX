@@ -9,6 +9,10 @@ let usbFlashPortIdentification = null;
 let ideFlashDialog = null;
 let provisioningFlashDialog = null;
 
+function renderLoadedIdeShell() {
+  if (typeof renderIdeShell === "function") renderIdeShell();
+}
+
 function latestIdeFlashArtifact(project, softwareUnit) {
   const projectIds = new Set([project?.id, project?.slug, project?.project_server_id].filter(Boolean).map(String));
   const build = state.builds
@@ -744,7 +748,7 @@ async function refreshRecoveryDevices() {
       state.activeRecoveryDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
     }
     state.recoveryCheckResult = null;
-    renderIdeShell();
+    renderLoadedIdeShell();
     renderDeviceRecovery();
     setRecoveryStatus("ok", state.devices.length ? `${state.devices.length} Device(s) geladen.` : "Keine Devices fuer diesen Account gefunden.");
   } catch (error) {
@@ -850,16 +854,6 @@ function setRecoveryStatus(kind, text) {
   status.className = `flash-status ${kind}`;
   status.textContent = text;
   status.classList.toggle("hidden", !text);
-}
-
-async function openProjectInIde(projectId) {
-  state.activeProjectId = projectId;
-  await postJson("/api/platform/workspace-state", {
-    lastProjectId: projectId,
-    lastMode: "ide",
-    lastRoute: `/app/ide/?project=${encodeURIComponent(projectId)}`,
-  });
-  navigate(`/app/ide/?project=${encodeURIComponent(projectId)}`);
 }
 
 function continueLastProject() {
@@ -1023,37 +1017,6 @@ function deviceBasissoftwareProfileClass(device) {
   return device.instance_configuration?.basissoftware_profile?.class || "full";
 }
 
-async function claimFlashboxFromCode(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const data = new FormData(form);
-  const claimCode = String(data.get("claim_code") || "").trim();
-  if (!claimCode) {
-    setFlashboxClaimStatus("error", "Bitte gib den Claim-Code der Flashbox ein.");
-    return;
-  }
-  setFlashboxClaimStatus("running", "Flashbox wird deinem Account zugeordnet...");
-  try {
-    const result = await postJson("/api/platform/flashbox/claim", { claim_code: claimCode });
-    state.devices = state.devices.filter((item) => item.account_device_id !== result.device.account_device_id).concat(result.device);
-    state.activeDeviceId = state.activeDeviceId || result.device.device_id;
-    renderDevices();
-    renderIdeShell();
-    renderDashboard();
-    form.reset();
-    setFlashboxClaimStatus("ok", `${result.device.display_name} ist jetzt im Inventar.`);
-  } catch (error) {
-    setFlashboxClaimStatus("error", error.message || "Flashbox konnte nicht uebernommen werden.");
-  }
-}
-
-function setFlashboxClaimStatus(kind, text) {
-  const status = document.querySelector("#flashboxClaimStatus");
-  if (!status) return;
-  status.className = `flash-status ${kind}`;
-  status.textContent = text;
-}
-
 function deviceBasissoftwareProfileLabel(profile) {
   return ({
     full: "FULL – Maximale Ausfallsicherheit",
@@ -1073,7 +1036,7 @@ async function saveDeviceBasissoftwareProfile(accountDeviceId) {
     });
     state.devices = state.devices.map((item) => item.account_device_id === accountDeviceId ? result.device : item);
     renderDevices();
-    renderIdeShell();
+    renderLoadedIdeShell();
     setInventoryStatus(result.requires_usb_reflash ? "running" : "ok", result.message);
   } catch (error) {
     setInventoryStatus("error", error.message);
@@ -1143,7 +1106,7 @@ async function unpairInventoryDevice(accountDeviceId) {
     if (state.activeDeviceId === device.device_id) {
       state.activeDeviceId = state.devices.find((item) => item.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
     }
-    renderIdeShell();
+    renderLoadedIdeShell();
     renderDevices();
     renderDashboard();
     setInventoryStatus("ok", `${device.display_name} ist nicht mehr mit diesem Account gekoppelt.`);
@@ -1153,7 +1116,10 @@ async function unpairInventoryDevice(accountDeviceId) {
 }
 
 function setInventoryStatus(kind, text) {
-  return deviceOnboarding().setInventoryStatus(kind, text);
+  const status = document.querySelector("#inventoryStatus");
+  if (!status) return;
+  status.className = `flash-status ${kind}`;
+  status.textContent = text;
 }
 
 function renderBuilds() {

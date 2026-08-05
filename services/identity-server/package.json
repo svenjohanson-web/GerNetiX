@@ -5,6 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "node src/dev-server.js",
+    "build:knowledge": "node tools/build-knowledge-chapters.js",
     "test": "node --test",
     "check": "node --check src/index.js",
     "check:links": "node scripts/check-link-integrity.js",
