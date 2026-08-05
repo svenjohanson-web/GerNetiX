@@ -25,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicApp, /loadPlatformScript\("\/app\/development-platform\.js\?v=20260805-route-lazy-development-1"\)/);
+  assert.match(publicApp, /loadPlatformScript\("\/app\/development-platform\.js\?v=20260805-applications-1"\)/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -604,4 +604,10 @@ test("iot device suggestions use board families from the hardware catalog only",
   assert.match(publicController, /return Array\.isArray\(state\.processorBoards\) \? state\.processorBoards : \[\]/);
   assert.match(deviceOnboardingModel, /raspberry_pi: "Raspberry Pi"/);
   assert.match(deviceOnboardingModel, /text\.includes\("raspberry"\)/);
+});
+
+test("development project management opens an existing application without mixing it into editing", () => {
+  assert.match(publicController, /hasProjectApp\(project\)[\s\S]*data-open-development-application/);
+  assert.match(publicController, /data-open-development-project[\s\S]*data-open-development-application/);
+  assert.match(publicController, /navigate\(`\/app\/project-app\/\?project=\$\{encodeURIComponent\(applicationButton\.dataset\.openDevelopmentApplication\)\}`\)/);
 });

@@ -47,7 +47,7 @@
 
     <rect class="node app" x="265" y="150" width="260" height="92" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">IDE · Projekt-App · KI-Hardware-Assistent · Konfiguration</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">Meine Anwendungen · IDE · Projektoberfläche · KI-Hardware-Assistent</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">Zentraler Flash-Dialog: Datei · USB · OTA · FlashBox · Terminal</text>
 
     <text class="smallText" x="395" y="234" text-anchor="middle">Provisioning: lokaler WLAN-Scan + USB-Transfer</text>

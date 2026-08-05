@@ -72,6 +72,50 @@ function renderProjects() {
   }
 }
 
+function personalApplications() {
+  return state.projects.filter((project) => project.projectOrigin === "account_project" && hasProjectApp(project));
+}
+
+function renderApplications() {
+  const target = document.querySelector("#applicationList");
+  if (!target) return;
+  const applications = personalApplications();
+  target.innerHTML = applications.length ? applications.map((project) => {
+    const device = state.devices.find((item) => item.device_id === project.linkedDeviceId);
+    const deviceLabel = device?.display_name || project.linkedDeviceId || "Noch kein Gerät zugeordnet";
+    return `
+      <article class="project-card application-card">
+        <div>
+          <p class="eyebrow">Persönliche Anwendung</p>
+          <h2>${escapeHtml(project.name)}</h2>
+          <p>${escapeHtml(project.description || "Diese Anwendung besitzt eine eigene Projektoberfläche.")}</p>
+          <small>Gerät: ${escapeHtml(deviceLabel)}</small>
+        </div>
+        <div class="button-row">
+          <button class="primary" type="button" data-open-application="${escapeAttribute(project.id)}">Anwendung öffnen</button>
+          <button type="button" data-develop-application="${escapeAttribute(project.id)}">Projekt bearbeiten</button>
+        </div>
+      </article>
+    `;
+  }).join("") : `
+    <section class="panel application-empty">
+      <p class="eyebrow">Noch keine persönliche Anwendung</p>
+      <h2>Aus einem Projekt wird erst mit einer Projektoberfläche eine Anwendung</h2>
+      <p>Du kannst ein vorbereitetes Projekt verwenden oder im Entwicklungsbereich eine eigene Projektoberfläche definieren.</p>
+      <div class="button-row">
+        <a class="button-link" href="/app/learn/">Vorbereitete Projekte ansehen</a>
+        <a class="button-link" href="/app/development-platform/">Zum Entwicklungsbereich</a>
+      </div>
+    </section>
+  `;
+  target.querySelectorAll("[data-open-application]").forEach((button) => {
+    button.addEventListener("click", () => navigate(`/app/project-app/?project=${encodeURIComponent(button.dataset.openApplication)}`));
+  });
+  target.querySelectorAll("[data-develop-application]").forEach((button) => {
+    button.addEventListener("click", () => navigate(`/app/ide/?project=${encodeURIComponent(button.dataset.developApplication)}`));
+  });
+}
+
 function renderLearningProjectOverview() {
   const target = document.querySelector("#learningProjectOverview");
   if (!target) return;

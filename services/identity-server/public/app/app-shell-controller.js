@@ -153,7 +153,7 @@ async function loadQuizAssets() {
 async function loadProjectAppAssets() {
   await Promise.all([
     loadPlatformScript("/app/project-app-renderer.js?v=20260805-route-lazy-2"),
-    loadPlatformScript("/app/project-app-controller.js?v=20260805-route-lazy-2"),
+    loadPlatformScript("/app/project-app-controller.js?v=20260805-applications-1"),
   ]);
 }
 
@@ -253,7 +253,7 @@ async function loadRouteAssets(route) {
       loadPlatformScript("/app/project-feedback-ui.js?v=20260802-project-feedback"),
       loadPlatformScript("/app/project-repository-card.js?v=20260803-forgejo-contract-v1"),
     ]);
-    await loadPlatformScript("/app/development-platform.js?v=20260805-route-lazy-development-1");
+    await loadPlatformScript("/app/development-platform.js?v=20260805-applications-1");
     developmentPlatform().init();
     applyDevelopmentSummary();
     return;
@@ -414,6 +414,7 @@ async function showSerialServiceChoiceDialog() {
 
 function platformSummarySectionsForRoute(route) {
   if (route === "dashboard") return ["devices", "builds", "ai", "community", "knowledge", "billing", "progress"];
+  if (route === "applications") return ["devices"];
   if (["development-platform", "development-hardware", "ide", "debug", "project-app"].includes(route)) return ["devices", "builds", "progress"];
   if (["learn", "learning-project-overview", "learning-project"].includes(route)) return ["progress"];
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return ["devices", "builds"];
@@ -426,7 +427,7 @@ const loadedPlatformBootstrapSections = new Set();
 function platformBootstrapSectionsForRoute(route) {
   const sections = [];
   if ([
-    "dashboard", "development-platform", "development-hardware", "ide", "debug", "project-app",
+    "dashboard", "applications", "development-platform", "development-hardware", "ide", "debug", "project-app",
     "learn", "learning-project-overview", "learning-project", "device-management", "device-provisioning",
     "device-inventory", "device-recovery", "billing", "community", "messages",
   ].includes(route)) sections.push("projects");
@@ -501,6 +502,7 @@ function renderAll() {
   document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : "";
   const route = routeName();
   if (route === "dashboard") renderDashboard();
+  if (route === "applications") renderApplications();
   if (route === "account-setup") renderAccountSetup();
   if (route === "development-platform" && lastRenderedRoute === "development-platform") developmentPlatform().render();
   if (route === "development-hardware") developmentPlatform().renderHardwareConfiguration();
@@ -566,6 +568,7 @@ function renderRoute({ contentRendered = false } = {}) {
   }
   if (route === "learning-project-overview" && !contentRendered) renderLearningProjectOverview();
   if (route === "learning-project" && !contentRendered) learningProject().render();
+  if (route === "applications" && !contentRendered) renderApplications();
   if (route === "project-app") void loadProjectAppAssets().then(() => projectApp().render(new URLSearchParams(window.location.search).get("project") || ""));
   if (route === "quiz") void loadQuizAssets().then(() => quiz().render());
   if (route === "device-recovery") {
@@ -709,8 +712,12 @@ function currentLocationTrail(route) {
     ],
     "project-app": [
       { label: "Plattform", route: "/app/dashboard/" },
-      { label: project?.name || "Projekt", route: project ? `/app/ide/?project=${encodeURIComponent(project.id)}` : "" },
-      { label: "Projekt-App", route: "" },
+      { label: "Meine Anwendungen", route: "/app/applications/" },
+      { label: project?.name || "Anwendung", route: "" },
+    ],
+    applications: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Meine Anwendungen", route: "" },
     ],
     quiz: [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -805,7 +812,7 @@ function routeName() {
 
 function topLevelRouteName(route) {
   if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
-  if (route === "project-app") return "development-platform";
+  if (route === "project-app") return "applications";
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
   if (["ide", "debug", "development-hardware"].includes(route)) return "development-platform";
   return route;

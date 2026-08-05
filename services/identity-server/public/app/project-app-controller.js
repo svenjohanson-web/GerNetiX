@@ -12,16 +12,16 @@
       if (!target) return;
       activeProjectId = projectId || "";
       if (!activeProjectId) {
-        target.innerHTML = '<section class="panel"><h2>Projekt-App nicht gefunden</h2><p>Öffne die Projekt-App aus einem deiner Projekte.</p></section>';
+        target.innerHTML = '<section class="panel"><h2>Anwendung nicht gefunden</h2><p>Öffne eine persönliche Anwendung über „Meine Anwendungen“.</p></section>';
         return;
       }
-      target.innerHTML = '<section class="panel"><p>Projekt-App wird geladen …</p></section>';
+      target.innerHTML = '<section class="panel"><p>Anwendung wird geladen …</p></section>';
       try {
         const cacheKey = Date.now();
         snapshot = await getJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app?refresh=${cacheKey}`);
         draw(target);
       } catch (error) {
-        target.innerHTML = `<section class="panel"><h2>Projekt-App nicht verfügbar</h2><p>${escapeHtml(error.message || "Die Projekt-App konnte nicht geladen werden.")}</p></section>`;
+        target.innerHTML = `<section class="panel"><h2>Anwendung nicht verfügbar</h2><p>${escapeHtml(error.message || "Die Projektoberfläche konnte nicht geladen werden.")}</p></section>`;
       }
     }
 

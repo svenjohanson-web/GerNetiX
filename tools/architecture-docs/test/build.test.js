@@ -23,7 +23,7 @@ test("reads architecture decisions from the canonical SQLite graph", () => {
   const graph = readGraphDecisions(path.join(repoRoot, "tools", "yaml-graph-sqlite", "out", "model-graph.sqlite"));
   assert.ok(graph.decisionCount >= 1);
   assert.match(graph.content, /SQLite-Graph/);
-  assert.match(graph.content, /Projekt-App trennt versionierte Definition und Laufzeitwerte/);
+  assert.match(graph.content, /Projektoberflaeche trennt Definition, Instanz und Auslieferungsform/);
 });
 
 test("builds a file-based offline browser without a server dependency", () => {

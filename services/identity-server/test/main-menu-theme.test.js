@@ -20,6 +20,7 @@ test("main menu uses the shared dark typography and states", () => {
 
 test("groups the main destinations under clear user-facing headings", () => {
   assert.match(html, /data-route="dashboard"[^>]*>Übersicht/);
+  assert.match(html, /data-route="applications"[^>]*>Meine Anwendungen<\/a>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.learn_develop">Lernen &amp; Entwickeln<\/summary>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.boards_tools">Boards &amp; Werkzeuge<\/summary>/);
   assert.match(html, /id="hardwareLabMenuLink"[^>]*href="\/app\/hardware-lab\/"[^>]*data-route="hardware-lab"[^>]*>KI-Hardware-Assistent<\/a>/);
@@ -36,8 +37,8 @@ test("groups the main destinations under clear user-facing headings", () => {
 });
 
 test("invalidates cached route assets when the hardware lab route is introduced", () => {
-  assert.match(html, /app-shell-controller\.js\?v=20260805-shell-menu-1/);
-  assert.match(html, /app\.js\?v=20260805-hardware-lab-route-1/);
+  assert.match(html, /app-shell-controller\.js\?v=20260805-applications-1/);
+  assert.match(html, /app\.js\?v=20260805-applications-1/);
 });
 
 test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {

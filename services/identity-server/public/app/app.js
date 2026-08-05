@@ -85,6 +85,7 @@ const routeMap = {
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",
   learn: "learnView",
+  applications: "applicationsView",
   "learning-project-overview": "learningProjectOverviewView",
   "learning-project": "learningProjectView",
   "project-app": "projectAppView",

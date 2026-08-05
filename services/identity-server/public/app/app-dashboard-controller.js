@@ -96,6 +96,15 @@ async function loadSensorCatalog() {
 
 function renderDashboard() {
   const developmentProjects = accountDevelopmentProjects();
+  const applications = personalApplications();
+  const applicationsText = document.querySelector("#dashboardApplicationsText");
+  if (applicationsText) {
+    applicationsText.textContent = platformI18n?.t(
+      applications.length === 0 ? "dashboard.applications.zero" : applications.length === 1 ? "dashboard.applications.one" : "dashboard.applications.count",
+      { count: applications.length },
+      applications.length === 0 ? "Noch keine persönliche Anwendung eingerichtet." : applications.length === 1 ? "1 persönliche Anwendung öffnen." : `${applications.length} persönliche Anwendungen öffnen.`,
+    ) || `${applications.length} persönliche Anwendungen öffnen.`;
+  }
   const pushProjectSelect = document.querySelector("#pushProjectSelect");
   if (pushProjectSelect) {
     pushProjectSelect.innerHTML = developmentProjects.length
@@ -106,6 +115,7 @@ function renderDashboard() {
   document.querySelector("#dashboardSummary").innerHTML = [
     ["Account", state.account.username],
     ["Entwicklungsprojekte", developmentProjects.length],
+    ["Anwendungen", applications.length],
     ["Geräte", state.devices.length],
     ["Builds", state.builds.length],
     ["Letzter Modus", state.workspace.lastMode || "kein Eintrag"],

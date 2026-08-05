@@ -13,7 +13,7 @@ const shell = fs.readFileSync(path.join(appRoot, "app-shell-controller.js"), "ut
 test("IDE exposes one accessible splitter for editor frame and terminal", () => {
   assert.match(html, /id="ideWorkspaceResizeHandle"[\s\S]*role="separator"[\s\S]*aria-orientation="horizontal"/);
   assert.match(html, /app\.css\?v=20260805-knowledge-chapter-lazy-1/);
-  assert.match(html, /app\.js\?v=20260805-hardware-lab-route-1/);
+  assert.match(html, /app\.js\?v=20260805-applications-1/);
   assert.doesNotMatch(html, /app-ide-controller\.js/);
   assert.match(shell, /loadIdeWorkbenchAssets[\s\S]*app-ide-controller\.js/);
   assert.match(html, /app-event-bindings\.js\?v=20260805-shell-menu-1/);

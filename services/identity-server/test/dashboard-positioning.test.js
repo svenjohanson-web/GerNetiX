@@ -29,11 +29,21 @@ test("keeps the platform topbar and its menu visible while the dashboard scrolls
 });
 
 test("groups dashboard destinations into scannable categories with at most three cards per row", () => {
+  assert.match(html, /Nutzen[\s\S]*\/app\/applications\/[\s\S]*Meine Anwendungen/);
   assert.match(html, /Entwickeln &amp; verwalten[\s\S]*\/app\/development-platform\/[\s\S]*\/app\/device-management\//);
   assert.match(html, /Lernen &amp; verstehen[\s\S]*\/app\/learn\/[\s\S]*\/wissen\/[\s\S]*\/app\/quiz\//);
   assert.doesNotMatch(html, /id="workspaceCommunityTitle"/);
   assert.match(css, /\.workspace-categories \{ display: grid; gap: 22px; \}/);
   assert.match(css, /\.workspace-grid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+});
+
+test("keeps using applications separate from developing their source projects", () => {
+  const applicationsIndex = html.indexOf('data-open-route="/app/applications/"');
+  const developmentIndex = html.indexOf('data-open-route="/app/development-platform/"');
+  assert.ok(applicationsIndex > 0);
+  assert.ok(applicationsIndex < developmentIndex);
+  assert.match(app, /const applications = personalApplications\(\)/);
+  assert.match(app, /\["Anwendungen", applications\.length\]/);
 });
 
 test("places an extensible news category below the workspace categories", () => {

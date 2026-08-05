@@ -52,6 +52,7 @@
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a href="/app/dashboard/" data-route="dashboard" data-i18n="platform.nav.dashboard">Übersicht</a>
+        <a href="/app/applications/" data-route="applications" data-i18n="platform.nav.applications">Meine Anwendungen</a>
         <details class="app-menu-group">
           <summary data-i18n="platform.menu.learn_develop">Lernen &amp; Entwickeln</summary>
           <div>
@@ -113,6 +114,12 @@
         <section class="dashboard-section" aria-labelledby="workspaceTitle">
           <div class="section-head"><div><p class="eyebrow" data-i18n="dashboard.workspaces.eyebrow">Arbeitsbereiche</p><h2 id="workspaceTitle" data-i18n="dashboard.workspaces.title">Was möchtest du tun?</h2></div></div>
           <div class="workspace-categories">
+            <section class="workspace-category" aria-labelledby="workspaceUseTitle">
+              <div class="workspace-category-header"><h3 id="workspaceUseTitle" data-i18n="dashboard.workspaces.use">Nutzen</h3></div>
+              <div class="dashboard-grid workspace-grid">
+                <button class="entry-card" type="button" data-open-route="/app/applications/"><span data-i18n="dashboard.applications.label">Persönliche Anwendungen</span><strong data-i18n="dashboard.applications.title">Meine Anwendungen</strong><p id="dashboardApplicationsText" data-i18n="dashboard.applications.text">Projektoberflächen öffnen und persönliche Instanzen verwenden.</p></button>
+              </div>
+            </section>
             <section class="workspace-category" aria-labelledby="workspaceDevelopTitle">
               <div class="workspace-category-header"><h3 id="workspaceDevelopTitle" data-i18n="dashboard.workspaces.develop">Entwickeln &amp; verwalten</h3></div>
               <div class="dashboard-grid workspace-grid">
@@ -175,11 +182,23 @@
       </section>
 
 
+      <section id="applicationsView" class="view hidden" aria-labelledby="applicationsTitle">
+        <header class="section-head">
+          <div>
+            <p class="eyebrow">Persönlicher Bereich</p>
+            <h1 id="applicationsTitle">Meine Anwendungen</h1>
+            <p class="helper-text">Hier verwendest du die persönlichen Instanzen deiner Projekte. Entwicklung, Quellcode und grundsätzlicher Aufbau bleiben getrennt im Entwicklungsbereich.</p>
+          </div>
+        </header>
+        <section id="applicationList" class="project-grid" aria-live="polite"></section>
+      </section>
+
+
       <section id="projectAppView" class="view hidden" aria-labelledby="projectAppTitle">
         <header class="project-app-shell-header">
-          <p class="eyebrow">Kundenbereich</p>
-          <h1 id="projectAppTitle">Projekt-App</h1>
-          <p>Die Oberfläche und ihre erlaubten Einstellungen werden von deinem Projekt definiert.</p>
+          <p class="eyebrow">Meine Anwendungen</p>
+          <h1 id="projectAppTitle">Projektoberfläche</h1>
+          <p>Du verwendest hier eine persönliche Anwendungsinstanz. Aufbau und erlaubte Einstellungen werden vom zugehörigen Projekt definiert.</p>
         </header>
         <div id="projectAppContent"></div>
       </section>
@@ -707,8 +726,9 @@
       <section id="deviceManagementView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Account Devices</p>
-            <h2>Device Management</h2>
+            <p class="eyebrow">Boards &amp; Geräte</p>
+            <h2>Geräte verwalten</h2>
+            <p class="helper-text">Verbinde bekannte Boards mit deinem Account, verwalte eingerichtete Geräte oder lasse ein noch unbekanntes Board zuerst vom KI-Hardware-Assistenten erkennen.</p>
           </div>
         </div>
         <section class="dashboard-grid">
@@ -716,6 +736,10 @@
             <span>Provisioning</span>
             <strong>Boards per WLAN, USB oder FlashBox verbinden, registrieren und pairen</strong>
           </button>
+          <a class="entry-card entry-card-link" href="/app/hardware-lab/">
+            <span>Noch nicht im Hardwarekatalog?</span>
+            <strong>Unbekanntes Board mit dem KI-Hardware-Assistenten erkennen und anlegen</strong>
+          </a>
           <button class="entry-card" type="button" data-open-route="/app/device-management/inventory/">
             <span>Inventar</span>
             <strong>Mit diesem Account verbundene Geräte ansehen</strong>
@@ -1495,14 +1519,14 @@
     <script defer src="/app/help-content.js?v=20260730-content-separation-1"></script>
     <script defer src="/app/help-chat-service.js?v=20260715-01"></script>
     <script defer src="/app/information-view.js?v=20260805-knowledge-chapter-lazy-1"></script>
-    <script defer src="/app/app-shell-controller.js?v=20260805-shell-menu-1"></script>
-    <script defer src="/app/app-dashboard-controller.js?v=20260802-dashboard-community-messages"></script>
+    <script defer src="/app/app-shell-controller.js?v=20260805-applications-1"></script>
+    <script defer src="/app/app-dashboard-controller.js?v=20260805-applications-1"></script>
     <script defer src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app-project-controller.js?v=20260804-nexi-complete-1"></script>
+    <script defer src="/app/app-project-controller.js?v=20260805-applications-1"></script>
     <script defer src="/app/app-billing-controller.js?v=20260803-storage-policy-1"></script>
     <script defer src="/app/app-runtime-utils.js?v=20260801-plantuml-contrast"></script>
     <script defer src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app.js?v=20260805-hardware-lab-route-1"></script>
+    <script defer src="/app/app.js?v=20260805-applications-1"></script>
     <script defer src="/app/app-event-bindings.js?v=20260805-shell-menu-1"></script>
   </body>
 </html>

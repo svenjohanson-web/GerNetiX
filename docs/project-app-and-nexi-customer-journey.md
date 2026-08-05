@@ -4,15 +4,43 @@
 
 GerNetiX bietet Nutzern nicht nur eine Entwicklungsumgebung, sondern begleitet
 ein Projekt von der Entdeckung bis zum Betrieb. Ein fertiges Projekt kann eine
-eigene, vom Projektentwickler definierte Kundenoberflaeche besitzen. Bei Nexi
+eigene, vom Projektentwickler definierte Projektoberflaeche besitzen. Bei Nexi
 ist diese Oberflaeche eine Elternsteuerung; bei einem Sensorprojekt kann sie
 Messwerte, Diagramme, Warnschwellen und Geraetestatus zeigen.
 
 Die allgemeine Plattform kennt deshalb weder einen fest eingebauten
-Elternbereich noch Nexi-spezifische Felder. Sie stellt eine sichere
-`Projekt-App` bereit, deren Struktur versioniert aus dem Projekt stammt und
-deren Kundenwerte account- und projektgebunden als Laufzeitdaten gespeichert
-werden.
+Elternbereich noch Nexi-spezifische Felder. Sie rendert eine sichere
+Projektoberflaeche, deren Struktur versioniert aus dem Projekt stammt und deren
+Werte je persoenlicher Anwendungsinstanz account- und projektgebunden als
+Laufzeitdaten gespeichert werden. `Projekt-App` bleibt vorerst der interne
+Schema- und API-Name; die Nutzeroberflaeche spricht von Anwendung und
+Projektoberflaeche.
+
+## Begriffsmodell und Haupteinstiege
+
+| Begriff | Bedeutung |
+| --- | --- |
+| Projekt | Versionierte Entwicklung mit Architektur, Hardware, Quellcode und Builds |
+| Projektoberflaeche | Vom Projekt definierte sichere Bedienansicht mit Seiten, Widgets, Bindungen und erlaubten Aktionen |
+| Anwendung | Nutzerbegriff fuer eine persoenliche, verwendbare Instanz eines Projekts mit Projektoberflaeche |
+| Dashboard | Eine Uebersichtsseite innerhalb einer Projektoberflaeche, nicht die gesamte Anwendung |
+| Auslieferungsform | Darstellung in der GerNetiX-Webplattform; spaeter optional installierbare PWA oder native Huelle, ohne ein neues Fachmodell zu erzeugen |
+
+`Meine Anwendungen` ist ein eigener Hauptbereich neben Entwicklungs- und
+Lernbereichen. Dort werden nur persoenliche Projekte mit einer deklarierten
+Projektoberflaeche angezeigt. Die Entwicklungsprojektverwaltung darf dieselbe
+Anwendung als Vorschau beziehungsweise Nutzungseinstieg oeffnen, bleibt aber
+der Ort fuer Quellcode und Definition. Beim Aufruf der Uebersicht werden nur
+bereits vorhandene Projekt- und Geraetemetadaten verwendet; Manifest,
+Laufzeitwerte und Bindungen werden erst beim Oeffnen einer Anwendung geladen.
+
+Ein Projekt kann spaeter mehrere fachlich getrennte Anwendungsinstanzen
+erzeugen. Beispielsweise definiert ein Tamagotchi-Projekt die gemeinsame
+Oberflaeche, waehrend `Naomis Tamagotchi` und `Toms Tamagotchi` jeweils eigene
+Geraetezuordnung, Einstellungen und Laufzeitwerte besitzen. Die aktuelle erste
+Ausbaustufe bildet eine persoenliche Anwendung noch durch ihr accountgebundenes
+Projekt ab; ein eigenstaendiges Mehrinstanzenmodell ist ein nachfolgender
+Ausbauschritt und wird nicht durch reine UI-Duplikation vorgetaeuscht.
 
 ## Kundeneinstiege fuer Nexi
 
@@ -48,9 +76,9 @@ und Internet-KI sind getrennte, spaeter aktivierbare Projektfaehigkeiten und
 duerfen im Katalog nicht als bereits verfuegbar erscheinen, solange Provider,
 Kontingent und Betreiberfreigabe fehlen.
 
-## Projekt-App
+## Projektoberflaeche
 
-Der Entwickler definiert die Kundenoberflaeche deklarativ im gebundenen
+Der Entwickler definiert die Projektoberflaeche deklarativ im gebundenen
 Projekt-Repository. Eine Definition darf ausschliesslich freigegebene Seiten,
 Widgets, Datenbindungen und typisierte Aktionen enthalten. Freies JavaScript,
 freie Netzwerkziele, Datenbankzugang und Secrets sind nicht Teil des Vertrags.

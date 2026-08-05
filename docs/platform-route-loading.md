@@ -34,11 +34,19 @@ explizites Profil verwenden.
   Lernfortschritt.
 - Entwicklungs- und IDE-Routen laden Projekte im Bootstrap und anschließend
   nur Geräte, Builds und gegebenenfalls Lernfortschritt.
+- `Meine Anwendungen` lädt Projekte im Bootstrap und ausschließlich die für
+  die Karten sichtbaren Geräteinformationen. Projekt-App-Manifest,
+  Laufzeitwerte, Bindungen und Renderer werden erst beim Öffnen einer
+  konkreten Anwendung geladen.
 - Device-Management lädt Projekte, Geräte und Builds, aber keine Community-,
   Wissens- oder KI-Abrechnungsdaten.
 - Billing lädt Projekte sowie Billing- und KI-Abrechnungsdaten.
 - Hardware-Assistent, Downloads, Shop und einfache Accountansichten starten
   keine globale Summary. Ihre eigenen APIs bleiben unabhängig.
+- Verweise auf den KI-Hardware-Assistenten in der Geräteübersicht und im leeren
+  Inventar sind reine Navigation. Fragment, Controller, Styles und
+  KI-Nutzungsdaten werden erst nach dem tatsächlichen Öffnen seiner Route
+  geladen.
 - Die oeffentliche Hilfe verwendet nur Account und eine leichtgewichtige
   Subscription-Sicht. Der Wissensstand wird erst im Wissensportal angefordert;
   das Dashboard laedt ihn weiterhin fuer sichtbare Neuigkeiten und Badges.

@@ -19,6 +19,7 @@ const identityRoutes = [
   route("identity.shop", "/shop/", "public", "Business"),
   route("identity.auth", "/app/auth/", "public", "Identity"),
   route("identity.dashboard", "/app/dashboard/", "authenticated", "Identity"),
+  route("identity.applications", "/app/applications/", "authenticated", "Project"),
   route("identity.internal_about", "/app/about/", "authenticated", "Business"),
   route("identity.learning", "/app/learn/", "authenticated", "Learning"),
   route("identity.development", "/app/development-platform/", "authenticated", "IDE"),

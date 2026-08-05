@@ -14,6 +14,15 @@ test("dashboard offers direct access to device management", () => {
   assert.match(dashboard, /Vorhandene Hardware[\s\S]*Boards verwalten/);
 });
 
+test("device management routes unknown boards to the shared AI hardware assistant", () => {
+  const deviceManagementView = html.slice(html.indexOf('<section id="deviceManagementView"'), html.indexOf('<section id="deviceProvisioningView"'));
+  assert.match(deviceManagementView, /<h2>Geräte verwalten<\/h2>/);
+  assert.match(deviceManagementView, /noch unbekanntes Board zuerst vom KI-Hardware-Assistenten erkennen/);
+  assert.match(deviceManagementView, /href="\/app\/hardware-lab\/"[\s\S]*Unbekanntes Board mit dem KI-Hardware-Assistenten erkennen und anlegen/);
+  assert.match(app, /href="\/app\/device-management\/provisioning\/">Bekanntes Board verbinden<\/a>/);
+  assert.match(app, /href="\/app\/hardware-lab\/">Unbekanntes Board mit KI erkennen<\/a>/);
+});
+
 test("inventory exposes account unpair without claiming to delete the physical device", () => {
   assert.match(app, /data-unpair-device=/);
   assert.match(app, />Zuordnung aufheben<\/button>/);

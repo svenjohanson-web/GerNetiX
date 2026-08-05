@@ -1001,7 +1001,14 @@ function renderDevices() {
         </div>
       </div>
     </article>
-  `).join("") : `<div class="inventory-empty"><strong>Noch keine Boards registriert</strong><span>Öffne „Neues Board hinzufügen“, um ein Gerät zu suchen oder manuell zu erfassen.</span></div>`;
+  `).join("") : `<div class="inventory-empty">
+    <strong>Noch keine Boards registriert</strong>
+    <span>Ist dein Board bereits im Hardwarekatalog, kannst du es direkt verbinden. Ein unbekanntes Board lässt du zuerst gemeinsam mit der KI erkennen und anlegen.</span>
+    <div class="button-row">
+      <a class="button-link" href="/app/device-management/provisioning/">Bekanntes Board verbinden</a>
+      <a class="button-link" href="/app/hardware-lab/">Unbekanntes Board mit KI erkennen</a>
+    </div>
+  </div>`;
   document.querySelectorAll("[data-unpair-device]").forEach((button) => {
     button.addEventListener("click", () => unpairInventoryDevice(button.dataset.unpairDevice));
   });

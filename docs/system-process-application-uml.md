@@ -67,7 +67,7 @@ flowchart LR
   codex["Codex"]
 
   subgraph applications["Applikationen / HMI"]
-    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn,<br/>/app/development-platform, /app/hardware-lab, /app/ide, /app/project-app<br/>Identity Server :4300"]
+    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/applications, /app/learn,<br/>/app/development-platform, /app/hardware-lab, /app/ide, /app/project-app<br/>Identity Server :4300"]
     recoveryHmi["Recovery HMI<br/>bestehende Boards retten<br/>:5100"]
     provisioningHmi["Provisioning Tool HMI<br/>Factory USB Provisioning<br/>:4500"]
     contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
@@ -346,7 +346,7 @@ flowchart LR
 | Quelle | Ziel | Grund |
 | --- | --- | --- |
 | GerNetiX Plattform UI / Identity Server | Project Server | Projekte, commitgebundene Quellen, sessiongeschuetzte Repository-Karte mit Dateibaum/Historie/Diffs, agentische KI-Such-/Lesewerkzeuge statt pauschaler Dateiuebergabe, persistierte Project-Device-Allocation, Build-Jobs sowie interner Abgleich von wirksamem Accountplan, Policy-Version, Nutzung und `plan_locked` |
-| GerNetiX Projekt-App / Identity Server | Project Server | Liest das strikt validierte `project-app/manifest.json` des eigenen Projekts und speichert ausschliesslich allowlist-validierte Laufzeitwerte unter der serverseitig abgeleiteten Account- und Projektbindung; der Browser liefert weder Account-ID noch ausfuehrbaren Code oder freie Endpunkte. |
+| GerNetiX Anwendung / Projektoberflaeche / Identity Server | Project Server | `Meine Anwendungen` erkennt persoenliche Anwendungen nur aus accountgebundenen Projektmetadaten. Beim Oeffnen liest die Projektoberflaeche das strikt validierte `project-app/manifest.json` des eigenen Projekts und speichert ausschliesslich allowlist-validierte Laufzeitwerte unter der serverseitig abgeleiteten Account- und Projektbindung; der Browser liefert weder Account-ID noch ausfuehrbaren Code oder freie Endpunkte. |
 | GerNetiX Projekt-App / Identity Server | Device Management / AI Usage | Loest ausschliesslich im Manifest erlaubte Statusfelder auf: genau das dem Projekt zugeordnete Account-Device sowie die aus der Sitzung abgeleitete Account-Nutzung. Ausfaelle bleiben lokal auf dem jeweiligen Widget. |
 | GerNetiX Projekt-App / Identity Server | Telemetry Server | Liest hoechstens 20 manifestvalidierte Metriken unter der sitzungsgebundenen Account-/Projektidentitaet; `assigned_device` erzwingt das exakt zugeordnete Device. Je Bindung gelangen hoechstens 24 Werte ohne Metadaten in den Browser. |
 | Project Server | Forgejo | Private Repositorys provisionieren, Dateibaeume an festem Commit lesen und bestaetigte Mehrdatei-Aenderungen atomar mit erwartetem Head-SHA committen |

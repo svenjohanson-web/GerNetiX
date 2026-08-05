@@ -29,6 +29,7 @@ test("wires the generic Project-App into the authenticated platform shell", () =
 
 test("serves the Project-App as a direct authenticated SPA entry point", () => {
   assert.equal(normalizeAppPath("/app/project-app/"), "/index.html");
+  assert.equal(normalizeAppPath("/app/applications/"), "/index.html");
 });
 
 test("offers the Project-App only for personal projects that contain its manifest", () => {
@@ -39,4 +40,21 @@ test("offers the Project-App only for personal projects that contain its manifes
   assert.match(controller, /\/app\/project-app\/\?project=/);
   assert.match(server, /source_files: project\.source_files \|\| learningDefinition\.source_files/);
   assert.match(server, /source_files: project\.source_files \|\| \[\{ path: primarySourcePath/);
+});
+
+test("presents personal application instances as their own main area", () => {
+  const app = read("public/app/app.js");
+  const html = read("public/app/index.html");
+  const controller = read("public/app/app-project-controller.js");
+  const shell = read("public/app/app-shell-controller.js");
+  assert.match(app, /applications: "applicationsView"/);
+  assert.match(html, /data-route="applications"[^>]*>Meine Anwendungen<\/a>/);
+  assert.match(html, /id="applicationsView"[\s\S]*id="applicationList"/);
+  assert.match(html, /data-open-route="\/app\/applications\/"[\s\S]*Meine Anwendungen/);
+  assert.match(controller, /function personalApplications\(\)[\s\S]*projectOrigin === "account_project"[\s\S]*hasProjectApp\(project\)/);
+  assert.match(controller, /data-open-application/);
+  assert.match(controller, /data-develop-application/);
+  assert.match(shell, /if \(route === "applications"\) return \["devices"\]/);
+  assert.match(shell, /"dashboard", "applications", "development-platform"/);
+  assert.match(shell, /if \(route === "project-app"\) return "applications"/);
 });
