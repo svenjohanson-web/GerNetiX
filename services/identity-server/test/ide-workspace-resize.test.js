@@ -16,7 +16,7 @@ test("IDE exposes one accessible splitter for editor frame and terminal", () => 
   assert.match(html, /app\.js\?v=20260805-hardware-lab-route-1/);
   assert.doesNotMatch(html, /app-ide-controller\.js/);
   assert.match(shell, /loadIdeWorkbenchAssets[\s\S]*app-ide-controller\.js/);
-  assert.match(html, /app-event-bindings\.js\?v=20260805-standard-ai-chat-4/);
+  assert.match(html, /app-event-bindings\.js\?v=20260805-shell-menu-1/);
   assert.match(ide, /function initializeIdeWorkspaceResize\(\)/);
   assert.match(ide, /ideWorkspaceResizeInitialized/);
   assert.match(ide, /startHeight - \(moveEvent\.clientY - startY\)/);

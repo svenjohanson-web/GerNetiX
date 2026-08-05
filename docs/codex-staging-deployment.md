@@ -215,14 +215,25 @@ node tools/connect-staging.js --dry-run
 
 1. Lokal entwickeln und mit den kleinstmoeglichen gezielten Tests pruefen.
 2. Identity bei Bedarf lokal im Remote-Dev-Modus interaktiv pruefen.
-3. Aenderungen bewusst mit `git add` fuer den Commit vormerken, committen und den aktuellen Branch pushen.
-4. Nur bei beabsichtigtem VPS-Test den lesenden Deployment-Plan abrufen:
+3. Vor Commit und Push die schnelle lokale Runtime-Vorpruefung ausfuehren:
+
+```text
+node tools/verify-staging-runtime.js
+```
+
+Sie prueft deklarierte npm-Laufzeitpakete, alle Docker-COPY-Quellen und die aus
+dem Identity-Startpfad statisch erkannten Workspace-Abhaengigkeiten gegen den
+tatsaechlichen Inhalt des schlanken Identity-Images. Eine fehlende Datei stoppt
+damit lokal, bevor ein unvollstaendiger Commit auf dem VPS gebaut wird.
+
+4. Erst nach bestandener Vorpruefung Aenderungen bewusst mit `git add` fuer den Commit vormerken, committen und den aktuellen Branch pushen.
+5. Nur bei beabsichtigtem VPS-Test den lesenden Deployment-Plan abrufen:
 
 ```text
 node tools/staging-deploy.js --plan
 ```
 
-5. Nur wenn der Nutzer das Staging-Deployment ausdruecklich verlangt und der Plan plausibel ist, deployen:
+6. Nur wenn der Nutzer das Staging-Deployment ausdruecklich verlangt und der Plan plausibel ist, deployen:
 
 ```text
 node tools/staging-deploy.js
@@ -234,7 +245,12 @@ Vorab pruefen, ohne SSH oder VPS-Aenderung:
 node tools/staging-deploy.js --dry-run
 ```
 
-`--dry-run` validiert nur den lokalen Git-Stand und zeigt den SSH-Befehl. `--plan` liest zusaetzlich den aktuell deployten VPS-Commit, berechnet die Commit-Differenz und nennt Modus, Dienste, Edge-/Firewall-Aktionen und den Grund fuer einen Full-Deploy. Jeder echte Deployment-Lauf zeigt diesen Plan automatisch vor der ersten VPS-Aenderung.
+`--dry-run`, `--plan` und der echte Lauf starten immer mit derselben lokalen
+Runtime-Vorpruefung. Erst danach validiert `--dry-run` den lokalen Git-Stand und
+zeigt den SSH-Befehl. `--plan` liest zusaetzlich den aktuell deployten
+VPS-Commit, berechnet die Commit-Differenz und nennt Modus, Dienste,
+Edge-/Firewall-Aktionen und den Grund fuer einen Full-Deploy. Jeder echte
+Deployment-Lauf zeigt diesen Plan automatisch vor der ersten VPS-Aenderung.
 
 Das Tool bricht ab, wenn:
 

@@ -36,7 +36,7 @@ test("groups the main destinations under clear user-facing headings", () => {
 });
 
 test("invalidates cached route assets when the hardware lab route is introduced", () => {
-  assert.match(html, /app-shell-controller\.js\?v=20260805-knowledge-chapter-lazy-1/);
+  assert.match(html, /app-shell-controller\.js\?v=20260805-shell-menu-1/);
   assert.match(html, /app\.js\?v=20260805-hardware-lab-route-1/);
 });
 

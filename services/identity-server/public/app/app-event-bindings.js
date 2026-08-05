@@ -1,15 +1,11 @@
 // GerNetiX platform module extracted from app.js.
 bootstrap();
 
-document.querySelector("#mainMenuButton").addEventListener("click", (event) => {
-  event.stopPropagation();
-  toggleMainMenu();
-});
 document.querySelector("#logoutButton").addEventListener("click", async () => {
   await fetch("/api/logout", { method: "POST" });
   window.location.href = "/app/auth/";
 });
-document.querySelector("#platformLanguage")?.addEventListener("change", changePlatformLocale);
+document.querySelector("#platformLanguage")?.addEventListener("change", (event) => changePlatformLocale(event));
 document.querySelector("#deviceWifiSetupMenuButton")?.addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
@@ -31,9 +27,6 @@ document.querySelectorAll(".tabs a[data-route]").forEach((link) => {
     navigate(link.getAttribute("href"));
   });
 });
-document.querySelector("#mainMenu").addEventListener("click", (event) => {
-  event.stopPropagation();
-});
 document.querySelector("#platformBreadcrumb").addEventListener("click", (event) => {
   const link = event.target.closest("[data-breadcrumb-route]");
   if (!link) return;
@@ -47,8 +40,8 @@ document.querySelector("#platformBreadcrumb").addEventListener("click", (event) 
 document.querySelectorAll("[data-device-management-route]").forEach((button) => {
   button.addEventListener("click", () => navigate(button.dataset.deviceManagementRoute));
 });
-document.querySelector("#enablePushButton")?.addEventListener("click", enablePushNotifications);
-document.querySelector("#sendPushTestButton")?.addEventListener("click", sendPushTestNotification);
+document.querySelector("#enablePushButton")?.addEventListener("click", (event) => enablePushNotifications(event));
+document.querySelector("#sendPushTestButton")?.addEventListener("click", (event) => sendPushTestNotification(event));
 document.querySelector("#pushProjectSelect")?.addEventListener("change", (event) => { state.activeProjectId = event.target.value; });
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
   const selectedTreeEntry = event.target.closest("[data-ide-tree-path]");
@@ -151,7 +144,7 @@ document.querySelector("#flashboxDeviceSelect").addEventListener("change", () =>
 document.querySelector("#usbPortMissingDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-usb-port-missing]")) event.currentTarget.close();
 });
-document.querySelector("#retryUsbPortSearchButton")?.addEventListener("click", retryUsbPortSearch);
+document.querySelector("#retryUsbPortSearchButton")?.addEventListener("click", (event) => retryUsbPortSearch(event));
 document.querySelector("#usbPortChoiceDialog")?.addEventListener("click", (event) => {
   const identifyButton = event.target.closest("[data-identify-usb-flash-port]");
   if (identifyButton) {
@@ -189,12 +182,12 @@ document.querySelector("#confirmUsbPortButton")?.addEventListener("click", () =>
   if (!project) return;
   startUsbFlashAssignmentBatch(project);
 });
-document.querySelector("#usbFirmwareTargetSelect")?.addEventListener("change", renderUsbPortMappingConfirmationState);
-document.querySelector("#usbPortSelect")?.addEventListener("change", renderUsbPortMappingConfirmationState);
+document.querySelector("#usbFirmwareTargetSelect")?.addEventListener("change", (event) => renderUsbPortMappingConfirmationState(event));
+document.querySelector("#usbPortSelect")?.addEventListener("change", (event) => renderUsbPortMappingConfirmationState(event));
 document.querySelector("#usbInventoryUnknownDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-usb-inventory-unknown]")) event.currentTarget.close();
 });
-document.querySelector("#usbInventoryUnknownDialog")?.addEventListener("close", persistUsbInventoryWarningPreference);
+document.querySelector("#usbInventoryUnknownDialog")?.addEventListener("close", (event) => persistUsbInventoryWarningPreference(event));
 document.querySelector("#continueUnknownInventoryUsbFlashButton")?.addEventListener("click", () => {
   persistUsbInventoryWarningPreference();
   if (usbFlashAssignmentBatch) usbFlashAssignmentBatch.inventoryCheckConfirmed = true;
@@ -206,32 +199,32 @@ document.querySelector("#addUnknownUsbDeviceToInventoryButton")?.addEventListene
   document.querySelector("#usbInventoryUnknownDialog")?.close();
   navigate("/app/device-management/provisioning/");
 });
-document.querySelector("#buildButton").addEventListener("click", handleBuildButtonAction);
+document.querySelector("#buildButton").addEventListener("click", (event) => handleBuildButtonAction(event));
 document.querySelector("#cancelBuildConfirmDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-cancel-build]")) event.currentTarget.close();
 });
-document.querySelector("#confirmCancelBuildButton")?.addEventListener("click", confirmCancelActiveBuilds);
-document.querySelector("#cleanBuildButton").addEventListener("click", cleanProjectBuildCache);
+document.querySelector("#confirmCancelBuildButton")?.addEventListener("click", (event) => confirmCancelActiveBuilds(event));
+document.querySelector("#cleanBuildButton").addEventListener("click", (event) => cleanProjectBuildCache(event));
 document.querySelector("#flashTargetChoiceDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-flash-target-choice]")) {
     state.pendingFlashAction = "";
     event.currentTarget.close();
   }
 });
-document.querySelector("#confirmFlashTargetButton")?.addEventListener("click", confirmFlashTargetChoice);
+document.querySelector("#confirmFlashTargetButton")?.addEventListener("click", (event) => confirmFlashTargetChoice(event));
 document.querySelector("#ideSoftwareUnitSelect").addEventListener("change", (event) => {
   if (!state.activeProjectId) return;
   state.activeSoftwareUnitIds[state.activeProjectId] = event.target.value;
   updateIdeProjectTools(projectById(state.activeProjectId));
 });
-document.querySelector("#flashButton").addEventListener("click", openIdeFlashDialog);
-document.querySelector("#checkOtaConnectivityButton").addEventListener("click", checkAllocatedDeviceConnectivity);
-document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
+document.querySelector("#flashButton").addEventListener("click", (event) => openIdeFlashDialog(event));
+document.querySelector("#checkOtaConnectivityButton").addEventListener("click", (event) => checkAllocatedDeviceConnectivity(event));
+document.querySelector("#clearIdeTerminalButton").addEventListener("click", (event) => clearIdeTerminal(event));
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
 document.querySelector("#showIdeProjectInformationButton").addEventListener("click", () => setIdeConsoleView("project-information"));
 document.querySelector("#showIdeBuildResultsButton").addEventListener("click", () => setIdeConsoleView("build-results"));
 document.querySelector("#buildList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-project-version-action]"); if (button) handleProjectVersionAction(button); });
-document.querySelector("#projectVersionForm")?.addEventListener("submit", submitProjectVersion);
+document.querySelector("#projectVersionForm")?.addEventListener("submit", (event) => submitProjectVersion(event));
 document.querySelector("#projectVersionDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-project-version]")) event.currentTarget.close();
 });
@@ -267,7 +260,7 @@ document.querySelector("#ideComponentFeaturesView").addEventListener("change", (
 document.querySelector("#idePwaDashboardView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-pwa-dashboard-editor]")) openPwaDashboardEditor();
 });
-document.querySelector("#pwaDashboardEditorForm").addEventListener("submit", savePwaDashboard);
+document.querySelector("#pwaDashboardEditorForm").addEventListener("submit", (event) => savePwaDashboard(event));
 document.querySelector("#pwaDashboardDialog").addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-pwa-dashboard-editor]")) {
     event.currentTarget.close();
@@ -289,31 +282,31 @@ document.querySelector("#ideSensorPropertiesView").addEventListener("click", (ev
 document.querySelector("#ideDeviceConnectionsView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-hardware-configuration]")) navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
 });
-document.querySelector("#ideDriverManagementView").addEventListener("click", handleDriverManagementClick);
-document.querySelector("#ideDriverManagementView").addEventListener("submit", saveMotorDriverAssignment);
+document.querySelector("#ideDriverManagementView").addEventListener("click", (event) => handleDriverManagementClick(event));
+document.querySelector("#ideDriverManagementView").addEventListener("submit", (event) => saveMotorDriverAssignment(event));
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
   state.recoveryCheckResult = null;
   renderDeviceRecovery();
 });
-document.querySelector("#refreshRecoveryDevicesButton").addEventListener("click", refreshRecoveryDevices);
+document.querySelector("#refreshRecoveryDevicesButton").addEventListener("click", (event) => refreshRecoveryDevices(event));
 document.querySelector("#recoveryCheckUsbButton").addEventListener("click", () => checkRecoveryFirmware("usb"));
 document.querySelector("#recoveryCheckOtaButton").addEventListener("click", () => checkRecoveryFirmware("ota"));
 document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input) => {
-  input.addEventListener("change", selectDeviceDiscoveryMethod);
+  input.addEventListener("change", (event) => selectDeviceDiscoveryMethod(event));
 });
-document.querySelector("#deviceDiscoverySearchButton").addEventListener("click", searchDevicesForInventory);
-document.querySelector("#scanProvisioningSerialPortsButton").addEventListener("click", scanProvisioningSerialPorts);
-document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", selectProvisioningSerialPort);
-document.querySelector("#provisioningSerialServicePortSelect").addEventListener("change", selectProvisioningSerialPort);
-document.querySelector("#checkProvisioningSerialPortButton").addEventListener("click", identifyEsp32Bootloader);
-document.querySelector("#flashProvisioningBasissoftwareButton").addEventListener("click", openProvisioningFlashDialog);
-document.querySelector("#scanProvisioningWifiButton").addEventListener("click", scanProvisioningWifiNetworks);
-document.querySelector("#connectProvisioningWifiButton").addEventListener("click", connectProvisioningWifi);
-document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);
-document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", claimSelectedDiscoveredDevices);
-document.querySelector("#inventoryBoardShortName").addEventListener("input", syncInventoryNodeNamePreview);
-document.querySelector("#createOfflineRecoverySetButton")?.addEventListener("click", createOfflineRecoverySet);
+document.querySelector("#deviceDiscoverySearchButton").addEventListener("click", (event) => searchDevicesForInventory(event));
+document.querySelector("#scanProvisioningSerialPortsButton").addEventListener("click", (event) => scanProvisioningSerialPorts(event));
+document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", (event) => selectProvisioningSerialPort(event));
+document.querySelector("#provisioningSerialServicePortSelect").addEventListener("change", (event) => selectProvisioningSerialPort(event));
+document.querySelector("#checkProvisioningSerialPortButton").addEventListener("click", (event) => identifyEsp32Bootloader(event));
+document.querySelector("#flashProvisioningBasissoftwareButton").addEventListener("click", (event) => openProvisioningFlashDialog(event));
+document.querySelector("#scanProvisioningWifiButton").addEventListener("click", (event) => scanProvisioningWifiNetworks(event));
+document.querySelector("#connectProvisioningWifiButton").addEventListener("click", (event) => connectProvisioningWifi(event));
+document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", (event) => identifyAvrBootloaderExperimental(event));
+document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", (event) => claimSelectedDiscoveredDevices(event));
+document.querySelector("#inventoryBoardShortName").addEventListener("input", (event) => syncInventoryNodeNamePreview(event));
+document.querySelector("#createOfflineRecoverySetButton")?.addEventListener("click", (event) => createOfflineRecoverySet(event));
 document.querySelector("#confirmOfflineRecoverySetButton")?.addEventListener("click", () => document.querySelector("#offlineRecoverySetDialog")?.close());
 document.querySelector("#offlineRecoverySetDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-offline-recovery-set]")) event.currentTarget.close();
@@ -327,10 +320,9 @@ document.querySelector("#serialServiceChoiceInstall")?.addEventListener("click",
     status.textContent = "Download gestartet. Öffne das geladene Installationspaket; der WebHelper startet danach automatisch.";
   }
 });
-document.querySelector("#flashboxConfigForm")?.addEventListener("change", renderShopConfiguration);
-document.querySelector("#createFlashboxMockOrderButton")?.addEventListener("click", createFlashboxMockOrder);
-document.querySelector("#flashboxClaimForm")?.addEventListener("submit", claimFlashboxFromCode);
+document.querySelector("#flashboxConfigForm")?.addEventListener("change", (event) => renderShopConfiguration(event));
+document.querySelector("#createFlashboxMockOrderButton")?.addEventListener("click", (event) => createFlashboxMockOrder(event));
+document.querySelector("#flashboxClaimForm")?.addEventListener("submit", (event) => claimFlashboxFromCode(event));
 window.addEventListener("popstate", () => {
   activateCurrentRoute();
 });
-document.addEventListener("click", closeMainMenu);

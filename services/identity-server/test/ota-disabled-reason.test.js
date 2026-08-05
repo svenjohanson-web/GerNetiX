@@ -111,7 +111,7 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /function inventoryDeviceForUsbFlash\(allocatedDevice, port\)/);
   assert.match(app, /function usbInventoryWarningStorageKey\(\)[\s\S]*state\.account\?\.user_id \|\| state\.account\?\.username/);
   assert.match(app, /localStorage\.setItem\(usbInventoryWarningStorageKey\(\), "true"\)/);
-  assert.match(app, /addEventListener\("close", persistUsbInventoryWarningPreference\)/);
+  assert.match(app, /addEventListener\("close", \(event\) => persistUsbInventoryWarningPreference\(event\)\)/);
   assert.match(app, /startUsbFlash\(true, true, true\)/);
   assert.match(app, /navigate\("\/app\/device-management\/provisioning\/"\)/);
   assert.match(app, /function showUsbPortMissingGuidance/);

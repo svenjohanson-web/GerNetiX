@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const platformAppFiles = [
+  "app-shell-early.js",
   "app-shell-controller.js",
   "app-dashboard-controller.js",
   "app-community-controller.js",

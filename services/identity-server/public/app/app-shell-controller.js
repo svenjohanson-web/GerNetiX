@@ -966,18 +966,3 @@ async function createFlashboxMockOrder() {
     target.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Mock-Kauf konnte nicht angelegt werden.")}</p>`;
   }
 }
-
-function toggleMainMenu() {
-  const menu = document.querySelector("#mainMenu");
-  const button = document.querySelector("#mainMenuButton");
-  const open = menu.classList.toggle("hidden") === false;
-  button.setAttribute("aria-expanded", open ? "true" : "false");
-}
-
-function closeMainMenu() {
-  const menu = document.querySelector("#mainMenu");
-  const button = document.querySelector("#mainMenuButton");
-  if (!menu || menu.classList.contains("hidden")) return;
-  menu.classList.add("hidden");
-  button?.setAttribute("aria-expanded", "false");
-}

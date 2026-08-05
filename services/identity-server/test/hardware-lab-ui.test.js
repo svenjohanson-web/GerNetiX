@@ -75,7 +75,7 @@ test("invalidates cached hardware-lab UI assets", () => {
   assert.match(shellController, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadPlatformStyle\(`\/app\/hardware-lab-route\.css\?v=\$\{version\}`\)/);
   assert.match(html, /ai-chat-pattern\.js\?v=20260805-standard-ai-chat-4/);
-  assert.match(html, /app-event-bindings\.js\?v=20260805-standard-ai-chat-4/);
+  assert.match(html, /app-event-bindings\.js\?v=20260805-shell-menu-1/);
 });
 
 test("selects the hardware lab before account data and translations finish loading", () => {

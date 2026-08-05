@@ -4,6 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { verifyStagingRuntime } = require("./verify-staging-runtime");
 
 const repoRoot = path.resolve(__dirname, "..");
 
@@ -229,6 +230,8 @@ function loadConfig() {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
+  const preflight = verifyStagingRuntime();
+  process.stdout.write(`Lokale Runtime-Vorpruefung: bestanden (${preflight.requiredPaths.length} Identity-Pfade).\n`);
   const config = loadConfig();
   const host = assertSafeSshTarget(args.host || config.GERNETIX_STAGING_SSH || "");
   const remoteDir = args.remoteDir || config.GERNETIX_STAGING_DIR || "/opt/gernetix";

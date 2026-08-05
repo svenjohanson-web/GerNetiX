@@ -20,6 +20,7 @@ Seit 2026-08-04 gilt als verbindliche Speichergrenze: PostgreSQL darf keine Bina
 | Bereich | Schutzmassnahme | Status | Nachweis / offene Arbeit |
 |---|---|---|---|
 | Binary-Speichergrenze und Supply-Chain-Traceability | Binärinhalte werden ausserhalb PostgreSQL im persistenten, content-addressed Artifact Store gehalten. PostgreSQL speichert nur Objektschluessel, Hash, Groesse, Schutzdaten, Quellpfad und vollständige Commit-/Package-Version. Upload-Ingress und Publisher lehnen fehlende Quellreferenzen ab; ein Audit inventarisiert `BYTEA` und Large Objects ohne Payload-Ausgabe. | Teilweise | 2026-08-04: Codevertrag, Schema, Hash-pruefende Migration, Legacy-Import-Sperre und Tests sind umgesetzt. Staging-Migration, erneuter Nullbefund-Audit und Backup-/Restore-Nachweis des `build_state`-Volumes stehen bis zum Deployment aus. |
+| Staging-Image-Vollstaendigkeit | Vor Commit/Push und erneut automatisch vor jeder Staging-SSH-Verbindung werden npm-Laufzeitpakete, Docker-COPY-Quellen und die statisch erkannten Workspace-Abhaengigkeiten des Identity-Startpfads gegen das dedizierte Image geprueft. | Umgesetzt | 2026-08-05: Der Negativtest entfernt gezielt die zuvor fehlende USB-Serial-Helper-COPY-Zeile und weist den lokalen Abbruch vor einem VPS-Zugriff nach. Der erfolgreiche Staging-Lauf `214659e` hatte den korrigierten Image-Build und alle Healthchecks bereits nachgewiesen. |
 
 Stand der letzten VPS-Pruefung: **2026-07-19**
 

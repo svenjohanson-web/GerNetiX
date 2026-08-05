@@ -34,7 +34,7 @@ test("temporary Identity interruptions do not turn a running build into a failed
 
 test("IDE clean action clears all target caches without clearing source files", () => {
   assert.match(html, /id="cleanBuildButton"[^>]*>Clean<\/button>/);
-  assert.match(app, /cleanBuildButton"\)\.addEventListener\("click", cleanProjectBuildCache\)/);
+  assert.match(app, /cleanBuildButton"\)\.addEventListener\("click", \(event\) => cleanProjectBuildCache\(event\)\)/);
   assert.match(app, /postJson\("\/api\/user-ide\/build-cache\/clean", \{ project_slug: project\.slug \}\)/);
   assert.match(app, /Der nächste Gesamtbuild wird vollständig neu aufgebaut\./);
   assert.match(server, /buildDeployJson\("\/api\/build-cache\/clean"/);

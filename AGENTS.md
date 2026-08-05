@@ -28,6 +28,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Verwende fuer den SSH-Tunnel zum internen Staging-Admin ausschliesslich `node tools/connect-staging.js`.
 - Deploye nie aufgrund einer normalen lokalen Codeaenderung, sondern nur nach ausdruecklichem Auftrag.
 - Pruefe Identity-Aenderungen standardmaessig zuerst mit gezielten Tests und bei Bedarf ueber `node tools/start-identity-remote-dev.js` lokal auf Port 4300. Der kontrollierte lokale Prozess verwendet zentrale PostgreSQL-/VPS-Dienste; lokale Identity-SQLite oder frei gestartete Parallelprozesse bleiben verboten.
+- Fuehre vor Commit und Push eines deploybaren Runtime-Stands `node tools/verify-staging-runtime.js` aus. Die Prüfung muss fehlende npm-Laufzeitpakete, nicht vorhandene Docker-COPY-Quellen und aus dem Identity-Startpfad erkannte, aber nicht ins Image kopierte Workspace-Pfade melden. `tools/staging-deploy.js` wiederholt diese Prüfung automatisch vor jeder SSH-Verbindung.
 - Fuehre vor jedem angeforderten VPS-Deployment zuerst `node tools/staging-deploy.js --plan` aus und nenne dem Nutzer Modus, betroffene Dienste und den Grund. Der normale Deployment-Befehl zeigt denselben Plan erneut und wird danach genau einmal ausgefuehrt.
 - Das Tool darf nur einen sauberen und bereits gepushten Commit deployen. Lokale Dateien oder SQLite-Daten werden nicht auf den VPS kopiert.
 - Staging-Volumes, `.env.vps` und Serverdaten bleiben erhalten. Keine `down -v`-, Volume-Loesch- oder Reset-Befehle verwenden.
