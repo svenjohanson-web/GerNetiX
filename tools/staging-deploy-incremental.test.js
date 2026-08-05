@@ -71,6 +71,7 @@ test("builds frequent identity changes in a dedicated small runtime image", () =
   assert.ok(dependencyInstall < identitySources);
   assert.match(identityDockerfile, /COPY --chown=node:node services\/recovery-tool/);
   assert.match(identityDockerfile, /COPY --chown=node:node services\/shared/);
+  assert.match(identityDockerfile, /COPY --chown=node:node tools\/usb-serial-helper/);
   assert.doesNotMatch(identityDockerfile, /platformio|services\/community-platform|tools\/migrate/);
   assert.match(composeFile, /identity-server:[\s\S]*dockerfile: docker\/identity-service\.Dockerfile[\s\S]*image: gernetix\/identity-server/);
 });

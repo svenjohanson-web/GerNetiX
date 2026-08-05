@@ -6,7 +6,8 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const {
-  findMissingRuntimeDependencies
+  findMissingRuntimeDependencies,
+  findMissingWorkspaceRuntimePaths
 } = require("../scripts/verify-runtime-dependencies");
 
 test("runtime dependency check reports every absent production package", () => {
@@ -26,4 +27,17 @@ test("runtime dependency check reports every absent production package", () => {
   }, nodeModulesDirectory);
 
   assert.deepEqual(missing, ["missing"]);
+});
+
+test("runtime dependency check reports absent workspace runtime files", () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "identity-workspace-deps-"));
+  fs.mkdirSync(path.join(workspaceRoot, "tools", "present"), { recursive: true });
+  fs.writeFileSync(path.join(workspaceRoot, "tools", "present", "package.json"), "{}\n");
+
+  const missing = findMissingWorkspaceRuntimePaths([
+    "tools/present/package.json",
+    "tools/missing/package.json"
+  ], workspaceRoot);
+
+  assert.deepEqual(missing, ["tools/missing/package.json"]);
 });

@@ -12,6 +12,7 @@ COPY --chown=node:node services/shared ./services/shared
 COPY --chown=node:node basissoftware/esp32 ./basissoftware/esp32
 COPY --chown=node:node projects/waveshare-voice-lab ./projects/waveshare-voice-lab
 COPY --chown=node:node Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung ./Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung
+COPY --chown=node:node tools/usb-serial-helper ./tools/usb-serial-helper
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
 RUN npm run verify:runtime-deps --prefix services/identity-server
