@@ -297,20 +297,14 @@ node tools/staging-deploy.js
 
 Der plattformunabhaengige und fuer Codex vorgesehene Ablauf ist in [codex-staging-deployment.md](codex-staging-deployment.md) beschrieben.
 
-Manueller Fallback direkt auf dem VPS:
-
-```bash
-git pull
-docker compose --env-file .env.vps -f compose.vps.yaml build
-docker compose --env-file .env.vps -f compose.vps.yaml up -d
-docker compose --env-file .env.vps -f compose.vps.yaml ps
-```
-
-Dieser Fallback ist fuer den ersten Wechsel von getrennten PostgreSQL-
-Containern auf `gernetix_runtime` nicht zulaessig. Dieser Wechsel muss ueber
-`node tools/staging-deploy.js` erfolgen, weil nur der kontrollierte Ablauf die
-Legacy-Secrets prueft, Domaenendaten konsolidiert und alte Container erst nach
-erfolgreicher Uebernahme entfernt.
+Ein manueller `git pull`-/Compose-Fallback ist kein regulaerer Deploymentweg.
+Auch bei einem Fehler bleibt `node tools/staging-deploy.js` die einzige
+freigegebene Orchestrierung, weil nur sie Commitgenauigkeit, Planung,
+Deployment-Sperre, Legacy-Schutz und Healthchecks zusammenhaengend erzwingt.
+Nach einem Fehler wird zuerst die ausgegebene Phase diagnostiziert; es werden
+keine alternativen Startfolgen ausprobiert. Ein manueller Notfalleingriff auf
+dem VPS verlangt eine eigene ausdrueckliche Freigabe und dokumentierte
+Rueckkehr zum commitgenauen Zustand.
 
 ## Spaetere Produktionsinstanz
 

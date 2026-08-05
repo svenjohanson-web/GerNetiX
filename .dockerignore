@@ -1,8 +1,15 @@
 .git
+.github
 .runtime
 **/.runtime
 **/node_modules
+**/test
+**/*.test.js
+docs
+data
+model
 tools/yaml-graph-sqlite/out
+tools/architecture-docs
 generated
 projects/*
 !projects/waveshare-voice-lab/

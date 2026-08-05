@@ -8,27 +8,46 @@ const path = require("node:path");
 const repoRoot = path.resolve(__dirname, "..");
 const remoteDeploy = fs.readFileSync(path.join(repoRoot, "scripts/staging/remote-deploy.sh"), "utf8");
 const dockerfile = fs.readFileSync(path.join(repoRoot, "docker/node-service.Dockerfile"), "utf8");
+const identityDockerfile = fs.readFileSync(path.join(repoRoot, "docker/identity-service.Dockerfile"), "utf8");
+const composeFile = fs.readFileSync(path.join(repoRoot, "compose.vps.yaml"), "utf8");
+const dockerignore = fs.readFileSync(path.join(repoRoot, ".dockerignore"), "utf8");
 
 test("classifies service-only changes for a targeted staging deployment", () => {
   assert.match(remoteDeploy, /git diff --name-only "\$previous_commit" HEAD/);
   assert.match(remoteDeploy, /services\/identity-server\/\*\) add_incremental_service identity-server/);
   assert.match(remoteDeploy, /services\/project-server\/\*\) add_incremental_service project-server/);
   assert.match(remoteDeploy, /services\/compute-control-plane\/\*\) add_incremental_service compute-control-plane/);
-  assert.match(remoteDeploy, /\*\) deploy_mode=full; break/);
-  assert.match(remoteDeploy, /compose build "\$build_service"/);
+  assert.match(remoteDeploy, /services\/recovery-tool\/\*\) add_incremental_service identity-server/);
+  assert.match(remoteDeploy, /services\/device-voice-orchestrator\/\*\) add_incremental_service device-voice-orchestrator/);
+  assert.match(remoteDeploy, /\*\)[\s\S]*deploy_mode=full[\s\S]*break/);
+  assert.match(remoteDeploy, /compose build identity-server/);
+  assert.match(remoteDeploy, /compose build "\$shared_build_service"/);
   assert.match(remoteDeploy, /compose up -d --no-deps --force-recreate \$incremental_services/);
 });
 
-test("uses targeted health checks for incremental changes and keeps the full safety path", () => {
+test("uses targeted health checks and reloads the edge without recreating it", () => {
   assert.match(remoteDeploy, /docker exec "\$container_id" node \/app\/docker\/healthcheck\.js/);
   assert.match(remoteDeploy, /GERNETIX_STAGING_INCREMENTAL_WAIT_TIMEOUT:-45/);
-  assert.match(remoteDeploy, /\*" identity-server "\*\)[\s\S]*wait_for_private_pwa/);
-  assert.match(remoteDeploy, /compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls/);
+  assert.match(remoteDeploy, /\*" identity-server "\*\)[\s\S]*edge_changed=1/);
+  assert.match(remoteDeploy, /if \[ "\$edge_changed" -eq 1 \]; then[\s\S]*reload_edge/);
+  assert.match(remoteDeploy, /infra\/vps\/nginx\/\*\)[\s\S]*edge_changed=1/);
+  assert.match(remoteDeploy, /deploy_mode=targeted-infrastructure/);
   assert.match(remoteDeploy, /docker exec "\$nginx_tls_container" nginx -t/);
+  assert.match(remoteDeploy, /docker exec "\$nginx_tls_container" nginx -s reload/);
+  assert.doesNotMatch(remoteDeploy, /force-recreate nginx nginx-tls/);
+});
+
+test("serializes deployments and avoids recurring full-path work", () => {
+  assert.match(remoteDeploy, /flock -n 9/);
+  assert.match(remoteDeploy, /Ein anderes Staging-Deployment laeuft bereits/);
   assert.match(remoteDeploy, /nft -c -f infra\/vps\/security\/firewall\.nft/);
   assert.match(remoteDeploy, /up -d --wait --wait-timeout "\$wait_timeout"/);
-  assert.match(remoteDeploy, /postgres-consolidation-migration/);
-  assert.match(remoteDeploy, /--force-recreate build-router nginx/);
+  assert.match(remoteDeploy, /legacy_consolidation_required/);
+  assert.match(remoteDeploy, /Keine Legacy-PostgreSQL-Container: Konsolidierung uebersprungen/);
+  assert.match(remoteDeploy, /HTTPS-Zertifikate vorhanden: Ausstellung uebersprungen/);
+  assert.doesNotMatch(remoteDeploy, /force-recreate runtime-postgres/);
+  assert.match(remoteDeploy, /--force-recreate build-router/);
+  assert.match(remoteDeploy, /Deployment beendet: Status \$deploy_status, Dauer/);
 });
 
 test("keeps npm installs cached when only service source files change", () => {
@@ -41,6 +60,28 @@ test("keeps npm installs cached when only service source files change", () => {
   assert.ok(dependencyManifest < dependencyInstall);
   assert.ok(dependencyInstall < serviceSources);
   assert.ok(serviceSources < runtimeVerification);
+});
+
+test("builds frequent identity changes in a dedicated small runtime image", () => {
+  const dependencyManifest = identityDockerfile.indexOf("services/identity-server/package-lock.json");
+  const dependencyInstall = identityDockerfile.indexOf("npm ci --omit=dev --prefix services/identity-server");
+  const identitySources = identityDockerfile.indexOf("COPY --chown=node:node services/identity-server ./services/identity-server");
+  assert.ok(dependencyManifest >= 0);
+  assert.ok(dependencyManifest < dependencyInstall);
+  assert.ok(dependencyInstall < identitySources);
+  assert.match(identityDockerfile, /COPY --chown=node:node services\/recovery-tool/);
+  assert.match(identityDockerfile, /COPY --chown=node:node services\/shared/);
+  assert.doesNotMatch(identityDockerfile, /platformio|services\/community-platform|tools\/migrate/);
+  assert.match(composeFile, /identity-server:[\s\S]*dockerfile: docker\/identity-service\.Dockerfile[\s\S]*image: gernetix\/identity-server/);
+});
+
+test("keeps documentation and tests out of the shared runtime build context", () => {
+  assert.match(dockerignore, /^docs$/m);
+  assert.match(dockerignore, /^data$/m);
+  assert.match(dockerignore, /^model$/m);
+  assert.match(dockerignore, /^\*\*\/test$/m);
+  assert.match(dockerignore, /^\*\*\/\*\.test\.js$/m);
+  assert.match(dockerignore, /^tools\/architecture-docs$/m);
 });
 
 test("rejects a public wildcard binding for the Compute Worker Gateway", () => {

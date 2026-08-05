@@ -7,10 +7,6 @@ cd "$repo_dir"
 env_file=${GERNETIX_STAGING_ENV_FILE:-.env.vps}
 wait_timeout=${GERNETIX_STAGING_WAIT_TIMEOUT:-180}
 incremental_wait_timeout=${GERNETIX_STAGING_INCREMENTAL_WAIT_TIMEOUT:-45}
-if [ ! -f "$env_file" ]; then
-  echo "Fehlende VPS-Konfiguration: $repo_dir/$env_file" >&2
-  exit 1
-fi
 
 ensure_staging_secret() {
   secret_name=$1
@@ -64,26 +60,6 @@ repair_concatenated_hex_secret() {
   fi
 }
 
-echo "==> Fehlende Staging-Secrets provisionieren"
-chmod 600 "$env_file"
-repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN
-ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
-ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
-ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
-ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex
-ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex
-ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64
-ensure_staging_secret FORGEJO_POSTGRES_PASSWORD hex
-ensure_staging_secret FORGEJO_SECRET_KEY hex
-ensure_staging_secret FORGEJO_INTERNAL_TOKEN hex
-
-compute_bind_address=$(awk -F= '$1 == "COMPUTE_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
-compute_bind_address=${compute_bind_address:-127.0.0.1}
-if [ "$compute_bind_address" = "0.0.0.0" ] || [ "$compute_bind_address" = "::" ]; then
-  echo "COMPUTE_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden." >&2
-  exit 1
-fi
-
 compose() {
   docker compose --env-file "$env_file" -f compose.vps.yaml "$@"
 }
@@ -93,6 +69,14 @@ add_incremental_service() {
   case " $incremental_services " in
     *" $service_name "*) ;;
     *) incremental_services="${incremental_services}${incremental_services:+ }${service_name}" ;;
+  esac
+}
+
+add_plan_reason() {
+  reason=$1
+  case "; $plan_reasons;" in
+    *"; $reason;"*) ;;
+    *) plan_reasons="${plan_reasons}${plan_reasons:+; }${reason}" ;;
   esac
 }
 
@@ -135,13 +119,47 @@ wait_for_private_pwa() {
   return 1
 }
 
+reload_edge() {
+  nginx_container=$(compose ps -q nginx)
+  nginx_tls_container=$(compose --profile tls ps -q nginx-tls)
+  if [ -z "$nginx_container" ] || [ -z "$nginx_tls_container" ]; then
+    echo "Nginx oder Nginx-TLS laeuft nicht; gezieltes Reload wird sicher abgebrochen." >&2
+    return 1
+  fi
+  docker exec "$nginx_container" nginx -t >/dev/null
+  docker exec "$nginx_tls_container" nginx -t >/dev/null
+  docker exec "$nginx_container" nginx -s reload
+  docker exec "$nginx_tls_container" nginx -s reload
+  wait_for_private_pwa
+}
+
+apply_host_firewall() {
+  nft -c -f infra/vps/security/firewall.nft
+  install -d -m 0755 /etc/gernetix
+  install -m 0644 infra/vps/security/firewall.nft /etc/gernetix/firewall.nft
+  install -m 0755 infra/vps/security/gernetix-firewall-apply /usr/local/sbin/gernetix-firewall-apply
+  install -m 0644 infra/vps/security/gernetix-firewall.service /etc/systemd/system/gernetix-firewall.service
+  systemctl daemon-reload
+  systemctl enable gernetix-firewall.service >/dev/null
+  if systemctl is-active --quiet gernetix-firewall.service; then
+    systemctl reload gernetix-firewall.service
+  else
+    systemctl start gernetix-firewall.service
+  fi
+}
+
 previous_commit=${1:-}
+operation=${2:-deploy}
 deploy_mode=none
 incremental_services=""
+edge_changed=0
+firewall_changed=0
+plan_reasons=""
 if [ -z "$previous_commit" ] \
   || ! git cat-file -e "${previous_commit}^{commit}" 2>/dev/null \
   || ! git merge-base --is-ancestor "$previous_commit" HEAD; then
   deploy_mode=full
+  add_plan_reason "Vorheriger Commit fehlt oder die Historie ist nicht linear"
 else
   changed_files=$(git diff --name-only "$previous_commit" HEAD)
   previous_ifs=$IFS
@@ -151,7 +169,7 @@ else
     case "$changed_file" in
       docs/*|data/*|model/*|tools/architecture-docs/*|tools/yaml-graph-sqlite/out/*|.github/*|README.md|AGENTS.md)
         ;;
-      services/*/test/*|services/*.test.js|services/*/*.test.js|tools/*.test.js|scripts/*.test.js)
+      services/*/test/*|*.test.js)
         ;;
       services/identity-server/*) add_incremental_service identity-server ;;
       services/project-server/*) add_incremental_service project-server ;;
@@ -163,34 +181,153 @@ else
       services/hardware-catalog/*) add_incremental_service hardware-catalog ;;
       services/hardware-shop/*) add_incremental_service hardware-shop ;;
       services/ai-usage-server/*) add_incremental_service ai-usage-server ;;
+      services/device-voice-orchestrator/*) add_incremental_service device-voice-orchestrator ;;
       services/community-platform/*) add_incremental_service community-platform ;;
       services/ai-context-server/*) add_incremental_service ai-context-server ;;
       services/admin-tool/*) add_incremental_service admin-tool ;;
       services/admin-access-server/*) add_incremental_service admin-access-server ;;
-      *) deploy_mode=full; break ;;
+      services/recovery-tool/*) add_incremental_service identity-server ;;
+      .dockerignore|docker/*)
+        deploy_mode=full
+        add_plan_reason "Docker-Builddefinition geaendert: $changed_file"
+        break
+        ;;
+      compose.vps.yaml)
+        deploy_mode=full
+        add_plan_reason "VPS-Compose-Topologie geaendert: $changed_file"
+        break
+        ;;
+      scripts/staging/*|tools/staging-deploy.js)
+        deploy_mode=full
+        add_plan_reason "Deploymentlogik geaendert: $changed_file"
+        break
+        ;;
+      infra/vps/nginx/*)
+        edge_changed=1
+        add_plan_reason "Nginx-Konfiguration oder Edge-Assets geaendert"
+        ;;
+      infra/vps/security/*)
+        firewall_changed=1
+        add_plan_reason "Host-Firewall geaendert"
+        ;;
+      *)
+        deploy_mode=full
+        add_plan_reason "Nicht gezielt zugeordnete Runtime-Datei: $changed_file"
+        break
+        ;;
     esac
   done
   IFS=$previous_ifs
   if [ "$deploy_mode" != "full" ] && [ -n "$incremental_services" ]; then
     deploy_mode=incremental
+    add_plan_reason "Betroffene Dienste: $incremental_services"
+  elif [ "$deploy_mode" != "full" ] && { [ "$edge_changed" -eq 1 ] || [ "$firewall_changed" -eq 1 ]; }; then
+    deploy_mode=targeted-infrastructure
   fi
 fi
 
 echo "==> Deployment-Plan: $deploy_mode${incremental_services:+ ($incremental_services)}"
+echo "    Edge: $([ "$edge_changed" -eq 1 ] && printf 'validieren + neu laden' || printf 'unveraendert')"
+echo "    Firewall: $([ "$firewall_changed" -eq 1 ] && printf 'validieren + neu laden' || printf 'unveraendert')"
+[ -z "$plan_reasons" ] || echo "    Grund: $plan_reasons"
+if [ "$operation" = "--plan-only" ]; then
+  exit 0
+fi
+if [ "$operation" != "deploy" ]; then
+  echo "Unbekannte Deployment-Operation: $operation" >&2
+  exit 1
+fi
 if [ "$deploy_mode" = "none" ]; then
   echo "Keine Runtime-Datei geaendert; Commit ist ohne Container-Neustart aktiv."
   exit 0
 fi
 
+if [ "${GERNETIX_STAGING_LOCK_HELD:-0}" != "1" ]; then
+  if ! command -v flock >/dev/null 2>&1; then
+    echo "flock fehlt; parallele Deployments koennen nicht sicher ausgeschlossen werden." >&2
+    exit 1
+  fi
+  lock_file=${GERNETIX_STAGING_LOCK_FILE:-/var/lock/gernetix-staging-deploy.lock}
+  exec 9>"$lock_file"
+  if ! flock -n 9; then
+    echo "Ein anderes Staging-Deployment laeuft bereits." >&2
+    exit 1
+  fi
+fi
+
+deploy_started_at=$(date +%s)
+phase_name=""
+phase_started_at=$deploy_started_at
+begin_phase() {
+  next_phase=$1
+  phase_now=$(date +%s)
+  if [ -n "$phase_name" ]; then
+    echo "<== $phase_name: $((phase_now - phase_started_at))s"
+  fi
+  phase_name=$next_phase
+  phase_started_at=$phase_now
+  echo "==> $phase_name"
+}
+report_deploy_duration() {
+  deploy_status=$?
+  deploy_finished_at=$(date +%s)
+  if [ -n "$phase_name" ]; then
+    echo "<== $phase_name: $((deploy_finished_at - phase_started_at))s"
+  fi
+  echo "==> Deployment beendet: Status $deploy_status, Dauer $((deploy_finished_at - deploy_started_at))s"
+  trap - EXIT
+  exit "$deploy_status"
+}
+trap report_deploy_duration EXIT
+
+if [ ! -f "$env_file" ]; then
+  echo "Fehlende VPS-Konfiguration: $repo_dir/$env_file" >&2
+  exit 1
+fi
+
+begin_phase "Fehlende Staging-Secrets provisionieren"
+chmod 600 "$env_file"
+repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN
+ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
+ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
+ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
+ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex
+ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex
+ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64
+ensure_staging_secret FORGEJO_POSTGRES_PASSWORD hex
+ensure_staging_secret FORGEJO_SECRET_KEY hex
+ensure_staging_secret FORGEJO_INTERNAL_TOKEN hex
+
+compute_bind_address=$(awk -F= '$1 == "COMPUTE_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
+compute_bind_address=${compute_bind_address:-127.0.0.1}
+if [ "$compute_bind_address" = "0.0.0.0" ] || [ "$compute_bind_address" = "::" ]; then
+  echo "COMPUTE_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden." >&2
+  exit 1
+fi
+
 if [ "$deploy_mode" = "incremental" ]; then
-  echo "==> Compose-Konfiguration pruefen"
+  begin_phase "Compose-Konfiguration pruefen"
   compose config --quiet
 
-  build_service=${incremental_services%% *}
-  echo "==> Gemeinsames Node-Image einmal ueber $build_service bauen"
-  compose build "$build_service"
+  shared_build_service=""
+  identity_build_required=0
+  for service_name in $incremental_services; do
+    if [ "$service_name" = "identity-server" ]; then
+      identity_build_required=1
+    elif [ -z "$shared_build_service" ]; then
+      shared_build_service=$service_name
+    fi
+  done
+  if [ "$identity_build_required" -eq 1 ]; then
+    begin_phase "Schlankes Identity-Image bauen"
+    compose build identity-server
+  fi
+  if [ -n "$shared_build_service" ]; then
+    begin_phase "Gemeinsames Node-Image einmal ueber $shared_build_service bauen"
+    compose build "$shared_build_service"
+  fi
 
-  echo "==> Nur betroffene Services neu erstellen: $incremental_services"
+  begin_phase "Nur betroffene Services neu erstellen: $incremental_services"
   # Die beabsichtigte Wortaufteilung uebergibt die ermittelten Servicenamen einzeln an Compose.
   # shellcheck disable=SC2086
   compose up -d --no-deps --force-recreate $incremental_services
@@ -198,34 +335,52 @@ if [ "$deploy_mode" = "incremental" ]; then
     wait_for_incremental_service "$service_name"
   done
 
+  if [ "$firewall_changed" -eq 1 ]; then
+    begin_phase "Host-Firewall validieren und gezielt neu laden"
+    apply_host_firewall
+  fi
+
   case " $incremental_services " in
     *" identity-server "*)
-      echo "==> HTTP- und HTTPS-Nginx nach Identity-Wechsel kurz neu binden"
-      compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls
-      nginx_container=$(compose ps -q nginx)
-      nginx_tls_container=$(compose --profile tls ps -q nginx-tls)
-      docker exec "$nginx_container" nginx -t >/dev/null
-      docker exec "$nginx_tls_container" nginx -t >/dev/null
-      wait_for_private_pwa
+      edge_changed=1
       ;;
   esac
+  if [ "$edge_changed" -eq 1 ]; then
+    begin_phase "HTTP- und HTTPS-Nginx validieren und ohne Containerwechsel neu laden"
+    reload_edge
+  fi
 
-  echo "==> Betroffene Container"
+  begin_phase "Betroffene Container"
   # shellcheck disable=SC2086
   compose ps $incremental_services
   exit 0
 fi
 
-echo "==> Host-Firewall und MQTT-Verbindungsrate pruefen"
+if [ "$deploy_mode" = "targeted-infrastructure" ]; then
+  begin_phase "Compose-Konfiguration pruefen"
+  compose config --quiet
+  if [ "$firewall_changed" -eq 1 ]; then
+    begin_phase "Host-Firewall validieren und gezielt neu laden"
+    apply_host_firewall
+  fi
+  if [ "$edge_changed" -eq 1 ]; then
+    begin_phase "HTTP- und HTTPS-Nginx validieren und ohne Containerwechsel neu laden"
+    reload_edge
+  fi
+  exit 0
+fi
+
+begin_phase "Host-Firewall und MQTT-Verbindungsrate pruefen"
 nft -c -f infra/vps/security/firewall.nft
 
-echo "==> Compose-Konfiguration pruefen"
+begin_phase "Compose-Konfiguration pruefen"
 docker compose --env-file "$env_file" -f compose.vps.yaml config --quiet
 
-echo "==> Images bauen"
+begin_phase "Images bauen"
 docker compose --env-file "$env_file" -f compose.vps.yaml build
 
-echo "==> Legacy-PostgreSQL-Secrets fuer eine sichere Erstkonsolidierung pruefen"
+begin_phase "Legacy-PostgreSQL-Secrets fuer eine sichere Erstkonsolidierung pruefen"
+legacy_consolidation_required=0
 for legacy_spec in \
   "identity-postgres:IDENTITY_POSTGRES_PASSWORD" \
   "project-postgres:PROJECT_POSTGRES_PASSWORD" \
@@ -242,6 +397,7 @@ do
   legacy_secret=${legacy_spec#*:}
   legacy_container=$(docker ps -aq --filter "label=com.docker.compose.service=$legacy_service" | head -n 1)
   if [ -n "$legacy_container" ]; then
+    legacy_consolidation_required=1
     if [ "$(docker inspect -f '{{.State.Running}}' "$legacy_container")" != "true" ]; then
       echo "Legacy-Container $legacy_service ist gestoppt; vor der Konsolidierung kontrolliert starten." >&2
       exit 1
@@ -253,58 +409,61 @@ do
   fi
 done
 
-echo "==> Validierte Host-Firewall installieren"
-install -d -m 0755 /etc/gernetix
-install -m 0644 infra/vps/security/firewall.nft /etc/gernetix/firewall.nft
-install -m 0755 infra/vps/security/gernetix-firewall-apply /usr/local/sbin/gernetix-firewall-apply
-install -m 0644 infra/vps/security/gernetix-firewall.service /etc/systemd/system/gernetix-firewall.service
-systemctl daemon-reload
-systemctl enable gernetix-firewall.service >/dev/null
-if systemctl is-active --quiet gernetix-firewall.service; then
-  systemctl reload gernetix-firewall.service
-else
-  systemctl start gernetix-firewall.service
-fi
+begin_phase "Validierte Host-Firewall installieren"
+apply_host_firewall
 
-echo "==> Staging aktualisieren und auf Healthchecks warten"
+begin_phase "Staging aktualisieren und auf Healthchecks warten"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate mqtt-broker
-docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate runtime-postgres
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
 
-echo "==> PostgreSQL-Zugriff fuer externe Build-Worker provisionieren"
+begin_phase "PostgreSQL-Zugriff fuer externe Build-Worker provisionieren"
 docker compose --env-file "$env_file" -f compose.vps.yaml --profile build-worker-provisioning \
   run --rm build-worker-postgres-access
 
-echo "==> Vorhandene PostgreSQL-Domaenendaten einmalig zentral konsolidieren"
-docker compose --env-file "$env_file" -f compose.vps.yaml --profile postgres-consolidation \
-  run --rm --no-deps postgres-consolidation-migration
+if [ "$legacy_consolidation_required" -eq 1 ]; then
+  begin_phase "Vorhandene PostgreSQL-Domaenendaten einmalig zentral konsolidieren"
+  docker compose --env-file "$env_file" -f compose.vps.yaml --profile postgres-consolidation \
+    run --rm --no-deps postgres-consolidation-migration
+else
+  begin_phase "Keine Legacy-PostgreSQL-Container: Konsolidierung uebersprungen"
+fi
 
-echo "==> Alte PostgreSQL-Container erst nach erfolgreicher Konsolidierung entfernen"
+begin_phase "Alte PostgreSQL-Container erst nach erfolgreicher Konsolidierung entfernen"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --remove-orphans
 
-echo "==> Build-Router und Nginx an aktuelle Upstreams und Bind-Mounts binden"
+begin_phase "Build-Router an aktuelle Upstreams binden"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --wait \
-  --wait-timeout "$wait_timeout" --force-recreate build-router nginx
+  --wait-timeout "$wait_timeout" --force-recreate build-router
 
-echo "==> HTTPS-Zertifikat fuer die oeffentlichen GerNetiX-Domains bereitstellen"
-docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm --entrypoint certbot certbot \
-  certonly --webroot --webroot-path /var/www/certbot \
-  --non-interactive --agree-tos --register-unsafely-without-email \
-  --keep-until-expiring --cert-name gernetix.nl \
-  -d gernetix.nl -d www.gernetix.nl \
-  -d gernetix.de -d www.gernetix.de \
-  -d gernetix.com -d www.gernetix.com
+letsencrypt_dir=$(awk -F= '$1 == "LETSENCRYPT_DIR" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
+letsencrypt_dir=${letsencrypt_dir:-/etc/letsencrypt}
+if [ ! -s "$letsencrypt_dir/live/gernetix.nl/fullchain.pem" ] \
+  || [ ! -s "$letsencrypt_dir/live/gernetix-services.com/fullchain.pem" ]; then
+  begin_phase "Fehlende HTTPS-Zertifikate bereitstellen"
+  docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm --entrypoint certbot certbot \
+    certonly --webroot --webroot-path /var/www/certbot \
+    --non-interactive --agree-tos --register-unsafely-without-email \
+    --keep-until-expiring --cert-name gernetix.nl \
+    -d gernetix.nl -d www.gernetix.nl \
+    -d gernetix.de -d www.gernetix.de \
+    -d gernetix.com -d www.gernetix.com
 
-docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm --entrypoint certbot certbot \
-  certonly --webroot --webroot-path /var/www/certbot \
-  --non-interactive --agree-tos --register-unsafely-without-email \
-  --keep-until-expiring --cert-name gernetix-services.com \
-  -d build.gernetix.com -d mqtt.gernetix.com -d pwa.gernetix.com
+  docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm --entrypoint certbot certbot \
+    certonly --webroot --webroot-path /var/www/certbot \
+    --non-interactive --agree-tos --register-unsafely-without-email \
+    --keep-until-expiring --cert-name gernetix-services.com \
+    -d build.gernetix.com -d mqtt.gernetix.com -d pwa.gernetix.com
+else
+  begin_phase "HTTPS-Zertifikate vorhanden: Ausstellung uebersprungen"
+fi
 
-echo "==> HTTPS-Nginx und automatische Zertifikatserneuerung starten"
-docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --wait --wait-timeout "$wait_timeout" --force-recreate nginx-tls mqtt-broker certbot
+begin_phase "HTTPS-Nginx und automatische Zertifikatserneuerung sicherstellen"
+docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --wait --wait-timeout "$wait_timeout" nginx-tls certbot
 
-echo "==> Edge- und Admin-Healthchecks"
+begin_phase "HTTP- und HTTPS-Nginx an aktuelle Upstreams und Konfiguration binden"
+reload_edge
+
+begin_phase "Edge- und Admin-Healthchecks"
 admin_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-tool 4600 | sed 's/.*://')
 admin_access_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-access-server 4610 | sed 's/.*://')
 private_vps_bind_address=$(awk -F= '$1 == "PRIVATE_VPS_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
@@ -326,5 +485,5 @@ printf '\n'
 curl --fail --silent --show-error "http://127.0.0.1:${admin_access_port}/health"
 printf '\n'
 
-echo "==> Containerstatus"
+begin_phase "Containerstatus"
 docker compose --env-file "$env_file" -f compose.vps.yaml ps

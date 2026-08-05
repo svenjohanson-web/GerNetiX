@@ -25,10 +25,11 @@ function parseEnvFile(content) {
 }
 
 function parseArgs(argv) {
-  const result = { dryRun: false, publicDemo: false, publishNexi: false, migrateArtifacts: false };
+  const result = { dryRun: false, plan: false, publicDemo: false, publishNexi: false, migrateArtifacts: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
+    else if (argument === "--plan") result.plan = true;
     else if (argument === "--public-demo") result.publicDemo = true;
     else if (argument === "--publish-nexi") result.publishNexi = true;
     else if (argument === "--migrate-artifacts") result.migrateArtifacts = true;
@@ -41,7 +42,112 @@ function parseArgs(argv) {
       throw new Error(`Unbekanntes Argument: ${argument}`);
     }
   }
+  if (result.dryRun && result.plan) throw new Error("--dry-run und --plan koennen nicht gemeinsam verwendet werden.");
   return result;
+}
+
+const incrementalServiceByDirectory = new Map([
+  ["identity-server", "identity-server"],
+  ["project-server", "project-server"],
+  ["build-deploy-server", "build-deploy-server"],
+  ["compute-control-plane", "compute-control-plane"],
+  ["public-demo-server", "public-demo-server"],
+  ["device-management-server", "device-management-server"],
+  ["telemetry-server", "telemetry-server"],
+  ["hardware-catalog", "hardware-catalog"],
+  ["hardware-shop", "hardware-shop"],
+  ["ai-usage-server", "ai-usage-server"],
+  ["device-voice-orchestrator", "device-voice-orchestrator"],
+  ["community-platform", "community-platform"],
+  ["ai-context-server", "ai-context-server"],
+  ["admin-tool", "admin-tool"],
+  ["admin-access-server", "admin-access-server"],
+  // Identity imports the Hardware Assistant runtime directly from this package.
+  ["recovery-tool", "identity-server"],
+]);
+
+function isIgnoredDeploymentFile(file) {
+  return /^(docs|data|model|tools\/architecture-docs|tools\/yaml-graph-sqlite\/out|\.github)\//.test(file)
+    || ["README.md", "AGENTS.md"].includes(file)
+    || file.endsWith(".test.js")
+    || /^services\/[^/]+\/test\//.test(file)
+    || /^(tools|scripts)\/[^/]+\.test\.js$/.test(file);
+}
+
+function createDeploymentPlan(changedFiles, options = {}) {
+  if (!options.historyIsLinear) {
+    return {
+      mode: "full",
+      services: [],
+      edge: false,
+      firewall: false,
+      reasons: ["Vorheriger VPS-Commit fehlt oder ist kein Vorfahr des Ziel-Commits."],
+      changedFiles,
+    };
+  }
+
+  const services = [];
+  const reasons = [];
+  let edge = false;
+  let firewall = false;
+  for (const file of changedFiles) {
+    if (isIgnoredDeploymentFile(file)) continue;
+    if (file === ".dockerignore" || file.startsWith("docker/")) {
+      return { mode: "full", services, edge, firewall, reasons: [`Docker-Builddefinition geaendert: ${file}`], changedFiles };
+    }
+    if (file === "compose.vps.yaml") {
+      return { mode: "full", services, edge, firewall, reasons: [`VPS-Compose-Topologie geaendert: ${file}`], changedFiles };
+    }
+    if (file.startsWith("scripts/staging/") || file === "tools/staging-deploy.js") {
+      return { mode: "full", services, edge, firewall, reasons: [`Deploymentlogik geaendert: ${file}`], changedFiles };
+    }
+    if (file.startsWith("infra/vps/nginx/")) {
+      edge = true;
+      if (!reasons.includes("Nginx-Konfiguration oder Edge-Assets werden validiert und neu geladen.")) {
+        reasons.push("Nginx-Konfiguration oder Edge-Assets werden validiert und neu geladen.");
+      }
+      continue;
+    }
+    if (file.startsWith("infra/vps/security/")) {
+      firewall = true;
+      if (!reasons.includes("Die Host-Firewall wird validiert und gezielt neu geladen.")) {
+        reasons.push("Die Host-Firewall wird validiert und gezielt neu geladen.");
+      }
+      continue;
+    }
+    const serviceMatch = file.match(/^services\/([^/]+)\//);
+    const service = serviceMatch && incrementalServiceByDirectory.get(serviceMatch[1]);
+    if (service) {
+      if (!services.includes(service)) services.push(service);
+      continue;
+    }
+    return {
+      mode: "full",
+      services,
+      edge,
+      firewall,
+      reasons: [`Nicht gezielt zugeordnete Runtime-Datei: ${file}`],
+      changedFiles,
+    };
+  }
+
+  if (services.length) reasons.unshift(`Betroffene Dienste: ${services.join(", ")}.`);
+  const mode = services.length ? "incremental" : edge || firewall ? "targeted-infrastructure" : "none";
+  if (mode === "none") reasons.push("Nur Dokumentation, Modelle, Graph, Tests oder Arbeitsanweisungen wurden geaendert.");
+  return { mode, services, edge, firewall, reasons, changedFiles };
+}
+
+function formatDeploymentPlan(plan, previousCommit, targetCommit) {
+  const lines = [
+    `Deployment-Plan: ${plan.mode}`,
+    `  VPS:    ${previousCommit.slice(0, 12)}`,
+    `  Ziel:   ${targetCommit.slice(0, 12)}`,
+  ];
+  for (const reason of plan.reasons) lines.push(`  Grund:  ${reason}`);
+  if (plan.services.length) lines.push(`  Dienste: ${plan.services.join(", ")}`);
+  lines.push(`  Edge:   ${plan.edge ? "validieren + neu laden" : "unveraendert"}`);
+  lines.push(`  Firewall: ${plan.firewall ? "validieren + neu laden" : "unveraendert"}`);
+  return `${lines.join("\n")}\n`;
 }
 
 function assertSafeGitRef(value) {
@@ -63,11 +169,11 @@ function shellQuote(value) {
 function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, publishNexi = false, migrateArtifacts = false }) {
   const commands = [
     `cd ${shellQuote(remoteDir)}`,
-    "test -z \"$(git status --porcelain --untracked-files=no)\"",
+    "if [ -n \"$(git status --porcelain --untracked-files=no)\" ]; then echo 'Die VPS-Arbeitskopie enthaelt lokale Aenderungen.' >&2; exit 1; fi",
     "previous_commit=$(git rev-parse HEAD)",
     `git fetch origin ${shellQuote(branch)}`,
     `git switch --detach ${shellQuote(commit)}`,
-    publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : './scripts/staging/remote-deploy.sh "$previous_commit"',
+    publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : 'GERNETIX_STAGING_LOCK_HELD=1 ./scripts/staging/remote-deploy.sh "$previous_commit"',
   ];
   if (migrateArtifacts) commands.push(
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T build-deploy-server node /app/tools/migrate-postgres-binaries-to-artifact-store.js --quarantine-untraceable-artifacts`,
@@ -76,7 +182,27 @@ function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, pu
   if (publishNexi) commands.push(
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T -e NEXI_RELEASE_VERSION=${shellQuote(`0.1.0-${commit.slice(0, 12)}`)} -e NEXI_SOURCE_COMMIT=${shellQuote(commit)} public-demo-server sh -lc ${shellQuote("/opt/platformio/bin/platformio run --project-dir /app/basissoftware/esp32 -e waveshare-esp32-s3-audio-voice-lab && node /app/tools/publish-nexi-release.js")}`,
   );
-  return commands.join(" && ");
+  const lockedCommand = commands.join(" && ");
+  return [
+    "command -v flock >/dev/null 2>&1 || { echo 'flock fehlt auf dem VPS.' >&2; exit 1; }",
+    `flock -E 75 -n /var/lock/gernetix-staging-deploy.lock sh -lc ${shellQuote(lockedCommand)}`,
+    "deploy_status=$?",
+    "if [ \"$deploy_status\" -eq 75 ]; then echo 'Ein anderes Staging-Deployment laeuft bereits.' >&2; fi",
+    "exit \"$deploy_status\"",
+  ].join("; ");
+}
+
+function remoteHeadCommand(remoteDir) {
+  return [
+    `cd ${shellQuote(remoteDir)}`,
+    "if [ -n \"$(git status --porcelain --untracked-files=no)\" ]; then echo 'Die VPS-Arbeitskopie enthaelt lokale Aenderungen.' >&2; exit 1; fi",
+    "command -v flock >/dev/null 2>&1 || { echo 'flock fehlt auf dem VPS.' >&2; exit 1; }",
+    "command -v docker >/dev/null 2>&1 || { echo 'Docker fehlt auf dem VPS.' >&2; exit 1; }",
+    "docker info >/dev/null 2>&1 || { echo 'Docker ist auf dem VPS nicht bereit.' >&2; exit 1; }",
+    "docker compose version >/dev/null 2>&1 || { echo 'Docker Compose fehlt auf dem VPS.' >&2; exit 1; }",
+    "test -f .env.vps || { echo 'Die VPS-Konfiguration .env.vps fehlt.' >&2; exit 1; }",
+    "git rev-parse HEAD",
+  ].join(" && ");
 }
 
 function run(command, args, options = {}) {
@@ -88,7 +214,10 @@ function run(command, args, options = {}) {
     stdio: options.capture ? "pipe" : "inherit",
   });
   if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`${command} wurde mit Exit-Code ${result.status} beendet.`);
+  if (result.status !== 0) {
+    if (options.capture && result.stderr) process.stderr.write(result.stderr);
+    throw new Error(`${command} wurde mit Exit-Code ${result.status} beendet.`);
+  }
   return options.capture ? result.stdout.trim() : "";
 }
 
@@ -119,6 +248,18 @@ function main() {
     process.stdout.write(`[dry-run] ssh ${host} ${command}\n`);
     return;
   }
+
+  const previousCommit = run("ssh", ["-o", "BatchMode=yes", host, remoteHeadCommand(remoteDir)], { capture: true, quiet: true });
+  if (!/^[0-9a-f]{40}$/.test(previousCommit)) throw new Error("Der VPS hat keine gueltige Commit-ID geliefert.");
+  const ancestry = spawnSync("git", ["merge-base", "--is-ancestor", previousCommit, commit], { cwd: repoRoot });
+  const historyIsLinear = ancestry.status === 0;
+  const changedFiles = historyIsLinear
+    ? run("git", ["diff", "--name-only", previousCommit, commit], { capture: true, quiet: true }).split(/\r?\n/).filter(Boolean)
+    : [];
+  const plan = createDeploymentPlan(changedFiles, { historyIsLinear });
+  process.stdout.write(formatDeploymentPlan(plan, previousCommit, commit));
+  if (args.plan) return;
+
   run("ssh", ["-o", "BatchMode=yes", host, command]);
 }
 
@@ -134,8 +275,12 @@ if (require.main === module) {
 module.exports = {
   assertSafeGitRef,
   assertSafeSshTarget,
+  createDeploymentPlan,
+  formatDeploymentPlan,
+  isIgnoredDeploymentFile,
   parseArgs,
   parseEnvFile,
   remoteDeployCommand,
+  remoteHeadCommand,
   shellQuote,
 };

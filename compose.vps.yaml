@@ -801,6 +801,10 @@ services:
 
   identity-server:
     <<: *node-service
+    build:
+      context: .
+      dockerfile: docker/identity-service.Dockerfile
+    image: gernetix/identity-server:${GERNETIX_IMAGE_TAG:-local}
     environment:
       GERNETIX_SERVICE: identity-server
       HOST: 0.0.0.0

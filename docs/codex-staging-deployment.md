@@ -12,6 +12,31 @@ node tools/staging-deploy.js
 
 Das Tool deployt exakt den aktuellen, bereits gepushten Git-Commit auf den Staging-VPS. Es uebertraegt keine lokalen Dateien per SCP und kopiert keine lokale SQLite-Datei auf den Server.
 
+## Verbindliche Begriffe
+
+- **Lokal testen** bedeutet: Code und UI auf dem Entwicklungsrechner pruefen. Das aendert weder GitHub noch den VPS.
+- **Git stagen** bedeutet ausschliesslich `git add`: Dateien fuer einen Commit vormerken. Das ist kein Server-Deployment.
+- **Committen und pushen** veroeffentlicht einen Quellstand im Git-Repository. Der VPS bleibt unveraendert.
+- **Deployment-Plan** liest den aktuellen VPS-Commit und zeigt den kleinsten sicheren Zielablauf. Er aendert keine Container oder Laufzeitdaten.
+- **Auf Staging deployen** aktualisiert den privaten Staging-VPS auf einen bereits gepushten Commit.
+- **Production deployen** ist ein eigener, hier nicht autorisierter Prozess.
+
+## Verbindlicher Entscheidungsablauf
+
+| Aenderung oder Ziel | Zuerst | VPS-Deployment |
+| --- | --- | --- |
+| Identity-UI, Route, Browserlogik oder Hardware-Assistent entwickeln | gezielte Tests; bei interaktiver Pruefung lokaler Identity-Remote-Dev-Modus | nicht automatisch; nur bei ausdruecklichem Staging-Auftrag oder notwendigem VPS-Nachweis |
+| Servicecode ohne VPS-spezifische Abhaengigkeit | Unit-/Contract-Tests des betroffenen Dienstes | nur fuer Integration, gemeinsamen Datenstand oder ausdrueckliche Abnahme |
+| Zusammenspiel mit zentraler PostgreSQL, Passkeys, privatem DNS, TLS oder mehreren VPS-Diensten | lokale Tests, danach Deployment-Plan | Staging ist fuer den Endnachweis erforderlich |
+| Nginx- oder Edge-Assets | lokale Konfigurations-/Contract-Tests | gezieltes Edge-Reload, kein pauschaler Full-Deploy |
+| Host-Firewall | lokaler Syntax-/Contract-Test | gezielte validierte Firewall-Aktualisierung |
+| Compose, Docker-Basis, Persistenz, Migration oder unbekannte Runtime-Datei | passende lokale Tests und bewusste Risikoabnahme | vollstaendiger Sicherheitslauf |
+| Nur Doku, Modelle, Graph oder Tests | lokale Pruefung | kein Container-Neustart |
+
+Damit gilt fuer den am haeufigsten bearbeiteten Identity Server verbindlich:
+
+> Lokal zuerst. Commit und Push erst nach bestandenem lokalen Nachweis. Auf den VPS nur auf ausdruecklichen Wunsch oder wenn die geaenderte Funktion technisch nur dort belastbar geprueft werden kann.
+
 ## Einmalige Einrichtung je Entwicklungsrechner
 
 Voraussetzungen:
@@ -86,6 +111,31 @@ Der lokale PostgreSQL-Port wird durch den SSH-Tunnel auf die WireGuard-gebundene
 
 Die kanonischen Identity-Daten liegen ausschliesslich in `gernetix_runtime` auf PostgreSQL. Fuer schnelle Entwicklungszyklen darf Identity lokal auf `127.0.0.1:4300` laufen. `tools/start-identity-remote-dev.js` erzwingt dabei PostgreSQL und verbindet die Datenbank sowie die Domaenendienste ueber den beschriebenen SSH-/WireGuard-Tunnel. Eine lokale Identity-SQLite oder lokale Account-/Session-Persistenz ist nicht zulaessig.
 
+Verbindlicher lokaler Identity-Ablauf:
+
+1. Gezielte Identity-Tests ausfuehren, ohne einen Server vorsorglich neu zu starten:
+
+   ```text
+   cd services/identity-server
+   npm test
+   ```
+
+2. Nur fuer eine interaktive Browserpruefung den vorhandenen privaten Tunnel in einem Terminal oeffnen:
+
+   ```text
+   node tools/connect-staging.js
+   ```
+
+3. In einem zweiten Terminal genau den kontrollierten Starter verwenden:
+
+   ```text
+   node tools/start-identity-remote-dev.js
+   ```
+
+4. Unter `http://127.0.0.1:4300/app/dashboard/` pruefen. Ein bereits korrekt laufender Prozess wird nicht vorsorglich neu gestartet.
+
+Dieser Modus fuehrt lokalen Identity-Code aus, verwendet aber ausschliesslich die zentrale PostgreSQL-Wahrheit und die kontrolliert angebundenen Domaenendienste. Direkte Starts mit freier Runtime-Konfiguration oder lokaler Identity-SQLite sind unzulaessig.
+
 ## Remote-first statt geteilter SQLite-Datei
 
 Der VPS bleibt der Speicherort fuer die eine zentrale PostgreSQL-Datenbank
@@ -98,7 +148,7 @@ ueber SMB, NFS oder SSHFS.
 - Ein lokal gestarteter kompletter Service-Stack ist eine isolierte
   Testumgebung mit eigener Testpersistenz; AI Usage, Hardware Catalog und
   Hardware Shop werden dabei explizit fluechtig im In-Memory-Modus gestartet.
-- Ein lokaler Identity Server ist nicht zulaessig. Die kanonische Server-Identity ist der einzige Schreiber der Identity-Tabellen in `gernetix_runtime`.
+- Nur der kontrollierte lokale Identity-Remote-Dev-Prozess ist zulaessig. Er verwendet denselben PostgreSQL-Vertrag wie die Server-Identity; lokale SQLite-, Parallel- oder frei konfigurierte Identity-Prozesse sind nicht zulaessig.
 - Die Domaenentunnel transportieren HTTP-Anfragen. Nur der dedizierte
   Runtime-PostgreSQL-Port wird als Datenbankverbindung weitergereicht.
 - Das bisherige Identity-SQLite wird beim VPS-Upgrade einmalig und idempotent
@@ -163,10 +213,16 @@ node tools/connect-staging.js --dry-run
 
 ## Normaler Ablauf
 
-1. Lokal entwickeln und testen.
-2. Aenderungen committen.
-3. Den aktuellen Branch zu GitHub pushen.
-4. Deployment starten:
+1. Lokal entwickeln und mit den kleinstmoeglichen gezielten Tests pruefen.
+2. Identity bei Bedarf lokal im Remote-Dev-Modus interaktiv pruefen.
+3. Aenderungen bewusst mit `git add` fuer den Commit vormerken, committen und den aktuellen Branch pushen.
+4. Nur bei beabsichtigtem VPS-Test den lesenden Deployment-Plan abrufen:
+
+```text
+node tools/staging-deploy.js --plan
+```
+
+5. Nur wenn der Nutzer das Staging-Deployment ausdruecklich verlangt und der Plan plausibel ist, deployen:
 
 ```text
 node tools/staging-deploy.js
@@ -178,10 +234,13 @@ Vorab pruefen, ohne SSH oder VPS-Aenderung:
 node tools/staging-deploy.js --dry-run
 ```
 
+`--dry-run` validiert nur den lokalen Git-Stand und zeigt den SSH-Befehl. `--plan` liest zusaetzlich den aktuell deployten VPS-Commit, berechnet die Commit-Differenz und nennt Modus, Dienste, Edge-/Firewall-Aktionen und den Grund fuer einen Full-Deploy. Jeder echte Deployment-Lauf zeigt diesen Plan automatisch vor der ersten VPS-Aenderung.
+
 Das Tool bricht ab, wenn:
 
 - der lokale Arbeitsbaum nicht sauber ist,
 - der aktuelle Commit nicht dem Upstream-Commit entspricht,
+- bereits ein anderes Staging-Deployment laeuft,
 - SSH-Ziel oder Branch ungueltige Zeichen enthalten,
 - die VPS-Arbeitskopie lokale Aenderungen besitzt,
 - Compose-Konfiguration, Build oder Healthchecks fehlschlagen.
@@ -193,11 +252,18 @@ mit dem neuen Ziel-Commit und waehlt den kleinsten sicheren Ablauf:
 
 - Reine Doku-, Modell-, Graph- oder Testaenderungen erfordern keinen
   Container-Neustart.
-- Aenderungen innerhalb eines oder mehrerer Domaenendienste bauen das gemeinsame
-  Node-Image genau einmal, erstellen nur die betroffenen Container neu und
-  pruefen nur deren direkten Healthcheck. Bei Identity-Aenderungen werden
-  zusaetzlich der HTTP-Diagnoseproxy und der private HTTPS-Nginx neu gebunden,
-  syntaktisch geprueft und der private PWA-Endpunkt getestet.
+- Aenderungen innerhalb eines oder mehrerer Domaenendienste bauen nur die
+  benoetigten Runtime-Images, erstellen nur die betroffenen Container neu und
+  pruefen nur deren direkten Healthcheck. `recovery-tool`-Aenderungen werden
+  wegen des direkten Imports dem Identity Server zugeordnet. Identity besitzt
+  fuer den haeufigen UI-/API-Pfad ein eigenes schlankes Image ohne PlatformIO,
+  die Abhaengigkeiten der anderen Domaenendienste oder Migrationswerkzeuge. Bei
+  Identity-Aenderungen werden HTTP- und HTTPS-Nginx syntaktisch geprueft und
+  ohne Containerwechsel neu geladen, damit die neue Identity-Adresse sicher
+  aufgeloest wird; danach wird der private PWA-Endpunkt getestet.
+- Aenderungen unter `infra/vps/nginx/` verwenden ein gezieltes validiertes
+  Edge-Reload. Aenderungen unter `infra/vps/security/` verwenden eine gezielte
+  validierte Firewall-Aktualisierung. Beide erzwingen allein keinen Full-Deploy.
 - Infrastruktur-, Compose-, Dockerfile-, Migrations- oder nicht eindeutig
   zuordenbare Aenderungen verwenden immer den vollstaendigen Sicherheitslauf.
 - Fehlt der vorherige Commit oder ist die Commit-Historie nicht linear, gilt
@@ -215,6 +281,16 @@ Der vollstaendige Ablauf fuehrt weiterhin automatisch aus:
 8. Nginx/Identity, Admin Access Server und den internen Admin Tool Service pruefen,
 9. Containerstatus ausgeben.
 
+Auch im vollstaendigen Ablauf werden laufende PostgreSQL-Container nicht mehr
+vorsorglich neu erstellt. Die einmalige Legacy-Konsolidierung laeuft nur, wenn
+tatsaechlich noch Legacy-PostgreSQL-Container vorhanden sind. Certbot stellt
+Zertifikate nur bereit, wenn die erwarteten Zertifikatsdateien fehlen; die
+laufende Certbot-Erneuerung bleibt davon unberuehrt. Der Ablauf ist durch eine
+VPS-weite Sperre gegen parallele Deployments geschuetzt und gibt am Ende Status
+und Gesamtdauer aus. Jede groessere Phase meldet zusaetzlich ihre eigene Dauer,
+damit ein langsamer Build, Containerstart oder Healthcheck ohne Wiederholung
+des Deployments erkennbar ist.
+
 Persistente Docker-Volumes und vorhandene Werte in `.env.vps` werden nicht geloescht
 oder ueberschrieben. Fehlende Compute-, Artifact-Upload- und Forgejo-Secrets erzeugt
 der Staging-Ablauf einmalig direkt auf dem VPS, setzt die Env-Datei auf Modus `0600`
@@ -222,15 +298,21 @@ und gibt die Werte nicht aus.
 Der Bootstrap stellt vor dem Anhaengen ein korrektes Zeilenende sicher und kann
 einen bereits ohne Trennzeile angehaengten 64-stelligen Compute-Token reparieren.
 Die paketabhaengigen Docker-Layer liegen vor den Quellcode-Layern. Ein normaler
-Codewechsel fuehrt deshalb nicht erneut alle `npm ci`-Installationen aus.
+Codewechsel fuehrt deshalb nicht erneut `npm ci` aus. Doku, Modelle und Tests
+liegen nicht im Docker-Build-Kontext. Das gemeinsame Node-Image bleibt fuer
+die uebrigen Domaenendienste bestehen und wird pro inkrementellem Lauf hoechstens
+einmal gebaut.
 
 ## Regeln fuer Codex
 
 - Nur deployen, wenn der Nutzer Staging, Server-Test oder VPS-Deployment ausdruecklich verlangt.
+- Identity-Aenderungen standardmaessig lokal und mit gezielten Tests pruefen. Ein normaler lokaler UI-/Codeauftrag autorisiert weder Commit/Push noch VPS-Deployment.
+- Vor jedem angeforderten Deployment zuerst `node tools/staging-deploy.js --plan` ausfuehren, den Modus und seinen Grund nennen und erst danach genau einmal den normalen Deployment-Befehl ausfuehren.
 - Vorher relevante lokale Tests ausfuehren und den Nutzer ueber den bevorstehenden Staging-Eingriff informieren.
 - Ausschliesslich `node tools/staging-deploy.js` verwenden; keine parallelen manuellen `git pull`-/Compose-Varianten erfinden.
 - Fuer einen angeforderten Admin-Zugriff ausschliesslich `node tools/connect-staging.js` verwenden.
 - Vor Staging-Deployment oder Admin-Zugriff den WireGuard-Tunnel pruefen; keinen oeffentlichen SSH-Fallback einrichten.
 - Niemals `docker compose down -v`, Volume-Loeschungen oder SQLite-Kopien ausfuehren.
 - Ein fehlgeschlagenes Deployment anhand der ersten konkreten Fehlerausgabe diagnostizieren; keine wiederholten Startvarianten ausprobieren.
+- Nach einem Fehler nicht blind erneut deployen. Erst die benannte Phase und die bereits ausgegebenen Logs auswerten; derselbe unveraenderte Befehl wird erst nach behobener Ursache wiederholt.
 - Production ist nicht Staging. Dieses Tool darf nicht fuer Production-Ziele verwendet werden.
