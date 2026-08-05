@@ -4,6 +4,7 @@ const test = require("node:test");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../src/modules/esp32-basissoftware-package");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 const { synchronizeBoardFeaturePins } = require("../../hardware-catalog/src/board-configuration");
+const { createNexiCourseModel } = require("../../identity-server/src/dev/project-models/nexi-course");
 
 test("loads the protected ESP32 basis and overlays only the project user main", () => {
   const basisFiles = loadEsp32BasissoftwareFiles();
@@ -68,6 +69,31 @@ test("packages additional project C++ implementations behind the protected basis
   assert.equal(files.some((file) => file.path === "include/user_project/.gernetix-keep"), false);
   assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /GLOB_RECURSE GERNETIX_PACKAGED_PROJECT_SOURCES/);
   assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/include\/user_project/);
+});
+
+test("packages the complete modular Nexi customer firmware behind the protected basis", () => {
+  const model = createNexiCourseModel();
+  const definition = model.createProject(
+    (slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }),
+    (title, text, insight) => ({ title, text, insight }),
+  );
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: model.createSources(),
+    buildConfig: definition.build_config,
+  });
+
+  const paths = new Set(files.map((file) => file.path));
+  assert.equal(paths.has("src/user/user_app.cpp"), true);
+  assert.equal(paths.has("src/user_project/application_manager.cpp"), true);
+  assert.equal(paths.has("src/user_project/audio_engine.cpp"), true);
+  assert.equal(paths.has("src/user_project/voice_studio_application.cpp"), true);
+  assert.equal(paths.has("include/user_project/nexi/application.h"), true);
+  assert.equal(paths.has("include/user_project/nexi/privacy_gate.h"), true);
+  assert.equal(paths.has("include/user_project/nexi/service_button_input.h"), true);
+  assert.match(files.find((file) => file.path === "src/user/user_app.cpp").content, /nexi::ApplicationManager/);
+  assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /GERNETIX_PACKAGED_PROJECT_SOURCES/);
+  assert.equal(files.some((file) => file.path.startsWith("Komponenten/")), false);
 });
 
 test("projects WLAN, MQTT topics and power states into the protected compiler header", () => {

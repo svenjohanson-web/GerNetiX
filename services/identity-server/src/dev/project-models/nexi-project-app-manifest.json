@@ -1,9 +1,18 @@
 {
   "schema": "gernetix.project-app/v1",
-  "manifest_version": 1,
+  "manifest_version": 3,
   "app_id": "nexi",
   "title": "Nexi Elternbereich",
-  "description": "Lege fest, wie Nexi in diesem Projekt verwendet werden darf.",
+  "description": "Verwalte mehrere Nexi-Geräte mit gemeinsamen Familienregeln und gerätebezogenem Status.",
+  "hardware_requirements": {
+    "processor_variant": "ESP32-S3",
+    "supported_hardware_profile_ids": ["hardware.processor_board.waveshare_esp32_s3_audio_board"],
+    "features": [
+      { "id": "audio_driver", "label": "Audio-Treiber", "capability_id": "capability.audio_output", "board_feature": "speaker", "require_driver": true },
+      { "id": "buttons", "label": "3 Bedientasten", "capability_id": "capability.digital_input", "board_feature": "buttons", "require_included": true, "min_count": 3 },
+      { "id": "microphones", "label": "2 Mikrofone", "capability_id": "capability.audio_input", "board_feature": "microphone", "require_included": true, "require_driver": true, "min_count": 2 }
+    ]
+  },
   "settings": [
     { "key": "child_first_name", "type": "string", "label": "Vorname", "description": "Nur der gewünschte Vorname; keine weiteren persönlichen Daten.", "default": "" },
     { "key": "child_age", "type": "integer", "label": "Alter", "description": "Wird für altersgerechte Antworten verwendet.", "min": 6, "max": 17, "default": 8 },
@@ -55,9 +64,9 @@
   ],
   "pages": [
     { "id": "overview", "title": "Übersicht", "widgets": [
-      { "id": "intro", "type": "text", "text": "Nexi Basic arbeitet lokal. KI wird erst nach deiner Freigabe aktiv." },
-      { "id": "online", "type": "status", "title": "Gerät", "binding_id": "connection" },
-      { "id": "firmware_state", "type": "status", "title": "Firmware", "binding_id": "firmware" },
+      { "id": "intro", "type": "text", "text": "Aufnahme, Stimmeffekte, Wiedergabe, Tasten und LEDs funktionieren direkt auf deinen Nexi-Geräten. Erst wenn du die optionale Sprach-KI ausdrücklich aktivierst, ein KI-Anbieter freigegeben ist und Kontingent verfügbar ist, darf eine freigegebene Aufnahme für diese Anfrage verarbeitet werden. Die Einstellungen gelten gemeinsam für diese Familie." },
+      { "id": "online", "type": "status", "title": "Primärgerät", "binding_id": "connection" },
+      { "id": "firmware_state", "type": "status", "title": "Firmware des Primärgeräts", "binding_id": "firmware" },
       { "id": "ai_usage", "type": "metric", "title": "KI-Anfragen im Monat", "binding_id": "usage" },
       { "id": "ai_budget", "type": "metric", "title": "Verfügbares KI-Kontingent", "binding_id": "budget" }
     ] },

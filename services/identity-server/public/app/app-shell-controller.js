@@ -153,7 +153,7 @@ async function loadQuizAssets() {
 async function loadProjectAppAssets() {
   await Promise.all([
     loadPlatformScript("/app/project-app-renderer.js?v=20260805-route-lazy-2"),
-    loadPlatformScript("/app/project-app-controller.js?v=20260805-applications-1"),
+    loadPlatformScript("/app/project-app-controller.js?v=20260805-nexi-hardware-requirements-1"),
   ]);
 }
 

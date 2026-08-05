@@ -199,6 +199,13 @@ function projectApp() {
       putJson,
       renderer: ProjectAppRenderer,
       escapeHtml,
+      escapeAttribute,
+      onDevicesChanged(projectId, deviceIds) {
+        const project = state.projects.find((item) => item.id === projectId);
+        if (!project) return;
+        project.linkedDeviceIds = [...deviceIds];
+        project.linkedDeviceId = deviceIds[0] || "";
+      },
     });
   }
   return projectAppController;

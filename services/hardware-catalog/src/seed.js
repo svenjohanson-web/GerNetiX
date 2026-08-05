@@ -627,6 +627,15 @@ function defaultCatalogSeed() {
             retailer_url: "https://www.berrybase.de/waveshare-esp32-s3-ai-smart-speaker-development-board-dual-mikrofon-wifi-bt5-16mb-flash-240-mhz",
           },
           board_features: {
+            buttons: {
+              enabled: true,
+              included: true,
+              hardware: "function_buttons",
+              driver: "gpio_input",
+              connection: "gpio_via_io_expander",
+              count: 3,
+              verification_status: "manufacturer_schematic",
+            },
             microphone: {
               enabled: true,
               included: true,

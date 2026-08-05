@@ -81,15 +81,16 @@ function renderApplications() {
   if (!target) return;
   const applications = personalApplications();
   target.innerHTML = applications.length ? applications.map((project) => {
-    const device = state.devices.find((item) => item.device_id === project.linkedDeviceId);
-    const deviceLabel = device?.display_name || project.linkedDeviceId || "Noch kein Gerät zugeordnet";
+    const linkedDeviceIds = project.linkedDeviceIds?.length ? project.linkedDeviceIds : project.linkedDeviceId ? [project.linkedDeviceId] : [];
+    const deviceNames = linkedDeviceIds.map((deviceId) => state.devices.find((item) => item.device_id === deviceId)?.display_name || deviceId);
+    const deviceLabel = deviceNames.length ? `${deviceNames.length} Gerät${deviceNames.length === 1 ? "" : "e"}: ${deviceNames.join(", ")}` : "Noch kein Gerät zugeordnet";
     return `
       <article class="project-card application-card">
         <div>
           <p class="eyebrow">Persönliche Anwendung</p>
           <h2>${escapeHtml(project.name)}</h2>
           <p>${escapeHtml(project.description || "Diese Anwendung besitzt eine eigene Projektoberfläche.")}</p>
-          <small>Gerät: ${escapeHtml(deviceLabel)}</small>
+          <small>${escapeHtml(deviceLabel)}</small>
         </div>
         <div class="button-row">
           <button class="primary" type="button" data-open-application="${escapeAttribute(project.id)}">Anwendung öffnen</button>

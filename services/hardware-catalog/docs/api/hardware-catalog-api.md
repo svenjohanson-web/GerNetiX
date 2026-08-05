@@ -44,13 +44,21 @@ Das Waveshare `ESP32-S3-AUDIO-Board` ist als eigener Herstellerreferenz-Eintrag
 mit den Hersteller-SKUs 32184/32185 erfasst. Das Profil trennt fest integrierte
 Funktionen von optional angeschlossener Hardware: ES7210-Doppelmikrofon,
 ES8311/NS4150B-Audioausgang, sieben WS2812B-RGB-LEDs, PCF85063-RTC,
-TCA9555-I/O-Expander und TF-Slot sind Boardausstattung; LCD, Touch, Kamera,
+TCA9555-I/O-Expander, drei integrierte Funktionstasten und TF-Slot sind
+Boardausstattung; LCD, Touch, Kamera,
 Lautsprecher und Lithium-Akku werden nur als optionale Anschluesse beschrieben.
 Die herstellerdokumentierten GPIO- und EXIO-Zuordnungen werden in den
 Projekt-Board-Snapshot uebernommen. Das Board verweist fuer einen
 Basissoftware-Build auf das kompatible N16R8-Ziel, bleibt aber bis zur echten
 Build-, Flash- und Peripherieabnahme als `vendor_reference` mit
 `pending_user_hardware_test` gekennzeichnet.
+
+Projekt-Apps duerfen diese katalogisierten Merkmale als Mindestanforderungen
+referenzieren. Dabei bleibt die Unterscheidung erhalten: `digital_input`
+belegt nur die Prozessorfaehigkeit, waehrend `board_features.buttons` eine
+tatsaechlich integrierte Bedienhardware beschreibt. Dasselbe gilt fuer einen
+benannten Audio- oder Mikrofontreiber gegenueber einer abstrakten
+Audio-Capability.
 
 Die Referenz `firmware_build_target_id` ist keine Compiler-Konfiguration im
 Hardware-Katalog. Sie verweist auf die bei der Basissoftware gepflegte,

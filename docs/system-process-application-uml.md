@@ -120,6 +120,7 @@ flowchart LR
 
   subgraph deviceRuntime["Device Runtime"]
     esp32Basis["ESP32 Basissoftwareprofile<br/>FULL / MEDIUM / LOW"]
+    nexiRuntime["Nexi Projekt-Runtime<br/>Audio · Intents · Anwendungen"]
   end
 
   subgraph localTools["Lokale Tools / Build-Artefakte"]
@@ -134,7 +135,7 @@ flowchart LR
     identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     releaseDb[("Plattform-Release-Metadaten PostgreSQL<br/>public / authenticated / entitled / internal")]
     accountAssetDb[("Account-Asset-Metadaten PostgreSQL<br/>owner_only QR, Bilder, Bildstile")]
-    projectDb[("Project PostgreSQL<br/>Projekt, Owner, Rechte, Repository-/Commitreferenzen,<br/>Build-Metadaten, Fortschritt und Projekt-App-Laufzeitwerte")]
+    projectDb[("Project PostgreSQL<br/>Projekt, Owner, Rechte, Repository-/Commitreferenzen,<br/>Build-Metadaten, Fortschritt, App-Geraetebindungen und Laufzeitwerte")]
     forgejoDb[("Forgejo PostgreSQL + Repository-Volume<br/>eigene Datenbank forgejo + forgejo_data<br/>Projektdateien und Git-Historie")]
     projectLegacyDb[("Projekt Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     buildArtifactDb[("Build PostgreSQL<br/>Jobregister, Worker, Abbruchstatus, Locks, Cache-Generationen,<br/>Objekt-, Hash- und Quellreferenzen")]
@@ -179,7 +180,7 @@ flowchart LR
   sqliteExplorer --> graphDb
 
   identity --> projectServer
-  platformUi -->|"deklarative Projekt-App<br/>sessiongebundene Einstellungen"| identity
+  platformUi -->|"deklarative Projekt-App<br/>Einstellungen + Multi-Device-Auswahl"| identity
   projectServer -->|"Repository-Lifecycle + atomare Commits"| forgejo
   identity -->|"Build + Prebuild"| buildRouter
   identity -->|"typisierte Compute-Jobs"| workerCoordinator
@@ -216,6 +217,7 @@ flowchart LR
   identity -->|"Hardware-Assistent: Structured Board Profile, store=false"| externalLlm
   platformUi -->|"Origin-gebundene lokale Sitzung<br/>kein Wechsel der Oberfläche"| usbSerialHelper
   usbSerialHelper -. "USB-Erkennung, Flash und lokale Provisionierung" .-> esp32Basis
+  nexiRuntime -->|"versionierter Project Hook API"| esp32Basis
 
   buildDeploy --> mqttBroker
   mqttBroker --> esp32Basis
@@ -318,7 +320,7 @@ flowchart LR
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, unveraenderliche Account-Boardversionen, Purchase Contexts, Support-Status |
 | Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse konto- und projektpartitioniert in `telemetry_*` mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
-| Project Server | 4800 | `http://127.0.0.1:4800/` | Projektidentitaet, Owner, Rechte, deklarative Projekt-App-Manifeste aus versionierten Projektquellen sowie accountgebundene Projekt-App-Laufzeitwerte mit Revisionsschutz; lokal implementierter optionaler Forgejo-/Git-Adapter mit Repository-Bindung, Initialcommit, Baumlesen und atomarem Mehrdatei-Commit; SQL-Quellen bleiben bis zum kontrollierten Cutover Altpfad |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Projektidentitaet, Owner, Rechte, bis zu 16 geordnete App-Geraetebindungen mit kompatiblem Primaergeraet, deklarative Projekt-App-Manifeste aus versionierten Projektquellen sowie accountgebundene Projekt-App-Laufzeitwerte mit Revisionsschutz; lokal implementierter optionaler Forgejo-/Git-Adapter mit Repository-Bindung, Initialcommit, Baumlesen und atomarem Mehrdatei-Commit; SQL-Quellen bleiben bis zum kontrollierten Cutover Altpfad |
 | Forgejo | intern, Betriebsaufnahme offen | nur Backend-Netz; kein oeffentlicher Listener in der ersten Stufe | Ziel fuer private Git-Repositories, Systemvorlagen und echte Historie; Adapter, gepinnter Container, eigene PostgreSQL-Datenbank `forgejo`, `forgejo_data` sowie isolierte Container- und Restore-Nachweise lokal umgesetzt, Staging-Betrieb und Cutover noch offen |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | PostgreSQL-persistente Angebote, Warenkoerbe, Bestellungen und Purchase Contexts; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | VPS-intern sowie ausschliesslich am WireGuard-Interface `http://10.77.0.1:4910/`; kein oeffentlicher Listener | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als PostgreSQL-persistente Quelle |
@@ -347,8 +349,8 @@ flowchart LR
 | --- | --- | --- |
 | GerNetiX Plattform UI / Identity Server | Project Server | Projekte, commitgebundene Quellen, sessiongeschuetzte Repository-Karte mit Dateibaum/Historie/Diffs, agentische KI-Such-/Lesewerkzeuge statt pauschaler Dateiuebergabe, persistierte Project-Device-Allocation, Build-Jobs sowie interner Abgleich von wirksamem Accountplan, Policy-Version, Nutzung und `plan_locked` |
 | GerNetiX Anwendung / Projektoberflaeche / Identity Server | Project Server | `Meine Anwendungen` erkennt persoenliche Anwendungen nur aus accountgebundenen Projektmetadaten. Beim Oeffnen liest die Projektoberflaeche das strikt validierte `project-app/manifest.json` des eigenen Projekts und speichert ausschliesslich allowlist-validierte Laufzeitwerte unter der serverseitig abgeleiteten Account- und Projektbindung; der Browser liefert weder Account-ID noch ausfuehrbaren Code oder freie Endpunkte. |
-| GerNetiX Projekt-App / Identity Server | Device Management / AI Usage | Loest ausschliesslich im Manifest erlaubte Statusfelder auf: genau das dem Projekt zugeordnete Account-Device sowie die aus der Sitzung abgeleitete Account-Nutzung. Ausfaelle bleiben lokal auf dem jeweiligen Widget. |
-| GerNetiX Projekt-App / Identity Server | Telemetry Server | Liest hoechstens 20 manifestvalidierte Metriken unter der sitzungsgebundenen Account-/Projektidentitaet; `assigned_device` erzwingt das exakt zugeordnete Device. Je Bindung gelangen hoechstens 24 Werte ohne Metadaten in den Browser. |
+| GerNetiX Anwendung / Identity Server | Project Server / Device Management / AI Usage | Ordnet hoechstens 16 accountgebundene und zum Projektprofil kompatible Geraete zu. Project Server speichert die geordnete Liste; Device Management bleibt Wahrheit fuer Besitz und Status. Die Oberflaeche zeigt jedes Geraet, waehrend skalare Manifestbindungen das erste Geraet als kompatibles Primaergeraet verwenden. AI Usage bleibt aus der Sitzung abgeleitet; Ausfaelle bleiben lokal. |
+| GerNetiX Projekt-App / Identity Server | Telemetry Server | Liest hoechstens 20 manifestvalidierte Metriken unter der sitzungsgebundenen Account-/Projektidentitaet; `assigned_device` erzwingt das Primaergeraet der geordneten Geraetebindung. Je Bindung gelangen hoechstens 24 Werte ohne Metadaten in den Browser. |
 | Project Server | Forgejo | Private Repositorys provisionieren, Dateibaeume an festem Commit lesen und bestaetigte Mehrdatei-Aenderungen atomar mit erwartetem Head-SHA committen |
 | Forgejo | PostgreSQL-Datenbank `forgejo` und `forgejo_data` | Forgejo-eigene Verwaltungsdaten getrennt von `gernetix_runtime` sowie Git-Objekte und Repository-Historie persistent speichern |
 | GerNetiX Plattform UI / Identity Server | Project Server | Aktuelle Lesson, aktueller Step und abgeschlossene Steps eines accountgebundenen Lernprojekts laden und speichern |

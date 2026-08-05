@@ -166,10 +166,25 @@ function registerProjectRoutes(dependencies) {
       if (method === "GET") {
         const query = new URLSearchParams({ account_id: accountId });
         const snapshot = await projectServerJson(`${servicePath}?${query}`);
+        const [accountDevices, processorBoards] = await Promise.all([
+          dependencies.loadUserIdeDevices(session).catch(() => []),
+          dependencies.loadProcessorBoards?.().catch(() => []),
+        ]);
+        const assignedDeviceIds = Array.isArray(snapshot.assigned_device_ids)
+          ? snapshot.assigned_device_ids
+          : project.linked_device_ids || (project.linked_device_id ? [project.linked_device_id] : []);
+        const ownedDeviceIds = new Set(accountDevices.map((device) => device.device_id));
+        const safeAssignedDeviceIds = assignedDeviceIds.filter((deviceId) => ownedDeviceIds.has(deviceId));
+        const hardwareReports = new Map(accountDevices.map((device) => [
+          device.device_id,
+          projectAppDeviceCompatibility({ project, manifest: snapshot.manifest, device, processorBoards }),
+        ]));
         const bindings = await resolveProjectAppBindings({
           manifest: snapshot.manifest,
           project,
           session,
+          accountDevices,
+          assignedDeviceIds: safeAssignedDeviceIds,
           loadUserIdeDevices: dependencies.loadUserIdeDevices,
           loadAiUsageSummary: dependencies.loadAiUsageSummary,
           loadProjectTelemetry: (binding) => loadProjectAppTelemetry({
@@ -179,7 +194,14 @@ function registerProjectRoutes(dependencies) {
             telemetryJson: dependencies.telemetryJson,
           }),
         });
-        sendJson(res, 200, { ...snapshot, bindings });
+        sendJson(res, 200, {
+          ...snapshot,
+          assigned_device_ids: safeAssignedDeviceIds,
+          assigned_devices: accountDevices.filter((device) => safeAssignedDeviceIds.includes(device.device_id))
+            .map((device) => projectAppDeviceSummary(device, hardwareReports.get(device.device_id))),
+          available_devices: accountDevices.map((device) => projectAppDeviceSummary(device, hardwareReports.get(device.device_id))),
+          bindings,
+        });
         return;
       }
       const body = await readJsonBody(req);
@@ -194,6 +216,49 @@ function registerProjectRoutes(dependencies) {
       }));
     });
   }
+  registerProjectPattern("PUT", /^\/api\/platform\/projects\/([^/]+)\/project-app\/devices$/, async ({ req, res, match, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    const accountId = projectServerUserId(session);
+    const body = await readJsonBody(req);
+    const requestedIds = Array.isArray(body.device_ids) ? body.device_ids.map((item) => String(item || "").trim()) : null;
+    if (!requestedIds || requestedIds.length > 16 || new Set(requestedIds).size !== requestedIds.length) {
+      sendJson(res, 400, { error: "invalid_project_app_devices", message: "Waehle hoechstens 16 eindeutige Geraete aus." });
+      return;
+    }
+    const [accountDevices, processorBoards] = await Promise.all([
+      dependencies.loadUserIdeDevices(session).catch(() => []),
+      dependencies.loadProcessorBoards?.(),
+    ]);
+    const ownedDevicesById = new Map(accountDevices.map((device) => [device.device_id, device]));
+    if (requestedIds.some((deviceId) => !ownedDevicesById.has(deviceId))) {
+      sendJson(res, 403, { error: "project_app_device_not_owned", message: "Mindestens ein ausgewaehltes Geraet gehoert nicht zu diesem Account." });
+      return;
+    }
+    const snapshot = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/project-app?${new URLSearchParams({ account_id: accountId })}`);
+    const reports = new Map(accountDevices.map((device) => [
+      device.device_id,
+      projectAppDeviceCompatibility({ project, manifest: snapshot.manifest, device, processorBoards }),
+    ]));
+    const incompatibleIds = requestedIds.filter((deviceId) => !reports.get(deviceId)?.compatible);
+    if (incompatibleIds.length) {
+      const missingRequirements = [...new Set(incompatibleIds.flatMap((deviceId) => reports.get(deviceId)?.missing_requirements || []))];
+      sendJson(res, 409, {
+        error: "project_app_device_incompatible",
+        message: `Die ausgewaehlte Hardware erfuellt die Mindestanforderungen dieser Anwendung nicht: ${missingRequirements.join(", ")}.`,
+        missing_requirements: missingRequirements,
+      });
+      return;
+    }
+    const saved = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/project-app/devices`, {
+      method: "PUT",
+      body: { account_id: accountId, device_ids: requestedIds },
+    });
+    sendJson(res, 200, {
+      ...saved,
+      assigned_devices: requestedIds.map((deviceId) => projectAppDeviceSummary(ownedDevicesById.get(deviceId), reports.get(deviceId))),
+      available_devices: accountDevices.map((device) => projectAppDeviceSummary(device, reports.get(device.device_id))),
+    });
+  });
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/basissoftware-incidents$/, async ({ req, res, match, session }) => {
     const projectId = decodeURIComponent(match[1]);
     const project = await requireSessionProject(session, projectId);
@@ -323,17 +388,18 @@ function registerProjectRoutes(dependencies) {
   });
 }
 
-async function resolveProjectAppBindings({ manifest, project, session, loadUserIdeDevices, loadAiUsageSummary, loadProjectTelemetry }) {
+async function resolveProjectAppBindings({ manifest, project, session, accountDevices, assignedDeviceIds, loadUserIdeDevices, loadAiUsageSummary, loadProjectTelemetry }) {
   const bindings = Array.isArray(manifest?.bindings) ? manifest.bindings : [];
   const needsDevice = bindings.some((binding) => binding.type === "device_status");
   const needsAiUsage = bindings.some((binding) => binding.type === "ai_usage");
   const telemetryBindings = bindings.filter((binding) => binding.type === "telemetry");
   const [devices, aiUsage, telemetryValues] = await Promise.all([
-    needsDevice && loadUserIdeDevices ? loadUserIdeDevices(session).catch(() => []) : [],
+    Array.isArray(accountDevices) ? accountDevices : needsDevice && loadUserIdeDevices ? loadUserIdeDevices(session).catch(() => []) : [],
     needsAiUsage && loadAiUsageSummary ? loadAiUsageSummary(session).catch(() => null) : null,
     resolveTelemetryBindings(telemetryBindings, loadProjectTelemetry),
   ]);
-  const device = devices.find((item) => item.device_id === project.linked_device_id) || null;
+  const primaryDeviceId = assignedDeviceIds?.[0] || project.linked_device_ids?.[0] || project.linked_device_id;
+  const device = devices.find((item) => item.device_id === primaryDeviceId) || null;
   const accountUsage = aiUsage?.available === false ? null : aiUsage?.account_usage || null;
   const result = {};
   for (const binding of bindings) {
@@ -344,6 +410,65 @@ async function resolveProjectAppBindings({ manifest, project, session, loadUserI
     if (binding.type === "project") result[binding.id] = projectAppProjectValue(project, binding.field);
   }
   return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== undefined));
+}
+
+function projectAppDeviceSummary(device = {}, compatibility = { compatible: true, missing_requirements: [] }) {
+  return {
+    device_id: String(device.device_id || ""),
+    display_name: String(device.display_name || device.device_id || "Geraet"),
+    hardware_profile_id: String(device.hardware_profile_id || ""),
+    connectivity_status: String(device.connectivity_status || "unknown"),
+    firmware_version: String(device.firmware_version || ""),
+    last_seen_at: String(device.last_seen_at || ""),
+    battery_percent: Number.isFinite(Number(device.battery_percent)) ? Number(device.battery_percent) : null,
+    compatible: compatibility.compatible !== false,
+    missing_requirements: compatibility.missing_requirements || [],
+  };
+}
+
+function projectAppDeviceCompatibility({ project = {}, manifest = {}, device = {}, processorBoards = [] } = {}) {
+  const targetProfile = String(project.hardware_profile_id || "");
+  const deviceProfile = String(device.hardware_profile_id || "");
+  const requirements = manifest.hardware_requirements;
+  if (!requirements) {
+    const compatible = !targetProfile || !deviceProfile || targetProfile === deviceProfile;
+    return { compatible, missing_requirements: compatible ? [] : ["passendes Boardprofil"] };
+  }
+  const board = processorBoards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
+    .filter(Boolean).some((id) => String(id) === deviceProfile));
+  const missing = [];
+  const supportedProfiles = requirements.supported_hardware_profile_ids || [];
+  if (supportedProfiles.length && !supportedProfiles.includes(deviceProfile)) missing.push("unterstuetztes Nexi-Boardprofil");
+  if (!board) missing.push("verifizierbares Hardwareprofil");
+  if (requirements.processor_variant && normalizeHardwareValue(board?.mcu_variant) !== normalizeHardwareValue(requirements.processor_variant)) {
+    missing.push(requirements.processor_variant);
+  }
+  const boardFeatures = {
+    ...(board?.default_instance_configuration?.board_features || {}),
+    ...(device.instance_configuration?.board_features || {}),
+  };
+  const capabilities = new Set([...(board?.capability_ids || []), ...(device.technical_capability_ids || [])]
+    .map(canonicalCapabilityId));
+  for (const requirement of requirements.features || []) {
+    const feature = boardFeatures[requirement.board_feature] || {};
+    const featureCount = Number(feature.count ?? feature.channels ?? 0);
+    const satisfied = capabilities.has(canonicalCapabilityId(requirement.capability_id))
+      && feature.enabled !== false
+      && (!requirement.require_included || feature.included === true)
+      && (!requirement.require_driver || Boolean(String(feature.driver || "").trim()))
+      && (!requirement.min_count || featureCount >= requirement.min_count);
+    if (!satisfied) missing.push(requirement.label);
+  }
+  return { compatible: missing.length === 0, missing_requirements: [...new Set(missing)] };
+}
+
+function canonicalCapabilityId(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized.startsWith("capability.") ? normalized : `capability.${normalized}`;
+}
+
+function normalizeHardwareValue(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 async function resolveTelemetryBindings(bindings, loadProjectTelemetry) {
@@ -406,4 +531,4 @@ function projectAppProjectValue(project, field) {
   }[field];
 }
 
-module.exports = { registerProjectRoutes, resolveProjectAppBindings, loadProjectAppTelemetry };
+module.exports = { registerProjectRoutes, resolveProjectAppBindings, loadProjectAppTelemetry, projectAppDeviceCompatibility };

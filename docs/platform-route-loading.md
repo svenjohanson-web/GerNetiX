@@ -37,7 +37,9 @@ explizites Profil verwenden.
 - `Meine Anwendungen` lädt Projekte im Bootstrap und ausschließlich die für
   die Karten sichtbaren Geräteinformationen. Projekt-App-Manifest,
   Laufzeitwerte, Bindungen und Renderer werden erst beim Öffnen einer
-  konkreten Anwendung geladen.
+  konkreten Anwendung geladen. Erst dort wird auch die kleine Liste der mit
+  dem Projekt kompatiblen Account-Geräte für die Multi-Device-Zuordnung
+  aufgelöst; sie gehört nicht zum globalen Dashboard-Bootstrap.
 - Device-Management lädt Projekte, Geräte und Builds, aber keine Community-,
   Wissens- oder KI-Abrechnungsdaten.
 - Billing lädt Projekte sowie Billing- und KI-Abrechnungsdaten.

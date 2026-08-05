@@ -6,12 +6,51 @@ Hardware-Vorlaeufer: Dieses Referenzprojekt startet mit der vollstaendigen, unve
 GerNetiX-ESP32-Basissoftware und bindet die Hardware-Erprobung ausschliesslich
 ueber `onProjectInit()` und `onProjectTick()` ein.
 
-Beim Einschalten fragt das Board den Betriebsmodus ab. Die linke Taste wechselt
+## Softwaregrenze
+
+Die GerNetiX-Basissoftware ist auch ohne Nexi vollstaendig start-,
+provisionier-, diagnose- und updatefaehig. Ihre schwachen Standard-Hooks bilden
+den leeren Projektfall ab. Nexi implementiert ausschliesslich den versionierten
+Projekt-Hook-Vertrag und darf WLAN-Setup, Identitaet, OTA, Recovery oder das
+Basissoftware-Webinterface weder ersetzen noch veraendern.
+
+Die Referenzfirmware ist inzwischen in eigenstaendig testbare Schichten
+aufgeteilt:
+
+```text
+include/nexi/
+  runtime.h                    kurzer Lifecycle hinter dem Projekt-Hook
+  intent.h                     typisierte, eingabeunabhaengige Befehle
+  input_provider.h             Vertrag fuer Sprache, Touch und Serviceeingaben
+  application*.h              App-Lifecycle und genau eine aktive Anwendung
+  capability_policy.h          lokale und freigegebene Cloud-Faehigkeiten
+  privacy_gate.h               Aufnahme- und Uebertragungsfreigabe
+  hardware_platform.h          Waveshare-Boardadapter
+  audio_engine.h               alleiniger Besitzer des Audiopfads
+  service_button_input.h       optionale Referenz-/Servicebedienung
+  voice_studio_application.h   erste vollstaendige Offline-Anwendung
+  voice_types.h/voice_effects.h gemeinsame hardwarefreie Sprachtypen und DSP
+src/
+  *.cpp                        Implementierungen dieser Module
+  project_entry.cpp            einziger Adapter zur Basissoftware
+voice_lab.cpp                  Composition Root ohne Treiberimplementierungen
+```
+
+Damit sind Boardtreiber, Audio Engine, Eingabequelle, Anwendungsmanager,
+Stimmenstudio und die lokale Datenschutz-/Faehigkeitsgrenze getrennt. Wake
+Word, lokale Sprachbefehle und die weiteren Offline-Anwendungen werden auf
+denselben Vertraegen ergaenzt. Die verbindlichen Abhaengigkeitsregeln und der
+aktuelle Umsetzungsstand stehen unter `docs/nexi-firmware-architecture.md`.
+
+Beim Einschalten fragt die aktuelle Hardware-Referenz den Betriebsmodus ab. Die linke Taste wechselt
 zwischen dem gruen dargestellten Stimmenstudio und dem violett dargestellten
 KI-Geschichtenmodus, die mittlere Taste bestaetigt. Der KI-Modus ist bis zur
 Anbindung des GerNetiX-Sprachdienstes als nicht verfuegbar markiert und sendet
 keine Audiodaten. Im Stimmenstudio fuehrt ein langer Druck von etwa einer
-Sekunde auf die linke Taste zurueck zur Modusauswahl.
+Sekunde auf die linke Taste zurueck zur Modusauswahl. Diese Tastensteuerung ist
+ein optionaler Service-Input fuer Aufbau, Diagnose und Entwicklung. Die
+spaetere normale Produktbedienung wechselt Anwendungen ueber einen lokalen
+Sprach-InputProvider und benoetigt dafuer keine Modustaste.
 
 ## Erster Meilenstein
 

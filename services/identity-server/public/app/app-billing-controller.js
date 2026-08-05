@@ -21,7 +21,8 @@ function renderBilling() {
   ].map(summaryItem).join("")
     + renderStorageQuotaStatus(resources)
     + renderProjectSelection(policy)
-    + `<article class="summary-item ai-credit-purchase-card"><span>KI-Guthaben</span><strong>Mehr KI-Credits kaufen</strong><small>Gekaufte Credits verfallen nicht.</small><div class="ai-credit-package-list">${packages.map(renderAiCreditPackage).join("")}</div><button class="primary" type="button" data-buy-ai-credits>KI-Credits kaufen</button></article>`;
+    + `<article class="summary-item ai-credit-purchase-card"><span>KI-Guthaben</span><strong>Mehr KI-Credits kaufen</strong><small>Gekaufte Credits verfallen nicht.</small><div class="ai-credit-package-list">${packages.map(renderAiCreditPackage).join("")}</div><button class="primary" type="button" data-buy-ai-credits>KI-Credits kaufen</button></article>`
+    + `<article class="summary-item plan-comparison-card"><span>Konten &amp; Tarife</span><strong>Vorteile der Cloud-Stufen vergleichen</strong><small>Kostenlos, Basic+, Premium, KI-Credits und Home-Lizenz verständlich voneinander trennen.</small><a class="button-link" href="/tarife/">Tarifübersicht öffnen</a></article>`;
   target.querySelector("[data-buy-ai-credits]")?.addEventListener("click", () => openAiCreditPurchaseDialog());
   target.querySelector("[data-storage-projects]")?.addEventListener("click", () => navigate("/app/development-platform/"));
   target.querySelector("[data-save-project-selection]")?.addEventListener("click", async (event) => {

@@ -91,6 +91,14 @@ function createHttpApp(options) {
       ));
       return;
     }
+    const projectAppDevices = path.match(new RegExp(`^${prefix}/([^/]+)/project-app/devices$`));
+    if (req.method === "PUT" && projectAppDevices) {
+      sendJson(res, 200, await service.updateProjectAppDevices(
+        decodeURIComponent(projectAppDevices[1]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
     const debugSessionActivity = path.match(new RegExp(`^${prefix}/([^/]+)/debug-session/activity$`));
     if (req.method === "POST" && debugSessionActivity) {
       sendJson(res, 200, await service.touchDebugSession(decodeURIComponent(debugSessionActivity[1])));

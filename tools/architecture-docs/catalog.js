@@ -54,6 +54,7 @@ const curatedDocuments = {
   "docs/incremental-build-strategy.md": { category: "development", status: "maintained", order: 4 },
   "docs/fast-embedded-firmware-feedback.md": { category: "development", status: "maintained", order: 5 },
   "docs/embedded-device-debug-concept.md": { category: "development", status: "maintained", order: 6 },
+  "docs/nexi-firmware-architecture.md": { category: "development", status: "maintained", order: 7 },
 
   "docs/audit-security-legal-views.md": { category: "operations", status: "maintained", order: 1 },
   "docs/security-posture.md": { category: "operations", status: "maintained", order: 2 },

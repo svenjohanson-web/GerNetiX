@@ -12,7 +12,7 @@ const DEVICE_STATUS_FIELDS = new Set(["connection_state", "last_seen_at", "firmw
 const AI_USAGE_FIELDS = new Set(["daily_requests", "monthly_requests", "daily_cost", "monthly_cost", "remaining_budget"]);
 const PROJECT_FIELDS = new Set(["title", "status", "updated_at"]);
 const MAX_TELEMETRY_BINDINGS = 20;
-const TOP_LEVEL_KEYS = new Set(["schema", "manifest_version", "app_id", "title", "description", "settings", "bindings", "actions", "pages"]);
+const TOP_LEVEL_KEYS = new Set(["schema", "manifest_version", "app_id", "title", "description", "hardware_requirements", "settings", "bindings", "actions", "pages"]);
 
 function validateProjectAppManifest(input) {
   const manifest = object(input, "manifest");
@@ -22,6 +22,9 @@ function validateProjectAppManifest(input) {
   const appId = identifier(manifest.app_id, "manifest.app_id");
   const title = plainText(manifest.title, "manifest.title", 120);
   const description = optionalPlainText(manifest.description, "manifest.description", 1000);
+  const hardwareRequirements = manifest.hardware_requirements === undefined
+    ? undefined
+    : validateHardwareRequirements(manifest.hardware_requirements);
 
   const settings = array(manifest.settings, "manifest.settings", 100).map(validateSetting);
   unique(settings, "key", "manifest.settings");
@@ -40,7 +43,37 @@ function validateProjectAppManifest(input) {
 
   const pages = array(manifest.pages, "manifest.pages", 30, 1).map((page, index) => validatePage(page, index, bindingsById, actionsById, settingsByKey));
   unique(pages, "id", "manifest.pages");
-  return compact({ schema: PROJECT_APP_SCHEMA, manifest_version: manifestVersion, app_id: appId, title, description, settings, bindings, actions, pages });
+  return compact({ schema: PROJECT_APP_SCHEMA, manifest_version: manifestVersion, app_id: appId, title, description, hardware_requirements: hardwareRequirements, settings, bindings, actions, pages });
+}
+
+function validateHardwareRequirements(input) {
+  const path = "manifest.hardware_requirements";
+  const requirements = object(input, path);
+  exactKeys(requirements, new Set(["processor_variant", "supported_hardware_profile_ids", "features"]), path);
+  const supportedProfiles = array(requirements.supported_hardware_profile_ids || [], `${path}.supported_hardware_profile_ids`, 16)
+    .map((value, index) => identifier(value, `${path}.supported_hardware_profile_ids[${index}]`));
+  if (new Set(supportedProfiles).size !== supportedProfiles.length) invalid(`${path}.supported_hardware_profile_ids`, "muss eindeutig sein");
+  const features = array(requirements.features || [], `${path}.features`, 16).map((inputFeature, index) => {
+    const featurePath = `${path}.features[${index}]`;
+    const feature = object(inputFeature, featurePath);
+    exactKeys(feature, new Set(["id", "label", "capability_id", "board_feature", "require_included", "require_driver", "min_count"]), featurePath);
+    const normalized = compact({
+      id: identifier(feature.id, `${featurePath}.id`),
+      label: plainText(feature.label, `${featurePath}.label`, 120),
+      capability_id: identifier(feature.capability_id, `${featurePath}.capability_id`),
+      board_feature: identifier(feature.board_feature, `${featurePath}.board_feature`),
+      require_included: feature.require_included === true,
+      require_driver: feature.require_driver === true,
+    });
+    if (feature.min_count !== undefined) normalized.min_count = positiveInteger(feature.min_count, `${featurePath}.min_count`);
+    return normalized;
+  });
+  unique(features, "id", `${path}.features`);
+  return compact({
+    processor_variant: optionalPlainText(requirements.processor_variant, `${path}.processor_variant`, 80),
+    supported_hardware_profile_ids: supportedProfiles,
+    features,
+  });
 }
 
 function validateProjectAppValues(manifest, values, options = {}) {

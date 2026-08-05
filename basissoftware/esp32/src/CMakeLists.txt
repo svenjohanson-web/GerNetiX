@@ -16,7 +16,12 @@ if(DEFINED GERNETIX_PROJECT_SOURCE_DIR)
   # project stays outside the basissoftware tree, but is compiled into the
   # firmware's application component until project components are split into
   # their own public SDK target.
-  file(GLOB GERNETIX_PROJECT_SOURCES "${GERNETIX_PROJECT_SOURCE_DIR}/*.cpp")
+  file(GLOB_RECURSE GERNETIX_PROJECT_SOURCES
+    "${GERNETIX_PROJECT_SOURCE_DIR}/*.cpp")
+  if(EXISTS "${GERNETIX_PROJECT_SOURCE_DIR}/include")
+    list(APPEND GERNETIX_PROJECT_INCLUDE_DIRS
+      "${GERNETIX_PROJECT_SOURCE_DIR}/include")
+  endif()
 endif()
 
 idf_component_register(

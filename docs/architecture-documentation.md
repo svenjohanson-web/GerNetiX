@@ -60,3 +60,7 @@ Die akzeptierte Portabilitaetsgrenze fuer eine spaetere eigenstaendige
 School-Deployment-Zelle sowie die Regel fuer standardmaessig deaktivierte
 externe KI und ausschliesslich lokal verwaltetes BYOK steht in
 [School-Deploymentgrenze und KI-Provider](school-deployment-architecture.md).
+
+Die eigenstaendige GerNetiX-Basissoftware, ihr versionierter Projektvertrag und
+die Modulgrenzen von Nexi sind in der
+[Nexi-Firmwarearchitektur](nexi-firmware-architecture.md) festgelegt.

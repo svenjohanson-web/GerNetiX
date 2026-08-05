@@ -80,6 +80,10 @@ class ProjectService {
       softwareUnits,
     );
     const activeSoftwareUnit = softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId) || null;
+    const assignedDeviceIds = projectDeviceIds(input);
+    if (Array.isArray(input.device_ids) && assignedDeviceIds.length !== input.device_ids.length) {
+      throw new ProjectServerError("invalid_project_app_devices", "device_ids enthaelt ungueltige oder doppelte Geraete-IDs.", 400);
+    }
     const project = {
       project_id: input.project_id || createId("project"),
       user_id: required(input.user_id, "user_id"),
@@ -88,7 +92,8 @@ class ProjectService {
       description: input.description || "",
       learning_project_id: input.learning_project_id || "",
       hardware_profile_id: input.hardware_profile_id || "hardware.processor_board.generic_esp_wroom32",
-      device_id: input.device_id || null,
+      device_id: assignedDeviceIds[0] || null,
+      device_ids: assignedDeviceIds,
       build_config: activeSoftwareUnit?.build_config || normalizedBuildConfig,
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
@@ -180,6 +185,7 @@ class ProjectService {
     return {
       project_id: project.project_id,
       account_id: project.user_id,
+      assigned_device_ids: projectDeviceIds(project),
       manifest,
       manifest_version: manifest.manifest_version,
       revision: stored?.revision || 0,
@@ -237,6 +243,34 @@ class ProjectService {
     };
   }
 
+  async updateProjectAppDevices(projectId, input = {}) {
+    await this.ready;
+    const accountId = required(input.account_id, "account_id");
+    const project = await this.requireAccountProject(projectId, accountId);
+    this.assertProjectWritable(project);
+    if (!Array.isArray(input.device_ids)) {
+      throw new ProjectServerError("invalid_project_app_devices", "device_ids muss eine Liste sein.", 400);
+    }
+    const assignedDeviceIds = safeIdentifiers(input.device_ids, 16);
+    if (assignedDeviceIds.length !== input.device_ids.length) {
+      throw new ProjectServerError("invalid_project_app_devices", "device_ids enthaelt ungueltige oder doppelte Geraete-IDs.", 400);
+    }
+    const now = new Date().toISOString();
+    await this.repository.saveProject({
+      ...project,
+      device_id: assignedDeviceIds[0] || null,
+      device_ids: assignedDeviceIds,
+      updated_at: now,
+    });
+    return {
+      project_id: project.project_id,
+      account_id: project.user_id,
+      assigned_device_ids: assignedDeviceIds,
+      primary_device_id: assignedDeviceIds[0] || null,
+      updated_at: now,
+    };
+  }
+
   async deleteProject(projectId) {
     await this.ready;
     const project = await this.requireProject(projectId);
@@ -287,12 +321,19 @@ class ProjectService {
     if (Object.hasOwn(input, "software_units") || Object.hasOwn(input, "active_software_unit_id")) {
       buildConfig = softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || null;
     }
+    const assignedDeviceIds = Object.hasOwn(input, "device_ids")
+      ? projectDeviceIds({ device_ids: input.device_ids })
+      : input.device_id === undefined ? projectDeviceIds(project) : projectDeviceIds({ device_id: input.device_id });
+    if (Array.isArray(input.device_ids) && assignedDeviceIds.length !== input.device_ids.length) {
+      throw new ProjectServerError("invalid_project_app_devices", "device_ids enthaelt ungueltige oder doppelte Geraete-IDs.", 400);
+    }
     const next = {
       ...project,
       title: input.title || project.title,
       description: input.description === undefined ? project.description : input.description,
       hardware_profile_id: input.hardware_profile_id || project.hardware_profile_id,
-      device_id: input.device_id === undefined ? project.device_id : input.device_id,
+      device_id: assignedDeviceIds[0] || null,
+      device_ids: assignedDeviceIds,
       build_config: buildConfig,
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
@@ -2217,6 +2258,11 @@ function safeIdentifiers(values, limit = 64) {
     .slice(0, limit);
 }
 
+function projectDeviceIds(project = {}) {
+  if (Array.isArray(project.device_ids)) return safeIdentifiers(project.device_ids, 16);
+  return safeIdentifiers(project.device_id ? [project.device_id] : [], 16);
+}
+
 function debugSessionEnvelope(project, session) {
   return {
     session: session ? structuredClone(session) : null,
@@ -2341,6 +2387,7 @@ function sanitizeProject(project) {
     learning_project_id: project.learning_project_id,
     hardware_profile_id: project.hardware_profile_id,
     device_id: project.device_id,
+    device_ids: projectDeviceIds(project),
     build_config: project.build_config,
     software_units: softwareUnits,
     active_software_unit_id: activeSoftwareUnitIdFor(project.active_software_unit_id, softwareUnits),
@@ -2359,6 +2406,7 @@ function projectVersionHash(projectSnapshot, sources) {
       learning_project_id: projectSnapshot.learning_project_id,
       hardware_profile_id: projectSnapshot.hardware_profile_id,
       device_id: projectSnapshot.device_id,
+      device_ids: projectSnapshot.device_ids,
       build_config: projectSnapshot.build_config,
       software_units: projectSnapshot.software_units,
       active_software_unit_id: projectSnapshot.active_software_unit_id,

@@ -320,6 +320,8 @@ GerNetiX School wird als **jährliche Education-Server-Lizenz** angeboten – wa
 
 Cloud ist hier kein Zwangsspeicher für ein Zuhause, sondern die kontoübergreifende Entwicklungs- und Komfortschicht. Die bereits vorhandene Trennung von Webshop, Account und Aktivierungscode bleibt verbindlich.
 
+Die öffentliche, kundenverständliche Vergleichssicht liegt unter **`/tarife/`**. Sie beginnt nicht mit Tarifnamen oder Sperrstatus, sondern mit einem konkreten Funktionsweg: Was funktioniert bereits als Nachbau, was ergänzt ein kostenloses Konto, was benötigt einen Tarif oder KI-Verbrauch und was muss der Nutzer als Nächstes tun? Erst danach folgt der Tarifvergleich als Nachschlagewerk. Dabei muss die Sicht immer zwischen Zugang/Konto, Cloud-Tarif, KI-Credits, Recovery-Verfahren und separater Home-Lizenz unterscheiden. Noch nicht kaufbare Stufen, Preise oder Kontingente werden ausdrücklich als geplant markiert; zusätzlich nennt die Seite den fachlichen Grund und einen heute möglichen nächsten Schritt. Sie darf aus strategischen Zielwerten keine bereits verfügbare Leistung ableiten.
+
 | Leistung | Cloud Kostenlos | Cloud Basic+ | Cloud Premium |
 | --- | --- | --- |
 | Konto, Community, öffentliche Hilfe | Ja | Ja | Ja |

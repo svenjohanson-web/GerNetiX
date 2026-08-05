@@ -91,6 +91,8 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(waveshareAudio.default_instance_configuration.hardware_test_status, "pending_user_hardware_test");
   assert.deepEqual(waveshareAudio.default_instance_configuration.manufacturer_skus, ["32184", "32185"]);
   assert.equal(waveshareAudio.default_instance_configuration.board_features.microphone.driver, "es7210");
+  assert.equal(waveshareAudio.default_instance_configuration.board_features.buttons.count, 3);
+  assert.equal(waveshareAudio.default_instance_configuration.board_features.buttons.included, true);
   assert.equal(waveshareAudio.default_instance_configuration.board_features.microphone.pins.data_in, 15);
   assert.equal(waveshareAudio.default_instance_configuration.board_features.speaker.driver, "es8311");
   assert.equal(waveshareAudio.default_instance_configuration.board_features.speaker.pins.data_out, 16);

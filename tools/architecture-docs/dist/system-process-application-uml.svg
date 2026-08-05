@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Dialog und Executor vereinheitlichen Flash-Datei, USB, OTA, FlashBox, Sperrgruende, Terminal, Integritaetspruefung, Schreiben und Reset; Produktbereiche liefern nur fachlichen Kontext. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories, Binaries im Artifact Store. Der KI-Hardware-Assistent ist Teil der Identity-Plattform. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
+  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Anwendungen koennen bis zu 16 kompatible Account-Geraete binden; Project Server speichert die geordnete Liste, Device Management bestaetigt Besitz und Status. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories, Binaries im Artifact Store. Der KI-Hardware-Assistent ist Teil der Identity-Plattform. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -47,7 +47,7 @@
 
     <rect class="node app" x="265" y="150" width="260" height="92" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">Meine Anwendungen · IDE · Projektoberfläche · KI-Hardware-Assistent</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">Meine Anwendungen · Multi-Device · IDE · KI-Hardware-Assistent</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">Zentraler Flash-Dialog: Datei · USB · OTA · FlashBox · Terminal</text>
 
     <text class="smallText" x="395" y="234" text-anchor="middle">Provisioning: lokaler WLAN-Scan + USB-Transfer</text>
@@ -173,11 +173,14 @@
   </g>
 
   <g id="deviceRuntime">
-    <rect class="cluster" x="1420" y="530" width="220" height="145" rx="14"/>
+    <rect class="cluster" x="1420" y="530" width="220" height="180" rx="14"/>
     <text class="clusterTitle" x="1440" y="559">Device Runtime</text>
     <rect class="node edge" x="1445" y="585" width="170" height="58" rx="10"/>
     <text class="titleText" x="1530" y="609" text-anchor="middle">ESP32 Basissoftwareprofile</text>
     <text class="smallText" x="1530" y="629" text-anchor="middle">FULL / MEDIUM / LOW</text>
+    <rect class="node app" x="1445" y="652" width="170" height="42" rx="10"/>
+    <text class="titleText" x="1530" y="670" text-anchor="middle">Nexi Projekt-Runtime</text>
+    <text class="smallText" x="1530" y="687" text-anchor="middle">Audio · Intents · Anwendungen</text>
   </g>
 
   <g id="platformInfrastructure">
@@ -286,6 +289,8 @@
   <text class="label" x="1540" y="718">MQTT</text>
   <path class="line" d="M 1530 585 L 1530 795"/>
   <text class="label" x="1540" y="694">Status</text>
+  <path class="line" d="M 1530 652 L 1530 643"/>
+  <text class="label" x="1540" y="650">Project Hook API</text>
   <path class="line dashed" d="M 1445 614 L 1360 177"/>
   <text class="label" x="1368" y="380">Firmware HTTPS</text>
 

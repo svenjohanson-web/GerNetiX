@@ -61,7 +61,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260805-knowledge-chapter-lazy-1/);
+  assert.match(publicHtml, /app\.css\?v=20260805-plan-comparison-1/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -369,7 +369,7 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicRuntimeUtils, /skinparam backgroundColor transparent/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBackgroundColor #1E3A5F/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBorderColor #67E8F9/);
-  assert.match(publicHtml, /app\.css\?v=20260805-knowledge-chapter-lazy-1/);
+  assert.match(publicHtml, /app\.css\?v=20260805-plan-comparison-1/);
   assert.match(publicCss, /\.development-workspace-active \.development-page-actions button \{[\s\S]*font-size: 12px/);
 });
 

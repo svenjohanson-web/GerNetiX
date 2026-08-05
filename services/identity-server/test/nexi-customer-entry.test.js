@@ -31,8 +31,13 @@ test("keeps Nexi Basic useful without claiming an active AI provider", () => {
   assert.ok(decisions);
   const firmware = sources.find((source) => source.path === "Komponenten/IoT-Device 1/src/user_main.cpp");
   assert.ok(firmware);
-  assert.match(firmware.content, /extern "C" void onProjectInit\(\)/);
-  assert.match(firmware.content, /VoiceEffect::Robot/);
+  assert.match(firmware.content, /nexi::ApplicationManager/);
+  const projectEntry = sources.find((source) => source.path === "Komponenten/IoT-Device 1/src/project_entry.cpp");
+  const voiceTypes = sources.find((source) => source.path === "Komponenten/IoT-Device 1/include/nexi/voice_types.h");
+  assert.ok(projectEntry);
+  assert.ok(voiceTypes);
+  assert.match(projectEntry.content, /extern "C" void onProjectInit\(\)/);
+  assert.match(voiceTypes.content, /enum class VoiceEffect[\s\S]*\bRobot,/);
   const modelSource = fs.readFileSync(path.join(root, "src/dev/project-models/nexi-course.json"), "utf8");
   assert.match(modelSource, /funktioniert lokal/);
   assert.match(modelSource, /Ohne Provider/);
@@ -56,6 +61,9 @@ test("defines every promised Nexi parent field in the versioned project app", ()
   assert.ok(nexiProjectApp.pages.flatMap((page) => page.widgets).some((widget) => widget.type === "input"));
   const source = JSON.parse(createNexiCourseModel().createSources().find((item) => item.path === "project-app/manifest.json").content);
   assert.deepEqual(source, nexiProjectApp);
+  const intro = nexiProjectApp.pages.find((page) => page.id === "overview").widgets.find((widget) => widget.id === "intro");
+  assert.match(intro.text, /Aufnahme, Stimmeffekte, Wiedergabe, Tasten und LEDs funktionieren direkt/);
+  assert.match(intro.text, /ausdrücklich aktivierst[\s\S]*KI-Anbieter freigegeben[\s\S]*Kontingent verfügbar/);
 });
 
 test("renders the four Nexi entries in the learning project overview", () => {

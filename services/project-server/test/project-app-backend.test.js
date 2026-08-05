@@ -62,6 +62,23 @@ test("validates and normalizes a declarative Project-App manifest v1", () => {
   });
 });
 
+test("validates declarative hardware requirements without executable matching rules", () => {
+  const input = nexiManifest();
+  input.hardware_requirements = {
+    processor_variant: "ESP32-S3",
+    supported_hardware_profile_ids: ["hardware.processor_board.waveshare_esp32_s3_audio_board"],
+    features: [
+      { id: "audio_driver", label: "Audio-Treiber", capability_id: "capability.audio_output", board_feature: "speaker", require_driver: true },
+      { id: "buttons", label: "3 Bedientasten", capability_id: "capability.digital_input", board_feature: "buttons", require_included: true, min_count: 3 },
+    ],
+  };
+  const manifest = validateProjectAppManifest(input);
+  assert.equal(manifest.hardware_requirements.processor_variant, "ESP32-S3");
+  assert.equal(manifest.hardware_requirements.features[1].min_count, 3);
+  input.hardware_requirements.matcher = "device => true";
+  assert.throws(() => validateProjectAppManifest(input), /matcher ist nicht erlaubt/);
+});
+
 test("rejects executable hooks, free URLs and dangling references", () => {
   const executable = nexiManifest();
   executable.pages[0].widgets[0].onClick = "fetch('https://example.test')";
@@ -128,6 +145,28 @@ test("loads the versioned manifest and stores account-bound runtime settings wit
     account_id: "account-1", manifest_version: 1, expected_revision: 0,
     values: { volume: 2 },
   }), (error) => error.code === "project_app_settings_revision_conflict" && error.status === 409);
+});
+
+test("stores up to sixteen application device bindings while preserving a legacy primary device", async () => {
+  const repository = seededRepository();
+  const service = new ProjectService({ repository });
+  const saved = await service.updateProjectAppDevices("project-nexi", {
+    account_id: "account-1",
+    device_ids: ["nexi-kitchen", "nexi-bedroom"],
+  });
+  assert.deepEqual(saved.assigned_device_ids, ["nexi-kitchen", "nexi-bedroom"]);
+  assert.equal(saved.primary_device_id, "nexi-kitchen");
+  const project = await service.getProject("project-nexi");
+  assert.equal(project.device_id, "nexi-kitchen");
+  assert.deepEqual(project.device_ids, ["nexi-kitchen", "nexi-bedroom"]);
+  const snapshot = await service.getProjectAppSettings("project-nexi", "account-1");
+  assert.deepEqual(snapshot.assigned_device_ids, ["nexi-kitchen", "nexi-bedroom"]);
+  await assert.rejects(() => service.updateProjectAppDevices("project-nexi", {
+    account_id: "account-2", device_ids: ["foreign-device"],
+  }), (error) => error.code === "project_not_found" && error.status === 404);
+  await assert.rejects(() => service.updateProjectAppDevices("project-nexi", {
+    account_id: "account-1", device_ids: ["duplicate", "duplicate"],
+  }), (error) => error.code === "invalid_project_app_devices" && error.status === 400);
 });
 
 test("hides projects from foreign accounts and detects stale manifests", async () => {

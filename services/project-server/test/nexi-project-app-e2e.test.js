@@ -28,6 +28,7 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
       description: definition.summary,
       learning_project_id: "learning_project.nexi_voice_assistant",
       hardware_profile_id: definition.hardware_profile_id,
+      device_ids: ["nexi-living-room", "nexi-child-room"],
       build_config: definition.build_config,
       sources: model.createSources(),
     });
@@ -37,11 +38,16 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
     assert.equal(created.build_config.environment, "waveshare_esp32_s3_audio_board");
     assert.equal(created.build_config.flash_size_mb, 16);
     assert.equal(created.build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
-    assert.match((await service.getSource(projectId, definition.build_config.user_source_path)).content, /VoiceEffect::Echo/);
+    assert.match((await service.getSource(projectId, definition.build_config.user_source_path)).content, /nexi::ApplicationManager/);
+    assert.match((await service.getSource(
+      projectId,
+      "Komponenten/IoT-Device 1/include/nexi/voice_types.h",
+    )).content, /enum class VoiceEffect[\s\S]*\bEcho,/);
     const initial = await service.getProjectAppSettings(projectId, accountId);
     assert.equal(initial.manifest.app_id, "nexi");
     assert.equal(initial.values.cloud_enabled, false);
     assert.equal(initial.values.voice, "warm");
+    assert.deepEqual(initial.assigned_device_ids, ["nexi-living-room", "nexi-child-room"]);
 
     const saved = await service.updateProjectAppSettings(projectId, {
       account_id: accountId,
@@ -50,13 +56,20 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
       values: { cloud_enabled: true, voice: "calm" },
     });
     assert.equal(saved.revision, 1);
+    await service.updateProjectAppDevices(projectId, {
+      account_id: accountId,
+      device_ids: ["nexi-child-room", "nexi-travel"],
+    });
 
     const resumedService = new ProjectService({ repository: FileBackedProjectRepository.create(runtimeRoot) });
     const resumed = await resumedService.getProjectAppSettings(projectId, accountId);
     assert.equal(resumed.revision, 1);
     assert.equal(resumed.values.cloud_enabled, true);
     assert.equal(resumed.values.voice, "calm");
-    assert.equal(JSON.parse((await resumedService.getSource(projectId, "project-app/manifest.json")).content).manifest_version, 1);
+    assert.deepEqual(resumed.assigned_device_ids, ["nexi-child-room", "nexi-travel"]);
+    const resumedManifest = JSON.parse((await resumedService.getSource(projectId, "project-app/manifest.json")).content);
+    assert.equal(resumedManifest.manifest_version, 3);
+    assert.equal(resumedManifest.hardware_requirements.processor_variant, "ESP32-S3");
   } finally {
     fs.rmSync(runtimeRoot, { recursive: true, force: true });
   }

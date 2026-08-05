@@ -39,13 +39,22 @@ erzeugen. Beispielsweise definiert ein Tamagotchi-Projekt die gemeinsame
 Oberflaeche, waehrend `Naomis Tamagotchi` und `Toms Tamagotchi` jeweils eigene
 Geraetezuordnung, Einstellungen und Laufzeitwerte besitzen. Die aktuelle erste
 Ausbaustufe bildet eine persoenliche Anwendung noch durch ihr accountgebundenes
-Projekt ab; ein eigenstaendiges Mehrinstanzenmodell ist ein nachfolgender
-Ausbauschritt und wird nicht durch reine UI-Duplikation vorgetaeuscht.
+Projekt ab. Diese Anwendung kann bereits bis zu 16 kompatible Account-Geraete
+gemeinsam verwalten. Ein eigenstaendiges Mehrinstanzenmodell mit voneinander
+getrennten Laufzeitwerten bleibt ein nachfolgender Ausbauschritt und wird nicht
+durch reine UI-Duplikation vorgetaeuscht.
 
 ## Kundeneinstiege fuer Nexi
 
-Ein Kunde findet Nexi im Bereich `Lernen & Entwickeln` und kann zwischen vier
-klar getrennten Wegen waehlen:
+Nexi ist ein eigenständiger öffentlicher Produkteinstieg und wird direkt auf
+der GerNetiX-Startseite vor den allgemeinen Lernwegen vorgestellt. Die
+Startseite führt entweder zum fertigen Nachbau- und Flashweg oder – nach der
+Anmeldung – zu den persönlichen Anwendungen. Nexi darf damit nicht nur als
+Unterpunkt des Nachbaukatalogs oder der Lern- und Entwicklungsplattform
+auffindbar sein.
+
+Im angemeldeten Bereich kann ein Kunde zwischen vier klar getrennten Wegen
+wählen:
 
 1. **Nexi verwenden**: Eine bereits eingerichtete Nexi-Instanz und ihre
    Projekt-App oeffnen.
@@ -56,9 +65,9 @@ klar getrennten Wegen waehlen:
 4. **Nexi weiterentwickeln**: Eine eigene, versionierte Projektkopie anlegen
    und Firmware, Assistentendefinition sowie Projekt-App erweitern.
 
-Der oeffentliche Einstieg liegt im Nachbaukatalog unter
-`/nachbauprojekte/nexi-sprachassistent/`. Er beschreibt Hardware, sechs
-Arbeitsschritte, die lokale Produktstufe und die Grenze zur noch optionalen KI.
+Der öffentliche Detail- und Flash-Einstieg liegt unter
+`/nachbauprojekte/nexi-sprachassistent/`. Er beschreibt Hardware, lokale
+Funktionen, Installation und Bedienung sowie die Grenze zur optionalen KI.
 Nach der Anmeldung fuehrt er gezielt zum Nachbau-Einstieg; die Projektuebersicht
 zeigt danach alle vier Wege getrennt. `Verwenden` wird erst aktiv, wenn eine
 persoenliche Nexi-Instanz existiert.
@@ -75,6 +84,14 @@ Produkt. Aufnahme, Wiedergabe und lokale Stimmeffekte bleiben offline. Sprach-
 und Internet-KI sind getrennte, spaeter aktivierbare Projektfaehigkeiten und
 duerfen im Katalog nicht als bereits verfuegbar erscheinen, solange Provider,
 Kontingent und Betreiberfreigabe fehlen.
+
+Die Kundensicht erklärt diesen Ausbau immer funktionsorientiert in derselben
+Reihenfolge: lokale Nachbaufunktionen ohne Konto, persönliche Verwaltung mit
+kostenlosem Konto und optionale Sprach-KI mit ausdrücklicher Aktivierung,
+freigegebenem Provider und verfügbarem Kontingent. Ein fehlender KI-Vertrag
+darf nicht nur als „nicht freigeschaltet“ erscheinen. Die Oberfläche nennt,
+welche Voraussetzung fehlt, warum sie erforderlich ist und was der Nutzer
+heute bereits tun kann.
 
 ## Projektoberflaeche
 
@@ -105,7 +122,8 @@ serverseitigen Speichern geprueft.
 | Seiten, Felder, Bindungen und Aktionen | Projektdateien im gebundenen Forgejo-Commit |
 | Kundenwerte einer Projekt-App-Instanz | Project-Server-PostgreSQL als Projekt-Laufzeitdaten |
 | Projekt- und Kontobesitz | Project Server |
-| Geraetezuordnung, Authentizitaet und Verbindungsstatus | Device Management |
+| Geordnete Geraetezuordnung einer Anwendung | Project Server |
+| Geraetebesitz, Authentizitaet und Verbindungsstatus | Device Management |
 | Messwerte und Ereignisse | Telemetry Server |
 | KI-Kontingent und Kosten | AI Usage Server |
 | erzeugte Firmware | commitgebundenes Build-Artefakt |
@@ -121,8 +139,14 @@ projektgebundenen Datei-API und werden nicht mit der Projektuebersicht
 ausgeliefert.
 
 Beim Laden loest Identity nur die im validierten Manifest genannten
-`device_status`-, `ai_usage`-, `project`- und `telemetry`-Bindungen auf. Der Geraetestatus
-stammt ausschliesslich vom dem Projekt zugeordneten Account-Device. KI-Werte
+`device_status`-, `ai_usage`-, `project`- und `telemetry`-Bindungen auf. Eine
+Anwendung darf hoechstens 16 kompatible Geraete aus dem Accountinventar
+zuordnen. Identity prueft Besitz und Hardwareprofil vor jeder Aenderung; der
+Project Server speichert die geordnete Liste und haelt das erste Geraet als
+rueckwaertskompatibles Primaergeraet. Die Geraeteuebersicht zeigt Status und
+Firmware pro Geraet. Bestehende skalare `device_status`- und
+`assigned_device`-Telemetriebindungen beziehen sich weiterhin eindeutig auf
+dieses Primaergeraet. KI-Werte
 stammen aus der serverseitig abgeleiteten Account-Nutzung. Faellt ein
 Domaenendienst aus, bleibt die Projekt-App bedienbar und kennzeichnet nur den
 betroffenen Wert als nicht verfuegbar. Telemetrie wird nur fuer die im Manifest
@@ -147,6 +171,11 @@ sind durch eine atomare Compare-and-Set-Abfrage und Regressionstests abgedeckt.
 
 Nexi definiert auf der allgemeinen Projekt-App-Plattform unter anderem:
 
+- bis zu 16 kompatible Nexi-Geraete mit Name, Verbindungs- und Firmwarestatus,
+- sichtbare, verbindliche Hardware-Mindestanforderungen: ESP32-S3,
+  Audio-Treiber, drei integrierte Bedientasten und zwei integrierte
+  Mikrofonkanaele mit Treiber,
+- gemeinsame Familienregeln und Limits fuer alle zugeordneten Geraete,
 - Kinderprofil mit Vorname, Altersgruppe, Sprachen und Interessen,
 - aktivierbare lokale und KI-gestuetzte Modi,
 - Stimme und maximale Lautstaerke,
@@ -168,11 +197,23 @@ mit dem frueheren generischen ESP32-Profil werden beim erneuten Einstieg
 gezielt auf diesen Nexi-Vertrag angehoben; andere Lernprojekte oder bereits
 vollstaendige Nexi-Quellen werden dabei nicht ueberschrieben.
 
+Die Anforderungen sind Bestandteil des validierten Projekt-App-Manifests und
+keine lose UI-Beschreibung. Identity gleicht ein Account-Device mit seinem
+ProcessorBoard im Hardware Catalog ab. Ein Geraet bleibt in der Auswahl
+sichtbar, ist bei fehlenden Eigenschaften jedoch deaktiviert und nennt die
+fehlenden Merkmale. Fuer die aktuelle Firmware bleibt zusaetzlich das
+Waveshare-Profil verbindlich, da Pins, ES7210- und ES8311-Anbindung sowie die
+Basissoftware darauf abgestimmt sind. Ein allgemeiner digitaler Eingang gilt
+nicht automatisch als vorhandene Bedientaste.
+
 ## Sicherheits- und Abnahmeregeln
 
 - Jede API leitet Account und Projekt aus der authentifizierten Sitzung ab.
 - Ein Client darf weder Owner, Projekt noch Datenquelle durch Payloadfelder
   erweitern.
+- Geraetezuordnungen werden ausschliesslich aus dem aktuellen Accountinventar
+  gewaehlt und auf das Projekt-Hardwareprofil sowie die manifestierten,
+  kataloggestuetzt nachgewiesenen Hardware-Mindestanforderungen begrenzt.
 - Bindungen lesen nur freigegebene, typisierte Datenpfade.
 - Aktionen besitzen Allowlist, Parameterschema und serverseitige
   Berechtigungspruefung.

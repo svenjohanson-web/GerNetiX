@@ -58,3 +58,35 @@ test("presents personal application instances as their own main area", () => {
   assert.match(shell, /"dashboard", "applications", "development-platform"/);
   assert.match(shell, /if \(route === "project-app"\) return "applications"/);
 });
+
+test("keeps every project application widget readable in the shared dark theme", () => {
+  const css = read("public/app/app.css");
+  const html = read("public/app/index.html");
+  assert.match(css, /\.project-app-widget \{[^}]*background: var\(--panel\);[^}]*color: var\(--text\);/);
+  assert.doesNotMatch(css, /\.project-app-widget \{[^}]*var\(--surface, #fff\)/);
+  assert.match(css, /\.project-app-widget p,[\s\S]*\.project-app-page > header p \{ color: var\(--muted\); \}/);
+  assert.match(html, /app\.css\?v=20260805-plan-comparison-1/);
+});
+
+test("lets one application manage several account devices without duplicating shared settings", () => {
+  const controller = read("public/app/project-app-controller.js");
+  const projectController = read("public/app/app-project-controller.js");
+  const server = read("src/dev-server.js");
+  assert.match(controller, /data-project-app-device/);
+  assert.match(controller, /project-app\/devices/);
+  assert.match(controller, /Familienregeln und Limits gelten gemeinsam/);
+  assert.match(projectController, /project\.linkedDeviceIds/);
+  assert.match(server, /linkedDeviceIds: project\.linked_device_ids/);
+});
+
+test("shows and enforces Nexi hardware minimum requirements", () => {
+  const controller = read("public/app/project-app-controller.js");
+  const shell = read("public/app/app-shell-controller.js");
+  const manifest = JSON.parse(read("src/dev/project-models/nexi-project-app-manifest.json"));
+  assert.equal(manifest.hardware_requirements.processor_variant, "ESP32-S3");
+  assert.deepEqual(manifest.hardware_requirements.features.map((item) => item.id), ["audio_driver", "buttons", "microphones"]);
+  assert.match(controller, /Hardware-Mindestanforderungen/);
+  assert.match(controller, /device\.compatible === false[\s\S]*disabled/);
+  assert.match(controller, /Nicht geeignet:/);
+  assert.match(shell, /project-app-controller\.js\?v=20260805-nexi-hardware-requirements-1/);
+});

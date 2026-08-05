@@ -92,6 +92,9 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(page, /Öffnen &amp; flashen →/);
   assert.match(nexiProject, /Was ist Nexi\?/);
   assert.match(nexiProject, /Stimme aufnehmen[\s\S]*Effekte ausprobieren[\s\S]*Direkt am Board spielen/);
+  assert.match(nexiProject, /Nexi funktioniert sofort – Konto und KI sind getrennte Erweiterungen/);
+  assert.match(nexiProject, /Lokale Grundfunktionen[\s\S]*Persönlich verwalten[\s\S]*Später bewusst aktivieren/);
+  assert.match(nexiProject, /dein lokales Nexi ist deshalb nicht defekt oder unvollständig installiert/);
   assert.match(nexiProject, /ES8311, ES7210, TCA9555 und PCF85063/);
   assert.match(nexiProject, /KEY1[\s\S]*KEY2[\s\S]*KEY3/);
   assert.match(nexiProject, /lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter/);

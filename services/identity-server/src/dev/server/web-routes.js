@@ -82,6 +82,7 @@ function registerWebRoutes({
     },
   });
   for (const routePath of ["/shop", "/shop/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/shop/index.html") });
+  for (const routePath of ["/tarife", "/tarife/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/tarife/index.html") });
   for (const routePath of ["/entdecken", "/entdecken/", "/downloads", "/downloads/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => redirect(res, "/nachbauprojekte/") });
   for (const routePath of ["/nachbauprojekte", "/nachbauprojekte/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren", handler: ({ res }) => redirect(res, "/nachbauprojekte/einfache-elektromotoren/") });

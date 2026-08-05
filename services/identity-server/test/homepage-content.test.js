@@ -74,6 +74,18 @@ test("offers reading, practice and personal guidance as equally valid learning p
   assert.match(css, /\.learning-path-grid \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
 });
 
+test("presents Nexi as a first-class configurable product before the learning paths", () => {
+  assert.match(html, /Nexi · konfigurierbarer Sprachassistent/);
+  assert.match(html, /Baue deinen eigenen Sprachassistenten – und richte ihn passend für deine Familie ein/);
+  assert.match(html, /Direkt nach dem Flashen[\s\S]*Mit kostenlosem Konto[\s\S]*Optionale Erweiterung/);
+  assert.match(html, /Lokal sprechen und spielen[\s\S]*Persönlich konfigurieren[\s\S]*Sprach-KI bewusst aktivieren/);
+  assert.match(html, /href="\/nachbauprojekte\/nexi-sprachassistent\/">Nexi entdecken und nachbauen/);
+  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fapplications%2F">Mein Nexi verwalten/);
+  assert.ok(html.indexOf('class="panel nexi-home-feature"') < html.indexOf('class="panel learning-paths"'));
+  assert.match(css, /\.nexi-home-feature \{ display: grid; grid-template-columns:/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.nexi-home-feature \{ grid-template-columns: 1fr; \}/);
+});
+
 test("does not single out the UML learning project on the homepage", () => {
   assert.doesNotMatch(html, /Neues Lernprojekt · Modellierung/);
   assert.doesNotMatch(html, /catalog%3Duml-fundamentals/);
@@ -93,6 +105,7 @@ test("offers a hamburger menu with the public webshop entry only", () => {
   const menu = html.slice(html.indexOf('id="publicMenu"'), html.indexOf("</nav>", html.indexOf('id="publicMenu"')));
   assert.match(html, /id="publicMenuButton"[\s\S]*aria-expanded="false"/);
   assert.match(menu, /href="\/">Startseite/);
+  assert.match(menu, /href="\/nachbauprojekte\/nexi-sprachassistent\/">Nexi/);
   assert.match(menu, /href="\/hilfe\/">Hilfe/);
   assert.doesNotMatch(menu, /href="\/entdecken\/"|GerNetiX entdecken/);
   assert.match(menu, /href="\/nachbauprojekte\/">Projekte zum Nachbauen/);

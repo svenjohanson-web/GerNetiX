@@ -498,6 +498,7 @@ registerProjectRoutes({
   projectRepositoryRead,
   projectServerUserId,
   loadUserIdeDevices,
+  loadProcessorBoards,
   loadAiUsageSummary,
   telemetryJson,
   developmentProjectTemplateCatalog,
@@ -1853,12 +1854,20 @@ async function synchronizeLearningProjectStructure(project, definition) {
     const isLegacyNexiManifest = definition.slug === nexiCourseModel.slug
       && source.path === "project-app/manifest.json"
       && persistedSource?.content?.includes('"app_id": "nexi"')
-      && !persistedSource.content.includes('"child_first_name"');
+      && projectAppManifestVersion(persistedSource.content) < 3;
     if (!persistedSource || isLegacyNexiManifest) {
       await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, { method: "PUT", body: source });
     }
   }
   return updated;
+}
+
+function projectAppManifestVersion(content) {
+  try {
+    return Number(JSON.parse(content || "{}").manifest_version) || 0;
+  } catch {
+    return 0;
+  }
 }
 
 function learningProjectManifestForPersistedProject(project, definition) {
@@ -3241,6 +3250,7 @@ function mapUserIdeProjects(session, projectsById) {
       hardware_profile_id: definition.hardware_profile_id,
       build_config: definition.build_config,
       linked_device_id: "",
+      linked_device_ids: [],
       project_origin: "catalog",
       status: "catalog_template",
       last_build_status: "",
@@ -3290,7 +3300,8 @@ function mapProjectServerProject(session, project) {
       build_config: project.build_config || learningDefinition.build_config,
       software_units: platformSoftwareUnits(project, learningDefinition.build_config),
       active_software_unit_id: platformActiveSoftwareUnitId(project),
-      linked_device_id: project.device_id || "",
+      linked_device_id: project.device_ids?.[0] || project.device_id || "",
+      linked_device_ids: project.device_ids || (project.device_id ? [project.device_id] : []),
       status: project.status || "active",
       last_build_status: latestBuildStatus(project),
       source_count: project.source_count || 0,
@@ -3329,7 +3340,8 @@ function mapProjectServerProject(session, project) {
     build_config: project.build_config || null,
     software_units: platformSoftwareUnits(project),
     active_software_unit_id: platformActiveSoftwareUnitId(project),
-    linked_device_id: project.device_id || "",
+    linked_device_id: project.device_ids?.[0] || project.device_id || "",
+    linked_device_ids: project.device_ids || (project.device_id ? [project.device_id] : []),
     status: project.status || "active",
     last_build_status: latestBuildStatus(project),
     source_count: project.source_count || 0,
@@ -3456,6 +3468,9 @@ function toPlatformProject(project) {
     sourceFiles: project.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     targetRuntime: project.hardware_profile_id,
     linkedDeviceId: project.linked_device_id || project.default_device_id || "",
+    linkedDeviceIds: project.linked_device_ids?.length
+      ? project.linked_device_ids
+      : project.linked_device_id || project.default_device_id ? [project.linked_device_id || project.default_device_id] : [],
     lastOpenedMode: project.last_opened_mode || "learn",
     lastOpenedAt: project.last_opened_at || "",
     createdAt: project.created_at || "",

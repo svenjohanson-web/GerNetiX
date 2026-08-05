@@ -16,10 +16,13 @@ test("resolves only typed Project-App bindings for the session project", async (
       { id: "setting", type: "setting", key: "voice" },
       { id: "temperature", type: "telemetry", metric_id: "room.temperature" },
     ] },
-    project: { title: "Nexi", status: "active", updated_at: "2026-08-04T12:00:00.000Z", linked_device_id: "device-nexi" },
+    project: { title: "Nexi", status: "active", updated_at: "2026-08-04T12:00:00.000Z", linked_device_id: "device-nexi", linked_device_ids: ["device-nexi", "device-bedroom"] },
+    assignedDeviceIds: ["device-bedroom", "device-nexi"],
     session: { id: "session-1" },
     loadUserIdeDevices: async () => [{
       device_id: "device-nexi", connectivity_status: "online", firmware_version: "1.2.3",
+    }, {
+      device_id: "device-bedroom", connectivity_status: "offline", firmware_version: "2.0.0",
     }, { device_id: "foreign-device", connectivity_status: "offline", firmware_version: "9.9.9" }],
     loadAiUsageSummary: async () => ({ available: true, account_usage: { monthly_requests: 7, available_credits: 93 } }),
     loadProjectTelemetry: async () => ({ items: [
@@ -29,8 +32,8 @@ test("resolves only typed Project-App bindings for the session project", async (
   });
 
   assert.deepEqual(result, {
-    connection: "online",
-    firmware: "1.2.3",
+    connection: "offline",
+    firmware: "2.0.0",
     requests: 7,
     budget: 93,
     project_title: "Nexi",

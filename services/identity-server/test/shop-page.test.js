@@ -68,7 +68,7 @@ test("shows dummy Home Server software licenses, bundles and entitlement states"
   assert.match(shop, /data-shop-category="subscriptions"/);
   assert.match(shop, /id="homeServerLicense"[\s\S]*GerNetiX Home Server Software/);
   assert.match(shop, /id="homeServerBundle"[\s\S]*GerNetiX Home Server Hardware-Bundle/);
-  assert.match(shop, /id="premiumPlans"[\s\S]*Premium monatlich oder jaehrlich/);
+  assert.match(shop, /id="premiumPlans"[\s\S]*Cloud Basic\+ und Premium/);
   assert.match(shop, /Lizenz aktiv[\s\S]*Home Server installieren[\s\S]*neue Geraete hinzufuegen[\s\S]*Cloud-Funktionen nutzen[\s\S]*KI nutzen/);
   assert.match(shop, /Lizenz abgelaufen[\s\S]*bestehende Geraete funktionieren weiter[\s\S]*MQTT laeuft weiter[\s\S]*Home Assistant laeuft weiter[\s\S]*OTA fuer eingerichtete Modelle bleibt moeglich/);
   assert.match(shop, /Bestandsschutz:[\s\S]*Eine abgelaufene Lizenz legt das lokale Zuhause nicht lahm/);
@@ -78,7 +78,8 @@ test("shows the same Home Server license model in the public webshop", () => {
   assert.match(publicShopHtml, /Hardware, Bundles und Lizenzen ansehen/);
   assert.match(publicShopHtml, /GerNetiX Home Server Software/);
   assert.match(publicShopHtml, /GerNetiX Home Server Hardware-Bundle/);
-  assert.match(publicShopHtml, /Premium monatlich oder jaehrlich/);
+  assert.match(publicShopHtml, /Cloud Basic\+ und Premium/);
+  assert.match(publicShopHtml, /href="\/tarife\/">Konten und Tarife vergleichen/);
   assert.match(publicShopHtml, /Lizenz aktiv[\s\S]*Home Server installieren[\s\S]*neue Geraete hinzufuegen[\s\S]*Cloud-Funktionen nutzen[\s\S]*KI nutzen/);
   assert.match(publicShopHtml, /Lizenz abgelaufen[\s\S]*bestehende Geraete funktionieren weiter[\s\S]*MQTT laeuft weiter[\s\S]*Home Assistant laeuft weiter[\s\S]*OTA fuer eingerichtete Modelle bleibt moeglich/);
   assert.match(publicShopHtml, /Bestandsschutz:[\s\S]*Eine abgelaufene Lizenz legt das lokale Zuhause nicht lahm/);

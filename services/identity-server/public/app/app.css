@@ -890,6 +890,11 @@ button.danger:hover {
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .summary-item { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fff; }
 .summary-item strong { display: block; overflow-wrap: anywhere; }
+.plan-comparison-card { display: grid; align-content: start; gap: 8px; }
+.plan-comparison-card .button-link,
+#premiumPlans .button-link { width: fit-content; border: 1px solid #0891b2; border-radius: 7px; padding: 10px 12px; background: #0e7490; color: #ecfeff; font-weight: 750; text-decoration: none; }
+.plan-comparison-card .button-link:hover,
+#premiumPlans .button-link:hover { border-color: #22d3ee; background: #155e75; }
 .storage-quota-card { grid-column: span 2; display: grid; gap: 8px; align-content: start; }
 .storage-quota-card small { line-height: 1.4; }
 .storage-quota-card .usage-bar { margin-top: 2px; }
@@ -6497,10 +6502,39 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 }
 .ide-software-unit-control select { max-width: 240px; }
 .project-app-shell-header { margin-bottom: 1rem; }
+.project-app-device-manager { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.project-app-device-manager > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.project-app-device-manager > p { margin: 0; color: var(--muted); }
+.project-app-device-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
+.project-app-device-choice { display: flex; align-items: center; gap: .75rem; min-width: 0; border: 1px solid var(--line); border-radius: .75rem; padding: .85rem; background: color-mix(in srgb, var(--panel) 88%, var(--bg)); cursor: pointer; }
+.project-app-device-choice.is-assigned { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--panel)); }
+.project-app-device-choice.is-incompatible { opacity: .72; cursor: not-allowed; }
+.project-app-device-choice.is-incompatible input { cursor: not-allowed; }
+.project-app-device-rejection { color: var(--danger, #ff9b9b) !important; }
+.project-app-device-choice input { flex: 0 0 auto; }
+.project-app-device-choice span { display: grid; min-width: 0; gap: .2rem; }
+.project-app-device-choice strong,
+.project-app-device-choice small { overflow-wrap: anywhere; }
+.project-app-device-choice small { color: var(--muted); }
+.project-app-hardware-requirements { margin: 1rem 0; padding: 1rem; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 16px; background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.project-app-hardware-requirements h3 { margin: 0; font-size: 1rem; }
+.project-app-hardware-requirements > p { margin: .35rem 0 .8rem; color: var(--muted); }
+.project-app-hardware-requirements ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .55rem; margin: 0; padding: 0; list-style: none; }
+.project-app-hardware-requirements li { display: grid; grid-template-columns: auto 1fr; column-gap: .5rem; align-items: center; padding: .65rem; border-radius: 12px; background: var(--panel-strong, var(--panel)); }
+.project-app-hardware-requirements li > span { grid-row: 1 / 3; color: var(--success, #71d99b); }
+.project-app-hardware-requirements li small { color: var(--muted); }
+.project-app-device-manager > footer { display: flex; justify-content: flex-end; }
 .project-app-page-nav { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
 .project-app-page-nav button[aria-current="page"] { border-color: var(--accent, #0f766e); }
 .project-app-widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-.project-app-widget { padding: 1rem; border: 1px solid var(--line, #d9e2e8); border-radius: .75rem; background: var(--surface, #fff); }
+.project-app-widget { padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); color: var(--text); }
+.project-app-widget p,
+.project-app-widget small,
+.project-app-page > header p { color: var(--muted); }
+.project-app-widget.is-prominent { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 9%, var(--panel)); }
+.project-app-status,
+.project-app-metric { color: var(--accent); font-weight: 800; }
+.project-app-schedule { margin: 0; border-color: var(--line); }
 .project-app-control, .project-app-schedule { display: grid; gap: .5rem; }
 .project-app-control input[type="text"], .project-app-control input[type="number"], .project-app-control select { width: 100%; }
 .project-app-chart { display: flex; align-items: end; gap: 3px; min-height: 7rem; }

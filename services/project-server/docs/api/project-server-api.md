@@ -48,6 +48,31 @@ Ein Projekt kann optional `view_manifest` enthalten. Dieses Manifest beschreibt 
 
 Die User IDE rendert diese View-Typen generisch. Projektspezifische Inhalte wie Diagrammquelle, erklaerende Karten oder naechste Arbeitsschritte gehoeren in das Manifest.
 
+### Projektanwendungen und Geraetebindung
+
+- `GET /api/projects/{projectId}/project-app/settings?account_id={accountId}`
+- `PUT /api/projects/{projectId}/project-app/settings`
+- `PUT /api/projects/{projectId}/project-app/devices`
+
+Eine Projektanwendung kann bis zu 16 eindeutige `device_ids` desselben Accounts
+binden. Die Reihenfolge ist stabil; das erste Geraet ist das Primaergeraet fuer
+bestehende skalare Status-, Telemetrie- und Build-Vertraege. Der Project Server
+speichert nur die geordnete Bindung und die gemeinsamen
+Anwendungs-Einstellungen. Besitz, aktueller Zustand und Firmware eines Geraets
+bleiben beim Device Management.
+
+Der oeffentliche Identity-Proxy ermittelt `account_id` aus der Sitzung und
+prueft Besitz sowie Hardwareprofil-Kompatibilitaet, bevor er die Bindung an den
+Project Server weitergibt. Ein Manifest darf dazu eine begrenzte,
+rein deklarative `hardware_requirements`-Struktur mit Prozessorvariante,
+unterstuetzten Hardwareprofilen sowie benoetigten Capabilities und
+Board-Features definieren. Freie Matcher oder ausfuehrbare Pruefregeln sind
+nicht erlaubt. Identity loest die Eigenschaften ueber den Hardware Catalog auf
+und prueft sie serverseitig. Direkte Clients duerfen `account_id` deshalb nicht
+als Autorisierungsnachweis behandeln. Mehrere gebundene Geraete bilden eine
+gemeinsame Anwendungsinstanz; mehrere voneinander getrennte Instanzen sind ein
+eigenes, spaeteres Modell.
+
 Manifest-Views koennen zusaetzlich `source_lines`, `editable_lines`, `completion`, `validation`, `media`, `runtime_preview` und `payload.artifact` enthalten. `payload.artifact` beschreibt die linke Arbeitsflaeche einer gefuehrten Ansicht, z. B. Code-Auszug, State-Visualisierung, Zustandskreislauf oder PlantUML-Quelle. Das Manifest selbst kann mit `hide_source_editor` reine Modell-/Folienprojekte markieren, die keinen allgemeinen Codeeditor anzeigen. Damit kann die IDE einen gefuehrten Step-by-Step-Runner ausfuehren, ohne Projektdidaktik im Viewer hart zu kodieren.
 
 ## Quellen

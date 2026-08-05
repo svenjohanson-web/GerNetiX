@@ -19,10 +19,16 @@ firmware:
 features:
   wifi: true
   audio_bus_probe: true
+  modular_runtime: true
+  application_manager: true
+  typed_intents: true
+  capability_policy: true
+  privacy_gate: true
   voice_recording: true
   voice_effects: true
   effect_count: 5
-  mode_selection: true
+  service_button_input: true
+  voice_input: planned
   local_volume_control: true
   volume_steps: 5
 
