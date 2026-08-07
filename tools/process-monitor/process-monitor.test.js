@@ -396,9 +396,35 @@ test("monitor shows runtime alerts from persisted system and interface failures"
   assert.match(client, /renderAlerts/);
   assert.match(desktopPreload, /runtimeAlerts/);
   assert.match(desktopMain, /runtime:alerts/);
+  assert.match(fs.readFileSync(path.join(__dirname,"desktop-process-control.js"),"utf8"), /admin_tool_user_action_events/);
   const alerts = control.runtimeAlerts(24);
   assert.equal(Array.isArray(alerts.items), true);
   assert.equal(typeof alerts.summary.errors, "number");
+});
+
+test("monitor reads central user action failures through the fixed read-only diagnostic", async () => {
+  assert.match(desktopMain, /operationsAlerts/);
+  let remoteCommand = "";
+  const remote = await control.remoteUserActionAlerts({
+    force: true,
+    hours: 24,
+    config: { GERNETIX_STAGING_SSH: "gernetix-vps", GERNETIX_STAGING_MONITOR_SSH: "gernetix-monitor@gernetix-vps" },
+    execFileAsync: async (_file, args) => {
+      remoteCommand = args.at(-1);
+      return { stdout: JSON.stringify({ summary: { recent_failures: [{
+        action_id: "12345678-1234-4234-8234-123456789abc",
+        action_type: "nexi.flash.usb.start",
+        phase: "failed",
+        reason_code: "local_dependency_unreachable",
+        failed_span: "helper.status",
+        last_seen_at: new Date().toISOString(),
+      }] } }), stderr: "" };
+    },
+  });
+  assert.equal(remoteCommand, "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic user-action-alerts");
+  assert.equal(remote.items[0].target_service, "nexi.flash.usb.start");
+  assert.equal(remote.items[0].message, "local_dependency_unreachable · Action 12345678-1234…");
+  assert.doesNotMatch(JSON.stringify(remote), /device_path|usb_id|hostname|raw_log/);
 });
 
 test("monitor shows all VPS protection rules with status and recommended action", async () => {

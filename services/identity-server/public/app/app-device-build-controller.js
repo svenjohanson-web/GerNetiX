@@ -100,9 +100,13 @@ function usbFirmwareUnits(project) {
 }
 
 async function startBuild() {
+  const action = window.GerNetiXActionOps?.begin("project.build.start", { timeoutMs: 900000 });
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  if (!project) {
+    action?.fail("project_not_found");
+    return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  }
   const softwareUnits = projectSoftwareUnits(project);
   const buildTargets = softwareUnits.length ? softwareUnits : [null];
   const unsupportedUnits = softwareUnits.filter((unit) => unit.build_system !== "platformio");
@@ -110,37 +114,49 @@ async function startBuild() {
     const details = unsupportedUnits
       .map((unit) => `${unit.title || unit.software_unit_id} (${unit.build_system || "kein Buildsystem"})`)
       .join(", ");
+    action?.fail("build_prerequisite_failed");
     return setFlashStatus("error", `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`);
   }
-  if (buildSubmissionPending || activeBuildJobIds.size > 0) return;
+  if (buildSubmissionPending || activeBuildJobIds.size > 0) {
+    action?.fail("build_prerequisite_failed");
+    return;
+  }
   buildSubmissionPending = true;
+  let actionStage = "source";
   updateBuildActionButton();
   setFlashStatus("running", `Gesamtbuild läuft: ${buildTargets.length} Software-Einheit${buildTargets.length === 1 ? "" : "en"}...`);
   try {
-    await persistCurrentSource(project);
+    await buildActionStep(action, "project.source.persist", () => persistCurrentSource(project, { action }), "source_persistence_failed");
+    actionStage = "submit";
+    const submitSpan = action?.startSpan("build.submit");
     const submissions = await Promise.allSettled(buildTargets.map((softwareUnit) => postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
       software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || "",
       mode: "build",
       build_profile: selectedBuildProfile(project),
-    })));
+    }, { action })));
     const acceptedBuilds = submissions.flatMap((result, index) => result.status === "fulfilled"
       ? [{ build: result.value, softwareUnit: buildTargets[index] }]
       : []);
     const rejectedSubmissions = submissions.flatMap((result, index) => result.status === "rejected"
       ? [{ reason: result.reason, softwareUnit: buildTargets[index] }]
       : []);
+    rejectedSubmissions.length ? submitSpan?.fail("build_submission_failed") : submitSpan?.succeed();
     const completionPromises = acceptedBuilds.map(({ build, softwareUnit }) => waitForCompletedBuild(build, {
       appendMemorySummary: false,
       suppressTerminalBuildResult: true,
       targetLabel: softwareUnit?.title || softwareUnit?.software_unit_id || "Firmware",
+      action,
     }));
     buildSubmissionPending = false;
     updateBuildActionButton();
+    actionStage = "wait";
+    const waitSpan = action?.startSpan("build.wait");
     const completionResults = await Promise.allSettled(completionPromises);
     const completed = completionResults.filter((result) => result.status === "fulfilled").map((result) => result.value);
     const rejectedCompletions = completionResults.filter((result) => result.status === "rejected");
+    rejectedCompletions.length ? waitSpan?.fail("build_status_unavailable") : waitSpan?.succeed();
     state.builds.unshift(...completed);
     renderIdeProjectInformation(project);
     completed.filter((build) => !["succeeded", "cancelled"].includes(build.status)).forEach((build) => appendBuildFailureLog(build.build_log, build.error));
@@ -164,6 +180,11 @@ async function startBuild() {
     const cancelled = completed.filter((build) => build.status === "cancelled").length;
     const unavailable = rejectedCompletions.length;
     const failed = completed.length - succeeded - cancelled + rejectedSubmissions.length;
+    const verifySpan = action?.startSpan("build.verify");
+    if (unavailable) verifySpan?.fail("build_status_unavailable");
+    else if (cancelled) verifySpan?.fail("build_cancelled");
+    else if (failed) verifySpan?.fail("build_execution_failed");
+    else verifySpan?.succeed();
     if (!failed && !cancelled && !unavailable) completed.forEach(appendBuildMemorySummary);
     const summary = `${succeeded} von ${buildTargets.length} Software-Einheiten erfolgreich`;
     if (unavailable) setFlashStatus("running", `Gesamtbuild-Auswertung unterbrochen: ${unavailable} Statusabfrage${unavailable === 1 ? "" : "n"} nicht abgeschlossen. Diese Build-Ziele gelten nicht als fehlgeschlagen.`);
@@ -172,13 +193,30 @@ async function startBuild() {
       failed ? "error" : "ok",
       failed ? `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen${cancelled ? `, ${cancelled} abgebrochen` : ""}.` : `Gesamtbuild erfolgreich: ${summary}.`,
     );
+    if (unavailable) action?.fail("build_status_unavailable");
+    else if (cancelled) action?.fail("build_cancelled");
+    else if (failed) action?.fail(rejectedSubmissions.length ? "build_submission_failed" : "build_execution_failed");
+    else action?.succeed();
     renderBuilds();
   } catch (error) {
+    action?.fail(actionStage === "source"
+      ? "source_persistence_failed"
+      : actionStage === "wait" ? "build_status_unavailable" : buildFailureReason(error));
     setFlashStatus("error", error.message);
   } finally {
     buildSubmissionPending = false;
     updateBuildActionButton();
   }
+}
+
+function buildActionStep(action, spanType, operation, reasonCode) {
+  return action ? action.step(spanType, operation, reasonCode) : operation();
+}
+
+function buildFailureReason(error) {
+  if (error?.status === 404 || error?.code === "project_not_found") return "project_not_found";
+  if (String(error?.code || "").includes("builder") || error?.status === 409) return "build_prerequisite_failed";
+  return "build_submission_failed";
 }
 
 async function cleanProjectBuildCache() {
@@ -248,6 +286,8 @@ function updateBuildActionButton() {
   if (!activeCount) buildCancellationRequested = false;
   button.classList.toggle("build-cancel-active", activeCount > 0);
   if (activeCount > 0) {
+    delete button.dataset.actionType;
+    delete button.dataset.actionTimeout;
     button.disabled = buildCancellationRequested;
     button.textContent = buildCancellationRequested
       ? "Abbruch läuft…"
@@ -256,10 +296,14 @@ function updateBuildActionButton() {
       ? "Der Abbruch der laufenden Build-Aufträge wurde angefordert."
       : "Öffnet die Bestätigung zum Abbrechen des laufenden Gesamtbuilds.";
   } else if (buildSubmissionPending) {
+    delete button.dataset.actionType;
+    delete button.dataset.actionTimeout;
     button.disabled = true;
     button.textContent = "Build startet…";
     button.title = "Die Build-Aufträge werden angelegt.";
   } else {
+    button.dataset.actionType = "project.build.start";
+    button.dataset.actionTimeout = "900000";
     button.disabled = false;
     button.textContent = "Build";
     button.title = button.dataset.idleTitle || "Baut alle Software-Einheiten des Projekts als gemeinsamen Gesamtbuild.";
@@ -479,7 +523,7 @@ async function waitForCompletedBuild(build, options = {}) {
       }
       await delay(1000);
       try {
-        current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/status`);
+        current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/status`, { action: options.action });
         if (consecutiveStatusFailures > 0) {
           appendIdeTerminal("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ wiederhergestellt.`);
         }

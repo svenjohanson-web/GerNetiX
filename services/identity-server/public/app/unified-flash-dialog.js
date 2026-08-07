@@ -139,6 +139,9 @@
 
     function open(nextConfig = {}) {
       config = nextConfig;
+      executeButton.dataset.actionType = nextConfig.actionType || "";
+      executeButton.dataset.actionRelease = nextConfig.artifact?.version || "";
+      executeButton.dataset.actionTimeout = String(nextConfig.actionTimeoutMs || "");
       const guidedProgress = nextConfig.progressPresentation === "guided";
       dialog.classList.toggle("gernetix-flash-dialog--guided", guidedProgress);
       terminalTitle.textContent = guidedProgress ? "FORTSCHRITT" : "TERMINAL";

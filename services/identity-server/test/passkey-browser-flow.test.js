@@ -14,9 +14,10 @@ test("browser-side WebAuthn failures are reported without sending their message 
     authSource.indexOf("async function reportPasskeyBrowserError"),
     authSource.indexOf("function registrationFailureMessage"),
   );
-  assert.match(authSource, /reportPasskeyBrowserError\("authentication", error\)/);
+  assert.match(authSource, /reportPasskeyBrowserError\("authentication", error, action\)/);
   assert.match(authSource, /reportPasskeyBrowserError\("registration", error\)/);
   assert.match(reporterSource, /body: JSON\.stringify\(\{ flow, error_name: error\?\.name \|\| "UnknownError" \}\)/);
+  assert.match(reporterSource, /\.\.\.actionHeaders\(action\)/);
   assert.doesNotMatch(reporterSource, /error\.message|credential/);
 });
 

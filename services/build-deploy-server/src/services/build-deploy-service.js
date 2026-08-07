@@ -543,6 +543,7 @@ function normalizeJob(input = {}) {
 
   return {
     job_id: input.job_id || randomUUID(),
+    ...normalizeBuildActionCorrelation(input),
     mode,
     build_profile: buildProfile,
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
@@ -556,6 +557,13 @@ function normalizeJob(input = {}) {
     status: "accepted",
     created_at: new Date().toISOString(),
   };
+}
+
+function normalizeBuildActionCorrelation(input = {}) {
+  const actionId = String(input.action_id || "").trim().toLowerCase();
+  const actionType = String(input.action_type || "").trim();
+  if (actionType !== "project.build.start" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(actionId)) return {};
+  return { action_id: actionId, action_type: actionType };
 }
 
 function validateComputeBuildResult(result, job, artifactPolicySource = DEFAULT_ARTIFACT_POLICY_SOURCE) {
@@ -580,6 +588,8 @@ function validateComputeBuildResult(result, job, artifactPolicySource = DEFAULT_
 function summarizeJob(job) {
   return {
     job_id: job.job_id,
+    action_id: job.action_id || "",
+    action_type: job.action_type || "",
     worker_id: job.worker_id || null,
     mode: job.mode,
     build_profile: job.build_profile,

@@ -74,7 +74,7 @@ test("USB provisioning prefers the background service without leaving GerNetiX",
   assert.match(onboarding, /showSerialServiceChoiceDialog\(\)/);
   assert.doesNotMatch(onboarding, /Installiere oder repariere die Systemintegration unter Downloads/);
   assert.match(serialServiceClient, /https:\/\/localhost:43123/);
-  assert.match(serialServiceClient, /http:\/\/127\.0\.0\.1:43123/);
+  assert.match(serialServiceClient, /https:\/\/127\.0\.0\.1:43123/);
   assert.match(serialServiceClient, /for \(const candidate of baseUrls\)/);
   assert.match(serialServiceClient, /targetAddressSpace: "loopback"/);
   assert.match(onboarding, /await identifyEsp32Bootloader\(\)/);

@@ -32,6 +32,8 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   assert.match(swift, /"percent": percent/);
   assert.match(swift, /outputHandle\.readabilityHandler/);
   assert.match(swift, /recordEspflashProgress/);
+  assert.match(swift, /validatedActionID\(body\["actionId"\]\)/);
+  assert.match(swift, /"actionId": actionID/);
   assert.match(swift, /Geschriebene Firmware wird geprüft/);
   assert.match(swift, /flash_package_app_address_mismatch/);
   assert.match(swift, /#available\(macOS 15\.0, \*\)/);

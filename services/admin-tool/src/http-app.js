@@ -69,6 +69,16 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/user-action-events") {
+      sendJson(res, 200, await service.userActionEvents({
+        action_id: url.searchParams.get("action_id") || "",
+        action_type: url.searchParams.get("action_type") || "",
+        phase: url.searchParams.get("phase") || "",
+        limit: url.searchParams.get("limit") || "",
+      }));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/link-integrity") {
       sendJson(res, 200, await service.linkIntegrity(readContext(url, {}, req)));
       return;
@@ -221,6 +231,14 @@ function createHttpApp(options) {
         sendJson(res, 403, { error: "system_event_ingest_access_denied" }); return;
       }
       sendJson(res, 201, { event: await service.recordSystemEvent(await readJsonBody(req)) });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/user-action-events") {
+      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
+        sendJson(res, 403, { error: "user_action_ingest_access_denied" }); return;
+      }
+      sendJson(res, 201, { event: await service.recordUserActionEvent(await readJsonBody(req)) });
       return;
     }
 

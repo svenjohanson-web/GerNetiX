@@ -683,7 +683,7 @@
                     <option value="debug">Debug</option>
                   </select>
                 </label>
-                <button id="buildButton" type="button">Build</button>
+                <button id="buildButton" type="button" data-action-type="project.build.start" data-action-timeout="900000">Build</button>
                 <button id="cleanBuildButton" type="button" title="Löscht die inkrementellen Build-Zustände aller Software-Einheiten dieses Projekts.">Clean</button>
                 <button id="flashButton" type="button" aria-describedby="ideActionReason">Flashen…</button>
                 <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
@@ -1536,7 +1536,8 @@
     </main>
 
     <script defer src="/app/i18n/i18n.js?v=20260726-01"></script>
-    <script defer src="/app/api-client.js?v=20260805-hardware-lab-status-1"></script>
+    <script defer src="/app/action-observability.js?v=20260807-four-action-chains-1"></script>
+    <script defer src="/app/api-client.js?v=20260807-action-observability-1"></script>
     <script defer src="/app/dom-utils.js?v=20260803-performance-1"></script>
     <script defer src="/app/ai-chat-pattern.js?v=20260805-standard-ai-chat-4"></script>
     <script defer src="/app/serial-service-client.js?v=20260807-helper-progress-1"></script>

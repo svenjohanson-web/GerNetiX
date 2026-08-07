@@ -105,6 +105,7 @@ final class SessionStore {
 
 final class FlashJob {
     let id: String
+    let actionID: String
     let createdAt: String
     var status = "queued"
     var logs: [String] = []
@@ -115,14 +116,16 @@ final class FlashJob {
     var message = "Flash wird vorbereitet."
     var process: Process?
 
-    init() {
+    init(actionID: String = "") {
         id = "flash_\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString.prefix(8).lowercased())"
+        self.actionID = actionID
         createdAt = ISO8601DateFormatter().string(from: Date())
     }
 
     func publicValue() -> JSONObject {
         [
             "id": id,
+            "actionId": actionID,
             "status": status,
             "logs": Array(logs.suffix(100)),
             "error": error,
@@ -190,7 +193,7 @@ final class SerialService {
                 let body = try decodeObject(request.body)
                 let port = try requiredPort(body["port"])
                 let files = try flashFiles(body["files"])
-                let job = createFlashJob(port: port, files: files)
+                let job = createFlashJob(port: port, files: files, actionID: try validatedActionID(body["actionId"]))
                 return jsonResponse(202, lock.withLock { job.publicValue() }, cors)
             }
             if let id = routeIdentifier(request.path, prefix: "/v1/flash-jobs/") {
@@ -264,8 +267,8 @@ final class SerialService {
         ]
     }
 
-    private func createFlashJob(port: String, files: [FlashFile]) -> FlashJob {
-        let job = FlashJob()
+    private func createFlashJob(port: String, files: [FlashFile], actionID: String = "") -> FlashJob {
+        let job = FlashJob(actionID: actionID)
         lock.withLock { jobs[job.id] = job }
         DispatchQueue.global(qos: .userInitiated).async { [weak self, weak job] in
             guard let self, let job else { return }
@@ -875,6 +878,17 @@ func decodeObject(_ data: Data) throws -> JSONObject {
         throw ServiceError("invalid_json", "Die Anfrage enthält kein gültiges JSON.")
     }
     return object
+}
+
+func validatedActionID(_ value: Any?) throws -> String {
+    guard let rawValue = value as? String else { return "" }
+    let actionID = rawValue.lowercased()
+    if actionID.isEmpty { return "" }
+    let uuidPattern = #"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"#
+    guard actionID.range(of: uuidPattern, options: .regularExpression) != nil else {
+        throw ServiceError("invalid_action_id", "Die Action-ID ist ungueltig.")
+    }
+    return actionID
 }
 
 func requiredPort(_ value: Any?) throws -> String {

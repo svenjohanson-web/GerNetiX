@@ -1,5 +1,7 @@
 "use strict";
 
+const { readUserActionContext } = require("../../services/user-action-events");
+
 function registerProjectRoutes(dependencies) {
   const {
     registry, requireSession, readJsonBody, sendJson, requireEntitlement, requireSessionProject,
@@ -208,8 +210,10 @@ function registerProjectRoutes(dependencies) {
         return;
       }
       const body = await readJsonBody(req);
+      const actionContext = readUserActionContext(req, "project.settings.save");
       sendJson(res, 200, await projectServerJson(servicePath, {
         method: "PUT",
+        ...(actionContext ? { headers: actionContext.headers } : {}),
         body: {
           account_id: accountId,
           manifest_version: body.manifest_version,

@@ -1,5 +1,7 @@
 "use strict";
 
+const { readUserActionContext } = require("../../services/user-action-events");
+
 const {
   customerArtifactList,
   customerBuildProgress,
@@ -155,8 +157,10 @@ function registerBuildRoutes({
     async handler({ req, res, match }) {
       if (!await requireSession(req, res)) return;
       const jobId = decodeURIComponent(match[1]);
-      const job = await loadBuildDeployJob(jobId);
-      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+      const actionContext = readUserActionContext(req, "project.build.start");
+      const actionOptions = actionContext ? { headers: actionContext.headers } : {};
+      const job = await loadBuildDeployJob(jobId, actionOptions);
+      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`, actionOptions).catch(() => null);
       if (["succeeded", "failed", "cancelled"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
       sendJson(res, 200, {
         build_job_id: jobId,

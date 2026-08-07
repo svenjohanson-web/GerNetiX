@@ -20,6 +20,8 @@ test("build job produces required artifacts and removes temporary project worksp
 
   const accepted = await service.submitJob({
     job_id: "job-1",
+    action_id: "11111111-1111-4111-8111-111111111111",
+    action_type: "project.build.start",
     mode: "build",
     build_profile: "debug",
     build_package: {
@@ -35,6 +37,8 @@ test("build job produces required artifacts and removes temporary project worksp
   await service.jobs.get("job-1").promise;
 
   const job = service.getJob("job-1");
+  assert.equal(job.action_id, "11111111-1111-4111-8111-111111111111");
+  assert.equal(job.action_type, "project.build.start");
   assert.equal(job.status, "succeeded");
   assert.equal(job.result.build.status, "succeeded");
   assert.equal(job.result.build.primary_firmware.file_name, "firmware.bin");

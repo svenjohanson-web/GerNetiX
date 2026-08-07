@@ -2,12 +2,13 @@
 set -eu
 
 # SSH entrypoint for the dedicated monitor key. The account shell points here;
-# only the three exact diagnostic invocations are accepted.
+# only the exact diagnostic invocations are accepted.
 requested_command="${SSH_ORIGINAL_COMMAND:-${2:-}}"
 case "$requested_command" in
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic security") action=security ;;
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps") action=compose-ps ;;
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic link-integrity") action=link-integrity ;;
+  "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic user-action-alerts") action=user-action-alerts ;;
   *) echo "unsupported monitor command" >&2; exit 64 ;;
 esac
 exec sudo -n /usr/local/sbin/gernetix-monitor-diagnostic "$action"

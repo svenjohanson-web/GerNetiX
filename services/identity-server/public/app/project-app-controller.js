@@ -92,19 +92,34 @@
     async function applyAction({ actionId, settingKey, value, control }) {
       const action = (snapshot.manifest.actions || []).find((item) => item.id === actionId);
       if (!action || action.type !== "update_setting" || !settingKey) return;
+      const operation = root.GerNetiXActionOps?.begin("project.settings.save", { timeoutMs: 30000 });
       control.disabled = true;
       try {
-        const saved = await putJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app`, {
+        await actionStep(operation, "project.settings.validate", async () => true, "settings_validation_failed");
+        const saved = await actionStep(operation, "project.settings.persist", () => putJson(`/api/platform/projects/${encodeURIComponent(activeProjectId)}/project-app`, {
           manifest_version: snapshot.manifest_version,
           expected_revision: snapshot.revision,
           values: { [settingKey]: value },
-        });
+        }, { action: operation }), settingsFailureReason);
         snapshot = { ...saved, bindings: snapshot.bindings || {} };
-        draw(document.querySelector("#projectAppContent"));
+        await actionStep(operation, "project.settings.refresh", async () => draw(document.querySelector("#projectAppContent")), "settings_persistence_failed");
+        operation?.succeed();
       } catch (error) {
+        operation?.fail(settingsFailureReason(error));
         control.disabled = false;
         root.alert?.(error.message || "Die Einstellung konnte nicht gespeichert werden.");
       }
+    }
+
+    function actionStep(operation, spanType, callback, reasonCode) {
+      return operation ? operation.step(spanType, callback, reasonCode) : callback();
+    }
+
+    function settingsFailureReason(error) {
+      if (error?.status === 404 || error?.code === "project_not_found") return "project_not_found";
+      if (error?.status === 409 || error?.code === "project_app_revision_conflict") return "settings_conflict";
+      if (error?.status === 400 || error?.code === "project_app_settings_invalid") return "settings_validation_failed";
+      return "settings_persistence_failed";
     }
 
     return { render };

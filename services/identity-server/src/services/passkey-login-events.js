@@ -1,6 +1,6 @@
 const crypto = require("node:crypto");
 
-function passkeyLoginFailureEvent(stage, error, account = null) {
+function passkeyLoginFailureEvent(stage, error, account = null, correlationId = "") {
   return {
     severity: "warning",
     source_service: "identity_server",
@@ -15,7 +15,7 @@ function passkeyLoginFailureEvent(stage, error, account = null) {
     route: stage === "options"
       ? "/api/passkeys/authentication/options"
       : "/api/passkeys/authentication/verify",
-    correlation_id: crypto.randomUUID(),
+    correlation_id: correlationId || crypto.randomUUID(),
     details: {
       stage,
       error_code: safePasskeyErrorCode(error),
@@ -34,7 +34,7 @@ function safePasskeyErrorCode(error) {
   return "passkey_authentication_failed";
 }
 
-function passkeyBrowserFailureEvent(input = {}) {
+function passkeyBrowserFailureEvent(input = {}, correlationId = "") {
   const flow = input.flow === "registration" ? "registration" : "authentication";
   const errorName = safeBrowserErrorName(input.error_name);
   return {
@@ -50,7 +50,7 @@ function passkeyBrowserFailureEvent(input = {}) {
       ? "Ein Passkey-Konto konnte nicht vollständig angelegt werden."
       : "Ein Konto konnte nicht per Passkey angemeldet werden.",
     route: "/app/auth/",
-    correlation_id: crypto.randomUUID(),
+    correlation_id: correlationId || crypto.randomUUID(),
     details: {
       flow,
       stage: "browser_webauthn",

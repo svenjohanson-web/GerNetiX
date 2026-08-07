@@ -34,6 +34,10 @@ case "${1:-}" in
     cd /opt/gernetix
     exec docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-link-integrity.js
     ;;
+  user-action-alerts)
+    cd /opt/gernetix
+    exec docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-user-action-alerts.js
+    ;;
   *)
     echo "unsupported diagnostic command" >&2
     exit 64

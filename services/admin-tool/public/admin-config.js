@@ -19,6 +19,9 @@ const state = {
   monitoringLoading: false,
   systemEvents: null,
   systemEventsLoading: false,
+  userActions: null,
+  userActionsLoading: false,
+  userActionFilter: "",
   linkIntegrity: null,
   linkIntegrityLoading: false,
   resources: null,
@@ -57,6 +60,11 @@ document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click",
 document.querySelector("#refreshApiLlmModelsButton").addEventListener("click", loadApiModels);
 document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
 document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
+document.querySelector("#refreshUserActionsButton").addEventListener("click", () => loadUserActions(true));
+document.querySelector("#userActionSearchForm").addEventListener("submit", searchUserAction);
+document.querySelector("#clearUserActionSearchButton").addEventListener("click", clearUserActionSearch);
+document.querySelector("#userActionAttemptRows").addEventListener("click", inspectUserAction);
+document.querySelector("#copyUserActionIdButton").addEventListener("click", copyUserActionId);
 document.querySelector("#refreshLinkIntegrityButton").addEventListener("click", () => loadLinkIntegrity(true));
 document.querySelector("#syncLinkIntegrityButton").addEventListener("click", synchronizeLinkIntegrity);
 document.querySelector("#refreshResourcesButton").addEventListener("click", () => loadResources(true));
@@ -252,6 +260,7 @@ function setView(view) {
   renderNavigation();
   if (state.currentView === "monitoring") loadMonitoring(false);
   if (state.currentView === "system-events") loadSystemEvents(false);
+  if (state.currentView === "user-actions") loadUserActions(false);
   if (state.currentView === "link-integrity") loadLinkIntegrity(false);
   if (state.currentView === "ai-clarifications") loadAiClarifications(false);
   if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
@@ -293,6 +302,7 @@ function viewId(view) {
     "learning-feedback": "learningFeedbackView",
     monitoring: "monitoringView",
     "system-events": "systemEventsView",
+    "user-actions": "userActionsView",
     "link-integrity": "linkIntegrityView",
     accounts: "accountsView",
     resources: "resourcesView",
@@ -900,6 +910,167 @@ function systemEventContext(item) {
     item.account_id ? `Konto: ${item.account_id}` : "",
     item.correlation_id ? `Korrelation: ${item.correlation_id}` : "",
   ].filter(Boolean).join(" · ");
+}
+
+async function loadUserActions(force) {
+  if (state.userActionsLoading || (state.userActions && !force)) { renderUserActions(); return; }
+  state.userActionsLoading = true;
+  renderUserActions();
+  try {
+    const query = new URLSearchParams({ limit: state.userActionFilter ? "1000" : "500" });
+    if (state.userActionFilter) query.set("action_id", state.userActionFilter);
+    state.userActions = await getJson(`/api/admin/user-action-events?${query}`);
+  } catch (error) {
+    state.userActions = { summary: {}, items: [], error: error.message };
+  } finally {
+    state.userActionsLoading = false;
+    renderUserActions();
+  }
+}
+
+function renderUserActions() {
+  const metrics = document.querySelector("#userActionMetrics");
+  const typeRows = document.querySelector("#userActionTypeRows");
+  const attemptRows = document.querySelector("#userActionAttemptRows");
+  if (!metrics || !typeRows || !attemptRows) return;
+  if (state.userActionsLoading) {
+    metrics.innerHTML = metricCard("Status", "lade", "Wirkketten werden geladen");
+    typeRows.innerHTML = `<tr><td colspan="5" class="empty-cell">Nutzeraktionen werden geladen.</td></tr>`;
+    attemptRows.innerHTML = `<tr><td colspan="6" class="empty-cell">Nutzeraktionen werden geladen.</td></tr>`;
+    return;
+  }
+  if (!state.userActions || state.userActions.error) {
+    const message = state.userActions?.error || "Noch keine Daten geladen.";
+    metrics.innerHTML = metricCard("Status", "offen", message);
+    typeRows.innerHTML = `<tr><td colspan="5" class="empty-cell">${escapeHtml(message)}</td></tr>`;
+    attemptRows.innerHTML = `<tr><td colspan="6" class="empty-cell">${escapeHtml(message)}</td></tr>`;
+    renderUserActionTrace();
+    return;
+  }
+  const summary = state.userActions.summary || {};
+  metrics.innerHTML = [
+    metricCard("Versuche", formatNumber(summary.attempts), "eindeutige Action-IDs"),
+    metricCard("Erfolgreich", formatNumber(summary.succeeded), "fachlich abgeschlossen"),
+    metricCard("Fehler", formatNumber(summary.failed), "fehlgeschlagen oder Timeout"),
+    metricCard("Fehlerquote", `${formatNumber(summary.failure_rate_percent)} %`, "ueber geladene Wirkketten"),
+  ].join("");
+  const byType = summary.by_action_type || [];
+  typeRows.innerHTML = byType.length ? byType.map((item) => `<tr>
+    <td><strong>${escapeHtml(item.action_type)}</strong></td><td>${formatNumber(item.attempts)}</td>
+    <td>${formatNumber(item.succeeded)}</td><td>${formatNumber(item.failed)}</td>
+    <td>${formatNumber(item.failure_rate_percent)} %</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty-cell">Noch keine instrumentierten Nutzeraktionen.</td></tr>`;
+  const attempts = summary.recent_actions || [];
+  attemptRows.innerHTML = attempts.length ? attempts.map((item) => `<tr>
+    <td>${escapeHtml(formatDateTime(item.last_seen_at))}</td>
+    <td><code title="${escapeHtml(item.action_id || "")}">${escapeHtml(shortActionId(item.action_id))}</code></td>
+    <td><strong>${escapeHtml(item.action_type)}</strong><span>${escapeHtml(item.release_id || "-")}</span></td>
+    <td><strong class="severity ${escapeHtml(actionPhaseClass(item.phase))}">${escapeHtml(actionPhaseLabel(item.phase))}</strong>${item.reason_code ? `<span>${escapeHtml(item.reason_code)}</span>` : ""}</td>
+    <td>${formatNumber(item.event_count)}<span>${formatNumber(item.span_count)} Spans</span></td>
+    <td><button type="button" data-user-action-id="${escapeHtml(item.action_id)}">Öffnen</button></td>
+  </tr>`).join("") : `<tr><td colspan="6" class="empty-cell">Keine Wirkketten im gewählten Ausschnitt.</td></tr>`;
+  renderUserActionTrace();
+}
+
+function searchUserAction(event) {
+  event.preventDefault();
+  const input = document.querySelector("#userActionIdSearch");
+  const actionId = String(input?.value || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actionId)) {
+    setUserActionSearchMessage("Bitte eine vollständige gültige Action-ID eingeben.", true);
+    return;
+  }
+  state.userActionFilter = actionId;
+  setUserActionSearchMessage(`Wirkkette ${actionId} wird geladen.`);
+  void loadUserActions(true);
+}
+
+function clearUserActionSearch() {
+  state.userActionFilter = "";
+  document.querySelector("#userActionIdSearch").value = "";
+  setUserActionSearchMessage("Alle zuletzt erfassten Wirkketten werden angezeigt.");
+  void loadUserActions(true);
+}
+
+function inspectUserAction(event) {
+  const button = event.target.closest("[data-user-action-id]");
+  if (!button) return;
+  const actionId = button.dataset.userActionId || "";
+  state.userActionFilter = actionId;
+  document.querySelector("#userActionIdSearch").value = actionId;
+  setUserActionSearchMessage(`Wirkkette ${actionId} wird geladen.`);
+  void loadUserActions(true);
+}
+
+async function copyUserActionId() {
+  if (!state.userActionFilter) return;
+  try {
+    await navigator.clipboard.writeText(state.userActionFilter);
+    setUserActionSearchMessage("Action-ID wurde kopiert.");
+  } catch {
+    setUserActionSearchMessage("Action-ID konnte nicht kopiert werden; sie steht vollständig im Suchfeld.", true);
+  }
+}
+
+function renderUserActionTrace() {
+  const panel = document.querySelector("#userActionTracePanel");
+  const metaTarget = document.querySelector("#userActionTraceMeta");
+  const timeline = document.querySelector("#userActionTimeline");
+  if (!panel || !metaTarget || !timeline) return;
+  const summary = state.userActions?.summary || {};
+  const action = state.userActionFilter ? (summary.recent_actions || []).find((item) => item.action_id === state.userActionFilter) : null;
+  if (!action) {
+    panel.classList.add("hidden");
+    if (state.userActionFilter && state.userActions && !state.userActions.error && !state.userActionsLoading) {
+      setUserActionSearchMessage("Zu dieser Action-ID wurde keine Wirkkette gefunden.", true);
+    }
+    return;
+  }
+  panel.classList.remove("hidden");
+  setUserActionSearchMessage(`${formatNumber(action.event_count)} Ereignisse in ${formatNumber(action.span_count)} Spans gefunden.`);
+  metaTarget.innerHTML = [
+    ["Action-ID", action.action_id], ["Aktion", action.action_type],
+    ["Status", actionPhaseLabel(action.phase)], ["Release", action.release_id || "-"],
+    ["Route", action.route_id || "-"], ["Fehlergrund", action.reason_code || "-"],
+    ["Beginn", formatTraceTime(action.started_at)], ["Letztes Ereignis", formatTraceTime(action.last_seen_at)],
+  ].map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+  const events = [...(state.userActions.items || [])].sort((left, right) => String(left.occurred_at).localeCompare(String(right.occurred_at)));
+  timeline.innerHTML = events.map((item) => `<li class="${escapeHtml(actionPhaseClass(item.phase))}">
+    <div class="action-timeline-head"><time>${escapeHtml(formatTraceTime(item.occurred_at))}</time><strong>${escapeHtml(actionPhaseLabel(item.phase))}</strong></div>
+    <code>${escapeHtml(item.span_type || "action")}</code>
+    <p>${escapeHtml(item.reason_code || "Kein Fehlergrund")}</p>
+    <small>Span ${escapeHtml(shortActionId(item.span_id))}${item.parent_span_id ? ` · Parent ${escapeHtml(shortActionId(item.parent_span_id))}` : ""}${item.duration_bucket ? ` · ${escapeHtml(item.duration_bucket)}` : ""}</small>
+  </li>`).join("");
+}
+
+function setUserActionSearchMessage(message, isError = false) {
+  const target = document.querySelector("#userActionSearchMessage");
+  if (!target) return;
+  target.textContent = message;
+  target.classList.toggle("error-text", isError);
+}
+
+function shortActionId(value) {
+  const text = String(value || "");
+  return text.length > 13 ? `${text.slice(0, 13)}…` : text || "-";
+}
+
+function actionPhaseLabel(phase) {
+  return { triggered: "Ausgelöst", started: "Gestartet", succeeded: "Erfolgreich", failed: "Fehlgeschlagen", timed_out: "Timeout", unhandled: "Ohne Handler" }[phase] || phase || "Offen";
+}
+
+function actionPhaseClass(phase) {
+  if (phase === "succeeded") return "ok";
+  if (["failed", "unhandled"].includes(phase)) return "error";
+  if (phase === "timed_out") return "warning";
+  return "info";
+}
+
+function formatTraceTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
 }
 
 function severityLabel(value) {

@@ -70,7 +70,8 @@ Der Benutzer `gernetix-monitor` besitzt keine interaktive Shell, kein Passwort u
 keinen Docker-Gruppenzugriff. Der Monitor darf ausschliesslich das root-eigene,
 read-only Diagnoseprogramm `/usr/local/sbin/gernetix-monitor-diagnostic` ueber
 eng begrenzte `sudoers`-Eintraege ausfuehren. Das Programm akzeptiert nur die
-Kommandos `security`, `compose-ps` und `link-integrity`. Die Installation muss
+Kommandos `security`, `compose-ps`, `link-integrity` und
+`user-action-alerts`. Die Installation muss
 vor der Umstellung mit `visudo` validiert werden; ein Root-Login fuer den Monitor
 ist danach nicht mehr erforderlich.
 

@@ -154,14 +154,14 @@ async function loadQuizAssets() {
 
 async function loadProjectAppAssets() {
   await Promise.all([
-    loadPlatformScript("/app/project-app-renderer.js?v=20260805-route-lazy-2"),
-    loadPlatformScript("/app/project-app-controller.js?v=20260805-nexi-hardware-requirements-1"),
+    loadPlatformScript("/app/project-app-renderer.js?v=20260807-action-observability-1"),
+    loadPlatformScript("/app/project-app-controller.js?v=20260807-action-observability-1"),
   ]);
 }
 
 const lazyAssetVersions = {
   boardConfiguration: "20260731-board-source-groups-1",
-  build: "20260804-debug-artifact-protection-1",
+  build: "20260807-action-observability-1",
   flashDialog: "20260807-helper-progress-1",
   flashExecutor: "20260804-unified-flash-2",
   flashProgress: "20260802-flash-progress",

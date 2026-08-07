@@ -2126,11 +2126,11 @@ async function saveSource() {
   }
 }
 
-async function persistCurrentSource(project = projectById(state.activeProjectId)) {
+async function persistCurrentSource(project = projectById(state.activeProjectId), requestOptions = {}) {
   if (!project || !state.sourcePath || !ideSourceIsEditable(project, state.sourcePath)) return;
   await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(state.sourcePath)}`, {
     content: document.querySelector("#sourceEditor").value,
-  });
+  }, requestOptions);
   clearIdeSourceDirty(project.id, state.sourcePath);
   renderIdeProjectInformation(project);
 }

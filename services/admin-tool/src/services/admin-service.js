@@ -136,6 +136,35 @@ class AdminService {
     };
   }
 
+  async recordUserActionEvent(input) {
+    validateRequired(input || {}, ["event_id", "occurred_at", "action_type", "action_id", "span_type", "span_id", "phase", "route_id"]);
+    if (!["triggered", "started", "succeeded", "failed", "timed_out", "unhandled"].includes(input.phase)) {
+      throw new AdminToolError("invalid_action_phase", "Unbekannte Nutzeraktionsphase.", 400);
+    }
+    return this.repository.addUserActionEvent({
+      event_id: String(input.event_id), occurred_at: String(input.occurred_at),
+      action_type: String(input.action_type), action_id: String(input.action_id),
+      span_type: String(input.span_type), span_id: String(input.span_id),
+      parent_span_id: input.parent_span_id ? String(input.parent_span_id) : "",
+      parent_action_id: input.parent_action_id ? String(input.parent_action_id) : "",
+      phase: String(input.phase), reason_code: input.reason_code ? String(input.reason_code) : "",
+      route_id: String(input.route_id), release_id: input.release_id ? String(input.release_id) : "",
+      duration_bucket: input.duration_bucket ? String(input.duration_bucket) : "",
+    });
+  }
+
+  async userActionEvents(filter = {}) {
+    const actionId = String(filter.action_id || "").trim().toLowerCase();
+    if (actionId && !ACTION_ID_PATTERN.test(actionId)) {
+      throw new AdminToolError("invalid_action_id", "Die Action-ID muss eine gueltige UUID sein.", 400);
+    }
+    const items = await this.repository.listUserActionEvents({ ...filter, action_id: actionId });
+    return {
+      summary: summarizeUserActionEvents(items),
+      items: items.slice(0, Number(filter.limit || 200)),
+    };
+  }
+
   async synchronizeIdentityLinkInventory(context) {
     const access = await this.requireLinkIntegrityAccess(context, "link_inventory_sync");
     if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.identityAdminToken) {
@@ -1895,6 +1924,56 @@ function providerStatusUrl(event = {}, providerType = "", providerName = "") {
   if (baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1") || providerType === "local") return baseUrl || "http://127.0.0.1:11434";
   if (/^https?:\/\//i.test(baseUrl)) return baseUrl;
   return "";
+}
+
+const ACTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function summarizeUserActionEvents(events) {
+  const actions = new Map();
+  for (const event of events) {
+    const action = actions.get(event.action_id) || {
+      action_id: event.action_id, action_type: event.action_type, release_id: event.release_id || "",
+      route_id: event.route_id || "", started_at: event.occurred_at, last_seen_at: event.occurred_at,
+      phase: "triggered", reason_code: "", failed_span: "", event_count: 0, span_ids: new Set(),
+    };
+    action.event_count += 1;
+    if (event.span_id) action.span_ids.add(event.span_id);
+    if (String(event.occurred_at) < String(action.started_at)) action.started_at = event.occurred_at;
+    if (String(event.occurred_at) >= String(action.last_seen_at)) {
+      action.last_seen_at = event.occurred_at;
+      action.phase = event.phase;
+    }
+    if (["failed", "timed_out", "unhandled"].includes(event.phase)) {
+      action.phase = event.phase;
+      action.reason_code = event.reason_code || "unknown_client_failure";
+      action.failed_span = event.span_type || "action";
+    }
+    actions.set(event.action_id, action);
+  }
+  const attempts = [...actions.values()].map((action) => {
+    const { span_ids: spanIds, ...value } = action;
+    return { ...value, span_count: spanIds.size };
+  });
+  const failed = attempts.filter((item) => ["failed", "timed_out", "unhandled"].includes(item.phase));
+  const succeeded = attempts.filter((item) => item.phase === "succeeded");
+  const open = attempts.length - failed.length - succeeded.length;
+  const byType = new Map();
+  for (const action of attempts) {
+    const item = byType.get(action.action_type) || { action_type: action.action_type, attempts: 0, succeeded: 0, failed: 0, open: 0 };
+    item.attempts += 1;
+    if (action.phase === "succeeded") item.succeeded += 1;
+    else if (["failed", "timed_out", "unhandled"].includes(action.phase)) item.failed += 1;
+    else item.open += 1;
+    item.failure_rate_percent = item.attempts ? Number((item.failed / item.attempts * 100).toFixed(1)) : 0;
+    byType.set(action.action_type, item);
+  }
+  return {
+    attempts: attempts.length, succeeded: succeeded.length, failed: failed.length, open,
+    failure_rate_percent: attempts.length ? Number((failed.length / attempts.length * 100).toFixed(1)) : 0,
+    by_action_type: [...byType.values()].sort((left, right) => right.failed - left.failed || right.attempts - left.attempts),
+    recent_actions: [...attempts].sort((left, right) => String(right.last_seen_at).localeCompare(String(left.last_seen_at))).slice(0, 50),
+    recent_failures: failed.sort((left, right) => String(right.last_seen_at).localeCompare(String(left.last_seen_at))).slice(0, 20),
+  };
 }
 
 function maskDevice(device) {

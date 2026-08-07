@@ -79,12 +79,12 @@
 
   function renderToggle(widget, { action, setting, value }) {
     assertSettingAction(widget, action, setting);
-    return `<label class="project-app-control"><input type="checkbox" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}"${value ? " checked" : ""}><span>${escapeHtml(setting.label)}</span></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
+    return `<label class="project-app-control"><input type="checkbox" data-action-type="project.settings.save" data-action-timeout="30000" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}"${value ? " checked" : ""}><span>${escapeHtml(setting.label)}</span></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
   }
 
   function renderSelect(widget, { action, setting, value }) {
     assertSettingAction(widget, action, setting);
-    return `<label class="project-app-control"><span>${escapeHtml(setting.label)}</span><select data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}">${(setting.options || []).map((option) => `<option value="${escapeAttribute(option.value)}"${String(option.value) === String(value) ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
+    return `<label class="project-app-control"><span>${escapeHtml(setting.label)}</span><select data-action-type="project.settings.save" data-action-timeout="30000" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}">${(setting.options || []).map((option) => `<option value="${escapeAttribute(option.value)}"${String(option.value) === String(value) ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
   }
 
   function renderInput(widget, { action, setting, value }) {
@@ -94,13 +94,13 @@
     const constraints = numeric
       ? `${setting.min !== undefined ? ` min="${escapeAttribute(String(setting.min))}"` : ""}${setting.max !== undefined ? ` max="${escapeAttribute(String(setting.max))}"` : ""} step="${setting.type === "integer" ? "1" : "any"}"`
       : ' maxlength="500"';
-    return `<label class="project-app-control"><span>${escapeHtml(setting.label)}</span><input type="${numeric ? "number" : "text"}" value="${escapeAttribute(value ?? "")}" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}" data-project-app-setting-type="${escapeAttribute(setting.type)}"${constraints}></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
+    return `<label class="project-app-control"><span>${escapeHtml(setting.label)}</span><input type="${numeric ? "number" : "text"}" value="${escapeAttribute(value ?? "")}" data-action-type="project.settings.save" data-action-timeout="30000" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}" data-project-app-setting-type="${escapeAttribute(setting.type)}"${constraints}></label>${setting.description ? `<small>${escapeHtml(setting.description)}</small>` : ""}`;
   }
 
   function renderSchedule(widget, { action, setting, value }) {
     assertSettingAction(widget, action, setting);
     const schedule = value && typeof value === "object" ? value : {};
-    return `<fieldset class="project-app-schedule" data-project-app-schedule-enabled="${schedule.enabled !== false}" data-project-app-schedule-timezone="${escapeAttribute(schedule.timezone || "Europe/Berlin")}"><legend>${escapeHtml(setting.label)}</legend><label>Von <input type="time" value="${escapeAttribute(schedule.start || "")}" data-project-app-schedule-start="${escapeAttribute(setting.key)}"></label><label>Bis <input type="time" value="${escapeAttribute(schedule.end || "")}" data-project-app-schedule-end="${escapeAttribute(setting.key)}"></label><button type="button" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}">Speichern</button></fieldset>`;
+    return `<fieldset class="project-app-schedule" data-project-app-schedule-enabled="${schedule.enabled !== false}" data-project-app-schedule-timezone="${escapeAttribute(schedule.timezone || "Europe/Berlin")}"><legend>${escapeHtml(setting.label)}</legend><label>Von <input type="time" value="${escapeAttribute(schedule.start || "")}" data-project-app-schedule-start="${escapeAttribute(setting.key)}"></label><label>Bis <input type="time" value="${escapeAttribute(schedule.end || "")}" data-project-app-schedule-end="${escapeAttribute(setting.key)}"></label><button type="button" data-action-type="project.settings.save" data-action-timeout="30000" data-project-app-action="${escapeAttribute(action.id)}" data-project-app-setting="${escapeAttribute(setting.key)}">Speichern</button></fieldset>`;
   }
 
   function renderButton(widget, { action }) {

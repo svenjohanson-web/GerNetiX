@@ -227,6 +227,52 @@ test("system event severity is normalized", async () => {
   assert.equal(event.severity, "info");
 });
 
+test("user action chains are persisted and summarized without local details", async () => {
+  const service = createDefaultAdminTool();
+  const base = {
+    occurred_at: "2026-08-07T12:00:00.000Z", action_type: "nexi.flash.usb.start",
+    action_id: "11111111-1111-4111-8111-111111111111", span_type: "action",
+    span_id: "22222222-2222-4222-8222-222222222222", route_id: "/nachbauprojekte/nexi-sprachassistent/",
+    release_id: "0.1.0-test", reason_code: "",
+  };
+  await service.recordUserActionEvent({ ...base, event_id: "event-triggered", phase: "triggered" });
+  await service.recordUserActionEvent({ ...base, event_id: "event-failed", phase: "failed", span_type: "helper.status", reason_code: "local_dependency_unreachable" });
+
+  const result = await service.userActionEvents();
+  assert.equal(result.summary.attempts, 1);
+  assert.equal(result.summary.failed, 1);
+  assert.equal(result.summary.failure_rate_percent, 100);
+  assert.equal(result.summary.recent_failures[0].failed_span, "helper.status");
+  assert.equal(result.summary.recent_actions[0].event_count, 2);
+  assert.equal(result.summary.recent_actions[0].span_count, 1);
+  assert.equal("local_port" in result.items[0], false);
+});
+
+test("user action explorer returns one exact validated action timeline", async () => {
+  const service = createDefaultAdminTool();
+  const firstActionId = "11111111-1111-4111-8111-111111111111";
+  const secondActionId = "33333333-3333-4333-8333-333333333333";
+  const base = {
+    occurred_at: "2026-08-07T12:00:00.000Z", action_type: "project.build.start",
+    span_type: "action", span_id: "22222222-2222-4222-8222-222222222222",
+    route_id: "/app/ide/", release_id: "0.1.0-test", reason_code: "",
+  };
+  await service.recordUserActionEvent({ ...base, event_id: "event-first-started", action_id: firstActionId, phase: "started" });
+  await service.recordUserActionEvent({ ...base, occurred_at: "2026-08-07T12:00:01.000Z", event_id: "event-first-succeeded", action_id: firstActionId, phase: "succeeded" });
+  await service.recordUserActionEvent({ ...base, event_id: "event-second-failed", action_id: secondActionId, phase: "failed", reason_code: "build_execution_failed" });
+
+  const result = await service.userActionEvents({ action_id: firstActionId.toUpperCase(), limit: 1000 });
+  assert.equal(result.summary.attempts, 1);
+  assert.equal(result.summary.succeeded, 1);
+  assert.equal(result.summary.recent_actions[0].action_id, firstActionId);
+  assert.deepEqual(result.items.map((item) => item.event_id), ["event-first-succeeded", "event-first-started"]);
+
+  await assert.rejects(
+    service.userActionEvents({ action_id: "not-an-action-id" }),
+    (error) => error.code === "invalid_action_id" && error.status === 400,
+  );
+});
+
 test("link inventory and authenticated check results are summarized centrally", async () => {
   const service = createDefaultAdminTool();
   await service.registerLinkInventory({

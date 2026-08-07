@@ -1,6 +1,12 @@
 const ApiClient = (() => {
-  async function getJson(url) {
-    const response = await fetch(url);
+  async function getJson(url, options = {}) {
+    const action = options.action;
+    const response = await fetch(url, {
+      headers: {
+        ...(action ? { "X-GerNetiX-Action-Id": action.id, "X-GerNetiX-Action-Type": action.type } : {}),
+        ...(options.headers || {}),
+      },
+    });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(payload.message || payload.error || `Request failed: ${url}`);
@@ -12,12 +18,12 @@ const ApiClient = (() => {
     return payload;
   }
 
-  async function postJson(url, body) {
-    return writeJson("POST", url, body);
+  async function postJson(url, body, options = {}) {
+    return writeJson("POST", url, body, options);
   }
 
-  async function putJson(url, body) {
-    return writeJson("PUT", url, body);
+  async function putJson(url, body, options = {}) {
+    return writeJson("PUT", url, body, options);
   }
 
   async function patchJson(url, body) {
@@ -37,10 +43,15 @@ const ApiClient = (() => {
     return payload;
   }
 
-  async function writeJson(method, url, body) {
+  async function writeJson(method, url, body, options = {}) {
+    const action = options.action;
     const response = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(action ? { "X-GerNetiX-Action-Id": action.id, "X-GerNetiX-Action-Type": action.type } : {}),
+        ...(options.headers || {}),
+      },
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));

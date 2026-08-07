@@ -67,3 +67,11 @@ die Modulgrenzen von Nexi sind in der
 Die wiederholbare, jeweils auf einen vollstaendigen Funktionsdurchstich
 begrenzte Umsetzung wird in der
 [Nexi Bottom-up-Test-Roadmap](nexi-bottom-up-test-roadmap.md) fortgeschrieben.
+
+Die betriebliche Sicht auf fehlgeschlagene oder haengende Schaltflaechen und
+Nutzerablaeufe, einschliesslich lokaler Datenschutzgrenze, Ereignismodell,
+Dashboard und Alarmierung, beschreibt das
+[Operations-Konzept fuer fehlgeschlagene Nutzeraktionen](user-action-operations-observability.md).
+Der jeweils tatsaechlich umgesetzte und nachgewiesene Stand aller
+Betriebsbausteine steht in der zentralen
+[GerNetiX-Operations-Dokumentation](operations.md).

@@ -85,6 +85,42 @@ test("interner Schnittstellen-Eingang verwendet denselben geschuetzten Ingest-Ka
   });
 });
 
+test("interner Nutzeraktions-Eingang verwendet den geschuetzten Operations-Ingest", async () => {
+  const recorded = [];
+  const service = {
+    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    async recordUserActionEvent(event) { recorded.push(event); return event; },
+  };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const denied = await fetch(`${baseUrl}/api/internal/user-action-events`, { method: "POST", body: "{}" });
+    assert.equal(denied.status, 403);
+    const allowed = await fetch(`${baseUrl}/api/internal/user-action-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      body: JSON.stringify({ action_type: "nexi.flash.usb.start", action_id: "action-1" }),
+    });
+    assert.equal(allowed.status, 201);
+    assert.equal(recorded[0].action_type, "nexi.flash.usb.start");
+  });
+});
+
+test("Admin Action Explorer reicht die exakte Action-ID als Filter weiter", async () => {
+  const calls = [];
+  const service = {
+    serviceClients: {},
+    async userActionEvents(filter) { calls.push(filter); return { summary: {}, items: [] }; },
+  };
+  const actionId = "11111111-1111-4111-8111-111111111111";
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/admin/user-action-events?action_id=${actionId}&limit=1000`);
+    assert.equal(response.status, 200);
+    assert.equal(calls[0].action_id, actionId);
+    assert.equal(calls[0].limit, "1000");
+  });
+});
+
 test("Linkinventar und Prüfergebnisse verwenden einen getrennten Ingest-Token", async () => {
   const received = [];
   const service = {

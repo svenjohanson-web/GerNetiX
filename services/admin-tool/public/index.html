@@ -21,6 +21,7 @@
           <button type="button" data-admin-view="statistics">Übersicht</button>
           <button type="button" data-admin-view="learning-feedback">Bewertungen</button>
           <button type="button" data-admin-view="monitoring">Betrieb</button>
+          <button type="button" data-admin-view="user-actions">Nutzeraktionen</button>
           <button type="button" data-admin-view="link-integrity">Links</button>
           <button type="button" data-admin-view="system-events">Sicherheit</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
@@ -241,6 +242,56 @@
               <tbody id="systemEventRows"></tbody>
             </table>
           </div>
+        </section>
+      </section>
+
+      <section id="userActionsView" class="admin-view hidden">
+        <section class="panel" aria-labelledby="implementedActionChainsTitle">
+          <div class="section-head">
+            <div><p class="eyebrow">Instrumentierungsstand</p><h2 id="implementedActionChainsTitle">4 von 4 initialen Wirkketten umgesetzt</h2></div>
+          </div>
+          <ul>
+            <li><code>nexi.flash.usb.start</code> – Release bis verifizierter Board-Flash</li>
+            <li><code>identity.login.passkey</code> – Passkey-Anforderung bis Sitzung</li>
+            <li><code>project.settings.save</code> – Eingabeprüfung bis Project-Server-Revision</li>
+            <li><code>project.build.start</code> – Quellspeicherung bis fachliches Build-Ergebnis</li>
+          </ul>
+          <p>Offen bleiben die Inventur weiterer Schaltflächen, Staging-Durchstiche, Baseline und Schwellwertalarmierung.</p>
+        </section>
+        <section class="metrics-grid" id="userActionMetrics"></section>
+        <section class="panel">
+          <div class="section-head">
+            <div><p class="eyebrow">Operations</p><h2>Nutzeraktions-Wirkketten</h2></div>
+            <button id="refreshUserActionsButton" type="button">Neu laden</button>
+          </div>
+          <form id="userActionSearchForm" class="action-explorer-search">
+            <label for="userActionIdSearch">Action-ID</label>
+            <input id="userActionIdSearch" name="action_id" type="search" inputmode="text" autocomplete="off" spellcheck="false" placeholder="UUID eines Nutzerauftrags" />
+            <button class="primary" type="submit">Wirkkette suchen</button>
+            <button id="clearUserActionSearchButton" type="button">Alle Versuche</button>
+          </form>
+          <p id="userActionSearchMessage" class="helper-text" aria-live="polite">Eine vollständige Action-ID öffnet die zugehörige minimierte Wirkkette.</p>
+          <div class="table-wrap">
+            <table class="system-event-table">
+              <thead><tr><th>Aktion</th><th>Versuche</th><th>Erfolgreich</th><th>Fehler</th><th>Fehlerquote</th></tr></thead>
+              <tbody id="userActionTypeRows"></tbody>
+            </table>
+          </div>
+          <h3>Letzte Versuche</h3>
+          <div class="table-wrap">
+            <table class="system-event-table">
+              <thead><tr><th>Zeit</th><th>Action-ID</th><th>Aktion</th><th>Status</th><th>Ereignisse</th><th></th></tr></thead>
+              <tbody id="userActionAttemptRows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="userActionTracePanel" class="panel hidden" aria-labelledby="userActionTraceTitle">
+          <div class="section-head">
+            <div><p class="eyebrow">Action Explorer</p><h2 id="userActionTraceTitle">Wirkkette</h2></div>
+            <button id="copyUserActionIdButton" type="button">Action-ID kopieren</button>
+          </div>
+          <dl id="userActionTraceMeta" class="action-trace-meta"></dl>
+          <ol id="userActionTimeline" class="action-timeline"></ol>
         </section>
       </section>
 
@@ -792,6 +843,6 @@
         </section>
       </section>
     </main>
-    <script src="/admin/admin-config.js?v=20260806-learning-feedback-summary"></script>
+    <script src="/admin/admin-config.js?v=20260807-action-explorer-1"></script>
   </body>
 </html>

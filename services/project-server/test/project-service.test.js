@@ -557,7 +557,13 @@ test("creates a binary version only from the exact successful build snapshot", a
   const service = createMemoryProjectServer();
   const project = await createDemoProject(service);
   await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int frozen = 1;" });
-  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  const job = await service.createBuildJob(project.project_id, {
+    mode: "build",
+    action_id: "11111111-1111-4111-8111-111111111111",
+    action_type: "project.build.start",
+  });
+  assert.equal(job.action_id, "11111111-1111-4111-8111-111111111111");
+  assert.equal(job.action_type, "project.build.start");
   await service.createBuildPackage(job.build_job_id);
   await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int changed = 2;" });
   await service.recordBuildResult(job.build_job_id, {

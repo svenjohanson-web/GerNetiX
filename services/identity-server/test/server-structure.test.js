@@ -509,6 +509,21 @@ test("system health exposes runtime identity without requiring a session", async
   }]]);
 });
 
+test("system routes forward same-origin user action events to the ingest boundary", async () => {
+  const registry = createRouteRegistry();
+  const calls = [];
+  registerSystemRoutes({
+    registry,
+    handleUserActionIngest: async (req, res) => calls.push([req, res]),
+  });
+  const req = { method: "POST" };
+  const res = {};
+  assert.equal(await registry.dispatch({
+    req, res, url: new URL("http://localhost/api/operations/user-actions"),
+  }), true);
+  assert.deepEqual(calls, [[req, res]]);
+});
+
 test("the internal operator alert uses the configured operator mail and push channel", async () => {
   const registry = createRouteRegistry();
   const responses = [];

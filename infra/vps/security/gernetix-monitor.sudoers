@@ -1,3 +1,3 @@
 # Dedicated, non-interactive read-only diagnostics for the desktop monitor.
 # Keep this file root-owned (0440) and validate with visudo before installing.
-gernetix-monitor ALL=(root) NOPASSWD: /usr/local/sbin/gernetix-monitor-diagnostic security, /usr/local/sbin/gernetix-monitor-diagnostic compose-ps, /usr/local/sbin/gernetix-monitor-diagnostic link-integrity
+gernetix-monitor ALL=(root) NOPASSWD: /usr/local/sbin/gernetix-monitor-diagnostic security, /usr/local/sbin/gernetix-monitor-diagnostic compose-ps, /usr/local/sbin/gernetix-monitor-diagnostic link-integrity, /usr/local/sbin/gernetix-monitor-diagnostic user-action-alerts

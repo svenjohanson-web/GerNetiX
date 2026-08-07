@@ -66,23 +66,34 @@ languageSelect?.addEventListener("change", async () => {
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const action = window.GerNetiXActionOps?.begin("identity.login.passkey", { timeoutMs: 120000 });
   const username = String(new FormData(loginForm).get("identifier") || "").trim();
   statusElement.textContent = tr("auth.status.passkey.requesting", "Passkey wird angefordert …");
   let browserPasskeyRequest = false;
+  let actionStage = "options";
   try {
-    const options = await postJson("/api/passkeys/authentication/options", username ? { username } : {});
+    const options = await actionStep(action, "auth.options", () => postJson(
+      "/api/passkeys/authentication/options",
+      username ? { username } : {},
+      actionHeaders(action),
+    ), "authentication_options_failed");
+    actionStage = "webauthn";
     browserPasskeyRequest = true;
-    const credential = await navigator.credentials.get({ publicKey: parseRequestOptions(options) });
+    const credential = await actionStep(action, "auth.webauthn", () => navigator.credentials.get({ publicKey: parseRequestOptions(options) }), passkeyActionReason);
     browserPasskeyRequest = false;
-    const result = await postJson("/api/passkeys/authentication/verify", {
+    actionStage = "verification";
+    const result = await actionStep(action, "auth.verify", () => postJson("/api/passkeys/authentication/verify", {
       ...(username ? { username } : {}),
       credential: credentialJson(credential),
       next: nextUrl,
       locale: currentLocale(),
-    });
+    }, actionHeaders(action)), passkeyActionReason);
+    await actionStep(action, "auth.session", async () => result, "authentication_verification_failed");
+    action?.succeed();
     window.location.href = result.next || "/app/dashboard/";
   } catch (error) {
-    if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error);
+    if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error, action);
+    action?.fail(actionStage === "options" ? "authentication_options_failed" : passkeyActionReason(error));
     statusElement.textContent = passkeyLoginFailureMessage(error);
   }
 });
@@ -178,8 +189,8 @@ function applyMode(updateUrl) {
   }
 }
 
-async function postJson(url, body) {
-  const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+async function postJson(url, body, headers = {}) {
+  const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
   const payload = await response.json();
   if (!response.ok) {
     const error = new Error(payload.message || tr("auth.error.request_failed", "Anfrage fehlgeschlagen."));
@@ -188,11 +199,26 @@ async function postJson(url, body) {
   }
   return payload;
 }
-async function reportPasskeyBrowserError(flow, error) {
+function actionHeaders(action) {
+  return action ? { "X-GerNetiX-Action-Id": action.id, "X-GerNetiX-Action-Type": action.type } : {};
+}
+function actionStep(action, spanType, operation, reasonCode) {
+  return action ? action.step(spanType, operation, reasonCode) : operation();
+}
+function passkeyActionReason(error) {
+  const reason = error?.code || error?.name;
+  if (reason === "NotAllowedError") return "passkey_cancelled";
+  if (reason === "NotSupportedError") return "passkey_not_supported";
+  if (reason === "SecurityError") return "passkey_origin_invalid";
+  if (reason === "TypeError" || reason === "identity_persistence_unavailable") return "identity_unreachable";
+  if (["invalid_credentials", "account_not_found", "passkey_not_configured", "account_disabled", "account_not_verified", "guest_expired"].includes(reason)) return "account_unavailable";
+  return "authentication_verification_failed";
+}
+async function reportPasskeyBrowserError(flow, error, action = null) {
   try {
     await fetch("/api/passkeys/client-error", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...actionHeaders(action) },
       body: JSON.stringify({ flow, error_name: error?.name || "UnknownError" }),
     });
   } catch {}

@@ -18,6 +18,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         auditEvents: [],
         adminActions: [],
         systemEvents: [],
+        userActionEvents: [],
         linkTargets: [],
         linkOccurrences: [],
         linkChecks: [],
@@ -30,6 +31,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         auditEvents: "audit_events",
         adminActions: "admin_actions",
         systemEvents: "system_events",
+        userActionEvents: "user_action_events",
         linkTargets: "link_targets",
         linkOccurrences: "link_occurrences",
         linkChecks: "link_checks",
@@ -67,6 +69,12 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     return result;
   }
 
+  addUserActionEvent(input) {
+    const result = super.addUserActionEvent(input);
+    this.persist();
+    return result;
+  }
+
   replaceLinkInventory(sourceService, inventory) {
     const result = super.replaceLinkInventory(sourceService, inventory);
     this.persist();
@@ -88,6 +96,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       auditEvents: this.auditEvents,
       adminActions: this.adminActions,
       systemEvents: this.systemEvents,
+      userActionEvents: this.userActionEvents,
       linkTargets: Array.from(this.linkTargets.values()),
       linkOccurrences: Array.from(this.linkOccurrences.values()),
       linkChecks: this.linkChecks,
@@ -100,6 +109,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     this.store.replaceCollection?.("audit_events", state.auditEvents, "audit_event_id");
     this.store.replaceCollection?.("admin_actions", state.adminActions, "action_id");
     this.store.replaceCollection?.("system_events", state.systemEvents, "event_id");
+    this.store.replaceCollection?.("user_action_events", state.userActionEvents, "event_id");
     this.store.replaceCollection?.("link_targets", state.linkTargets, "reference_id");
     this.store.replaceCollection?.("link_occurrences", state.linkOccurrences, "occurrence_id");
     this.store.replaceCollection?.("link_checks", state.linkChecks, "check_id");
@@ -111,6 +121,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       this.store.replaceTable("admin_tool_audit_events", state.auditEvents, auditColumns());
       this.store.replaceTable("admin_tool_admin_actions", state.adminActions, actionColumns());
       this.store.replaceTable("admin_tool_system_events", state.systemEvents, systemEventColumns());
+      this.store.replaceTable("admin_tool_user_action_events", state.userActionEvents, userActionEventColumns());
       this.store.replaceTable("admin_tool_link_targets", state.linkTargets, linkTargetColumns());
       this.store.replaceTable("admin_tool_link_occurrences", state.linkOccurrences, linkOccurrenceColumns());
       this.store.replaceTable("admin_tool_link_checks", state.linkChecks, linkCheckColumns());
@@ -127,6 +138,7 @@ function adminSchema() {
     `CREATE TABLE IF NOT EXISTS admin_tool_audit_events (audit_event_id TEXT PRIMARY KEY, occurred_at TEXT, account_id TEXT, actor_id TEXT, actor_role TEXT, accessed_data_model_id TEXT, purpose TEXT, access_decision TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_admin_actions (action_id TEXT PRIMARY KEY, occurred_at TEXT, actor_id TEXT, actor_role TEXT, action_type TEXT, account_id TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_system_events (event_id TEXT PRIMARY KEY, occurred_at TEXT, severity TEXT, source_service TEXT, target_service TEXT, category TEXT, event_type TEXT, message TEXT, impact TEXT, account_id TEXT, route TEXT, correlation_id TEXT, details_json TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_user_action_events (event_id TEXT PRIMARY KEY, occurred_at TEXT, action_type TEXT, action_id TEXT, span_type TEXT, span_id TEXT, parent_span_id TEXT, parent_action_id TEXT, phase TEXT, reason_code TEXT, route_id TEXT, release_id TEXT, duration_bucket TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_link_targets (reference_id TEXT PRIMARY KEY, target_url TEXT, link_type TEXT, owner_domain TEXT, access_scope TEXT, source_service TEXT, active INTEGER, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_link_occurrences (occurrence_id TEXT PRIMARY KEY, reference_id TEXT, source_service TEXT, source_location TEXT, source_route TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_link_checks (check_id TEXT PRIMARY KEY, reference_id TEXT, checked_at TEXT, status TEXT, http_status INTEGER, access_profile TEXT, final_url TEXT, error_code TEXT, raw_json TEXT NOT NULL);`,
@@ -159,6 +171,10 @@ function actionColumns() {
 
 function systemEventColumns() {
   return { ...columns(["event_id", "occurred_at", "severity", "source_service", "target_service", "category", "event_type", "message", "impact", "account_id", "route", "correlation_id"]), details_json: jsonColumn("details"), raw_json: jsonColumn((row) => row) };
+}
+
+function userActionEventColumns() {
+  return { ...columns(["event_id", "occurred_at", "action_type", "action_id", "span_type", "span_id", "parent_span_id", "parent_action_id", "phase", "reason_code", "route_id", "release_id", "duration_bucket"]), raw_json: jsonColumn((row) => row) };
 }
 
 function linkTargetColumns() {

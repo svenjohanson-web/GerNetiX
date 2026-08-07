@@ -20,6 +20,8 @@ const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-orig
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
 const { passkeyClientError } = require("./services/passkey-client-errors");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
+const { createUserActionReporter } = require("./services/user-action-reporter");
+const { createUserActionIngestHandler, readUserActionContext } = require("./services/user-action-events");
 const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
 const { createIdentityLinkInventory } = require("./link-integrity/identity-link-inventory");
@@ -211,6 +213,15 @@ const systemEventIngestToken = process.env.SYSTEM_EVENT_INGEST_TOKEN || "";
 const recordSystemEvent = createSystemEventReporter({
   baseUrl: adminToolBaseUrl,
   ingestToken: systemEventIngestToken,
+});
+const recordUserActionEvent = createUserActionReporter({
+  baseUrl: adminToolBaseUrl,
+  ingestToken: systemEventIngestToken,
+});
+const handleUserActionIngest = createUserActionIngestHandler({
+  readJsonBody,
+  sendJson,
+  reportUserAction: recordUserActionEvent,
 });
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
@@ -553,6 +564,7 @@ registerSystemRoutes({
   projectServerUserId,
   handleInternalDevicePushEvent,
   handleInternalDeviceRuntimeEvent,
+  handleUserActionIngest,
   handleProjectRuntimeStream,
   telemetryJson,
 });
@@ -958,6 +970,7 @@ async function handlePasskeyRegistrationVerify(req, res) {
 
 async function handlePasskeyAuthenticationOptions(req, res) {
   let account = null;
+  const actionContext = readUserActionContext(req, "identity.login.passkey");
   try {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
@@ -970,7 +983,7 @@ async function handlePasskeyAuthenticationOptions(req, res) {
     storePasskeyChallenge("authenticate", username, options.challenge, config);
     sendJson(res, 200, options);
   } catch (error) {
-    await recordPasskeyLoginFailure("options", error, account);
+    await recordPasskeyLoginFailure("options", error, account, actionContext?.actionId);
     const clientError = passkeyClientError("options", error);
     sendJson(res, clientError.status, clientError);
   }
@@ -978,6 +991,7 @@ async function handlePasskeyAuthenticationOptions(req, res) {
 
 async function handlePasskeyAuthenticationVerify(req, res) {
   let account = null;
+  const actionContext = readUserActionContext(req, "identity.login.passkey");
   try {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
@@ -1003,7 +1017,7 @@ async function handlePasskeyAuthenticationVerify(req, res) {
     setSessionCookie(res, login.session.token, login.session.expires_at);
     sendJson(res, 200, { account: login.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
   } catch (error) {
-    await recordPasskeyLoginFailure("verification", error, account);
+    await recordPasskeyLoginFailure("verification", error, account, actionContext?.actionId);
     const clientError = passkeyClientError("verification", error);
     sendJson(res, clientError.status, clientError);
   }
@@ -1377,8 +1391,8 @@ function registrationMessage(error) {
   return "Konto konnte nicht erstellt werden.";
 }
 
-function recordPasskeyLoginFailure(stage, error, account) {
-  return recordSystemEvent(passkeyLoginFailureEvent(stage, error, account));
+function recordPasskeyLoginFailure(stage, error, account, correlationId = "") {
+  return recordSystemEvent(passkeyLoginFailureEvent(stage, error, account, correlationId));
 }
 
 function recordDeviceInventoryFailure(session, eventType, error, context = {}) {
@@ -1431,8 +1445,10 @@ async function handlePlatformSourceSearch(res, session, projectId, searchParams)
 async function handlePlatformSourceWrite(req, res, session, projectId, sourcePath) {
   const project = await requireSessionProject(session, projectId);
   const body = await readJsonBody(req);
+  const actionContext = readUserActionContext(req, "project.build.start");
   const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
     method: "PUT",
+    ...(actionContext ? { headers: actionContext.headers } : {}),
     body: {
       path: sourcePath,
       content: String(body.content || ""),
@@ -2772,6 +2788,8 @@ async function handleDeviceConnectivityCheck(res, session, deviceId) {
 
 async function handleUserIdeBuildJob(req, res) {
   const body = await readJsonBody(req);
+  const actionContext = readUserActionContext(req, "project.build.start");
+  const actionHeaders = actionContext?.headers || {};
   const session = await readSession(req);
   const projects = await loadUserIdeProjects(session);
   const devices = await loadUserIdeDevices(session);
@@ -2881,22 +2899,26 @@ async function handleUserIdeBuildJob(req, res) {
   }
   const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
     method: "POST",
+    headers: actionHeaders,
     body: {
       mode,
+      ...(actionContext ? { action_id: actionContext.actionId, action_type: actionContext.actionType } : {}),
       build_profile: body.build_profile || "standard",
       device_id: device?.device_id || null,
       software_unit_id: softwareUnit?.software_unit_id || "",
       build_config: resolvedBuildConfig,
     },
   });
-  const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
+  const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`, { headers: actionHeaders });
   const buildDeployClient = mode === "build_and_flash"
     ? otaBuildDeployJson
     : (["build", "prebuild"].includes(mode) && !flashTransportRequested ? buildWorkerPoolJson : buildDeployJson);
   const buildDeployJob = await buildDeployClient("/api/build-jobs", {
     method: "POST",
+    headers: actionHeaders,
     body: {
       job_id: projectServerJob.build_job_id,
+      ...(actionContext ? { action_id: actionContext.actionId, action_type: actionContext.actionType } : {}),
       mode,
       build_profile: projectServerJob.build_profile || body.build_profile || "standard",
       project_id: project.project_server_id,
@@ -2924,6 +2946,7 @@ async function handleUserIdeBuildJob(req, res) {
   });
   await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/submitted`, {
     method: "POST",
+    headers: actionHeaders,
     body: {
       build_deploy_job_id: buildDeployJob.job_id,
     },
@@ -4179,10 +4202,10 @@ function latestBuildStatus(project) {
   return project && project.build_count > 0 ? `${project.build_count} BuildJob(s)` : "";
 }
 
-async function loadBuildDeployJob(jobId) {
-  const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+async function loadBuildDeployJob(jobId, options = {}) {
+  const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`, options).catch(() => null);
   const client = projectJob?.mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
-  return client(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+  return client(`/api/build-jobs/${encodeURIComponent(jobId)}`, options);
 }
 
 function toBuildDeployPackage(buildPackage, device = {}, project = {}) {

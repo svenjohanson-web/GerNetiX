@@ -5,7 +5,8 @@ function registerSystemRoutes({
   handleDevLessonPreviewMigration, identityPersistenceBackend, identityRuntimeLocation, identityRemoteDev,
   smtpConfigStore, smtpEmailService, createIdentityLinkInventory, publicDir,
   webPushService, securityAlertPushAccountIds, requireSessionProject, projectServerUserId,
-  handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleProjectRuntimeStream, telemetryJson,
+  handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleUserActionIngest,
+  handleProjectRuntimeStream, telemetryJson,
 }) {
   registry.register({ method: "OPTIONS", path: "/api/dev/lesson-preview-migration", handler: ({ res }) => sendDevJson(res, 204, {}) });
   registry.register({ method: "POST", path: "/api/dev/lesson-preview-migration", handler: ({ req, res }) => handleDevLessonPreviewMigration(req, res) });
@@ -107,6 +108,7 @@ function registerSystemRoutes({
   });
   registry.register({ method: "POST", path: "/api/internal/push/device-event", handler: ({ req, res }) => handleInternalDevicePushEvent(req, res) });
   registry.register({ method: "POST", path: "/api/internal/runtime/device-event", handler: ({ req, res }) => handleInternalDeviceRuntimeEvent(req, res) });
+  registry.register({ method: "POST", path: "/api/operations/user-actions", handler: ({ req, res }) => handleUserActionIngest(req, res) });
   registry.register({
     method: "GET",
     pattern: /^\/api\/platform\/projects\/([^/]+)\/runtime-stream$/,

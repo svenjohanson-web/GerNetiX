@@ -25,6 +25,11 @@ test("passkey login events retain safe machine-readable error codes", () => {
   assert.equal(event.route, "/api/passkeys/authentication/options");
 });
 
+test("passkey server failures can retain the browser action correlation", () => {
+  const actionId = "11111111-1111-4111-8111-111111111111";
+  assert.equal(passkeyLoginFailureEvent("verification", new Error("failed"), null, actionId).correlation_id, actionId);
+});
+
 test("browser-side WebAuthn domain failures become safe Admin Tool events", () => {
   const event = passkeyBrowserFailureEvent({
     flow: "authentication",
@@ -43,4 +48,9 @@ test("browser-side Passkey event names are allowlisted", () => {
   const event = passkeyBrowserFailureEvent({ error_name: "credential-secret-value" });
   assert.equal(event.details.error_name, "UnknownError");
   assert.equal(event.details.error_code, "passkey_browser_failed");
+});
+
+test("browser-side Passkey failures retain the active login action correlation", () => {
+  const actionId = "11111111-1111-4111-8111-111111111111";
+  assert.equal(passkeyBrowserFailureEvent({ flow: "authentication", error_name: "NotAllowedError" }, actionId).correlation_id, actionId);
 });

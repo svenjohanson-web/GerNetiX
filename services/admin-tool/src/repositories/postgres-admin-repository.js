@@ -40,6 +40,18 @@ class PostgresAdminRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_operations_system_events_time
         ON operations_system_events (occurred_at DESC);
+      CREATE TABLE IF NOT EXISTS operations_user_action_events (
+        event_id text PRIMARY KEY, occurred_at timestamptz NOT NULL,
+        action_type text NOT NULL, action_id uuid NOT NULL,
+        span_type text NOT NULL, span_id uuid NOT NULL, parent_span_id uuid,
+        parent_action_id uuid,
+        phase text NOT NULL, reason_code text NOT NULL, route_id text NOT NULL,
+        release_id text NOT NULL, duration_bucket text NOT NULL, raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_user_actions_type_time
+        ON operations_user_action_events (action_type, occurred_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_operations_user_actions_action
+        ON operations_user_action_events (action_id, occurred_at);
       CREATE TABLE IF NOT EXISTS operations_interface_calls (
         call_id bigserial PRIMARY KEY, occurred_at timestamptz NOT NULL,
         source_service text NOT NULL, target_service text NOT NULL, method text NOT NULL,
@@ -216,6 +228,36 @@ class PostgresAdminRepository {
     ));
   }
 
+  async addUserActionEvent(value) {
+    await this.pool.query(`
+      INSERT INTO operations_user_action_events
+        (event_id, occurred_at, action_type, action_id, span_type, span_id,
+         parent_span_id, parent_action_id, phase, reason_code, route_id, release_id,
+         duration_bucket, raw_json)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+      ON CONFLICT (event_id) DO NOTHING
+    `, [value.event_id, value.occurred_at, value.action_type, value.action_id,
+      value.span_type, value.span_id, value.parent_span_id || null, value.parent_action_id || null,
+      value.phase, value.reason_code || "", value.route_id, value.release_id || "",
+      value.duration_bucket || "", value]);
+    return clone(value);
+  }
+
+  async listUserActionEvents(filter = {}) {
+    const conditions = [];
+    const values = [];
+    for (const field of ["action_id", "action_type", "phase"]) {
+      if (!filter[field]) continue;
+      values.push(filter[field]);
+      conditions.push(`${field}=$${values.length}`);
+    }
+    const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+    values.push(Math.max(1, Math.min(1000, Number(filter.limit) || 200)));
+    return rows(await this.pool.query(
+      `SELECT raw_json FROM operations_user_action_events${where} ORDER BY occurred_at DESC LIMIT $${values.length}`, values,
+    ));
+  }
+
   async addInterfaceCall(input) {
     await this.pool.query(`
       INSERT INTO operations_interface_calls
@@ -355,6 +397,7 @@ class PostgresAdminRepository {
           + (SELECT count(*) FROM operations_audit_events)
           + (SELECT count(*) FROM operations_admin_actions)
           + (SELECT count(*) FROM operations_system_events)
+          + (SELECT count(*) FROM operations_user_action_events)
           + (SELECT count(*) FROM operations_interface_calls)
           + (SELECT count(*) FROM operations_link_targets)
           + (SELECT count(*) FROM operations_link_occurrences)

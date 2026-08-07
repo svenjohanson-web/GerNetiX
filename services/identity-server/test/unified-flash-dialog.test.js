@@ -28,9 +28,14 @@ test("Nexi uses guided flash progress, detects one Helper port and continues to 
   const source = fs.readFileSync(path.join(__dirname, "../public/nachbauprojekte/nexi-sprachassistent/nexi-flash.js"), "utf8");
   assert.match(source, /GerNetiXFlashDialog\.create\(\)/);
   assert.match(source, /progressPresentation: "guided"/);
+  assert.match(source, /actionType: "nexi\.flash\.usb\.start"/);
+  assert.match(source, /GerNetiXActionOps\?\.begin/);
+  assert.match(source, /"helper\.status"/);
+  assert.match(source, /"board\.flash"/);
+  assert.match(source, /"flash\.verify"/);
   assert.match(source, /onExecute\(method, progress\)/);
   assert.match(source, /onComplete\(\) \{ window\.location\.assign\("inbetriebnahme\/index\.html"\); \}/);
-  assert.match(source, /const ports = await serialService\.ports\(\)/);
+  assert.match(source, /const ports = await observed\(action, "helper\.ports"/);
   assert.match(source, /selectedPort = \{ \.\.\.ports\[0\], source: "gernetix_serial_service" \}/);
   assert.match(source, /onUpdateProgress\(update\)/);
   assert.match(source, /setProgress\(\{ percent: update\?\.percent/);

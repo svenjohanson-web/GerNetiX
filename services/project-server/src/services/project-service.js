@@ -892,6 +892,7 @@ class ProjectService {
     }
     const job = {
       build_job_id: input.build_job_id || createId("build_job"),
+      ...normalizeBuildActionCorrelation(input),
       project_id: project.project_id,
       user_id: project.user_id,
       repository_id: binding?.repository_id || null,
@@ -2746,6 +2747,13 @@ function sha256(value) {
 
 function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function normalizeBuildActionCorrelation(input = {}) {
+  const actionId = String(input.action_id || "").trim().toLowerCase();
+  const actionType = String(input.action_type || "").trim();
+  if (actionType !== "project.build.start" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(actionId)) return {};
+  return { action_id: actionId, action_type: actionType };
 }
 
 function emptyProjectionResult() {

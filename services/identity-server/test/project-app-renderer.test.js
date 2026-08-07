@@ -70,6 +70,11 @@ test("requires a matching typed setting action for interactive controls", () => 
   assert.throws(() => render({ manifest: invalid }), /matching update_setting action/);
 });
 
+test("marks every persisted setting control as an observable user action", () => {
+  const html = render({ manifest: manifest(), snapshot: { settings: {} } });
+  assert.match(html, /data-action-type="project\.settings\.save"/);
+});
+
 test("renders telemetry history as a chart and its latest value as a metric", () => {
   const telemetryManifest = manifest();
   telemetryManifest.bindings.push({ id: "temperature", type: "telemetry", metric_id: "room.temperature" });

@@ -88,5 +88,5 @@ test("shows and enforces Nexi hardware minimum requirements", () => {
   assert.match(controller, /Hardware-Mindestanforderungen/);
   assert.match(controller, /device\.compatible === false[\s\S]*disabled/);
   assert.match(controller, /Nicht geeignet:/);
-  assert.match(shell, /project-app-controller\.js\?v=20260805-nexi-hardware-requirements-1/);
+  assert.match(shell, /project-app-controller\.js\?v=20260807-action-observability-1/);
 });

@@ -8,6 +8,34 @@ const vm = require("node:vm");
 
 const clientSource = fs.readFileSync(path.resolve(__dirname, "../public/app/serial-service-client.js"), "utf8");
 
+test("uses TLS for both localhost helper addresses", async () => {
+  const requests = [];
+  const window = { location: { protocol: "http:" } };
+  const context = vm.createContext({
+    window,
+    AbortController,
+    clearTimeout,
+    Uint8Array,
+    btoa,
+    crypto,
+    setTimeout,
+    fetch: async (url) => {
+      requests.push(url);
+      if (url.startsWith("https://127.0.0.1:43123")) return jsonResponse(200, { version: "0.3.10" });
+      throw new TypeError("connection failed");
+    },
+  });
+  vm.runInContext(clientSource, context);
+
+  const status = await window.GerNetiXSerialService.create().status();
+
+  assert.equal(status.version, "0.3.10");
+  assert.deepEqual(requests, [
+    "https://localhost:43123/v1/status",
+    "https://127.0.0.1:43123/v1/status",
+  ]);
+});
+
 test("renews an invalid local serial session and retries the request once", async () => {
   const requests = [];
   let issuedSessions = 0;
@@ -159,6 +187,7 @@ test("continues USB flashing after an explicitly approved helper update", async 
   let statusRequests = 0;
   let flashRequests = 0;
   let updateDetails = null;
+  let flashRequestBody = null;
   const window = { location: { protocol: "https:" } };
   const context = vm.createContext({
     window,
@@ -168,7 +197,7 @@ test("continues USB flashing after an explicitly approved helper update", async 
     btoa,
     crypto,
     setTimeout,
-    fetch: async (url) => {
+    fetch: async (url, init = {}) => {
       if (url.endsWith("/v1/status")) {
         statusRequests += 1;
         return jsonResponse(200, { version: statusRequests === 1 ? "0.3.9" : "0.3.10" });
@@ -176,6 +205,7 @@ test("continues USB flashing after an explicitly approved helper update", async 
       if (url.endsWith("/v1/sessions")) return jsonResponse(201, { token: "session" });
       if (url.endsWith("/v1/flash-jobs")) {
         flashRequests += 1;
+        flashRequestBody = JSON.parse(init.body);
         return jsonResponse(202, { id: "flash-1", status: "succeeded" });
       }
       return jsonResponse(500, { error: "unexpected_request" });
@@ -186,6 +216,7 @@ test("continues USB flashing after an explicitly approved helper update", async 
   const result = await window.GerNetiXSerialService.create({
     async updateFlow(details) { updateDetails = details; },
   }).flash({
+    actionId: "12345678-1234-4234-8234-123456789abc",
     port: "/dev/cu.usbmodem1",
     files: [{ name: "firmware.bin", address: 0x20000, data: new Uint8Array([1, 2, 3]) }],
   });
@@ -194,6 +225,7 @@ test("continues USB flashing after an explicitly approved helper update", async 
   assert.equal(updateDetails.requiredVersion, "0.3.10");
   assert.equal(result.status, "succeeded");
   assert.equal(flashRequests, 1);
+  assert.equal(flashRequestBody.actionId, "12345678-1234-4234-8234-123456789abc");
 });
 
 test("downloads the approved platform package and waits for the required helper version", async () => {

@@ -1,5 +1,7 @@
 "use strict";
 
+const { readUserActionContext } = require("../../services/user-action-events");
+
 function registerAuthRoutes({
   registry,
   readJsonBody,
@@ -39,7 +41,8 @@ function registerAuthRoutes({
     method: "POST",
     path: "/api/passkeys/client-error",
     async handler({ req, res }) {
-      await recordSystemEvent(passkeyBrowserFailureEvent(await readJsonBody(req)));
+      const actionContext = readUserActionContext(req, "identity.login.passkey");
+      await recordSystemEvent(passkeyBrowserFailureEvent(await readJsonBody(req), actionContext?.actionId));
       sendJson(res, 202, { accepted: true });
     },
   });

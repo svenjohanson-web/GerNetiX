@@ -13,6 +13,7 @@ const SECURITY_CACHE_MS = 60000;
 let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, "../..");
 let securityCache = null;
 let linkIntegrityCache = null;
+let userActionAlertsCache = null;
 let stagingTunnel = null;
 let stagingTunnelError = "";
 const services = [
@@ -129,6 +130,16 @@ function runtimeAlerts(hours=24,limit=20){
         FROM admin_tool_system_events WHERE occurred_at >= ? AND severity IN ('warning','error','critical')
         ORDER BY occurred_at DESC LIMIT ?`).all(since,maxItems).map((item)=>({...item,kind:"system_event"})));
     }
+    if(tableNames.has("admin_tool_user_action_events")){
+      items.push(...db.prepare(`SELECT occurred_at,action_type,action_id,span_type,phase,reason_code,route_id,release_id
+        FROM admin_tool_user_action_events WHERE occurred_at >= ? AND phase IN ('failed','timed_out','unhandled')
+        ORDER BY occurred_at DESC LIMIT ?`).all(since,maxItems).map((item)=>({
+          ...item,kind:"user_action",severity:item.phase==="timed_out"?"warning":"error",
+          source_service:"user_action",target_service:item.action_type,route:item.span_type,
+          event_type:`user_action_${item.phase}`,
+          message:`${item.reason_code||"unknown_client_failure"} · Action ${String(item.action_id||"").slice(0,13)}…`,
+        })));
+    }
     const represented=new Set(items.map((item)=>alertKey(item.target_service,item.route)));
     if(tableNames.has("gernetix_external_interface_calls")){
       const failedCalls=db.prepare(`SELECT occurred_at,source_service,target_service,route,status_code
@@ -148,6 +159,36 @@ function runtimeAlerts(hours=24,limit=20){
   finally{try{db?.close();}catch{}}
 }
 function alertKey(targetService,route){return `${String(targetService||"").replace(/-/g,"_")}|${String(route||"")}`;}
+async function operationsAlerts(hours=24,options={}){
+  const local=runtimeAlerts(hours);
+  const remote=await remoteUserActionAlerts({...options,hours});
+  return mergeRuntimeAlerts(local,remote);
+}
+async function remoteUserActionAlerts(options={}){
+  if(!options.force&&!options.execFileAsync&&userActionAlertsCache?.expiresAt>Date.now())return userActionAlertsCache.value;
+  const hours=Math.max(1,Number(options.hours)||24),config=options.config||loadStagingConfig();
+  if(!config.GERNETIX_STAGING_SSH)return {hours,items:[],summary:{total:0,errors:0,warnings:0},error:"Nutzeraktions-Operations sind fuer Staging nicht konfiguriert."};
+  const host=monitorSshTarget(config),run=options.execFileAsync||execFileAsync;
+  const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic user-action-alerts";
+  let value;
+  try{
+    const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:15000,maxBuffer:1024*1024});
+    const payload=JSON.parse(String(stdout||"{}")),since=Date.now()-hours*3600000;
+    const items=(payload?.summary?.recent_failures||[]).filter((item)=>new Date(item.last_seen_at).getTime()>=since).map((item)=>({
+      occurred_at:item.last_seen_at,severity:item.phase==="timed_out"?"warning":"error",kind:"user_action",
+      source_service:"user_action",target_service:String(item.action_type||""),route:String(item.failed_span||"action"),
+      event_type:`user_action_${item.phase||"failed"}`,
+      message:`${String(item.reason_code||"unknown_client_failure")} · Action ${String(item.action_id||"").slice(0,13)}…`,
+    }));
+    value={hours,host,items,summary:{total:items.length,errors:items.filter((item)=>item.severity==="error").length,warnings:items.filter((item)=>item.severity==="warning").length}};
+  }catch(error){value={hours,host,items:[],summary:{total:0,errors:0,warnings:0},error:`Nutzeraktions-Operations nicht lesbar: ${remoteError(error)}`};}
+  if(!options.execFileAsync)userActionAlertsCache={expiresAt:Date.now()+SECURITY_CACHE_MS,value};
+  return value;
+}
+function mergeRuntimeAlerts(local,remote){
+  const items=[...(local?.items||[]),...(remote?.items||[])].sort((left,right)=>String(right.occurred_at).localeCompare(String(left.occurred_at))).slice(0,20);
+  return {hours:remote?.hours||local?.hours||24,items,summary:{total:items.length,errors:items.filter((item)=>["error","critical"].includes(item.severity)).length,warnings:items.filter((item)=>item.severity==="warning").length},error:remote?.error||local?.error||""};
+}
 async function remoteProcessStates(options={}) {
   const config=options.config||loadStagingConfig();
   if(!config.GERNETIX_STAGING_SSH)return {configured:false,items:[],error:"VPS nicht konfiguriert: .env.staging.local fehlt oder enthält kein GERNETIX_STAGING_SSH."};
@@ -617,4 +658,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,dockerExecutable,interfaceStatistics,loadBuildWorkerConfig,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,dockerExecutable,interfaceStatistics,loadBuildWorkerConfig,mergeRuntimeAlerts,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

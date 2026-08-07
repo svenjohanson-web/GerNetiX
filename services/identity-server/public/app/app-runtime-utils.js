@@ -148,16 +148,16 @@ function meta(label, value) {
   return DomUtils.meta(label, value);
 }
 
-async function getJson(url) {
-  return ApiClient.getJson(url);
+async function getJson(url, options = {}) {
+  return ApiClient.getJson(url, options);
 }
 
-async function postJson(url, body) {
-  return ApiClient.postJson(url, body);
+async function postJson(url, body, options = {}) {
+  return ApiClient.postJson(url, body, options);
 }
 
-async function putJson(url, body) {
-  return ApiClient.putJson(url, body);
+async function putJson(url, body, options = {}) {
+  return ApiClient.putJson(url, body, options);
 }
 
 async function patchJson(url, body) {

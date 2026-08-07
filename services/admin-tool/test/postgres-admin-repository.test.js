@@ -8,12 +8,44 @@ test("creates Operations tables for audit and interface telemetry", async () => 
   const pool = new RecordingPool();
   await new PostgresAdminRepository(pool).ensureSchema();
   assert.match(pool.calls[0].text, /operations_system_events/);
+  assert.match(pool.calls[0].text, /operations_user_action_events/);
   assert.match(pool.calls[0].text, /operations_audit_events/);
   assert.match(pool.calls[0].text, /operations_interface_calls/);
   assert.match(pool.calls[0].text, /operations_link_targets/);
   assert.match(pool.calls[0].text, /operations_link_occurrences/);
   assert.match(pool.calls[0].text, /operations_link_checks/);
   assert.match(pool.calls[0].text, /operations_migrations/);
+});
+
+test("persists action ids and spans in the dedicated Operations table", async () => {
+  const pool = new RecordingPool();
+  const event = {
+    event_id: "event-1", occurred_at: "2026-08-07T12:00:00.000Z",
+    action_type: "nexi.flash.usb.start", action_id: "11111111-1111-4111-8111-111111111111",
+    span_type: "helper.status", span_id: "22222222-2222-4222-8222-222222222222",
+    phase: "failed", reason_code: "local_dependency_unreachable",
+    route_id: "/nachbauprojekte/nexi-sprachassistent/", release_id: "0.1.0-test",
+  };
+  await new PostgresAdminRepository(pool).addUserActionEvent(event);
+  assert.match(pool.calls[0].text, /INSERT INTO operations_user_action_events/);
+  assert.equal(pool.calls[0].values[3], event.action_id);
+  assert.equal(pool.calls[0].values[8], event.phase);
+});
+
+test("bounds the recent user action event window in PostgreSQL", async () => {
+  const pool = new RecordingPool();
+  await new PostgresAdminRepository(pool).listUserActionEvents({ action_type: "nexi.flash.usb.start", limit: 5000 });
+  assert.match(pool.calls[0].text, /LIMIT \$2/);
+  assert.deepEqual(pool.calls[0].values, ["nexi.flash.usb.start", 1000]);
+});
+
+test("filters one exact user action timeline in PostgreSQL", async () => {
+  const pool = new RecordingPool();
+  const actionId = "11111111-1111-4111-8111-111111111111";
+  await new PostgresAdminRepository(pool).listUserActionEvents({ action_id: actionId, limit: 1000 });
+  assert.match(pool.calls[0].text, /action_id=\$1/);
+  assert.match(pool.calls[0].text, /ORDER BY occurred_at DESC LIMIT \$2/);
+  assert.deepEqual(pool.calls[0].values, [actionId, 1000]);
 });
 
 test("filters system events in PostgreSQL", async () => {

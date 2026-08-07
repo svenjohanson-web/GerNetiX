@@ -9,6 +9,7 @@ class InMemoryAdminRepository {
     this.auditEvents = seed.auditEvents.map(clone);
     this.adminActions = (seed.adminActions || []).map(clone);
     this.systemEvents = (seed.systemEvents || []).map(clone);
+    this.userActionEvents = (seed.userActionEvents || []).map(clone);
     this.interfaceCalls = (seed.interfaceCalls || []).map(clone);
     this.linkTargets = new Map((seed.linkTargets || []).map((item) => [item.reference_id, clone(item)]));
     this.linkOccurrences = new Map((seed.linkOccurrences || []).map((item) => [item.occurrence_id, clone(item)]));
@@ -131,6 +132,23 @@ class InMemoryAdminRepository {
       .filter((event) => !filter.source_service || event.source_service === filter.source_service)
       .filter((event) => !filter.target_service || event.target_service === filter.target_service)
       .sort((left, right) => String(right.occurred_at).localeCompare(String(left.occurred_at)))
+      .map(clone);
+  }
+
+  addUserActionEvent(input) {
+    if (this.userActionEvents.some((event) => event.event_id === input.event_id)) return clone(input);
+    this.userActionEvents.push(clone(input));
+    return clone(input);
+  }
+
+  listUserActionEvents(filter = {}) {
+    const limit = Math.max(1, Math.min(1000, Number(filter.limit) || 200));
+    return this.userActionEvents
+      .filter((event) => !filter.action_id || event.action_id === filter.action_id)
+      .filter((event) => !filter.action_type || event.action_type === filter.action_type)
+      .filter((event) => !filter.phase || event.phase === filter.phase)
+      .sort((left, right) => String(right.occurred_at).localeCompare(String(left.occurred_at)))
+      .slice(0, limit)
       .map(clone);
   }
 
@@ -304,6 +322,7 @@ function defaultSeed() {
     consents: [],
     auditEvents: [],
     systemEvents: [],
+    userActionEvents: [],
     linkTargets: [],
     linkOccurrences: [],
     linkChecks: [],

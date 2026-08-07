@@ -36,7 +36,7 @@ function createWindow() {
 ipcMain.handle("processes:list", () => control.processStates());
 ipcMain.handle("processes:list-vps", () => control.remoteProcessStates());
 ipcMain.handle("interfaces:statistics", (_event, hours) => control.interfaceStatistics(hours));
-ipcMain.handle("runtime:alerts", (_event, hours) => control.runtimeAlerts(hours));
+ipcMain.handle("runtime:alerts", (_event, hours) => control.operationsAlerts(hours));
 ipcMain.handle("security:rules", (_event, force) => control.securityRuleStates({ force:Boolean(force) }));
 ipcMain.handle("link-integrity:status", (_event, force) => control.remoteLinkIntegrity({ force:Boolean(force) }));
 ipcMain.handle("processes:start-all", () => control.startAllServices());

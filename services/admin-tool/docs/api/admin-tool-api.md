@@ -71,6 +71,30 @@ Die Ereignisse werden im Admin Tool persistiert. Bei SQLite-Persistenz liegen si
 
 `POST /api/internal/system-events` ist der Dienstweg fuer Runtime- und Authentifizierungsereignisse. Er verlangt den Header `X-GerNetiX-System-Event-Token` mit dem nur fuer diesen Ingest vorgesehenen `SYSTEM_EVENT_INGEST_TOKEN`. Passkey-Loginfehler werden mit Phase, Fehlercode, Account-ID soweit bereits serverseitig bekannt und Korrelations-ID erfasst. Credential-ID, Public Key, Challenge, Signatur und Browser-Credential-Payload werden nicht protokolliert.
 
+## Nutzeraktions-Wirkketten
+
+```text
+GET  /api/admin/user-action-events?action_id={uuid}&action_type={type}&phase={phase}&limit={n}
+POST /api/internal/user-action-events
+```
+
+Der interne Endpunkt verlangt `X-GerNetiX-System-Event-Token` und akzeptiert
+nur den serverseitig validierten Vertrag aus Action-Typ, Action-ID, Span,
+Phase, stabilem Reason-Code, Route, Release und grober Dauerklasse. Freie
+Fehlermeldungen, lokale Ports und Device-Pfade, USB-Kennungen, IP-Adressen,
+Hostnamen, Eingaben, Rohlogs und Medien sind kein Bestandteil dieses Vertrags.
+
+Der geschuetzte Admin-Endpunkt aggregiert Versuche, Erfolge, offene und
+fehlgeschlagene Aktionen nach `action_type` und liefert die letzten Versuche.
+Mit einer vollstaendigen validierten `action_id` liefert er ausschliesslich die
+Ereignisse dieser Wirkkette fuer die chronologische Action-/Span-Timeline; ein
+ungueltiger UUID-Filter wird abgewiesen. Die Action-ID dient ausschliesslich der technischen
+Wirkkettenkorrelation und niemals der Autorisierung oder Besitzpruefung. Die
+vier initial implementierten Aktionstypen sind `nexi.flash.usb.start`,
+`identity.login.passkey`, `project.settings.save` und `project.build.start`;
+die Admin-Oberflaeche zeigt diesen Instrumentierungsstand unabhaengig davon,
+ob bereits Ereignisse fuer alle vier Typen vorliegen.
+
 ## Device Management
 
 ```text

@@ -20,8 +20,8 @@ die passende Datei `gernetix-monitor.sudoers` nach `/etc/sudoers.d/` (root:root,
 zusätzlich mit `from="<WireGuard-Peer>"`, `no-pty`, `no-agent-forwarding`,
 `no-port-forwarding` und `no-X11-forwarding` eingeschränkt werden.
 
-Der Wrapper akzeptiert ausschließlich `security`, `compose-ps` und
-`link-integrity`. Die Account-Shell zeigt auf den SSH-Einstieg, der alle anderen
+Der Wrapper akzeptiert ausschließlich `security`, `compose-ps`,
+`link-integrity` und `user-action-alerts`. Die Account-Shell zeigt auf den SSH-Einstieg, der alle anderen
 Kommandos ablehnt. Erst nach Installation und einem erfolgreichen Test über den
 WireGuard-Peer darf `GERNETIX_STAGING_MONITOR_SSH` in `.env.staging.local` auf
 `gernetix-monitor@gernetix-vps` gesetzt werden. `GERNETIX_STAGING_SSH` bleibt für
