@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" role="img" aria-labelledby="title description">
+  <title id="title">Waveshare ESP32-S3 Audio Board als Draufsicht</title>
+  <desc id="description">Vollständige runde Vorderseite mit USB-C oben, TF- beziehungsweise microSD-Slot links und den Tasten RESET, BOOT, KEY3, KEY2 und KEY1 entlang der rechten oberen Rundung.</desc>
+  <defs>
+    <radialGradient id="pcb" cx="42%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#14648c"/>
+      <stop offset="0.72" stop-color="#074768"/>
+      <stop offset="1" stop-color="#04314c"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#e8edf3"/>
+      <stop offset="0.45" stop-color="#aeb9c7"/>
+      <stop offset="1" stop-color="#738093"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#020817" flood-opacity="0.62"/>
+    </filter>
+    <style>
+      .silk{fill:#dceeff;font:700 12px system-ui,sans-serif;letter-spacing:.04em}
+      .tiny{fill:#a8cce0;font:600 9px system-ui,sans-serif;letter-spacing:.05em}
+      .callout{fill:#eaf7ff;font:800 15px system-ui,sans-serif}
+      .callout-sub{fill:#9ebbd0;font:600 11px system-ui,sans-serif}
+      .line{fill:none;stroke:#67e8f9;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .key-line{fill:none;stroke:#67e8f9;stroke-width:2.2;stroke-linecap:round;opacity:.88}
+      .key-label{fill:#eaf7ff;font:800 14px system-ui,sans-serif}
+      .usb-label{fill:#182635;font:900 14px system-ui,sans-serif;letter-spacing:.04em}
+      .trace{fill:none;stroke:#2a7193;stroke-width:1.2;opacity:.65}
+      .pad{fill:#d9b357;stroke:#f5d884;stroke-width:2}
+      .chip{fill:#101923;stroke:#66798b;stroke-width:1.5}
+      .button{fill:url(#metal);stroke:#eef6ff;stroke-width:2}
+      .button-core{fill:#2a3544}
+    </style>
+  </defs>
+
+  <rect width="960" height="660" rx="28" fill="#07111f"/>
+  <text x="18" y="30" class="callout">Vollständige Draufsicht</text>
+  <text x="18" y="49" class="callout-sub">Vorderseite des runden Boards</text>
+  <g filter="url(#shadow)">
+    <circle cx="350" cy="330" r="274" fill="url(#pcb)" stroke="#38b9d1" stroke-width="3"/>
+    <circle cx="350" cy="330" r="258" fill="none" stroke="#77d8e8" stroke-opacity=".18" stroke-width="2"/>
+
+    <path class="trace" d="M190 185C260 150 354 145 510 191M157 351C230 324 314 337 535 305M205 477C300 429 433 449 515 413M331 87V175M242 214V449M418 160V487"/>
+    <path class="trace" d="M162 274H262M272 251H445M281 283H469M293 404H486M289 431H468"/>
+
+    <g aria-label="Befestigungslöcher">
+      <circle cx="146" cy="190" r="24" class="pad"/><circle cx="146" cy="190" r="12" fill="#07111f"/>
+      <circle cx="139" cy="452" r="24" class="pad"/><circle cx="139" cy="452" r="12" fill="#07111f"/>
+      <circle cx="559" cy="330" r="24" class="pad"/><circle cx="559" cy="330" r="12" fill="#07111f"/>
+    </g>
+
+    <g aria-label="USB-C Anschluss">
+      <path d="M311 61h78a9 9 0 0 1 9 9v80h-96V70a9 9 0 0 1 9-9z" fill="url(#metal)" stroke="#eff6ff" stroke-width="3"/>
+      <rect x="320" y="66" width="60" height="18" rx="8" fill="#35404d"/>
+      <path d="M309 118h82" stroke="#7b8796" stroke-width="3"/>
+      <text x="350" y="105" text-anchor="middle" class="usb-label">USB-C</text>
+    </g>
+
+    <text x="350" y="168" text-anchor="middle" class="silk">ESP32-S3-AUDIO-Board</text>
+    <text x="350" y="188" text-anchor="middle" class="tiny">WAVESHARE · VORDERSEITE</text>
+
+    <g aria-label="TF microSD Kartenslot">
+      <path d="M80 245h148v119H80z" fill="url(#metal)" stroke="#e7eef7" stroke-width="3"/>
+      <path d="M80 245h148v19H80zM80 343h148v21H80z" fill="#8793a2" opacity=".72"/>
+      <path d="M94 279h112v50H94z" fill="#5d6978"/>
+      <path d="M99 289h77l18 14-18 15H99z" fill="#202a36"/>
+      <text x="154" y="352" text-anchor="middle" class="tiny" fill="#243141">TF / microSD</text>
+    </g>
+
+    <g aria-label="Display und Kameraanschlüsse">
+      <rect x="240" y="218" width="149" height="39" rx="4" fill="#d5dce4" stroke="#f8fafc" stroke-width="2"/>
+      <rect x="254" y="230" width="121" height="12" rx="2" fill="#1c2630"/>
+      <g fill="#d6b45f"><rect x="261" y="232" width="4" height="8"/><rect x="273" y="232" width="4" height="8"/><rect x="285" y="232" width="4" height="8"/><rect x="297" y="232" width="4" height="8"/><rect x="309" y="232" width="4" height="8"/><rect x="321" y="232" width="4" height="8"/><rect x="333" y="232" width="4" height="8"/><rect x="345" y="232" width="4" height="8"/><rect x="357" y="232" width="4" height="8"/></g>
+      <text x="314" y="213" text-anchor="middle" class="tiny">DISPLAY</text>
+      <rect x="247" y="270" width="132" height="25" rx="3" fill="#d5dce4" stroke="#f8fafc" stroke-width="2"/>
+      <rect x="259" y="278" width="108" height="9" fill="#1c2630"/>
+      <text x="313" y="307" text-anchor="middle" class="tiny">CAMERA</text>
+    </g>
+
+    <g aria-label="Elektronikbauteile">
+      <rect x="404" y="228" width="48" height="67" rx="3" class="chip"/>
+      <g stroke="#a9bccb" stroke-width="2"><path d="M397 235h7M397 247h7M397 259h7M397 271h7M397 283h7M452 235h7M452 247h7M452 259h7M452 271h7M452 283h7"/></g>
+      <text x="428" y="264" text-anchor="middle" class="tiny">TCA9555</text>
+      <rect x="375" y="344" width="70" height="70" rx="5" class="chip"/>
+      <g fill="#899baa"><circle cx="385" cy="354" r="2"/><circle cx="435" cy="354" r="2"/><circle cx="385" cy="404" r="2"/><circle cx="435" cy="404" r="2"/></g>
+      <text x="410" y="375" text-anchor="middle" class="silk">ESP32</text>
+      <text x="410" y="392" text-anchor="middle" class="tiny">S3R8</text>
+      <rect x="468" y="373" width="46" height="54" rx="4" class="chip"/><text x="491" y="403" text-anchor="middle" class="tiny">ES7210</text>
+      <rect x="462" y="304" width="38" height="39" rx="4" class="chip"/><text x="481" y="328" text-anchor="middle" class="tiny">FLASH</text>
+    </g>
+
+    <g aria-label="Fünf Tasten">
+      <g transform="translate(454 111)"><circle r="17" class="button"/><circle r="8" class="button-core"/></g>
+      <g transform="translate(505 135)"><circle r="17" class="button"/><circle r="8" class="button-core"/></g>
+      <g transform="translate(547 174)"><circle r="17" class="button"/><circle r="8" class="button-core"/></g>
+      <g transform="translate(579 220)"><circle r="17" class="button"/><circle r="8" class="button-core"/></g>
+      <g transform="translate(599 272)"><circle r="17" class="button"/><circle r="8" class="button-core"/></g>
+    </g>
+
+    <g aria-label="Zweireihige rechtwinklig abgewinkelte Stiftleiste">
+      <rect x="223" y="426" width="231" height="59" rx="4" fill="#101923" stroke="#556879" stroke-width="2"/>
+      <g class="pad">
+        <circle cx="240" cy="442" r="6"/><circle cx="268" cy="442" r="6"/><circle cx="296" cy="442" r="6"/><circle cx="324" cy="442" r="6"/><circle cx="352" cy="442" r="6"/><circle cx="380" cy="442" r="6"/><circle cx="408" cy="442" r="6"/><circle cx="436" cy="442" r="6"/>
+        <circle cx="240" cy="468" r="6"/><circle cx="268" cy="468" r="6"/><circle cx="296" cy="468" r="6"/><circle cx="324" cy="468" r="6"/><circle cx="352" cy="468" r="6"/><circle cx="380" cy="468" r="6"/><circle cx="408" cy="468" r="6"/><circle cx="436" cy="468" r="6"/>
+      </g>
+      <g fill="none" stroke="#e8c96e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M240 474v18h8"/><path d="M268 474v18h8"/><path d="M296 474v18h8"/><path d="M324 474v18h8"/><path d="M352 474v18h8"/><path d="M380 474v18h8"/><path d="M408 474v18h8"/><path d="M436 474v18h8"/>
+      </g>
+      <text x="338" y="519" text-anchor="middle" class="tiny">GPIO / I²C / USB · 2×8 GEWINKELT</text>
+    </g>
+
+    <g aria-label="Zwei Mikrofone">
+      <circle cx="180" cy="475" r="15" fill="#d7dfe7" stroke="#f8fafc" stroke-width="2"/><circle cx="180" cy="475" r="5" fill="#263341"/>
+      <circle cx="508" cy="475" r="15" fill="#d7dfe7" stroke="#f8fafc" stroke-width="2"/><circle cx="508" cy="475" r="5" fill="#263341"/>
+      <text x="180" y="504" text-anchor="middle" class="tiny">MIC</text><text x="508" y="504" text-anchor="middle" class="tiny">MIC</text>
+    </g>
+
+    <g aria-label="Keramikantenne">
+      <rect x="526" y="389" width="26" height="68" rx="5" fill="#e5ddd0" stroke="#fff7ed" stroke-width="2" transform="rotate(22 539 423)"/>
+      <text x="557" y="461" text-anchor="middle" class="tiny">ANT</text>
+    </g>
+
+    <g aria-label="Sieben RGB LEDs" fill="#d9fbff" stroke="#67e8f9" stroke-width="2">
+      <circle cx="230" cy="111" r="7"/><circle cx="293" cy="82" r="7"/><circle cx="412" cy="87" r="7"/><circle cx="532" cy="133" r="7"/><circle cx="579" cy="353" r="7"/><circle cx="442" cy="535" r="7"/><circle cx="252" cy="545" r="7"/>
+    </g>
+  </g>
+
+  <g aria-label="Beschriftungen">
+    <g aria-label="RESET Beschriftung">
+      <path class="key-line" d="M472 111H676L692 127"/><circle cx="472" cy="111" r="4" fill="#67e8f9"/>
+      <text x="710" y="132" class="key-label">RESET · Neustart</text>
+    </g>
+    <g aria-label="BOOT Beschriftung">
+      <path class="key-line" d="M523 135H665L692 162"/><circle cx="523" cy="135" r="4" fill="#67e8f9"/>
+      <text x="710" y="167" class="key-label">BOOT · Flash-Hilfe</text>
+    </g>
+    <g aria-label="KEY3 Beschriftung">
+      <path class="key-line" d="M565 174H669L692 197"/><circle cx="565" cy="174" r="4" fill="#67e8f9"/>
+      <text x="710" y="202" class="key-label">KEY3 · Lautstärke</text>
+    </g>
+    <g aria-label="KEY2 Beschriftung">
+      <path class="key-line" d="M597 220H680L692 232"/><circle cx="597" cy="220" r="4" fill="#67e8f9"/>
+      <text x="710" y="237" class="key-label">KEY2 · Aktion</text>
+    </g>
+    <g aria-label="KEY1 Beschriftung">
+      <path class="key-line" d="M617 272H687L692 267"/><circle cx="617" cy="272" r="4" fill="#67e8f9"/>
+      <text x="710" y="272" class="key-label">KEY1 · außen/unten</text>
+    </g>
+
+  </g>
+</svg>

@@ -22,10 +22,10 @@ extern "C" void app_main() {
   initPins();
   initWifi();
 #if !defined(GERNETIX_DIAGNOSTIC_DISABLE_USB_PROVISIONING) && !defined(GERNETIX_DIAGNOSTIC_DISABLE_SERIAL_PROVISIONING_TASK)
-  // The ESP32-S3 native USB receiver is used only while the board is in its
-  // initial setup AP.  Once WLAN is known, provisioning continues through the
-  // device web server and no permanent USB reader competes with WiFi.
-  if (wifiSetupPortalIsActive()) {
+  // The basissoftware receiver normally serves only the initial setup AP.
+  // A linked project may explicitly keep the same local USB transport active
+  // for a bounded setup protocol; framing and port ownership remain here.
+  if (wifiSetupPortalIsActive() || projectSerialProvisioningEnabled()) {
     startSerialProvisioning();
   }
 #endif

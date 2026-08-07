@@ -9,12 +9,9 @@
   margin: 0;
 }
 
-.nexi-board-map {
-  display: grid;
-  grid-template-columns: minmax(82px, 0.55fr) minmax(0, 3fr);
-  align-items: end;
-  gap: clamp(0.75rem, 2.5vw, 1.5rem);
-  padding: clamp(1rem, 3vw, 1.5rem);
+.nexi-board-overview {
+  margin: 0;
+  padding: clamp(0.55rem, 2vw, 1rem);
   border: 1px solid rgba(103, 232, 249, 0.32);
   border-radius: 1rem;
   background:
@@ -22,65 +19,149 @@
     rgba(5, 12, 25, 0.55);
 }
 
-.nexi-board-usb {
-  display: grid;
-  min-height: 4.25rem;
-  place-items: center;
-  border: 2px solid #94a3b8;
-  border-bottom: 0;
-  border-radius: 0.7rem 0.7rem 0 0;
-  color: #e2e8f0;
-  background: linear-gradient(180deg, #334155, #172033);
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
+.nexi-board-overview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
 }
 
-.nexi-board-buttons {
+.nexi-board-overview figcaption {
+  padding: 0.7rem 0.45rem 0.15rem;
+  color: #aebdd2;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.nexi-board-reference {
   display: grid;
-  grid-template-columns: repeat(5, minmax(54px, 1fr));
-  gap: clamp(0.35rem, 1.6vw, 0.8rem);
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding: 1.4rem 0 1.7rem;
+  border-block: 1px solid rgba(126, 151, 184, 0.3);
+}
+
+.nexi-board-reference > h2,
+.nexi-board-reference > p,
+.nexi-board-explanations h3,
+.nexi-board-explanations p {
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-.nexi-board-buttons li {
+.nexi-board-reference > h2 {
+  font-size: clamp(1.35rem, 2.8vw, 1.7rem);
+}
+
+.nexi-board-reference > p:not(.eyebrow),
+.nexi-board-explanations p {
+  color: #b8c8d8;
+  line-height: 1.6;
+}
+
+.nexi-board-explanations {
   display: grid;
-  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.nexi-board-explanations article {
+  padding: 1rem;
+  border: 1px solid rgba(126, 151, 184, 0.3);
+  border-radius: 0.8rem;
+  background: rgba(5, 12, 25, 0.36);
+}
+
+.nexi-board-explanations h3 {
+  font-size: 1.05rem;
+}
+
+.nexi-board-explanations article > p {
+  margin-top: 0.4rem;
+}
+
+.nexi-rgb-ring-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.nexi-rgb-ring-guide > div {
+  display: grid;
   justify-items: center;
-  gap: 0.35rem;
-  color: #e2e8f0;
+  gap: 0.28rem;
   text-align: center;
 }
 
-.nexi-board-buttons .button-dot {
-  width: clamp(2.2rem, 5vw, 3.1rem);
+.nexi-rgb-ring-guide strong,
+.nexi-rgb-ring-guide small {
+  display: block;
+}
+
+.nexi-rgb-ring-guide small {
+  color: #91a5b8;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.nexi-rgb-ring {
+  position: relative;
+  display: block;
+  width: 4.1rem;
   aspect-ratio: 1;
-  border: 3px solid #0e7490;
+  margin-bottom: 0.3rem;
+  border: 1px solid #31516a;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #f8fafc 0 13%, #64748b 14% 31%, #172033 33% 100%);
-  box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.08);
+  background: #0a1b2b;
 }
 
-.nexi-board-buttons li.system .button-dot {
-  border-color: #64748b;
-  box-shadow: none;
+.nexi-rgb-ring i {
+  position: absolute;
+  left: calc(50% - 0.24rem);
+  top: calc(50% - 0.24rem);
+  width: 0.48rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ring-color);
+  box-shadow: 0 0 0.7rem color-mix(in srgb, var(--ring-color) 75%, transparent);
+  transform: rotate(calc(var(--led-index) * 51.43deg)) translateY(-1.55rem);
 }
 
-.nexi-board-buttons li.primary .button-dot {
-  border-color: #67e8f9;
-  box-shadow: 0 0 0 5px rgba(103, 232, 249, 0.16), 0 0 1.4rem rgba(34, 211, 238, 0.22);
+.nexi-rgb-ring i:nth-child(1) { --led-index: 0; }
+.nexi-rgb-ring i:nth-child(2) { --led-index: 1; }
+.nexi-rgb-ring i:nth-child(3) { --led-index: 2; }
+.nexi-rgb-ring i:nth-child(4) { --led-index: 3; }
+.nexi-rgb-ring i:nth-child(5) { --led-index: 4; }
+.nexi-rgb-ring i:nth-child(6) { --led-index: 5; }
+.nexi-rgb-ring i:nth-child(7) { --led-index: 6; }
+
+.nexi-key-guide {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0 0;
 }
 
-.nexi-board-buttons strong {
-  font-size: clamp(0.72rem, 1.8vw, 0.9rem);
+.nexi-key-guide div {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: baseline;
 }
 
-.nexi-board-buttons small {
-  color: #94a3b8;
-  font-size: clamp(0.58rem, 1.5vw, 0.72rem);
-  line-height: 1.25;
+.nexi-key-guide dt {
+  color: #67e8f9;
+  font-weight: 850;
+}
+
+.nexi-key-guide dd {
+  margin: 0;
+  color: #b8c8d8;
+  line-height: 1.45;
+}
+
+.nexi-actions-title {
+  margin: 0.8rem 0 -0.2rem;
+  font-size: clamp(1.35rem, 2.8vw, 1.7rem);
 }
 
 .nexi-button-callout,
@@ -142,27 +223,17 @@
 }
 
 @media (max-width: 720px) {
-  .nexi-board-map {
-    grid-template-columns: 58px minmax(0, 1fr);
-    gap: 0.55rem;
-    padding-inline: 0.65rem;
+  .nexi-board-overview {
+    margin-inline: -0.4rem;
+    padding: 0.35rem;
   }
 
-  .nexi-board-buttons {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.2rem;
+  .nexi-board-overview figcaption {
+    padding-inline: 0.55rem;
   }
 
-  .nexi-board-buttons .button-dot {
-    width: clamp(1.65rem, 8vw, 2.2rem);
-  }
-
-  .nexi-board-buttons strong {
-    font-size: clamp(0.58rem, 2.8vw, 0.72rem);
-  }
-
-  .nexi-board-buttons small {
-    font-size: clamp(0.5rem, 2.4vw, 0.62rem);
+  .nexi-board-explanations {
+    grid-template-columns: 1fr;
   }
 
   .nexi-button-groups {

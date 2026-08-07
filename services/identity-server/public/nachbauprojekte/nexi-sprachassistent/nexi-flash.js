@@ -2,18 +2,22 @@
 
 const DEMO_ID = "nexi-basic-waveshare-s3";
 const openFlashButton = document.querySelector("#open-flash-dialog");
+const retryReleaseButton = document.querySelector("#retry-release");
 const flashEntryStatus = document.querySelector("#flash-entry-status");
 const serialService = window.GerNetiXSerialService?.create?.() || null;
 const flashDialog = window.GerNetiXFlashDialog.create();
 let selectedDemo = null;
 let selectedPort = null;
-let releaseRetryTimer = null;
+let displayedFlashPercent = 0;
+let unchangedFlashPolls = 0;
 
 setEntryEnabled(false, "Noch nicht möglich: Der geprüfte Nexi-Release wird geladen.");
+retryReleaseButton.addEventListener("click", loadRelease);
 loadRelease();
 
 async function loadRelease() {
-  window.clearTimeout(releaseRetryTimer);
+  retryReleaseButton.hidden = true;
+  retryReleaseButton.disabled = true;
   setEntryEnabled(false, "Noch nicht möglich: Der geprüfte Nexi-Release wird geladen.");
   try {
     const response = await fetch(`api/public/demos/${DEMO_ID}`, { cache: "no-store" });
@@ -25,8 +29,9 @@ async function loadRelease() {
     setEntryEnabled(true, `Nexi Basic ${release.version} ist bereit.`);
   } catch (error) {
     const detail = error?.message || "Netzwerkfehler";
-    setEntryEnabled(false, `Nicht möglich: Der geprüfte Nexi-Release ist gerade nicht verfügbar (${detail}). Automatischer neuer Versuch in 5 Sekunden.`);
-    releaseRetryTimer = window.setTimeout(loadRelease, 5000);
+    setEntryEnabled(false, `Nicht möglich: Der geprüfte Nexi-Release ist gerade nicht verfügbar (${detail}). Bitte prüfe die Verfügbarkeit später erneut.`);
+    retryReleaseButton.hidden = false;
+    retryReleaseButton.disabled = false;
   }
 }
 
@@ -51,7 +56,7 @@ openFlashButton.addEventListener("click", () => {
     async onExecute(method, progress) {
       if (method !== "usb") throw new Error("Dieser Übertragungsweg ist für Nexi Basic nicht verfügbar.");
       await ensureUsbPort(progress.write);
-      await flashSelectedRelease(progress.write, progress.setArtifact);
+      await flashSelectedRelease(progress.write, progress.setArtifact, progress.setProgress);
     },
     onComplete() { window.location.assign("inbetriebnahme/index.html"); },
   });
@@ -76,8 +81,10 @@ async function ensureUsbPort(log) {
   return selectedPort;
 }
 
-async function flashSelectedRelease(log, setArtifact) {
+async function flashSelectedRelease(log, setArtifact, setProgress) {
   const release = selectedDemo.releases[0];
+  displayedFlashPercent = 0;
+  unchangedFlashPolls = 0;
   log("running", "Das geprüfte Firmware-Paket wird vorbereitet …");
   const manifestResponse = await fetch(`api/public/demos/${DEMO_ID}/releases/${encodeURIComponent(release.version)}/flash-manifest`);
   if (!manifestResponse.ok) throw new Error("Flash-Manifest konnte nicht geladen werden.");
@@ -96,7 +103,21 @@ async function flashSelectedRelease(log, setArtifact) {
   }));
   if (selectedPort.source === "gernetix_serial_service") {
     log("running", "Nexi wird auf das Board übertragen …");
-    const result = await serialService.flash({ port: selectedPort.path, files, onProgress() {} });
+    const result = await serialService.flash({
+      port: selectedPort.path,
+      files,
+      onProgress(job) {
+        setProgress(presentFlashProgress(job));
+        const message = job?.message || (job?.phase === "verifying"
+          ? "Die geschriebene Firmware wird geprüft …"
+          : "Nexi wird auf das Board übertragen …");
+        log(job?.status === "failed" ? "error" : "running", message);
+      },
+      onUpdateProgress(update) {
+        setProgress({ percent: update?.percent ?? 0, label: update?.phase === "install" ? "Installieren" : "Helper-Update" });
+        log("running", update?.message || "Der lokale Helper wird aktualisiert …");
+      },
+    });
     if (result.status !== "succeeded") throw new Error(result.error || "Flash über den Serial Helper fehlgeschlagen.");
   } else {
     const { Transport, ESPLoader } = await import("/vendor/esptool-js/bundle.js");
@@ -108,14 +129,40 @@ async function flashSelectedRelease(log, setArtifact) {
       const flashSize = await loader.detectFlashSize();
       validateBoard(chipName, flashSize);
       await loader.writeFlash({ fileArray: files, flashMode: manifest.flash_mode, flashFreq: manifest.flash_freq, flashSize: manifest.flash_size, compress: true, reportProgress(index, written, total) {
-        log("running", `Nexi wird übertragen: ${total ? Math.round(written / total * 100) : 0} %`);
+        const percent = total ? Math.round(written / total * 100) : 0;
+        setProgress({ percent, label: "Flashen" });
+        log("running", `Nexi wird übertragen: ${percent} %`);
       } });
       try { await loader.after("custom_reset", false, "D0|R1|W120|R0|W120"); } catch { log("running", "Falls das Board nicht startet, einmal RESET drücken."); }
     } finally {
       await transport.disconnect().catch(() => {});
     }
   }
+  setProgress({ percent: 100, label: "Fertig" });
   log("ok", "Nexi Basic wurde erfolgreich geflasht.");
+}
+
+function presentFlashProgress(job) {
+  const rawPercent = Math.max(0, Math.min(100, Number(job?.percent) || 0));
+  const running = ["queued", "running"].includes(job?.status);
+  const phaseLabel = job?.phase === "verifying" ? "Prüfen" : "Flashen";
+  if (rawPercent > displayedFlashPercent) {
+    displayedFlashPercent = rawPercent;
+    unchangedFlashPolls = 0;
+  } else if (running) {
+    unchangedFlashPolls += 1;
+    const phaseCeiling = rawPercent >= 75 ? 98 : 72;
+    if (unchangedFlashPolls % 2 === 0 && displayedFlashPercent < phaseCeiling) {
+      displayedFlashPercent += 1;
+    }
+  }
+  if (job?.status === "succeeded") displayedFlashPercent = 100;
+  const estimated = running && displayedFlashPercent > rawPercent;
+  return {
+    percent: displayedFlashPercent,
+    label: estimated ? `${phaseLabel} (geschätzt)` : phaseLabel,
+    active: running,
+  };
 }
 
 function validateBoard(chipName, flashSize) {

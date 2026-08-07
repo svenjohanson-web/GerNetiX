@@ -1,18 +1,31 @@
 (function initializeWakeWordLab() {
   "use strict";
 
-  const lab = globalThis.NexiWakeWordLab;
   const root = document.querySelector("[data-nexi-wake-lab]");
-  if (!lab || !root) return;
+  const serialFactory = globalThis.GerNetiXSerialService;
+  if (!root || !serialFactory) return;
 
+  const TARGET_REFERENCE_COUNT = 3;
+  const serial = serialFactory.create();
+  const portSelect = root.querySelector("[data-wake-port]");
+  const refreshButton = root.querySelector("[data-wake-refresh]");
   const enrollButton = root.querySelector("[data-wake-enroll]");
   const testButton = root.querySelector("[data-wake-test]");
   const resetButton = root.querySelector("[data-wake-reset]");
   const status = root.querySelector("[data-wake-status]");
   const progress = root.querySelector("[data-wake-progress]");
   const result = root.querySelector("[data-wake-result]");
-  const references = [];
+  let referenceCount = 0;
+  let profileReady = false;
   let busy = false;
+
+  function selectedPort() {
+    return portSelect.value || "";
+  }
+
+  function responsePayload(response) {
+    return response && typeof response.payload === "object" ? response.payload : {};
+  }
 
   function setStatus(message, state = "idle") {
     status.textContent = message;
@@ -20,88 +33,114 @@
   }
 
   function updateControls() {
-    const ready = references.length >= lab.TARGET_REFERENCE_COUNT;
-    progress.textContent = `${references.length} von ${lab.TARGET_REFERENCE_COUNT} Referenzen`;
-    enrollButton.disabled = busy || ready;
-    testButton.disabled = busy || !ready;
-    resetButton.disabled = busy || references.length === 0;
-    enrollButton.textContent = ready
+    const hasPort = Boolean(selectedPort());
+    progress.textContent = hasPort
+      ? `${referenceCount} von ${TARGET_REFERENCE_COUNT} Referenzen auf dem Board`
+      : "Kein Board verbunden";
+    portSelect.disabled = busy;
+    refreshButton.disabled = busy;
+    enrollButton.disabled = busy || !hasPort || profileReady;
+    testButton.disabled = busy || !hasPort || !profileReady;
+    resetButton.disabled = busy || !hasPort || referenceCount === 0;
+    enrollButton.textContent = profileReady
       ? "Referenzen vollständig"
-      : `Referenz ${references.length + 1} aufnehmen`;
-  }
-
-  async function recordFeatures() {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      throw new Error("unsupported_browser");
-    }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-    const chunks = [];
-    const recorder = new MediaRecorder(stream);
-    recorder.addEventListener("dataavailable", (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    });
-
-    try {
-      const stopped = new Promise((resolve, reject) => {
-        recorder.addEventListener("stop", resolve, { once: true });
-        recorder.addEventListener("error", reject, { once: true });
-      });
-      recorder.start();
-      await new Promise((resolve) => setTimeout(resolve, 1900));
-      recorder.stop();
-      await stopped;
-
-      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-      const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
-      if (!AudioContextType) throw new Error("unsupported_browser");
-      const context = new AudioContextType();
-      try {
-        const audio = await context.decodeAudioData(await blob.arrayBuffer());
-        const features = lab.extractFeatures(audio.getChannelData(0), audio.sampleRate);
-        if (!features.length) throw new Error("no_voice");
-        return features;
-      } finally {
-        await context.close();
-      }
-    } finally {
-      for (const track of stream.getTracks()) track.stop();
-    }
+      : `Referenz ${Math.min(referenceCount + 1, TARGET_REFERENCE_COUNT)} aufnehmen`;
   }
 
   function explainError(error) {
-    if (error?.name === "NotAllowedError") {
-      return "Mikrofonzugriff wurde nicht erlaubt. Erlaube ihn für localhost und versuche es erneut.";
+    if (error?.code === "serial_request_timeout" || error?.code === "serial_service_request_timeout") {
+      return "Das Board hat nicht rechtzeitig geantwortet. Drücke RESET, warte kurz und suche das Board erneut.";
     }
-    if (error?.message === "no_voice") {
-      return "Keine deutliche Sprache erkannt. Sprich nach dem Start einmal klar „Nexi“.";
+    if (error?.code === "serial_port_not_available") {
+      return "Das ausgewählte Board ist nicht mehr verbunden. Prüfe das USB-Kabel und suche erneut.";
     }
-    if (error?.message === "unsupported_browser") {
-      return "Dieser Browser unterstützt den lokalen Audiotest nicht. Verwende Chrome, Edge oder Safari mit Mikrofonfreigabe.";
+    if (error?.code === "serial_request_rejected") {
+      return "Das Board unterstützt diese Stimmaufnahme noch nicht. Installiere zuerst die aktuelle Nexi-Firmware.";
     }
-    return "Die Aufnahme konnte nicht ausgewertet werden. Bitte versuche es erneut.";
+    return "Der lokale USB-Dienst oder das Board ist nicht erreichbar. Prüfe Kabel und GerNetiX Serial Service.";
+  }
+
+  async function boardRequest(action, timeoutMs = 15000) {
+    const port = selectedPort();
+    if (!port) throw Object.assign(new Error("port_missing"), { code: "serial_port_not_available" });
+    return serial.serialRequest(port, action, {}, { timeoutMs });
+  }
+
+  function applyBoardStatus(payload) {
+    referenceCount = Math.max(0, Math.min(TARGET_REFERENCE_COUNT, Number(payload.reference_count) || 0));
+    profileReady = payload.ready === true || referenceCount >= TARGET_REFERENCE_COUNT;
+  }
+
+  async function readBoardStatus() {
+    const payload = responsePayload(await boardRequest("nexi_voice_status"));
+    applyBoardStatus(payload);
+    setStatus(
+      profileReady
+        ? "Das persönliche Aktivierungswort ist auf diesem Board eingerichtet."
+        : referenceCount > 0
+          ? "Das Board ist bereit für die nächste Referenz."
+          : "Das Board ist bereit für die erste Aufnahme.",
+      profileReady ? "ready" : "idle",
+    );
+  }
+
+  async function refreshPorts() {
+    if (busy) return;
+    busy = true;
+    result.hidden = true;
+    setStatus("Suche angeschlossene Boards …");
+    updateControls();
+    try {
+      const previous = selectedPort();
+      const ports = await serial.ports();
+      portSelect.replaceChildren();
+      for (const port of ports) {
+        const option = document.createElement("option");
+        option.value = String(port.path || port.port || "");
+        option.textContent = String(port.label || option.value);
+        portSelect.append(option);
+      }
+      if (previous && ports.some((port) => (port.path || port.port) === previous)) portSelect.value = previous;
+      if (!ports.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Kein Board gefunden";
+        portSelect.append(option);
+        referenceCount = 0;
+        profileReady = false;
+        setStatus("Kein Board gefunden. Verbinde Nexi mit einem USB-Datenkabel und suche erneut.", "error");
+      } else {
+        await readBoardStatus();
+      }
+    } catch (error) {
+      referenceCount = 0;
+      profileReady = false;
+      setStatus(explainError(error), "error");
+    } finally {
+      busy = false;
+      updateControls();
+    }
   }
 
   async function enroll() {
-    if (busy || references.length >= lab.TARGET_REFERENCE_COUNT) return;
+    if (busy || profileReady || !selectedPort()) return;
     busy = true;
     result.hidden = true;
-    setStatus("Sprich jetzt einmal klar „Nexi“.", "recording");
+    setStatus("Sprich jetzt einmal klar „Hey Nexi“ in Richtung des Boards.", "recording");
     updateControls();
     try {
-      references.push(await recordFeatures());
-      setStatus(
-        references.length >= lab.TARGET_REFERENCE_COUNT
-          ? "Kalibrierung abgeschlossen. Du kannst das Aktivierungswort jetzt testen."
-          : "Referenz erkannt. Nimm dieselbe Phrase noch einmal auf.",
-        references.length >= lab.TARGET_REFERENCE_COUNT ? "ready" : "idle",
-      );
+      const payload = responsePayload(await boardRequest("nexi_voice_enroll", 30000));
+      applyBoardStatus(payload);
+      if (payload.accepted !== true) {
+        setStatus("Das Board hat keine deutliche Phrase erkannt. Sprich näher am Board und versuche es erneut.", "rejected");
+      } else {
+        setStatus(
+          profileReady
+            ? "Alle drei Referenzen wurden lokal auf dem Board gespeichert. Du kannst die Erkennung jetzt testen."
+            : "Referenz erkannt. Das Board ist für die nächste Aufnahme bereit.",
+          profileReady ? "ready" : "idle",
+        );
+      }
     } catch (error) {
       setStatus(explainError(error), "error");
     } finally {
@@ -111,29 +150,23 @@
   }
 
   async function testWakeWord() {
-    if (busy || references.length < lab.TARGET_REFERENCE_COUNT) return;
+    if (busy || !profileReady || !selectedPort()) return;
     busy = true;
     result.hidden = true;
-    setStatus("Sprich jetzt „Nexi“ – oder bewusst ein anderes Wort für einen Negativtest.", "recording");
+    setStatus("Sprich jetzt „Hey Nexi“ – oder für einen Negativtest bewusst ein anderes Wort.", "recording");
     updateControls();
     try {
-      const evaluation = lab.evaluateCandidate(references, await recordFeatures());
+      const payload = responsePayload(await boardRequest("nexi_voice_test", 30000));
+      const detected = payload.detected === true;
       result.hidden = false;
-      result.className = evaluation.detected ? "wake-result detected" : "wake-result rejected";
-      result.innerHTML = evaluation.detected
-        ? `<strong>Nexi erkannt</strong><span>Lokales Befehlsfenster geöffnet · kalibrierte Übereinstimmung ${evaluation.confidence}%</span>`
-        : `<strong>Nicht aktiviert</strong><span>Die Aufnahme war der Referenz nicht ähnlich genug · kalibrierte Übereinstimmung ${evaluation.confidence}%</span>`;
+      result.className = detected ? "wake-result detected" : "wake-result rejected";
+      result.innerHTML = detected
+        ? "<strong>Nexi erkannt</strong><span>Das Board hat dein persönliches Aktivierungswort erkannt.</span>"
+        : "<strong>Nicht aktiviert</strong><span>Die Aufnahme war den gespeicherten Referenzen nicht ähnlich genug.</span>";
       setStatus(
-        evaluation.detected
-          ? "Aktivierung erkannt. Nach drei Sekunden endet das Test-Befehlsfenster automatisch."
-          : "Keine Aktivierung. Du kannst direkt noch einmal testen.",
-        evaluation.detected ? "detected" : "rejected",
+        detected ? "Aktivierung auf dem Board erkannt." : "Keine Aktivierung. Du kannst direkt noch einmal testen.",
+        detected ? "detected" : "rejected",
       );
-      if (evaluation.detected) {
-        setTimeout(() => {
-          if (!busy) setStatus("Befehlsfenster beendet. Bereit für den nächsten Test.", "ready");
-        }, 3000);
-      }
     } catch (error) {
       setStatus(explainError(error), "error");
     } finally {
@@ -142,13 +175,35 @@
     }
   }
 
+  async function resetProfile() {
+    if (busy || !selectedPort()) return;
+    if (!globalThis.confirm("Die persönlichen „Hey Nexi“-Merkmale auf diesem Board löschen und neu beginnen?")) return;
+    busy = true;
+    result.hidden = true;
+    setStatus("Lösche die persönlichen Merkmale auf dem Board …");
+    updateControls();
+    try {
+      applyBoardStatus(responsePayload(await boardRequest("nexi_voice_reset")));
+      setStatus("Die persönlichen Merkmale wurden auf dem Board gelöscht. Bereit für die erste Aufnahme.");
+    } catch (error) {
+      setStatus(explainError(error), "error");
+    } finally {
+      busy = false;
+      updateControls();
+    }
+  }
+
+  refreshButton.addEventListener("click", refreshPorts);
+  portSelect.addEventListener("change", async () => {
+    busy = true;
+    result.hidden = true;
+    updateControls();
+    try { await readBoardStatus(); } catch (error) { setStatus(explainError(error), "error"); }
+    finally { busy = false; updateControls(); }
+  });
   enrollButton.addEventListener("click", enroll);
   testButton.addEventListener("click", testWakeWord);
-  resetButton.addEventListener("click", () => {
-    references.splice(0, references.length);
-    result.hidden = true;
-    setStatus("Kalibrierung gelöscht. Nimm drei neue Referenzen auf.");
-    updateControls();
-  });
+  resetButton.addEventListener("click", resetProfile);
   updateControls();
+  refreshPorts();
 })();

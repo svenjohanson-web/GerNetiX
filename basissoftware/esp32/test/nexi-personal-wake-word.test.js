@@ -196,3 +196,20 @@ test("firmware stores only versioned feature blobs in its dedicated NVS partitio
   assert.doesNotMatch(source,
     /AudioFrame|readAudio|writeAudio|esp_http|WiFi|socket\s*\(|https?:\/\//);
 });
+
+test("Nexi board setup records and tests Hey Nexi through bounded project serial actions", () => {
+  const runtime = fs.readFileSync(path.join(projectRoot, "voice_lab.cpp"), "utf8");
+  const entry = fs.readFileSync(path.join(projectRoot, "src/project_entry.cpp"), "utf8");
+
+  assert.match(entry, /projectSerialProvisioningEnabled\(\)[\s\S]*return true/);
+  assert.match(entry, /handleProjectSerialCommand[\s\S]*handleVoiceSetupCommand/);
+  assert.match(runtime, /nexi_voice_status/);
+  assert.match(runtime, /nexi_voice_enroll/);
+  assert.match(runtime, /nexi_voice_test/);
+  assert.match(runtime, /nexi_voice_reset/);
+  assert.match(runtime, /voiceSetupAudio->read/);
+  assert.match(runtime, /captureCalibrationFrame/);
+  assert.match(runtime, /kPersonalWakeProfileKey = "wake_v1"/);
+  assert.match(runtime, /PersonalVoiceProfileStore\(\)\.save/);
+  assert.doesNotMatch(runtime, /esp_http_client|https?:\/\/|socket\s*\(/);
+});

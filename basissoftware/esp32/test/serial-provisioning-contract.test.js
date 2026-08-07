@@ -16,6 +16,8 @@ test("serial provisioning scans and stores WiFi credentials only on the device",
   assert.match(source, /stored_only_on_device/);
   assert.match(source, /diagnostics_status/);
   assert.match(source, /diagnostics_logs/);
+  assert.match(source, /handleProjectSerialCommand/);
+  assert.match(source, /projectSerialProvisioningEnabled/);
   assert.match(source, /esp_reset_reason\(\)/);
   assert.match(source, /esp_get_minimum_free_heap_size\(\)/);
   assert.match(source, /writeOtaStatusJson/);

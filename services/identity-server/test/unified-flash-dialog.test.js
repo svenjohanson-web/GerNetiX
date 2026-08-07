@@ -32,6 +32,13 @@ test("Nexi uses guided flash progress, detects one Helper port and continues to 
   assert.match(source, /onComplete\(\) \{ window\.location\.assign\("inbetriebnahme\/index\.html"\); \}/);
   assert.match(source, /const ports = await serialService\.ports\(\)/);
   assert.match(source, /selectedPort = \{ \.\.\.ports\[0\], source: "gernetix_serial_service" \}/);
+  assert.match(source, /onUpdateProgress\(update\)/);
+  assert.match(source, /setProgress\(\{ percent: update\?\.percent/);
+  assert.match(source, /setProgress\(presentFlashProgress\(job\)\)/);
+  assert.match(source, /phaseCeiling = rawPercent >= 75 \? 98 : 72/);
+  assert.match(source, /\$\{phaseLabel\} \(geschätzt\)/);
+  assert.match(source, /onProgress\(job\)/);
+  assert.match(source, /job\?\.message/);
   assert.doesNotMatch(source, /job\.logs|writeLine\(line\)|write\(line\)/);
   assert.doesNotMatch(source, /choose-port|flash-button|port-status/);
 });
@@ -41,5 +48,9 @@ test("unified flash dialog can replace terminal logs with one guided status", ()
   assert.match(source, /progressPresentation === "guided"/);
   assert.match(source, /terminalTitle\.textContent = guidedProgress \? "FORTSCHRITT" : "TERMINAL"/);
   assert.match(source, /clearButton\.hidden = guidedProgress/);
+  assert.match(source, /data-flash-progress-bar/);
+  assert.match(source, /function setProgress\(value\)/);
+  assert.match(source, /aria-valuenow/);
+  assert.match(source, /classList\.toggle\("is-active"/);
   assert.match(source, /await config\.onComplete\?\.\(method\.id\)/);
 });
