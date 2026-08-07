@@ -409,9 +409,6 @@ function decideAccess({ request, policy, grants }, now) {
   const matchingGrant = grants.find((grant) => grantMatchesRequest(grant, request, now));
   if (!matchingGrant) return deny("missing_valid_grant");
 
-  if (request.source_type === "help_knowledge" && request.provider !== "ollama") {
-    return deny("help_knowledge_local_only");
-  }
   if (request.provider !== "ollama" && matchingGrant.allowed_provider_scope === "local_only") {
     return deny("external_provider_not_allowed_by_grant");
   }

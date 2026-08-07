@@ -107,7 +107,6 @@ flowchart LR
     privateVpsEdge["Privater VPS Edge<br/>PWA, Build, MQTT-TLS<br/>nur WireGuard 10.77.0.0/24"]
     privateDns["Privater DNS Resolver<br/>CoreDNS :53 UDP/TCP<br/>nur WireGuard"]
     mqttBroker["MQTT Broker<br/>Mosquitto<br/>TLS :8883 / WS :9001"]
-    localOllama["Lokaler Ollama LLM<br/>:11434"]
     runtimePostgres["Zentrales PostgreSQL 17 + pgvector<br/>gernetix_runtime · intern :5432<br/>SSH-Dev-Tunnel :25432"]
     externalLlm["Externe LLM API<br/>OpenAI-kompatibel / Claude"]
     linuxBuildWorker["Externer Build-Worker<br/>Linux-Container + lokaler Cache<br/>WireGuard :4400"]
@@ -206,11 +205,11 @@ flowchart LR
   identity --> telemetryServer
   identity -->|"Plattform-KI einschließlich Hardware-Assistent"| aiUsage
   identity --> aiContext
-  aiContext -->|"Embeddings"| localOllama
+  aiContext -->|"Embeddings: text-embedding-3-small<br/>serverseitiger API-Key"| externalLlm
   aiContext --> runtimePostgres
   runtimePostgres --> aiContextDb
-  identity -->|"lokale Help-Wissenssuche"| aiContext
-  identity --> localOllama
+  identity -->|"kuratierte Help-Wissenssuche"| aiContext
+  identity -->|"KI-Routen: gpt-5-nano<br/>AI-Usage-Preflight, store=false bei Help"| externalLlm
   identity -->|"SMTP/TLS"| ionosMail["IONOS Mail"]
   identity -->|"token-geschuetzte Auth-/Runtime-Ereignisse"| adminTool
   identity -->|"token-geschuetztes Linkinventar"| adminTool
@@ -333,9 +332,8 @@ flowchart LR
 | Community Platform | 5200 | intern im Docker-Netz | Community-Portal mit Forum, Ideenwerkstatt, Projekt-Showcase, privater Projektbegleitung, internen Nachrichten und Kleinanzeigen fuer gebrauchte Elektronik; Support, Fragen und Meldungen werden ausschließlich über getrennte Admin-Akteure mit eigener Capability geprüft; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
-| AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und lokales Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
+| AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und kuratiertes Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
 | MQTT Broker | 1883 / 8883 / 9001 | intern `mqtt://mqtt-broker:1883`, privater Device-Zugriff `mqtts://10.77.0.1:8883` ueber WireGuard | Interne anonyme Listener bleiben im privaten Docker-Netz; entfernte Devices benoetigen einen WireGuard-faehigen Gateway-Pfad und verwenden danach zusaetzlich mTLS, Zertifikats-CN, QoS 1 und geraetespezifische ACLs |
-| Lokaler Ollama LLM | 11434 | `http://127.0.0.1:11434/` | lokaler LLM-Provider fuer Routen, die auf Ollama zeigen |
 
 ## Lokale Anwendungen ohne Serverprozess
 
@@ -376,8 +374,8 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige, AI-Preflight, Abschluss-/Fehlerbuchung echter Chat-Aufrufe |
 | Identity Server | Admin Tool | Allowlist-validierte browserseitige WebAuthn-Fehler, fehlgeschlagene serverseitige Passkey-Loginphasen und weitere auffaellige Runtime-Vorgaenge ueber einen eigenen token-geschuetzten Ingest als persistente Systemereignisse |
 | Identity Server / Link-Prüf-CLI | Admin Tool | Liefert token-geschützt deduplizierte Linkziele, vollständige Fundstellen und Prüfergebnisse; authentifizierte Ziele werden mit einem technischen Testkonto geprüft, dessen Credentials nicht persistiert werden |
-| GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und Architektur-Bausteine, sucht fuer GerNetiX Help ausschliesslich lokales Help-Wissen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
-| GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery, wenn Admin-Routing auf lokalen Provider zeigt |
+| GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und Architektur-Bausteine, sucht fuer GerNetiX Help ausschliesslich kuratiertes Help-Wissen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
+| GerNetiX Plattform UI / Identity Server | OpenAI Responses API | Standardpfad fuer Chat, Architektur, Artefakte, Code, Hardware-Labor und Help; `gpt-5-nano` ist der kostenoptimierte Standard und jeder kostenpflichtige Aufruf durchlaeuft AI Usage |
 | GerNetiX Plattform UI / Identity Server | IONOS Mail | Sendet Verifizierungs- und Passwort-Reset-E-Mails ueber SMTP/TLS; IONOS bleibt Mailserver und speichert keine GerNetiX-Anwendungsdaten |
 | GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer die Entwicklungsplattform |
 | GerNetiX Plattform UI | GerNetiX Serial Service | TLS- und loopbackgebundene, kurzlebige Sitzung fuer Board-Erkennung, USB-Flash, seriellen Status und lokale WLAN-Provisionierung; die Plattform bleibt die einzige Bedienoberfläche |
@@ -403,7 +401,7 @@ flowchart LR
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
 | Admin Tool API | Project Server | Learning Feedback |
 | Admin Tool API | AI Usage Server | Usage-Monitoring und Cost Controls |
-| Admin Tool API | AI Context Server | Kontext-Grants, Prompt-Grundlagen, Policy, Audit und lokales Help-Wissen administrieren sowie priorisierte KI-Klaerfaelle bearbeiten und als Intent-Beispiele freigeben |
+| Admin Tool API | AI Context Server | Kontext-Grants, Prompt-Grundlagen, Policy, Audit und kuratiertes Help-Wissen administrieren sowie priorisierte KI-Klaerfaelle bearbeiten und als Intent-Beispiele freigeben |
 | Admin Tool API | GerNetiX Plattform UI / Identity Server | Pflegt verschluesselt gespeicherte SMTP-Zugangsdaten nur ueber einen token-geschuetzten internen Endpunkt; das Passwort wird nicht wieder ausgelesen |
 | Provisioning Tool Server | Device Management Server | registriert verifizierte Devices |
 | Provisioning Tool Server | Device Management / Firmware Artifact Repository | liest versionierte Basissoftware-Artefaktreferenz fuer Factory-Flash; Workflow-State ist fluechtig, dauerhafte Device-Ergebnisse gehen an Device Management |
@@ -434,7 +432,7 @@ flowchart LR
 - Fachliche VPS-Laufzeitdaten liegen in genau einem PostgreSQL-17/pgvector-Prozess und der Domaenendatenbank `gernetix_runtime`. Die Forgejo-Zielarchitektur verwendet im selben Prozess die getrennte Datenbank `forgejo` und das Repository-Volume `forgejo_data` fuer Projektdateien und Git-Historie. Domaenen bleiben durch Tabellenpraefixe, Service-APIs und Autorisierung getrennt. Die bisherigen PostgreSQL-Volumes und SQLite-Dateien dienen nur der einmaligen read-only Altuebernahme; Fachservices mounten sie nicht mehr. Pfade, Schutzklassen und Migrationsregeln stehen im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
 - Der AI Context Server nutzt die `ai_context_*`-Tabellen und pgvector in `gernetix_runtime`. Grants, Prompt-Grundlagen, Embeddings, Policy und Audit bleiben durch Tabellen und Service-Vertrag fachlich getrennt, aber nicht durch einen zweiten Datenbankprozess.
 - Fuer haeufige Entwicklung kann nur Identity auf `127.0.0.1:4300` lokal laufen. Ein SSH-Tunnel innerhalb von WireGuard verbindet diesen Prozess mit der gemeinsamen Entwicklungsdatenbank `gernetix_runtime` und den loopback-gebundenen Domaenendiensten auf dem VPS. Keine VPS-SQLite-Datei wird freigegeben oder lokal geoeffnet; dieser Modus ist nicht fuer Produktionsdaten zugelassen.
-- GerNetiX Help sucht vor jedem Modellaufruf ausschliesslich kuratiertes Help-Wissen im AI Context Server. Nur die passenden Artikel werden dem lokalen Ollama-Modell als Kontext gegeben; ohne Treffer antwortet Help ohne Modellaufruf. Das Admin Tool pflegt diese Agenten-Wissenseintraege getrennt von den sichtbaren Hilfeartikeln.
+- GerNetiX Help sucht vor jedem Modellaufruf ausschliesslich kuratiertes Help-Wissen im AI Context Server. Nur die passenden Artikel werden nach AI-Usage-Preflight mit `store:false` an OpenAI gegeben; ohne Treffer antwortet Help ohne Modellaufruf und ohne Credit-Reservierung. Das Admin Tool pflegt diese Agenten-Wissenseintraege getrennt von den sichtbaren Hilfeartikeln.
 - Unsichere Architektur-Erweiterungen werden im AI Context Server zu deduplizierten, priorisierten Klaerfaellen zusammengefuehrt. Das Admin Tool kann sie bestaetigen, korrigieren, priorisieren, zurueckstellen oder ignorieren. Nur bestaetigte oder korrigierte Bedeutungen werden als globale oder accountisolierte Intent-Beispiele eingebettet und bei spaeteren Interpretationen gesucht; ein separates Ticketsystem ist dafuer nicht erforderlich.
 - Dauerhafte fachliche Laufzeitdaten liegen in SQL. Versionierte Projektdateien liegen nach dem Cutover ausschliesslich in den vom Project Server gebundenen Forgejo-Repositories; Binaries liegen im Artifact Store. Lose JSON-/YAML-Dateien ausserhalb dieses Repository-Vertrags, Prozessspeicher, Browser-State, Temp-Dateien, Caches und generierte Sichten sind nur Logic/Control/View, Import-/Export, Test-Hilfe oder Cache und duerfen keine fachliche Quelle der Wahrheit sein.
 - Rechenintensive Systemarbeit und Kunden-Background-Jobs verwenden die gemeinsame [elastische Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md). Der VPS bleibt dauerhafter Control-Plane- und Rueckfallknoten; private Rechner, Cloud-Burst und Kubernetes sind austauschbare Capacity-Provider. Kundenregeln laufen in einer getrennten Ausfuehrungsklasse ohne Datenbank, freies Netzwerk oder System-Secrets. Grundlast wird aus angebotener Arbeit, Laufzeit und Queue-Wartezeit gemessen, nicht aus registrierten Nutzerzahlen.

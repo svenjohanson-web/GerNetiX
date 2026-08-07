@@ -122,6 +122,13 @@ test("IDE contents do not wait for USB discovery or start a duplicate route load
   assert.doesNotMatch(openBody, /loadIdeProject\(/);
 });
 
+test("browser-only learning projects do not load build flash or board workbenches", () => {
+  assert.match(shell, /function activeLearningProjectNeedsHardwareWorkbench\(\)/);
+  assert.match(shell, /startsWith\("runtime\.browser_"\)/);
+  assert.match(shell, /if \(activeLearningProjectNeedsHardwareWorkbench\(\)\) \{[\s\S]*loadBuildWorkbenchAssets\(\)[\s\S]*\} else \{[\s\S]*loadGuidedProjectCoreAssets\(\)/);
+  assert.match(shell, /route === "learning-project"[\s\S]*activeLearningProjectNeedsHardwareWorkbench\(\) && typeof startBuild === "undefined"/);
+});
+
 test("project file authorization does not reload every account project", () => {
   const accessStart = devServer.indexOf("async function requireSessionProject");
   const accessEnd = devServer.indexOf("\nfunction sessionProjectNotFound", accessStart);

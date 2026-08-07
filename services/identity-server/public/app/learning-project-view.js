@@ -1,5 +1,5 @@
 const LearningProjectView = (() => {
-  function render({ target, project, escapeHtml, learningText = (_key, fallback) => fallback }) {
+  function render({ target, project, showRating = false, escapeHtml, learningText = (_key, fallback) => fallback }) {
     if (!target) return false;
     target.classList.toggle("hidden", !project);
     if (!project) {
@@ -22,7 +22,7 @@ const LearningProjectView = (() => {
       </div>
       <p class="flash-status hidden" data-learning-project-status aria-live="polite"></p>
       <section id="learningProjectArtifact" class="learning-project-artifact" aria-live="polite"></section>
-      <section class="learning-rating" aria-labelledby="learningRatingTitle">
+      ${showRating ? `<section class="learning-rating" data-learning-rating-section aria-labelledby="learningRatingTitle">
         <div>
           <p class="eyebrow">Deine Rückmeldung</p>
           <h3 id="learningRatingTitle">Wie war dieses Lernprojekt?</h3>
@@ -38,7 +38,7 @@ const LearningProjectView = (() => {
           <label class="learning-rating-comment">Kommentar (optional)<textarea name="message" rows="3" maxlength="2000" placeholder="Was war gut, was können wir verbessern?"></textarea></label>
           <div class="learning-rating-actions"><button class="primary" type="submit">Bewertung senden</button><span data-learning-rating-status aria-live="polite"></span></div>
         </form>
-      </section>
+      </section>` : ""}
     `;
     return true;
   }

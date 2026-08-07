@@ -10,8 +10,8 @@ const service = fs.readFileSync(path.resolve(__dirname, "../src/services/admin-s
 test("renders provider-discovered API models in a select without preset fallback options", () => {
   assert.match(html, /<select id="adminApiModel"><\/select>/);
   assert.match(html, /refreshApiLlmModelsButton/);
-  assert.match(html, />Lokal<\/option>/);
-  assert.match(html, />Internet<\/option>/);
+  assert.match(html, />Optional lokal<\/option>/);
+  assert.match(html, />OpenAI \/ API<\/option>/);
   assert.match(html, />OpenAI<\/option>/);
   assert.match(html, /Modellliste kann erst nach dem Speichern eines API-Keys geladen werden/);
   assert.match(html, /OpenAI und Anthropic verwenden fest ihr jeweiliges API-Protokoll/);

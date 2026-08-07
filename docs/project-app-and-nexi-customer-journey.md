@@ -48,36 +48,33 @@ durch reine UI-Duplikation vorgetaeuscht.
 
 Nexi ist ein eigenständiger öffentlicher Produkteinstieg und wird direkt auf
 der GerNetiX-Startseite vor den allgemeinen Lernwegen vorgestellt. Die
-Startseite führt entweder zum fertigen Nachbau- und Flashweg oder – nach der
-Anmeldung – zu den persönlichen Anwendungen. Nexi darf damit nicht nur als
-Unterpunkt des Nachbaukatalogs oder der Lern- und Entwicklungsplattform
-auffindbar sein.
+Startseite führt entweder ohne Konto zum fertigen Nachbau- und Flashweg oder
+mit kostenlosem Konto direkt zur eigenständigen internen Nexi-Einrichtung
+unter `/app/nexi/`. Diese Seite ist eine Produktseite und ausdrücklich kein
+Lernprojekt. Nexi darf damit nicht nur als Unterpunkt des Nachbaukatalogs oder
+der Lern- und Entwicklungsplattform auffindbar sein.
 
-Im angemeldeten Bereich kann ein Kunde zwischen vier klar getrennten Wegen
-wählen:
-
-1. **Nexi verwenden**: Eine bereits eingerichtete Nexi-Instanz und ihre
-   Projekt-App oeffnen.
-2. **Nexi nachbauen**: Hardwarebedarf, Zusammenbau, Firmware-Build, Flash und
-   Funktionstest schrittweise durchlaufen.
-3. **Nexi verstehen**: Als Lernprojekt nachvollziehen, wie Audio, Tasten, LEDs,
-   Basissoftware, Datenschutz und die optionale KI-Erweiterung entstanden sind.
-4. **Nexi weiterentwickeln**: Eine eigene, versionierte Projektkopie anlegen
-   und Firmware, Assistentendefinition sowie Projekt-App erweitern.
+Der angemeldete Nexi-Bereich führt durch Geräteverbindung, persönliche
+Konfiguration, Nutzung und die später bewusst aktivierbaren Online-Funktionen.
+Ein inhaltlich passendes Lernprojekt kann separat im Produkt **Lernen**
+angeboten werden. Es bleibt dort ein eigener Lernweg und ist niemals Ziel des
+Buttons `Mit kostenlosem Konto einrichten`. Auch eine spätere technische
+Weiterentwicklung gehört in die Entwicklungsplattform, nicht in die
+Produkteinrichtung.
 
 Der öffentliche Detail- und Flash-Einstieg liegt unter
 `/nachbauprojekte/nexi-sprachassistent/`. Er beschreibt Hardware, lokale
 Funktionen, Installation und Bedienung sowie die Grenze zur optionalen KI.
-Nach der Anmeldung fuehrt er gezielt zum Nachbau-Einstieg; die Projektuebersicht
-zeigt danach alle vier Wege getrennt. `Verwenden` wird erst aktiv, wenn eine
-persoenliche Nexi-Instanz existiert.
+Nach der Anmeldung fuehrt er gezielt zur Nexi-Produkteinrichtung. Die Seite
+kann bis zur vollständigen Implementierung als klar benannte Leerseite
+existieren, darf aber nicht ersatzweise auf eine Lernprojektseite verweisen.
 
 | Einstieg | Ziel | Abnahmekriterium |
 | --- | --- | --- |
-| Verwenden | Projekt-App der persoenlichen Instanz | kein Katalog-Dummy und keine fremde Instanz |
-| Nachbauen | Schritt `nexi-build` | Material, Build, Flash und Hardwaretest sichtbar |
-| Verstehen | Schritt `nexi-local` | lokaler Produktkern vor optionaler KI erklaert |
-| Weiterentwickeln | eigene IDE-Projektkopie | Waveshare-Profil, Voice-Lab-Code und Projekt-App vorhanden |
+| Ohne Konto nachbauen | öffentliche Nexi-Detailseite | Material, Flash und lokale Nutzung ohne Anmeldung sichtbar |
+| Mit Konto einrichten | `/app/nexi/` | eigenständige Produktseite, keine Lernprojekt-Weiterleitung |
+| Nexi lernen | Produkt Lernen | separat auffindbarer Lernweg ohne Vermischung mit der Einrichtung |
+| Nexi weiterentwickeln | Entwicklungsplattform | eigene Projektkopie statt Produktkonfiguration |
 
 Nexi Basic ist bereits ohne externen KI-Provider ein ehrliches nutzbares
 Produkt. Aufnahme, Wiedergabe und lokale Stimmeffekte bleiben offline. Sprach-
@@ -86,12 +83,18 @@ duerfen im Katalog nicht als bereits verfuegbar erscheinen, solange Provider,
 Kontingent und Betreiberfreigabe fehlen.
 
 Die Kundensicht erklärt diesen Ausbau immer funktionsorientiert in derselben
-Reihenfolge: lokale Nachbaufunktionen ohne Konto, persönliche Verwaltung mit
-kostenlosem Konto und optionale Sprach-KI mit ausdrücklicher Aktivierung,
-freigegebenem Provider und verfügbarem Kontingent. Ein fehlender KI-Vertrag
-darf nicht nur als „nicht freigeschaltet“ erscheinen. Die Oberfläche nennt,
-welche Voraussetzung fehlt, warum sie erforderlich ist und was der Nutzer
-heute bereits tun kann.
+Reihenfolge: öffentlich nachbauen und lokal verwenden, das Gerät mit einem
+kostenlosen Konto verbinden und dort persönliche sowie kostenlose
+Online-Basisfunktionen erweitern. Dazu koennen Wetter, Uhrzeit und begrenzte
+Sachauskünfte gehören; ihre konkreten Datenquellen und Datenschutzgrenzen
+muessen vor der Veröffentlichung festgelegt sein. Zusätzliche generative
+KI-Funktionen werden nicht als dritte Startkarte oder Tarifwerbung auf der
+Startseite präsentiert. Sie erscheinen erst in der konkreten
+Nexi-Konfiguration mit ausdrücklicher Aktivierung, freigegebenem Provider,
+Kostenanzeige und verfügbarem Kontingent. Ein fehlender KI-Vertrag darf nicht
+nur als „nicht freigeschaltet“ erscheinen. Die Oberfläche nennt, welche
+Voraussetzung fehlt, warum sie erforderlich ist und was der Nutzer heute
+bereits tun kann.
 
 ## Projektoberflaeche
 

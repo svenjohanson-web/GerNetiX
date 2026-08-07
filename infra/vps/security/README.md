@@ -8,4 +8,22 @@ VPS-Einrichtung nach Deployment:
 2. Service- und Timer-Datei nach `/etc/systemd/system/` kopieren, `systemctl daemon-reload` ausfuehren und den Timer aktivieren.
 3. Mit `systemctl start gernetix-security-alert-monitor.service` einen kontrollierten Lauf ausfuehren.
 
+## Dedizierter Prozessmonitor-Zugang
+
+Der Desktop-Prozessmonitor verwendet den Maschinenbenutzer `gernetix-monitor`.
+Der Benutzer bekommt weder ein Passwort noch eine interaktive Shell und wird
+nicht in die Docker-Gruppe aufgenommen. Installiere das versionierte Wrapper-
+Skript als `/usr/local/sbin/gernetix-monitor-diagnostic` (root:root, 0755) und
+die passende Datei `gernetix-monitor.sudoers` nach `/etc/sudoers.d/` (root:root,
+0440). Vor dem Aktivieren immer `visudo -c` ausführen. Der SSH-Schlüssel sollte
+zusätzlich mit `from="<WireGuard-Peer>"`, `no-pty`, `no-agent-forwarding`,
+`no-port-forwarding` und `no-X11-forwarding` eingeschränkt werden.
+
+Der Wrapper akzeptiert ausschließlich `security`, `compose-ps` und
+`link-integrity`. Erst nach Installation und einem erfolgreichen Test über den
+WireGuard-Peer darf `GERNETIX_STAGING_MONITOR_SSH` in `.env.staging.local` auf
+`gernetix-monitor@gernetix-vps` gesetzt werden. `GERNETIX_STAGING_SSH` bleibt für
+den separaten Diagnose-/Datenbanktunnel erhalten. Die laufende VPS-Konfiguration
+wird durch diese Dateien nicht automatisch verändert.
+
 Der Admin-Port bleibt Loopback-only. Die iPhone-Verwaltung erfolgt spaeter ueber WireGuard und die responsive Admin-Oberflaeche; ein oeffentlicher Admin-Port oder Log-Export wird dadurch nicht eingefuehrt.

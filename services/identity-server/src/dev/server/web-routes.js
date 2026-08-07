@@ -93,6 +93,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/hw364a-spielesammlung/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/index.html") });
   registry.register({
     method: "GET",
     pattern: /^\/nachbauprojekte\/nexi-sprachassistent\/api\//,

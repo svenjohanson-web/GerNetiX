@@ -22,7 +22,7 @@ async function loadRelease() {
     const release = selectedDemo.releases?.[0];
     if (!release) throw new Error("Kein Release veröffentlicht");
     document.querySelector("#flash-title").textContent = `Nexi Basic ${release.version} auf das Waveshare-Board flashen`;
-    setEntryEnabled(true, `Release ${release.version} ist bereit. Flashen öffnet den gemeinsamen GerNetiX-Flashdialog.`);
+    setEntryEnabled(true, `Nexi Basic ${release.version} ist bereit.`);
   } catch (error) {
     const detail = error?.message || "Netzwerkfehler";
     setEntryEnabled(false, `Nicht möglich: Der geprüfte Nexi-Release ist gerade nicht verfügbar (${detail}). Automatischer neuer Versuch in 5 Sekunden.`);
@@ -47,18 +47,20 @@ openFlashButton.addEventListener("click", () => {
       ota: { enabled: false, reason: "Nexi Basic wird vor der ersten Gerätezuordnung per USB installiert." },
       flashbox: { enabled: false, reason: "Für den öffentlichen Nexi-Release ist keine persönliche FlashBox zugeordnet." },
     },
-    async onExecute(method, terminal) {
+    progressPresentation: "guided",
+    async onExecute(method, progress) {
       if (method !== "usb") throw new Error("Dieser Übertragungsweg ist für Nexi Basic nicht verfügbar.");
-      await ensureUsbPort(terminal.write);
-      await flashSelectedRelease(terminal.write, terminal.setArtifact);
+      await ensureUsbPort(progress.write);
+      await flashSelectedRelease(progress.write, progress.setArtifact);
     },
+    onComplete() { window.location.assign("inbetriebnahme/index.html"); },
   });
 });
 
 async function ensureUsbPort(log) {
   if (selectedPort) return selectedPort;
   if (navigator.serial) {
-    log("running", "USB-Gerät im Browser auswählen …");
+    log("running", "Wähle jetzt das angeschlossene Waveshare-Board aus.");
     selectedPort = await navigator.serial.requestPort();
     return selectedPort;
   }
@@ -67,24 +69,24 @@ async function ensureUsbPort(log) {
   if (!ports.length) throw new Error("Der Serial Helper findet kein USB-Gerät. Prüfe Datenkabel und Verbindung.");
   if (ports.length > 1) throw new Error("Mehrere USB-Geräte gefunden. Trenne die anderen Geräte vorübergehend und öffne Flashen erneut.");
   selectedPort = { ...ports[0], source: "gernetix_serial_service" };
-  log("running", `${selectedPort.displayName || selectedPort.path} wird geprüft …`);
+  log("running", "Das angeschlossene Board wird geprüft …");
   const probe = await serialService.probe(selectedPort.path);
   validateBoard(probe.chipName, probe.flashSize);
-  log("ok", `${probe.chipName || "ESP32-S3"} mit ${probe.flashSize || "16 MB"} erkannt.`);
+  log("ok", "Das passende ESP32-S3-Board wurde erkannt.");
   return selectedPort;
 }
 
 async function flashSelectedRelease(log, setArtifact) {
   const release = selectedDemo.releases[0];
-  log("running", "Signiertes Flash-Manifest wird geladen …");
+  log("running", "Das geprüfte Firmware-Paket wird vorbereitet …");
   const manifestResponse = await fetch(`api/public/demos/${DEMO_ID}/releases/${encodeURIComponent(release.version)}/flash-manifest`);
   if (!manifestResponse.ok) throw new Error("Flash-Manifest konnte nicht geladen werden.");
   const manifest = await manifestResponse.json();
   if (manifest.chip !== "esp32s3" || manifest.flash_size !== "16MB") throw new Error("Release passt nicht zum vorgesehenen Waveshare-Board.");
   const mainAsset = manifest.assets.find((asset) => asset.file_name === "firmware.bin") || manifest.assets[0];
   setArtifact({ name: mainAsset.file_name, version: release.version, sizeBytes: mainAsset.size_bytes, sha256: mainAsset.sha256 });
-  const files = await Promise.all(manifest.assets.map(async (asset) => {
-    log("running", `${asset.file_name} wird geladen und geprüft …`);
+  const files = await Promise.all(manifest.assets.map(async (asset, index) => {
+    log("running", `Firmware-Bestandteil ${index + 1} von ${manifest.assets.length} wird geprüft …`);
     const response = await fetch(new URL(asset.download_url.replace(/^\//, ""), new URL(".", location.href)));
     if (!response.ok) throw new Error(`${asset.file_name} konnte nicht geladen werden.`);
     const data = new Uint8Array(await response.arrayBuffer());
@@ -93,22 +95,20 @@ async function flashSelectedRelease(log, setArtifact) {
     return { name: asset.file_name, address: asset.flash_offset, data };
   }));
   if (selectedPort.source === "gernetix_serial_service") {
-    const seenLogs = new Set();
-    const result = await serialService.flash({ port: selectedPort.path, files, onProgress(job) {
-      for (const line of job.logs || []) if (!seenLogs.has(line)) { seenLogs.add(line); log("running", line); }
-    } });
+    log("running", "Nexi wird auf das Board übertragen …");
+    const result = await serialService.flash({ port: selectedPort.path, files, onProgress() {} });
     if (result.status !== "succeeded") throw new Error(result.error || "Flash über den Serial Helper fehlgeschlagen.");
   } else {
     const { Transport, ESPLoader } = await import("/vendor/esptool-js/bundle.js");
     const transport = new Transport(selectedPort, false);
     try {
-      const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean() {}, writeLine(line) { log("running", line); }, write(line) { log("running", line); } } });
+      const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean() {}, writeLine() {}, write() {} } });
       const info = selectedPort.getInfo?.() || {};
       const chipName = await loader.main(info.usbVendorId === 0x303A && info.usbProductId === 0x1001 ? "usb_reset" : "default_reset");
       const flashSize = await loader.detectFlashSize();
       validateBoard(chipName, flashSize);
       await loader.writeFlash({ fileArray: files, flashMode: manifest.flash_mode, flashFreq: manifest.flash_freq, flashSize: manifest.flash_size, compress: true, reportProgress(index, written, total) {
-        log("running", `${manifest.assets[index].file_name}: ${total ? Math.round(written / total * 100) : 0} %`);
+        log("running", `Nexi wird übertragen: ${total ? Math.round(written / total * 100) : 0} %`);
       } });
       try { await loader.after("custom_reset", false, "D0|R1|W120|R0|W120"); } catch { log("running", "Falls das Board nicht startet, einmal RESET drücken."); }
     } finally {

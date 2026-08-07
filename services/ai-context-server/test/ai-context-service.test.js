@@ -140,7 +140,7 @@ test("prompt foundations are centrally available from ai context", () => {
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Komponenten besitzen Eigenschaften"));
 });
 
-test("local help knowledge can be curated and searched without an external provider", () => {
+test("help knowledge can be curated and searched before an external model call", () => {
   const service = createService();
   const article = service.upsertHelpArticle({
     article_id: "help.test.wlan",
@@ -153,10 +153,10 @@ test("local help knowledge can be curated and searched without an external provi
 
   assert.equal(article.article_id, "help.test.wlan");
   assert.ok(service.searchHelpArticles("Wie bleibt mein WLAN Passwort privat?").items.some((item) => item.article_id === "help.test.wlan"));
-  assert.ok(service.listSources().some((source) => source.source_type === "help_knowledge" && source.default_provider_scope === "local_only"));
+  assert.ok(service.listSources().some((source) => source.source_type === "help_knowledge" && source.default_provider_scope === "external_allowed"));
 });
 
-test("help knowledge denies an external provider even with a matching grant", () => {
+test("help knowledge allows an external provider with an explicit matching grant", () => {
   const service = createService();
   service.createGrant(grantInput({
     source_type: "help_knowledge",
@@ -172,8 +172,8 @@ test("help knowledge denies an external provider even with a matching grant", ()
     provider: "api",
   }));
 
-  assert.equal(result.allowed, false);
-  assert.equal(result.reason, "help_knowledge_local_only");
+  assert.equal(result.allowed, true);
+  assert.equal(result.reason, "valid_grant");
 });
 
 test("prompt foundations can be updated centrally without identity code changes", () => {

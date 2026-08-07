@@ -8,11 +8,16 @@ const LearningProjectController = (() => {
       renderDashboard,
       renderGuidedProject,
       projectById,
+      loadProjectDetail,
       progressFor,
       escapeHtml,
       localizeProject = (project) => project,
       learningText = (_key, fallback) => fallback,
     } = deps;
+
+    window.addEventListener("learning-progress-updated", (event) => {
+      if (event.detail?.projectId === activeProject()?.id) render();
+    });
 
     function activeProject() {
       const projectId = new URLSearchParams(window.location.search).get("project");
@@ -28,7 +33,13 @@ const LearningProjectController = (() => {
       const target = document.querySelector("#learningProjectWorkspace");
       const project = activeProject();
       const localizedProject = project ? localizeProject(project) : null;
-      const rendered = LearningProjectView.render({ target, project: localizedProject, escapeHtml, learningText });
+      const rendered = LearningProjectView.render({
+        target,
+        project: localizedProject,
+        showRating: learningProjectCompleted(project) && project.learningFeedbackSubmitted !== true,
+        escapeHtml,
+        learningText,
+      });
       if (!target || !project || !rendered) return;
       renderGuidedProject(localizedProject);
       target.querySelector("[data-learning-rating-form]")?.addEventListener("submit", (event) => submitRating(event, project));
@@ -41,6 +52,12 @@ const LearningProjectController = (() => {
         const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(selectedProject.id)}/start`, {});
         project = response.project;
         state.projects = state.projects.filter((item) => item.id !== project.id).concat(project);
+        if (response.learning_progress) {
+          state.progress = state.progress.filter((item) => item.projectId !== project.id).concat(response.learning_progress);
+        }
+        project.learningFeedbackSubmitted = response.learning_feedback_submitted === true;
+      } else if (selectedProject && !selectedProject.detailsLoaded) {
+        project = await loadProjectDetail(projectId);
       }
       return project;
     }
@@ -106,21 +123,28 @@ const LearningProjectController = (() => {
       button.disabled = true;
       status.textContent = "Wird gesendet …";
       try {
-        const progress = progressFor(project.id);
-        const currentStep = Number(progress.currentStep || 0);
         await postJson("/api/platform/learning-feedback", {
           projectId: project.id,
-          learningStepId: project.viewManifest?.views?.[currentStep]?.id || "",
           ratings: Object.fromEntries(["clarity", "fun", "difficulty", "completeness"].map((key) => [key, Number(values.get(key))])),
           message: String(values.get("message") || ""),
         });
-        form.reset();
-        status.textContent = "Danke – deine Bewertung wurde gespeichert.";
+        project.learningFeedbackSubmitted = true;
+        form.closest("[data-learning-rating-section]").innerHTML = "<p class=\"eyebrow\">Danke für deine Rückmeldung</p><p>Deine einmalige Projektbewertung wurde gespeichert.</p>";
       } catch (error) {
         status.textContent = error?.message || "Die Bewertung konnte nicht gespeichert werden.";
       } finally {
         button.disabled = false;
       }
+    }
+
+    function learningProjectCompleted(project) {
+      const views = project.viewManifest?.views || [];
+      const progress = progressFor(project.id);
+      if (!views.length) return false;
+      if (progress.status === "completed") return true;
+      const completedIndexes = new Set(progress.completedSteps || []);
+      const completedIds = new Set(progress.completedStepIds || []);
+      return views.every((view, index) => completedIndexes.has(index) || completedIds.has(view.id));
     }
 
     function showError(error) {

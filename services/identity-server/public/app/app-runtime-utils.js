@@ -117,7 +117,7 @@ function progressFor(projectId) {
 }
 
 function projectById(projectId) {
-  return state.projects.find((project) => project.id === projectId) || state.projects[0];
+  return state.projects.find((project) => project.id === projectId) || null;
 }
 
 function primarySourcePath(project) {

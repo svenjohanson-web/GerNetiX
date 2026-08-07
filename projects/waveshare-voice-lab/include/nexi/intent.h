@@ -10,7 +10,7 @@ namespace nexi {
 // or speech into these values; applications never inspect GPIOs or recognizers.
 enum class IntentType : uint8_t {
   None,
-  Wake,
+  WakeDetected,
   SelectApplication,
   StopApplication,
   Record,

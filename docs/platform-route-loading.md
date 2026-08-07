@@ -29,6 +29,36 @@ explizites Profil verwenden.
 
 ## Datenprofile
 
+Projektlisten verwenden unabhängig von der Anzahl der Projekte ausschließlich
+ein kompaktes Indexprofil. Eine Karte enthält Kennung, Titel, wenige Sätze
+Zusammenfassung, Klassifikation, Zugriffs- und Laufzeitstatus sowie die für
+sichtbare Aktionen notwendigen kleinen Merkmale. ProjectViewManifest,
+Lernschritte, Quellpfade, Buildkonfiguration, Software-Einheiten und
+Build-Historie gehören nicht in diesen Index. Der Project Server erzeugt das
+Indexprofil mit einer einzelnen Listenabfrage; er darf dafür nicht pro Projekt
+Quellen oder Build-Jobs nachladen.
+
+Erst beim Öffnen einer Projektübersicht, eines Lernprojekts, der IDE oder einer
+Projektkonfiguration lädt Identity über
+`GET /api/platform/projects/:projectId` genau das ausgewählte Projekt. Parallele
+Anforderungen desselben Details werden im Browser zusammengeführt. Ein
+Direktlink wartet vor dem projektspezifischen Renderer auf dieses Detail,
+während der allgemeine Katalog bereits allein mit dem kleinen Index vollständig
+benutzbar ist.
+
+Ein Projektchat wird ebenfalls seitenweise fortgesetzt: Das Projekt liefert
+seine kurze Zusammenfassung und ausschließlich die letzte Nachrichtenseite mit
+höchstens zwölf Nachrichten. Ältere Nachrichten werden weder an den Browser
+noch an den nächsten KI-Aufruf angehängt. Beim nächsten Speichern bleibt diese
+letzte Seite als unmittelbarer Gesprächskontext erhalten; der vollständige
+Chatverlauf darf den Projektstart nicht wieder vergrößern.
+
+Bei einem accountgebundenen Lernprojekt enthält dieser Einzelabruf nur dessen
+eigenen Lernfortschritt. Das Öffnen eines Projekts darf nicht auf die
+Fortschrittsabfragen aller anderen Projekte warten. Ein bereits aktuelles
+Lernprojekt wird beim Fortsetzen nicht erneut gepatcht und seine vorhandenen
+Quellen werden nicht noch einmal einzeln geprüft.
+
 - Das Dashboard ist die vollständige Übersicht und lädt Geräte, Builds,
   KI-Abrechnung, Community-Zusammenfassung, Wissensupdates, Billing und
   Lernfortschritt.
@@ -100,7 +130,10 @@ deduplizierten Teilpaketen zusammen:
 - IDE und Debug laden Build-/USB-Basis, gefuehrte Projektansicht, IDE und Debug
   in fester Abhaengigkeitsreihenfolge.
 - Ein konkretes Lernprojekt laedt nur Build-/Flash-Basis und gefuehrte
-  Projektansicht.
+  Projektansicht, wenn sein Zielsystem diese Werkzeuge tatsächlich benötigt.
+  Reine Browser-Lernprojekte laden ausschließlich den Kern der geführten
+  Projektansicht; Boardkonfiguration, Build, USB-Erkennung und Flashdialog
+  bleiben bis zu einer tatsächlich hardwaregebundenen Route ungeladen.
 - Inventar und Recovery laden den gemeinsamen Device-/Build-Controller, aber
   weder IDE noch Provisioning.
 - Provisioning ergaenzt Device-Modell, Board-Konfiguration, Flash-Ausfuehrung
@@ -160,6 +193,14 @@ Fachlisten im aufrufenden Service entstehen.
   ausgeführt wurden. Der kleine Index ist die einzige globale Navigationsquelle.
 - Direktlinks auf Kapitel und stabile Unterkapitelanker müssen auch dann
   funktionieren, wenn der zugehörige Artikel erst nachgeladen wird.
+- Globale Projektlisten enthalten keine Projektmanifeste, Lernschritte,
+  Quelllisten oder Buildkonfigurationen; diese Daten werden nur für genau ein
+  geöffnetes Projekt geladen.
+- Ein Projektindex darf keine projektweise Folgeabfrage für Quellen oder
+  Build-Jobs auslösen.
+- Ein geöffnetes Lernprojekt lädt nur seinen eigenen Fortschritt. Reine
+  Browserprojekte dürfen den Projektstart nicht von Build-, Board-, USB- oder
+  Flashmodulen abhängig machen.
 
 ## Nachweis
 

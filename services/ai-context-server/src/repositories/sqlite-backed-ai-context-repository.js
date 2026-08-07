@@ -6,6 +6,11 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
     super({ policy: defaultPolicy(), ...store.load() });
     this.store = store;
     this.store.ensureSchema?.(aiContextSchema());
+    const helpSource = this.sources.get("ai_source.help_knowledge");
+    if (helpSource?.default_provider_scope === "local_only") {
+      const currentDefault = defaultSources().find((source) => source.source_id === helpSource.source_id);
+      this.sources.set(helpSource.source_id, { ...helpSource, ...currentDefault });
+    }
     this.persist();
   }
 

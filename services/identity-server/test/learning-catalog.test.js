@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { normalizeAppPath } = require("../src/dev/http-utils");
 
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const app = readPlatformAppSource();
@@ -70,6 +71,18 @@ test("opens the learning workspace before saving initial progress", () => {
   assert.match(openMethod, /\.catch\(\(error\) => showError\(error\)\)/);
 });
 
+test("shows immediate feedback while a learning project is materialized", () => {
+  assert.match(app, /data-learning-project-start-status/);
+  assert.match(app, /Projekt wird vorbereitet/);
+  assert.match(app, /button\.disabled = true/);
+  assert.match(app, /await learningProject\(\)\.open/);
+});
+
+test("does not resynchronize an unchanged learning project on every start", () => {
+  assert.match(server, /async function synchronizeLearningProjectOnStart/);
+  assert.match(server, /if \(!needsManifestSync && !needsSourceSync && !needsLegacyNexiCheck\) return project/);
+});
+
 test("keeps the catalog and the active learning project in separate views", () => {
   assert.match(html, /id="learnView"[\s\S]*?id="projectList"/);
   assert.match(html, /id="learningProjectOverviewView"[\s\S]*?id="learningProjectOverview"/);
@@ -77,6 +90,8 @@ test("keeps the catalog and the active learning project in separate views", () =
   assert.match(app, /"learning-project-overview": "learningProjectOverviewView"/);
   assert.match(app, /"learning-project": "learningProjectView"/);
   assert.match(learningController, /navigate\(`\/app\/learning-project\/\?project=/);
+  assert.equal(normalizeAppPath("/app/learning-project-overview/"), "/index.html");
+  assert.equal(normalizeAppPath("/app/learning-project-overview"), "/index.html");
 });
 
 test("catalog includes the button-to-smartphone notification learning project", () => {
@@ -231,6 +246,17 @@ test("renders the manifest artifact viewer instead of reducing a guided project 
   assert.match(guidedView, /guided-code-viewer/);
 });
 
+test("asks for learning-project feedback once after the final completed step", () => {
+  const learningView = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-view.js"), "utf8");
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  assert.match(learningController, /showRating: learningProjectCompleted\(project\) && project\.learningFeedbackSubmitted !== true/);
+  assert.match(learningController, /function learningProjectCompleted/);
+  assert.match(learningController, /project\.learningFeedbackSubmitted = true/);
+  assert.match(learningView, /showRating \? `<section class="learning-rating"/);
+  assert.match(guidedView, /learning-progress-updated/);
+  assert.match(server, /hasSubmittedLearningFeedback/);
+});
+
 test("balances the guided learning workspace and keeps optional AI help outside the task column", () => {
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
   const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
@@ -349,9 +375,11 @@ test("catalog includes a software-only programming fundamentals course", () => {
   assert.ok(course.project.tags.includes("runtime:browser"));
   assert.ok(course.project.tags.includes("topic:programming"));
   assert.ok(course.project.tags.includes("level:beginner"));
-  assert.equal(course.project.steps.length, 7);
+  assert.equal(course.project.steps.length, 8);
+  assert.equal(course.view_manifest.schema_version, 2);
   assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
-    "program-sequence",
+    "computer-model",
+    "abstraction",
     "values-and-variables",
     "expressions",
     "conditions",
@@ -359,7 +387,11 @@ test("catalog includes a software-only programming fundamentals course", () => {
     "functions",
     "score-challenge",
   ]);
+  assert.match(JSON.stringify(course.view_manifest), /Eingabe[\s\S]*Speicher[\s\S]*Verarbeitung[\s\S]*Ausgabe/);
+  assert.match(JSON.stringify(course.view_manifest), /Maschinenbefehle[\s\S]*Abstraktion/);
+  assert.match(JSON.stringify(course.view_manifest), /if[\s\S]*switch/);
   assert.match(course.sources.find((source) => source.path === "src/grundlagen.js").content, /function istBestanden/);
+  assert.match(course.sources.find((source) => source.path === "src/grundlagen.js").content, /switch \(schwierigkeitsgrad\)/);
   assert.match(course.sources.find((source) => source.path === "README.md").content, /benötigt keine Hardware/);
   assert.equal(model.createProgrammingFundamentalsCourseModel().slug, "programming-fundamentals");
   assert.match(server, /createProgrammingFundamentalsCourseModel/);

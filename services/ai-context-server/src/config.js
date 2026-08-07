@@ -14,9 +14,11 @@ function createConfig(env = process.env) {
       user: env.AI_CONTEXT_POSTGRES_USER || "gernetix_runtime",
       password: env.AI_CONTEXT_POSTGRES_PASSWORD || "gernetix-dev-only",
     },
-    embeddingBaseUrl: env.AI_CONTEXT_EMBEDDING_BASE_URL || env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
-    embeddingModel: env.AI_CONTEXT_EMBEDDING_MODEL || "embeddinggemma",
+    embeddingProvider: env.AI_CONTEXT_EMBEDDING_PROVIDER === "ollama" ? "ollama" : "openai",
+    embeddingBaseUrl: env.AI_CONTEXT_EMBEDDING_BASE_URL || "https://api.openai.com/v1",
+    embeddingModel: env.AI_CONTEXT_EMBEDDING_MODEL || "text-embedding-3-small",
     embeddingDimensions: Number(env.AI_CONTEXT_EMBEDDING_DIMENSIONS || 768),
+    embeddingApiKey: env.AI_CONTEXT_OPENAI_API_KEY || env.OPENAI_API_KEY || "",
   };
 }
 

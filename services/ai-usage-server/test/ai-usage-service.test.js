@@ -95,7 +95,20 @@ test("prices GPT 5.6 Terra with separate input and output rates", async () => {
     system_capabilities: ["system_capability.ai_premium_models"],
   });
   assert.equal(preflight.allowed, true);
-  assert.equal(preflight.estimated_provider_cost, 0.0175);
+  assert.equal(preflight.estimated_provider_cost, 0.014);
+});
+
+test("prices GPT 5 nano as the cheapest default OpenAI route", async () => {
+  const service = await createTestAiUsageServer();
+  const preflight = await service.preflight({
+    account_id: "acct-nano",
+    model: "gpt-5-nano",
+    estimated_input_tokens: 1000,
+    estimated_output_tokens: 1000,
+  });
+
+  assert.equal(preflight.allowed, true);
+  assert.equal(preflight.estimated_provider_cost, 0.00045);
 });
 
 test("does not count approved preflight estimates as spent usage until completion", async () => {

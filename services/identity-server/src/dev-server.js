@@ -336,7 +336,7 @@ const developmentAssistant = createDevelopmentAssistant({
   requireProjectAccess: requireSessionProject,
   sendJson,
 });
-const helpAssistant = createHelpAssistant({ aiContextJson, llmConfigStore, readJsonBody, sendJson });
+const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
 const builtInDemoAccounts = [
   { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword, subscription_plan: "premium_demo" },
   { user_id: "acct-basis-demo", username: basisDemoUsername, email: basisDemoEmail, password: basisDemoPassword, subscription_plan: "free" },
@@ -367,6 +367,9 @@ const accountResourcePlanCacheMs = 15_000;
 const userIdeProjectsCache = new Map();
 const userIdeProjectLoads = new Map();
 const userIdeProjectsCacheMs = 2_500;
+const userIdeProjectSummariesCache = new Map();
+const userIdeProjectSummaryLoads = new Map();
+const userIdeProjectSummariesCacheMs = 15_000;
 const routeRegistry = createRouteRegistry();
 const sessionAccess = createSessionAccess({ resolveSession: readSession, sendJson });
 
@@ -510,6 +513,7 @@ registerProjectRoutes({
   handleDevelopmentProjectArchitectureSave,
   handleLearningProjectStart,
   handleDevelopmentLessonStart,
+  handlePlatformProjectRead,
   handleLearningProjectDeviceAssign,
   handlePlatformProjectDelete,
   handleDevelopmentProjectDialogSave,
@@ -1163,14 +1167,18 @@ function requestedPlatformBootstrapSections(value) {
 async function handlePlatformSummary(res, session, requestedSections = null) {
   const sections = requestedPlatformSummarySections(requestedSections);
   const serviceStatus = {};
-  const needsProjects = ["projects", "builds", "progress"].some((section) => sections.has(section));
-  const projectsPromise = needsProjects ? loadUserIdeProjects(session).then((items) => {
+  const needsFullProjects = sections.has("builds");
+  const needsProjectSummaries = sections.has("projects") || sections.has("progress");
+  const projectsPromise = needsFullProjects
+    ? loadUserIdeProjects(session)
+    : needsProjectSummaries ? loadUserIdeProjectSummaries(session) : Promise.resolve([]);
+  const trackedProjectsPromise = projectsPromise.then((items) => {
     serviceStatus.project_server = { ok: true };
     return items;
   }).catch((error) => {
     serviceStatus.project_server = { ok: false, error: error.message || String(error) };
     return [];
-  }) : Promise.resolve([]);
+  });
   const devicesPromise = sections.has("devices") ? loadUserIdeDevices(session).then((items) => {
     serviceStatus.device_management = { ok: true };
     return items;
@@ -1216,7 +1224,7 @@ async function handlePlatformSummary(res, session, requestedSections = null) {
     };
   }) : Promise.resolve(null);
   const knowledgeStatePromise = sections.has("knowledge") ? loadKnowledgeState(session) : Promise.resolve(null);
-  const projects = await projectsPromise;
+  const projects = await trackedProjectsPromise;
   const buildsPromise = sections.has("builds") ? loadProjectBuilds(projects, session).then((items) => {
     serviceStatus.builds = { ok: true };
     return items;
@@ -1257,7 +1265,7 @@ async function handlePlatformSummary(res, session, requestedSections = null) {
     payload.development_project_template_previews = developmentProjectTemplatePreviews();
   }
   if (sections.has("account")) payload.account = await createAccountSummary(session, aiUsage, { includeAiCredits: needsAiUsage });
-  if (sections.has("projects")) payload.projects = projects.map(toPlatformProject);
+  if (sections.has("projects")) payload.projects = projects.map(toPlatformProjectSummary);
   if (sections.has("progress")) payload.learning_progress = learningProgress;
   if (sections.has("devices")) payload.devices = devices;
   if (sections.has("builds")) payload.builds = builds;
@@ -1278,7 +1286,7 @@ async function handlePlatformSummary(res, session, requestedSections = null) {
 async function handlePlatformBootstrap(res, session, requestedSections = null) {
   const startedAt = Date.now();
   const sections = requestedPlatformBootstrapSections(requestedSections);
-  const projects = sections.has("projects") ? await loadUserIdeProjects(session) : [];
+  const projects = sections.has("projects") ? await loadUserIdeProjectSummaries(session) : [];
   const userId = projectServerUserId(session);
   const subscription = accountSubscription(session);
   const payload = {
@@ -1297,7 +1305,7 @@ async function handlePlatformBootstrap(res, session, requestedSections = null) {
     },
     bootstrap_duration_ms: Date.now() - startedAt,
   };
-  if (sections.has("projects")) payload.projects = projects.map(toPlatformProject);
+  if (sections.has("projects")) payload.projects = projects.map(toPlatformProjectSummary);
   if (sections.has("development")) {
     payload.development_assistant = developmentAssistant.config();
     payload.development_project_templates = developmentProjectTemplateCatalog().map((template) => ({
@@ -1761,13 +1769,16 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
   }
 
   const userId = projectServerUserId(session);
-  const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
-  const alreadyStarted = existing.items.find((item) => item.learning_project_id === definition.learning_project_id
+  const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`);
+  const existingSummary = existing.items.find((item) => item.learning_project_id === definition.learning_project_id
     && item.project_id !== definition.project_server_id
-    && item.view_manifest?.entry_mode !== "standalone_lesson");
+    && item.entry_mode !== "standalone_lesson");
+  const alreadyStarted = existingSummary
+    ? await projectServerJson(`/api/projects/${encodeURIComponent(existingSummary.project_id)}`)
+    : null;
   const projectId = `learning_${definition.slug}_${crypto.randomUUID().slice(0, 8)}`;
   const project = alreadyStarted
-    ? await synchronizeLearningProjectStructure(alreadyStarted, definition)
+    ? await synchronizeLearningProjectOnStart(alreadyStarted, definition)
     : await projectServerJson("/api/projects", {
     method: "POST",
     body: {
@@ -1785,8 +1796,65 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
     },
     });
   const mapped = mapProjectServerProject(session, project);
+  invalidateUserIdeProjectCaches(userId);
   touchWorkspace(session, project.project_id, "learn", `/app/learning-project/?project=${encodeURIComponent(project.project_id)}`);
-  sendJson(res, alreadyStarted ? 200 : 201, { project: toPlatformProject(mapped), created: !alreadyStarted });
+  const learningProgress = alreadyStarted
+    ? (await listLearningProgress(userId, [mapped]))[0]
+    : emptyPlatformLearningProgress(userId, mapped);
+  const learningFeedbackSubmitted = learningProgress.status === "completed"
+    ? await hasSubmittedLearningFeedback(userId, mapped.project_server_id)
+    : false;
+  sendJson(res, alreadyStarted ? 200 : 201, {
+    project: toPlatformProject(mapped),
+    learning_progress: learningProgress,
+    learning_feedback_submitted: learningFeedbackSubmitted,
+    created: !alreadyStarted,
+  });
+}
+
+async function synchronizeLearningProjectOnStart(project, definition) {
+  const canonicalManifest = learningProjectManifestForPersistedProject(project, definition);
+  const needsManifestSync = Number(canonicalManifest?.schema_version || 0)
+    > Number(project.view_manifest?.schema_version || 0);
+  const existingPaths = new Set((project.source_files || []).map((source) => source.path));
+  const needsSourceSync = demoProjectSources(definition, { projectId: project.project_id })
+    .some((source) => !existingPaths.has(source.path));
+  const needsLegacyNexiCheck = definition.slug === nexiCourseModel.slug;
+  if (!needsManifestSync && !needsSourceSync && !needsLegacyNexiCheck) return project;
+  return synchronizeLearningProjectStructure(project, definition);
+}
+
+async function handlePlatformProjectRead(res, session, projectId) {
+  const definition = userIdeState.projectDefinitions
+    .find((item) => item.project_server_id === projectId || catalogProjectIdForDefinition(item) === projectId);
+  if (definition) {
+    const catalogProject = mapUserIdeProjects(session, new Map())
+      .find((item) => item.project_server_id === catalogProjectIdForDefinition(definition));
+    sendJson(res, 200, { project: toPlatformProject(catalogProject) });
+    return;
+  }
+  try {
+    const project = await requireSessionProject(session, projectId);
+    const isLearningProject = project.project_origin === "account_project"
+      && project.learning_project_id?.startsWith("learning_project.");
+    const userId = projectServerUserId(session);
+    const [learningProgress] = isLearningProject
+      ? await listLearningProgress(userId, [project])
+      : [null];
+    const learningFeedbackSubmitted = learningProgress?.status === "completed"
+      ? await hasSubmittedLearningFeedback(userId, project.project_server_id)
+      : false;
+    sendJson(res, 200, {
+      project: toPlatformProject(project),
+      ...(learningProgress ? { learning_progress: learningProgress } : {}),
+      ...(isLearningProject ? { learning_feedback_submitted: learningFeedbackSubmitted } : {}),
+    });
+  } catch (error) {
+    sendJson(res, error.status || 500, {
+      error: error.status === 404 ? "project_not_found" : "project_load_failed",
+      message: error.message || "Das Projekt konnte nicht geladen werden.",
+    });
+  }
 }
 
 async function handleDevelopmentLessonStart(res, session, catalogProjectId, lessonId) {
@@ -2639,9 +2707,18 @@ async function requireSessionProject(session, projectId) {
   const storedProject = await projectServerJson(`/api/projects/${encodeURIComponent(requestedProjectId)}`)
     .catch((error) => error.status === 404 ? null : Promise.reject(error));
   if (!storedProject || storedProject.user_id !== accountId) throw sessionProjectNotFound();
+  const learningDefinition = userIdeState.projectDefinitions
+    .find((item) => item.learning_project_id === storedProject.learning_project_id);
+  const canonicalManifest = learningDefinition
+    ? learningProjectManifestForPersistedProject(storedProject, learningDefinition)
+    : null;
+  const needsLearningViewSync = Number(canonicalManifest?.schema_version || 0)
+    > Number(storedProject.view_manifest?.schema_version || 0);
   const synchronizedProject = storedProject.status === "plan_locked"
     ? storedProject
-    : await synchronizeDevelopmentTemplateRuntimeModel(storedProject, session);
+    : needsLearningViewSync
+      ? await synchronizeLearningProjectStructure(storedProject, learningDefinition)
+      : await synchronizeDevelopmentTemplateRuntimeModel(storedProject, session);
   return mapProjectServerProject(session, synchronizedProject);
 }
 
@@ -3058,6 +3135,92 @@ async function loadUserIdeProjects(session) {
   return load;
 }
 
+function invalidateUserIdeProjectCaches(userId) {
+  userIdeProjectsCache.delete(userId);
+  userIdeProjectSummariesCache.delete(userId);
+}
+
+async function loadUserIdeProjectSummaries(session) {
+  const userId = projectServerUserId(session);
+  const cached = userIdeProjectSummariesCache.get(userId);
+  if (cached && cached.expires_at > Date.now()) return cached.value;
+  if (userIdeProjectSummaryLoads.has(userId)) return userIdeProjectSummaryLoads.get(userId);
+  const load = loadUserIdeProjectSummariesUncached(session, userId)
+    .then((value) => {
+      userIdeProjectSummariesCache.set(userId, { value, expires_at: Date.now() + userIdeProjectSummariesCacheMs });
+      return value;
+    })
+    .finally(() => userIdeProjectSummaryLoads.delete(userId));
+  userIdeProjectSummaryLoads.set(userId, load);
+  return load;
+}
+
+async function loadUserIdeProjectSummariesUncached(session, userId) {
+  await ensureAccountResourcePlan(session);
+  scheduleProjectServerDemoProjects(session);
+  const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`);
+  return mapUserIdeProjectSummaries(session, response.items || []);
+}
+
+function mapUserIdeProjectSummaries(session, storedProjects) {
+  const userId = projectServerUserId(session);
+  const workspace = getWorkspaceState(userId);
+  const catalog = userIdeState.projectDefinitions.map((definition) => ({
+    project_server_id: catalogProjectIdForDefinition(definition),
+    owner_user_id: userId,
+    title: definition.title,
+    summary: definition.summary,
+    area: definition.area,
+    project_origin: "catalog",
+    hardware_profile_id: definition.hardware_profile_id,
+    linked_device_id: "",
+    linked_device_ids: [],
+    slug: definition.slug,
+    course_id: definition.course_id,
+    lesson_id: definition.lesson_id,
+    learning_project_id: definition.learning_project_id,
+    entry_mode: "project_story",
+    access_model: definition.access_model || "subscription",
+    learning_category: definition.learning_category,
+    tags: definition.tags || [],
+    status: "catalog_template",
+    has_project_app: false,
+    created_at: "",
+    updated_at: "",
+  }));
+  const accountProjects = storedProjects.map((project) => {
+    const definition = userIdeState.projectDefinitions
+      .find((item) => item.learning_project_id === project.learning_project_id);
+    return {
+      project_server_id: project.project_id,
+      owner_user_id: project.user_id || userId,
+      title: project.title || definition?.title || "Projekt",
+      summary: project.description || definition?.summary || "",
+      area: definition?.area || (project.learning_project_id === "development_project" ? "development_project" : "custom_project"),
+      project_origin: "account_project",
+      hardware_profile_id: project.hardware_profile_id || definition?.hardware_profile_id || "",
+      linked_device_id: project.device_ids?.[0] || project.device_id || "",
+      linked_device_ids: project.device_ids || (project.device_id ? [project.device_id] : []),
+      slug: definition?.slug || project.project_id,
+      course_id: definition?.course_id || "development",
+      lesson_id: definition?.lesson_id || "",
+      learning_project_id: project.learning_project_id || "",
+      entry_mode: project.entry_mode || "project_story",
+      access_model: definition?.access_model || "owned",
+      learning_category: definition?.learning_category,
+      tags: definition?.tags || [],
+      status: project.status || "active",
+      has_project_app: project.has_project_app === true,
+      created_at: project.created_at || "",
+      updated_at: project.updated_at || "",
+      last_opened_mode: workspace.lastProjectId === project.project_id ? workspace.lastMode : "",
+      last_opened_at: workspace.lastProjectId === project.project_id ? workspace.updatedAt : "",
+    };
+  });
+  return catalog.concat(accountProjects)
+    .sort((left, right) => String(right.updated_at || "").localeCompare(String(left.updated_at || "")));
+}
+
 async function loadUserIdeProjectsUncached(session, userId) {
   await ensureAccountResourcePlan(session);
   scheduleProjectServerDemoProjects(session);
@@ -3459,6 +3622,7 @@ function toPlatformProject(project) {
     ? normalizeHardwareConfiguration(storedHardwareConfiguration, project)
     : null;
   const platformProject = {
+    detailsLoaded: true,
     id: project.project_server_id,
     ownerUserId: project.owner_user_id || "",
     name: project.title,
@@ -3478,6 +3642,7 @@ function toPlatformProject(project) {
     slug: project.slug,
     courseId: project.course_id,
     lessonId: project.lesson_id,
+    entryMode: project.entry_mode || "project_story",
     currentLessonId: project.current_lesson_id || "",
     entryMode: project.entry_mode || "project_story",
     developmentLessons: project.development_lessons || [],
@@ -3492,7 +3657,7 @@ function toPlatformProject(project) {
     status: project.status,
     sourceCount: project.source_count,
     buildCount: project.build_count,
-    viewManifest: project.view_manifest,
+    viewManifest: projectViewManifestForClient(project.view_manifest),
     hardwareArchitecture: hardwareConfiguration ? {
       source: hardwareWiringPlantUml(hardwareConfiguration, project.title),
       title: "Hardware-Architektur",
@@ -3505,6 +3670,49 @@ function toPlatformProject(project) {
     platformProject.tags = project.tags || [];
   }
   return platformProject;
+}
+
+function projectViewManifestForClient(viewManifest) {
+  if (!viewManifest?.architecture_dialog) return viewManifest;
+  return {
+    ...viewManifest,
+    architecture_dialog: {
+      ...viewManifest.architecture_dialog,
+      messages: Array.isArray(viewManifest.architecture_dialog.messages)
+        ? viewManifest.architecture_dialog.messages.slice(-12)
+        : [],
+    },
+  };
+}
+
+function toPlatformProjectSummary(project) {
+  const summary = {
+    id: project.project_server_id,
+    detailsLoaded: false,
+    ownerUserId: project.owner_user_id || "",
+    name: project.title,
+    description: project.summary || "",
+    type: project.area || "guided_project",
+    projectOrigin: project.project_origin || "account_project",
+    targetRuntime: project.hardware_profile_id || "",
+    linkedDeviceId: project.linked_device_id || "",
+    linkedDeviceIds: project.linked_device_ids || [],
+    lastOpenedMode: project.last_opened_mode || "",
+    lastOpenedAt: project.last_opened_at || "",
+    createdAt: project.created_at || "",
+    updatedAt: project.updated_at || "",
+    slug: project.slug,
+    courseId: project.course_id,
+    lessonId: project.lesson_id,
+    accessModel: project.access_model || "subscription",
+    status: project.status,
+    hasProjectApp: project.has_project_app === true,
+  };
+  if (project.project_origin === "catalog" || project.learning_project_id?.startsWith("learning_project.")) {
+    summary.learningCategory = project.learning_category;
+    summary.tags = project.tags || [];
+  }
+  return summary;
 }
 
 function getWorkspaceState(userId) {
@@ -3553,6 +3761,12 @@ async function listLearningProgress(userId, projects) {
         throw error;
       });
   }));
+}
+
+async function hasSubmittedLearningFeedback(userId, projectId) {
+  const query = new URLSearchParams({ project_id: projectId, user_id: userId });
+  const response = await projectServerJson(`/api/learning-feedback?${query}`);
+  return (response.items || []).some((feedback) => feedback.category === "learning_experience_rating");
 }
 
 async function updateLearningProgress(session, input = {}) {
@@ -5328,7 +5542,7 @@ function developmentArchitectureSoftwareComponents(source) {
 
 function normalizeArchitectureDialog(input = {}, diagram = null) {
   const messages = Array.isArray(input.messages)
-    ? input.messages.slice(-80).map((message) => ({
+    ? input.messages.slice(-12).map((message) => ({
       role: message.role === "user" ? "user" : "assistant",
       content: String(message.content || "").slice(0, 8000),
       ...(message.usage && typeof message.usage === "object" ? { usage: message.usage } : {}),

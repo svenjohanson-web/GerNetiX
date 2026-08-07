@@ -54,7 +54,7 @@
       </section>
       <fieldset class="gernetix-flash-dialog__methods"><legend>Übertragungsweg</legend><div data-flash-methods></div><p data-flash-method-reason aria-live="polite"></p></fieldset>
       <section class="gernetix-flash-dialog__terminal" aria-labelledby="${terminalTitleId}">
-        <header><strong id="${terminalTitleId}">TERMINAL</strong><button type="button" data-flash-clear>Leeren</button></header>
+        <header><strong id="${terminalTitleId}" data-flash-progress-title>TERMINAL</strong><button type="button" data-flash-clear>Leeren</button></header>
         <pre data-flash-terminal aria-live="polite">GerNetiX Flash-Terminal bereit.</pre>
       </section>
       <footer><button type="button" data-flash-cancel>Abbrechen</button><button class="primary" type="button" data-flash-execute>Flashen</button></footer>`;
@@ -64,6 +64,8 @@
     let selectedMethod = "usb";
     let running = false;
     const terminal = dialog.querySelector("[data-flash-terminal]");
+    const terminalTitle = dialog.querySelector("[data-flash-progress-title]");
+    const clearButton = dialog.querySelector("[data-flash-clear]");
     const executeButton = dialog.querySelector("[data-flash-execute]");
     const reason = dialog.querySelector("[data-flash-method-reason]");
 
@@ -96,6 +98,11 @@
     function write(kind, message) {
       const normalized = String(message || "").replace(/\x1b\[[0-9;]*m/g, "").trim();
       if (!normalized) return;
+      if (config.progressPresentation === "guided") {
+        terminal.textContent = normalized;
+        terminal.dataset.kind = kind || "running";
+        return;
+      }
       const line = `[${new Date().toLocaleTimeString()}] ${normalized}`;
       terminal.textContent = terminal.textContent === "GerNetiX Flash-Terminal bereit." ? line : `${terminal.textContent}\n${line}`;
       terminal.dataset.kind = kind || "running";
@@ -104,6 +111,10 @@
 
     function open(nextConfig = {}) {
       config = nextConfig;
+      const guidedProgress = nextConfig.progressPresentation === "guided";
+      dialog.classList.toggle("gernetix-flash-dialog--guided", guidedProgress);
+      terminalTitle.textContent = guidedProgress ? "FORTSCHRITT" : "TERMINAL";
+      clearButton.hidden = guidedProgress;
       dialog.querySelector(`#${titleId}`).textContent = nextConfig.title || "Firmware übertragen";
       dialog.querySelector("[data-flash-description]").textContent = nextConfig.description || "Wähle den Übertragungsweg und starte den einheitlichen GerNetiX-Flashvorgang.";
       renderArtifact(nextConfig.artifact);
@@ -111,7 +122,7 @@
       selectedMethod = nextConfig.selectedMethod && methods.some((method) => method.id === nextConfig.selectedMethod)
         ? nextConfig.selectedMethod
         : (methods.find((method) => method.enabled)?.id || methods[0].id);
-      terminal.textContent = "GerNetiX Flash-Terminal bereit.";
+      terminal.textContent = guidedProgress ? "Bereit zum Flashen." : "GerNetiX Flash-Terminal bereit.";
       running = false;
       renderMethods();
       write("running", `Flash-Auftrag geöffnet: ${nextConfig.artifact?.name || "Firmware-Build"}.`);
@@ -126,6 +137,7 @@
       write("running", `${method.label}: Flashvorgang gestartet.`);
       try {
         await config.onExecute?.(method.id, { write, setArtifact: renderArtifact });
+        await config.onComplete?.(method.id);
       } catch (error) {
         write("error", `Flash fehlgeschlagen: ${error?.message || "unbekannter Fehler"}`);
       } finally {

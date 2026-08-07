@@ -30,6 +30,15 @@ button, input, select, textarea { font: inherit; }
 button, a { cursor: pointer; }
 .app-shell { position: relative; width: 100%; max-width: none; margin: 0 auto; padding: 22px; }
 .topbar, .section-head, .top-actions, .button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nexi-product-empty { max-width: 760px; }
+.nexi-product-empty .button-link { display: inline-flex; width: fit-content; margin-top: 8px; border: 1px solid var(--accent); border-radius: 7px; padding: 10px 13px; background: var(--accent); color: #fff; font-weight: 750; text-decoration: none; }
+.nexi-related-paths { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr); gap: 20px; max-width: 980px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.nexi-related-paths h2, .nexi-related-paths p { margin-top: 0; }
+.nexi-related-paths nav { display: grid; gap: 8px; }
+.nexi-related-paths nav a { display: grid; gap: 3px; border-bottom: 1px solid var(--line); padding: 4px 0 10px; color: var(--text); text-decoration: none; }
+.nexi-related-paths nav a:hover strong { color: var(--accent); }
+.nexi-related-paths nav span { color: var(--muted); font-size: 13px; }
+@media (max-width: 720px) { .nexi-related-paths { grid-template-columns: 1fr; } }
 .topbar {
   position: sticky;
   top: 10px;

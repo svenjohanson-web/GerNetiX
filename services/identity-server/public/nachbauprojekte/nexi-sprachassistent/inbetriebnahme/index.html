@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Nexi nach dem Flashen Schritt für Schritt in Betrieb nehmen und die fünf Board-Tasten eindeutig kennenlernen." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+  <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
+  <title>Nexi in Betrieb nehmen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260805-function-path-1" />
+  <link rel="stylesheet" href="../nexi-onboarding.css?v=20260806-linear-flow-1" />
+  <link rel="stylesheet" href="../nexi-board-guide.css?v=20260806-button-map-2" />
+</head>
+<body class="nexi-linear-page">
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/support/">Support</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+
+  <main class="nexi-linear-main">
+    <nav class="project-breadcrumb" aria-label="Brotkrumen">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><a href="../">Nexi</a><span aria-hidden="true">›</span><span>Inbetriebnahme</span>
+    </nav>
+
+    <section class="panel nexi-commissioning" aria-labelledby="commissioning-title">
+      <p class="nexi-stage-nav" aria-label="Fortschritt"><span class="done">1 Firmware</span><span aria-hidden="true">→</span><span class="current">2 Inbetriebnahme</span></p>
+      <p class="eyebrow">Schritt 2 von 2</p>
+      <h1 id="commissioning-title">Nexi in Betrieb nehmen</h1>
+      <p class="nexi-commissioning-intro">Die Firmware ist installiert. Jetzt lernst du zuerst das Board kennen und prüfst anschließend Licht, Tasten und Audio. Die Spracheinrichtung wird danach auf dieser Seite geführt – ohne Terminal und ohne Satzliste zum Merken.</p>
+
+      <ol class="nexi-commissioning-steps">
+        <li class="nexi-commissioning-step">
+          <div class="nexi-step-content">
+            <h2>Board richtig hinlegen</h2>
+            <p>Lege das Board so vor dich, dass du den Aufdruck lesen kannst und der USB-C-Anschluss oben liegt. Rechts neben dem Anschluss folgen die fünf Tasten in dieser Reihenfolge:</p>
+            <div class="nexi-board-map" role="img" aria-label="Tastenreihe rechts neben dem USB-C-Anschluss: RESET, BOOT, KEY3, KEY2 und außen KEY1">
+              <div class="nexi-board-usb" aria-hidden="true"><span>USB-C</span></div>
+              <ol class="nexi-board-buttons">
+                <li class="system"><span class="button-dot" aria-hidden="true"></span><strong>RESET</strong><small>Neustart</small></li>
+                <li class="system"><span class="button-dot" aria-hidden="true"></span><strong>BOOT</strong><small>Flash-Hilfe</small></li>
+                <li><span class="button-dot" aria-hidden="true"></span><strong>KEY3</strong><small>Mitte</small></li>
+                <li class="primary"><span class="button-dot" aria-hidden="true"></span><strong>KEY2</strong><small>Aktion</small></li>
+                <li><span class="button-dot" aria-hidden="true"></span><strong>KEY1</strong><small>außen</small></li>
+              </ol>
+            </div>
+            <p><strong>Merksatz:</strong> KEY3 ist die mittlere aller fünf Tasten. KEY2 liegt direkt zwischen KEY3 und der äußersten KEY1.</p>
+          </div>
+        </li>
+
+        <li class="nexi-commissioning-step">
+          <div class="nexi-step-content">
+            <h2>Lautsprecher anschließen und Nexi starten</h2>
+            <p>Schließe den passiven Lautsprecher am Anschluss <strong>SPK</strong> an. Lass das USB-Datenkabel verbunden und drücke einmal <strong>RESET</strong>. BOOT wird für den normalen Start nicht benötigt.</p>
+            <div class="nexi-led-key" aria-label="LED-Bedeutungen">
+              <div style="--led-color:#58d68d"><strong>Grün</strong><span>Nexi ist bereit.</span></div>
+              <div style="--led-color:#ff7b86"><strong>Rot</strong><span>Nexi nimmt gerade auf.</span></div>
+              <div style="--led-color:#60a5fa"><strong>Blau</strong><span>Nexi spielt Audio ab.</span></div>
+            </div>
+          </div>
+        </li>
+
+        <li class="nexi-commissioning-step">
+          <div class="nexi-step-content">
+            <h2>Die drei Nexi-Tasten testen</h2>
+            <p><strong>KEY2</strong> ist die Aktions- und Bestätigungstaste. Im Stimmenstudio hältst du sie zum Sprechen gedrückt und lässt sie zum Abspielen los. <strong>KEY1</strong> wechselt den Stimmeffekt. <strong>KEY3</strong> ändert die Lautstärke.</p>
+          </div>
+        </li>
+
+        <li class="nexi-commissioning-step">
+          <div class="nexi-step-content">
+            <h2>„Hey Nexi“ einrichten</h2>
+            <p>Im nächsten Ausbau verbindet sich diese Seite per USB mit dem Board. Sie zeigt dann immer genau eine Aufgabe, während Nexi dieselbe Anweisung spricht: aufnehmen, prüfen, wiederholen oder fertig.</p>
+            <div class="nexi-next-build"><strong>Noch nicht als Nutzerablauf freigegeben:</strong> Die bisherige Liste mit mehreren Sätzen wird hier nicht übernommen. Zuerst entsteht die verständliche Einrichtung für drei kurze „Hey Nexi“-Aufnahmen.</div>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="../">Nexi neu flashen</a><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/hilfe/">Hilfe</a></nav></footer>
+  <script src="/landing.js?v=20260731-about-us-1"></script>
+</body>
+</html>

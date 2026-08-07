@@ -203,8 +203,12 @@ Pflichtwerten von 1 bis 5 erforderlich: `clarity`, `fun`, `difficulty` und
 `template_improvement_suggestion` verlangen stattdessen einen Freitext. Jede
 Nachricht ist auf 2.000 Zeichen begrenzt. Der Identity-Proxy setzt Projekt,
 Template und Account nach Sitzungs-, Besitz- beziehungsweise Katalogpruefung
-serverseitig. Der GET-Endpunkt fuehrt Projekt- und Template-Rueckmeldungen fuer
-die zentrale Admin-Sicht zusammen.
+serverseitig. `learning_experience_rating` ist erst bei einem als `completed`
+gespeicherten Lernfortschritt erlaubt und kann pro accountgebundener
+Projektinstanz nur einmal angelegt werden. Der Project Server setzt dabei die
+stabile `learning_project_id`, den Projekttitel und den letzten Schritt aus
+seinen eigenen Projektdaten. Der GET-Endpunkt fuehrt Projekt- und
+Template-Rueckmeldungen fuer die zentrale Admin-Sicht zusammen.
 
 ## Lernfortschritt
 

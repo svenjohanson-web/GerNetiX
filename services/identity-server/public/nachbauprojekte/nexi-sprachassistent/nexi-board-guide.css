@@ -1,0 +1,176 @@
+.nexi-button-help {
+  display: grid;
+  gap: 1rem;
+  scroll-margin-top: 5.5rem;
+}
+
+.nexi-button-help > h2,
+.nexi-button-help > p {
+  margin: 0;
+}
+
+.nexi-board-map {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.55fr) minmax(0, 3fr);
+  align-items: end;
+  gap: clamp(0.75rem, 2.5vw, 1.5rem);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid rgba(103, 232, 249, 0.32);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 50% 130%, rgba(14, 116, 144, 0.28), transparent 62%),
+    rgba(5, 12, 25, 0.55);
+}
+
+.nexi-board-usb {
+  display: grid;
+  min-height: 4.25rem;
+  place-items: center;
+  border: 2px solid #94a3b8;
+  border-bottom: 0;
+  border-radius: 0.7rem 0.7rem 0 0;
+  color: #e2e8f0;
+  background: linear-gradient(180deg, #334155, #172033);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.nexi-board-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(54px, 1fr));
+  gap: clamp(0.35rem, 1.6vw, 0.8rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nexi-board-buttons li {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 0.35rem;
+  color: #e2e8f0;
+  text-align: center;
+}
+
+.nexi-board-buttons .button-dot {
+  width: clamp(2.2rem, 5vw, 3.1rem);
+  aspect-ratio: 1;
+  border: 3px solid #0e7490;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #f8fafc 0 13%, #64748b 14% 31%, #172033 33% 100%);
+  box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.08);
+}
+
+.nexi-board-buttons li.system .button-dot {
+  border-color: #64748b;
+  box-shadow: none;
+}
+
+.nexi-board-buttons li.primary .button-dot {
+  border-color: #67e8f9;
+  box-shadow: 0 0 0 5px rgba(103, 232, 249, 0.16), 0 0 1.4rem rgba(34, 211, 238, 0.22);
+}
+
+.nexi-board-buttons strong {
+  font-size: clamp(0.72rem, 1.8vw, 0.9rem);
+}
+
+.nexi-board-buttons small {
+  color: #94a3b8;
+  font-size: clamp(0.58rem, 1.5vw, 0.72rem);
+  line-height: 1.25;
+}
+
+.nexi-button-callout,
+.nexi-context-note {
+  padding: 0.9rem 1rem;
+  border-left: 3px solid #67e8f9;
+  background: rgba(103, 232, 249, 0.07);
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.nexi-button-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.nexi-button-groups article {
+  padding: 1rem;
+  border: 1px solid rgba(126, 151, 184, 0.3);
+  border-radius: 0.8rem;
+  background: rgba(5, 12, 25, 0.36);
+}
+
+.nexi-button-groups h3 {
+  margin: 0.25rem 0 0.8rem;
+  font-size: 1.05rem;
+}
+
+.button-group-label {
+  color: #67e8f9;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nexi-button-groups dl {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.nexi-button-groups dl div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.35fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.nexi-button-groups dt {
+  color: #e2e8f0;
+  font-weight: 800;
+}
+
+.nexi-button-groups dd {
+  margin: 0;
+  color: #aebdd2;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .nexi-board-map {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 0.55rem;
+    padding-inline: 0.65rem;
+  }
+
+  .nexi-board-buttons {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.2rem;
+  }
+
+  .nexi-board-buttons .button-dot {
+    width: clamp(1.65rem, 8vw, 2.2rem);
+  }
+
+  .nexi-board-buttons strong {
+    font-size: clamp(0.58rem, 2.8vw, 0.72rem);
+  }
+
+  .nexi-board-buttons small {
+    font-size: clamp(0.5rem, 2.4vw, 0.62rem);
+  }
+
+  .nexi-button-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .nexi-button-groups dl div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}

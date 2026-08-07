@@ -10,7 +10,11 @@ constexpr uint32_t bit(Capability capability) {
 CapabilityPolicy CapabilityPolicy::offlineDefault() {
   return CapabilityPolicy({
       1,
-      bit(Capability::VoiceStudio),
+      bit(Capability::VoiceStudio) | bit(Capability::ReactionGame) |
+          bit(Capability::LocalQuiz) | bit(Capability::LocalStories) |
+          bit(Capability::VoiceCompanion) |
+          bit(Capability::PersistentMemory) |
+          bit(Capability::LocalTimer),
       false,
       false,
   });

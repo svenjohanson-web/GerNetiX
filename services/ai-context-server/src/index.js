@@ -4,6 +4,7 @@ const { InMemoryAiContextRepository } = require("./repositories/in-memory-ai-con
 const { SqliteBackedAiContextRepository } = require("./repositories/sqlite-backed-ai-context-repository");
 const { PostgresAiContextRepository } = require("./repositories/postgres-ai-context-repository");
 const { OllamaEmbeddingClient } = require("./embeddings/ollama-embedding-client");
+const { OpenAiEmbeddingClient } = require("./embeddings/openai-embedding-client");
 const { AiContextService } = require("./services/ai-context-service");
 const fs = require("node:fs");
 
@@ -42,13 +43,21 @@ async function createRepository(config) {
         ? { connectionString: config.postgres.connectionString }
         : config.postgres,
       dimensions:config.embeddingDimensions,
-      embeddingClient:new OllamaEmbeddingClient({baseUrl:config.embeddingBaseUrl,model:config.embeddingModel,dimensions:config.embeddingDimensions}),
+      embeddingClient:createEmbeddingClient(config),
     });
     await migrateLegacySqlite(repository, config.sqlitePath);
     return repository;
   }
   if (config.persistenceBackend === "sqlite") return SqliteBackedAiContextRepository.create(config.sqlitePath);
   return new InMemoryAiContextRepository();
+}
+
+function createEmbeddingClient(config) {
+  if (config.embeddingProvider === "ollama") {
+    return new OllamaEmbeddingClient({ baseUrl:config.embeddingBaseUrl, model:config.embeddingModel, dimensions:config.embeddingDimensions });
+  }
+  if (!config.embeddingApiKey) return null;
+  return new OpenAiEmbeddingClient({ baseUrl:config.embeddingBaseUrl, model:config.embeddingModel, dimensions:config.embeddingDimensions, apiKey:config.embeddingApiKey });
 }
 
 async function migrateLegacySqlite(repository, sqlitePath) {
@@ -66,6 +75,7 @@ module.exports = {
   SqliteBackedAiContextRepository,
   PostgresAiContextRepository,
   OllamaEmbeddingClient,
+  OpenAiEmbeddingClient,
   AiContextService,
   createDefaultAiContextServer,
   startAiContextBackgroundInitialization,

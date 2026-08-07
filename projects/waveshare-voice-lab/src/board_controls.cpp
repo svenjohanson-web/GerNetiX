@@ -12,7 +12,16 @@ namespace {
 constexpr const char *TAG = "voiceLab";
 
 const char *modeName(OperatingMode mode) {
-  return mode == OperatingMode::AiStory ? "AI Story" : "Voice Studio";
+  switch (mode) {
+    case OperatingMode::VoiceStudio: return "Voice Studio";
+    case OperatingMode::ReactionGame: return "Reaction Game";
+    case OperatingMode::LocalQuiz: return "Local Sound Quiz";
+    case OperatingMode::LocalStories: return "Local Stories";
+    case OperatingMode::VoiceCompanion: return "Local Companion";
+    case OperatingMode::LocalTimer: return "Local Timer";
+    case OperatingMode::AiStory: return "AI Story";
+    default: return "Unknown";
+  }
 }
 }  // namespace
 
@@ -58,6 +67,21 @@ void showModeSelection(OperatingMode mode) {
   if (mode == OperatingMode::AiStory) {
     hardware.setStatusLeds(
         HardwarePlatform::STATUS_LED_COUNT, brightness, 0, brightness);
+  } else if (mode == OperatingMode::ReactionGame) {
+    hardware.setStatusLeds(
+        HardwarePlatform::STATUS_LED_COUNT, brightness, brightness / 3, 0);
+  } else if (mode == OperatingMode::LocalQuiz) {
+    hardware.setStatusLeds(
+        HardwarePlatform::STATUS_LED_COUNT, 0, brightness / 2, brightness);
+  } else if (mode == OperatingMode::LocalStories) {
+    hardware.setStatusLeds(
+        HardwarePlatform::STATUS_LED_COUNT, brightness / 3, 0, brightness);
+  } else if (mode == OperatingMode::VoiceCompanion) {
+    hardware.setStatusLeds(
+        HardwarePlatform::STATUS_LED_COUNT, brightness / 2, 0, brightness);
+  } else if (mode == OperatingMode::LocalTimer) {
+    hardware.setStatusLeds(
+        HardwarePlatform::STATUS_LED_COUNT, brightness, brightness / 2, 0);
   } else {
     hardware.setStatusLeds(
         HardwarePlatform::STATUS_LED_COUNT, 0, brightness, 0);
@@ -70,7 +94,7 @@ esp_err_t selectOperatingMode(OperatingMode *mode) {
   *mode = OperatingMode::VoiceStudio;
   showModeSelection(*mode);
   feedbackInfo(TAG,
-      "Mode selection: %s; left button changes, middle button confirms",
+      "Mode selection: %s; KEY1 changes, KEY2 confirms",
       modeName(*mode));
   unsigned recordStableChecks = 0;
   unsigned nextStableChecks = 0;

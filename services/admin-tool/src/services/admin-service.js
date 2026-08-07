@@ -1943,6 +1943,8 @@ function maskProjectFeedback(feedback) {
   return {
     feedback_id: feedback.feedback_id,
     project_id: feedback.project_id,
+    learning_project_id: feedback.learning_project_id,
+    project_title: feedback.project_title,
     subject_type: feedback.subject_type,
     subject_id: feedback.subject_id,
     template_id: feedback.template_id,

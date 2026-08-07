@@ -24,11 +24,22 @@ test("formats the flash artifact size centrally", () => {
   assert.equal(dialog.formatBytes(2 * 1024 * 1024), "2.0 MB");
 });
 
-test("Nexi delegates USB execution to the unified flash dialog and detects one Helper port", () => {
+test("Nexi uses guided flash progress, detects one Helper port and continues to commissioning", () => {
   const source = fs.readFileSync(path.join(__dirname, "../public/nachbauprojekte/nexi-sprachassistent/nexi-flash.js"), "utf8");
   assert.match(source, /GerNetiXFlashDialog\.create\(\)/);
-  assert.match(source, /onExecute\(method, terminal\)/);
+  assert.match(source, /progressPresentation: "guided"/);
+  assert.match(source, /onExecute\(method, progress\)/);
+  assert.match(source, /onComplete\(\) \{ window\.location\.assign\("inbetriebnahme\/index\.html"\); \}/);
   assert.match(source, /const ports = await serialService\.ports\(\)/);
   assert.match(source, /selectedPort = \{ \.\.\.ports\[0\], source: "gernetix_serial_service" \}/);
+  assert.doesNotMatch(source, /job\.logs|writeLine\(line\)|write\(line\)/);
   assert.doesNotMatch(source, /choose-port|flash-button|port-status/);
+});
+
+test("unified flash dialog can replace terminal logs with one guided status", () => {
+  const source = fs.readFileSync(path.join(__dirname, "../public/app/unified-flash-dialog.js"), "utf8");
+  assert.match(source, /progressPresentation === "guided"/);
+  assert.match(source, /terminalTitle\.textContent = guidedProgress \? "FORTSCHRITT" : "TERMINAL"/);
+  assert.match(source, /clearButton\.hidden = guidedProgress/);
+  assert.match(source, /await config\.onComplete\?\.\(method\.id\)/);
 });

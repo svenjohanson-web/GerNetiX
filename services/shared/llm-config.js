@@ -13,9 +13,7 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
   function resolveRoute(task = "general_chat") {
     reloadIfChanged();
     const route = current.routes[task] || current.routes.default || {};
-    const provider = task === "help_chat"
-      ? "ollama"
-      : route.provider === "api" || route.provider === "ollama" ? route.provider : current.provider;
+    const provider = route.provider === "api" || route.provider === "ollama" ? route.provider : current.provider;
     return {
       ...current,
       provider,
@@ -23,8 +21,8 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
       baseUrl: provider === "api" ? current.apiBaseUrl : current.ollamaBaseUrl,
       apiKey: current.apiKey || "",
       routeTask: task,
-      routeReason: task === "help_chat" ? "Help-Chat ist verbindlich auf den lokalen Ollama-Provider begrenzt." : route.reason || defaultRouteReason(task, provider),
-      costPolicy: task === "help_chat" ? "local_only" : route.costPolicy || (provider === "api" ? "external_costs" : "local_no_provider_costs"),
+      routeReason: route.reason || defaultRouteReason(task, provider),
+      costPolicy: route.costPolicy || (provider === "api" ? "external_costs_with_preflight" : "local_no_provider_costs"),
     };
   }
 
@@ -103,7 +101,9 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
   }
 
   function normalizeConfig(input = {}) {
-    const provider = input.provider === "api" ? "api" : "ollama";
+    const routingVersion = Number(input.routingVersion || 0);
+    const migrateLegacyLocalDefaults = routingVersion < 2;
+    const provider = !migrateLegacyLocalDefaults && input.provider === "ollama" ? "ollama" : "api";
     const requestedBaseUrl = clean(input.apiBaseUrl);
     const configuredApiProvider = ["openai-responses", "openai-compatible", "anthropic"].includes(input.apiProvider) ? input.apiProvider : "openai-responses";
     const apiProvider = isOfficialOpenAiEndpoint(requestedBaseUrl) ? "openai-responses" : configuredApiProvider;
@@ -114,9 +114,10 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
       ollamaBaseUrl: clean(input.ollamaBaseUrl) || defaultOllamaBaseUrl,
       ollamaModel: clean(input.ollamaModel) || defaultOllamaModel,
       apiBaseUrl,
-      apiModel: clean(input.apiModel) || (apiProvider === "openai-responses" ? "gpt-5.5" : "gpt-4.1-mini"),
+      apiModel: clean(input.apiModel) || (apiProvider === "openai-responses" ? "gpt-5-nano" : "gpt-4.1-mini"),
       apiKey: clean(input.apiKey),
-      routes: normalizeRoutes(input.routes),
+      routes: normalizeRoutes(input.routes, { migrateLegacyLocalDefaults }),
+      routingVersion: 2,
     };
   }
 
@@ -134,20 +135,20 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
     }
   }
 
-  function normalizeRoutes(input = {}) {
+  function normalizeRoutes(input = {}, options = {}) {
     const defaults = {
       default: { provider: "default", reason: "Globale Standardroute fuer nicht spezialisierte KI-Aufgaben." },
       general_chat: { provider: "default", reason: "Interaktiver Chat darf die aktive Standardroute nutzen." },
       architecture_discovery: { provider: "default", reason: "Architektur-Discovery darf die aktive Standardroute nutzen." },
       hardware_lab_analysis: { provider: "api", reason: "Das Hardware-Labor analysiert externe Herstellerquellen ueber die OpenAI Responses API.", costPolicy: "external_costs_with_preflight" },
-      artifact_generation: { provider: "ollama", reason: "Artefakte wie PlantUML, Pseudocode und Code werden kostenschonend lokal erzeugt.", costPolicy: "prefer_local" },
-      code_generation: { provider: "ollama", reason: "Codegenerierung laeuft standardmaessig lokal, um externe Kosten zu vermeiden.", costPolicy: "prefer_local" },
-      help_chat: { provider: "ollama", reason: "Help-Chat verwendet ausschliesslich das lokale Ollama-Modell.", costPolicy: "local_only" },
+      artifact_generation: { provider: "api", reason: "Artefakte werden ueber das kostenoptimierte OpenAI-Standardmodell erzeugt.", costPolicy: "external_costs_with_preflight" },
+      code_generation: { provider: "api", reason: "Codegenerierung verwendet OpenAI Responses mit dem kostenoptimierten Standardmodell.", costPolicy: "external_costs_with_preflight" },
+      help_chat: { provider: "api", reason: "Help-Chat verwendet OpenAI Responses nur mit kuratierten Hilfeartikeln.", costPolicy: "external_costs_with_preflight" },
     };
     return Object.fromEntries(Object.entries(defaults).map(([task, fallback]) => {
       const route = input && typeof input === "object" ? input[task] || {} : {};
       return [task, {
-        provider: task === "help_chat" ? "ollama" : task === "hardware_lab_analysis" ? "api" : ["default", "ollama", "api"].includes(route.provider) ? route.provider : fallback.provider,
+        provider: task === "hardware_lab_analysis" || options.migrateLegacyLocalDefaults ? "api" : ["default", "ollama", "api"].includes(route.provider) ? route.provider : fallback.provider,
         reason: clean(route.reason) || fallback.reason,
         costPolicy: clean(route.costPolicy) || fallback.costPolicy || "default",
       }];

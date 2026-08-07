@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Nexi Basic auf dem Waveshare ESP32-S3 AI Smart Speaker Board nachbauen: Hardware, Lautsprecher, Firmware, Tasten, LEDs und Funktionstest." />
+  <meta name="description" content="Nexi kennenlernen und die fertige lokale Firmware auf das Waveshare ESP32-S3 Audio Board flashen." />
   <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
   <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
   <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
-  <title>Nexi Sprachassistent nachbauen · GerNetiX</title>
+  <title>Nexi kennenlernen und flashen · GerNetiX</title>
   <link rel="stylesheet" href="/landing.css?v=20260805-function-path-1" />
   <link rel="stylesheet" href="/s3-touch-spielesammlung/app.css?v=20260804-nexi-flash-1" />
-  <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260804-unified-flash-1" />
+  <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260806-guided-flash-1" />
+  <link rel="stylesheet" href="nexi-onboarding.css?v=20260806-linear-flow-1" />
 </head>
-<body>
+<body class="nexi-linear-page">
   <header class="site-header">
     <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
     <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
@@ -20,103 +21,38 @@
       <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/support/">Support</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
     </nav>
   </header>
-  <main>
+
+  <main class="nexi-linear-main">
     <nav class="project-breadcrumb" aria-label="Brotkrumen">
       <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>Nexi</span>
     </nav>
 
-    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
-      <div>
-        <p class="eyebrow">Nachbauprojekt · ESP32-S3 · Audio</p>
-        <h1 id="project-title">Baue Nexi – dein eigenes lokales Stimmenstudio.</h1>
-        <p class="lead">Ein spielerisches Audioprojekt zum Aufnehmen, Verändern und Wiedergeben deiner eigenen Stimme – direkt auf dem Board.</p>
-      </div>
-      <aside class="rebuild-delivery-summary" aria-label="Installationsstatus">
-        <span>Installationsstatus</span>
-        <strong>Fertig gebaut und direkt flashbar</strong>
-        <p>Für das Waveshare ESP32-S3 Audio Board mit 16&nbsp;MB Flash. Kein Konto und kein eigener Build erforderlich.</p>
-        <a class="primary-action" href="#installieren">Jetzt flashen →</a>
-      </aside>
-    </section>
-
-    <section class="panel rebuild-project-story" aria-labelledby="about-nexi-title">
-      <p class="eyebrow">Das Projekt</p>
-      <h2 id="about-nexi-title">Was ist Nexi?</h2>
-      <p class="rebuild-story-lead">Nexi ist ein Sprach- und Soundprojekt für das Waveshare-Audioboard. <strong>Nexi Basic</strong> ist die fertig installierbare, vollständig lokale Grundversion: Du sprichst in die eingebauten Mikrofone, das Board verändert deine Stimme und gibt sie direkt über den Lautsprecher wieder. So wird hörbar, wie Mikrofone, digitale Audioverarbeitung, Tasten, LEDs und Lautsprecher zusammenspielen.</p>
-      <ul class="rebuild-feature-list" aria-label="Möglichkeiten mit Nexi Basic">
-        <li><strong>Stimme aufnehmen</strong><span>Halte die Aufnahmetaste gedrückt und sprich. Nexi nimmt nur so lange auf, wie du die Taste hältst.</span></li>
-        <li><strong>Effekte ausprobieren</strong><span>Wechsle zwischen Normal, Roboter, Monster, Helium und Echo und höre dieselbe Aufnahme sofort mit dem neuen Effekt.</span></li>
-        <li><strong>Direkt am Board spielen</strong><span>Drei Tasten steuern Aufnahme, Effekt und Lautstärke. Die sieben LEDs zeigen verständlich, was Nexi gerade macht.</span></li>
+    <section class="panel nexi-simple-intro" aria-labelledby="project-title">
+      <p class="eyebrow">Lokales Nachbauprojekt</p>
+      <h1 id="project-title">Nexi – dein eigener Sprach- und Soundassistent.</h1>
+      <p class="lead">Nexi läuft direkt auf dem Waveshare ESP32-S3 Audio Board. Das Board hört über seine Mikrofone zu, reagiert mit Licht und Ton und gibt Sprache über einen angeschlossenen Lautsprecher wieder.</p>
+      <ul class="nexi-capability-line" aria-label="Nexi Grundfunktionen">
+        <li>Sprache lokal erkennen</li>
+        <li>Stimmen aufnehmen und verändern</li>
+        <li>Spiele, Geschichten und Timer direkt am Board nutzen</li>
       </ul>
-      <p class="rebuild-story-note"><strong>Alles läuft lokal:</strong> Die Aufnahme wird nicht hochgeladen und bleibt nur vorübergehend im Arbeitsspeicher. Die lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter.</p>
+      <p class="nexi-local-note"><strong>Die Grundversion funktioniert ohne Konto.</strong> Sprachaufnahmen werden nicht in die Cloud geladen.</p>
     </section>
 
-    <section class="panel rebuild-account-path" aria-labelledby="nexi-next-title">
-      <p class="eyebrow">Was kommt nach dem Nachbau?</p>
-      <h2 id="nexi-next-title">Nexi funktioniert sofort – Konto und KI sind getrennte Erweiterungen.</h2>
-      <div class="rebuild-account-grid">
-        <article><span>1 · Nachbauen</span><h3>Lokale Grundfunktionen</h3><p>Aufnehmen, fünf Stimmeffekte, Wiedergabe, Tasten, LEDs und Lautstärke funktionieren direkt nach dem Flashen – ohne Konto.</p><a href="#installieren">Firmware installieren →</a></article>
-        <article><span>2 · Kostenloses Konto</span><h3>Persönlich verwalten</h3><p>Lege deine Nexi-Anwendung an, ordne eigene Geräte zu und speichere Familienregeln, Lautstärke, Nutzungszeiten und Ruhezeiten.</p><a href="/app/auth/">Anmelden oder Konto anlegen →</a></article>
-        <article><span>3 · Optionale Sprach-KI</span><h3>Später bewusst aktivieren</h3><p>Fragen, Geschichten und Sprachspiele benötigen deine Aktivierung, einen freigegebenen KI-Anbieter und verfügbares Kontingent. Diese Erweiterung ist noch nicht als fertiges Angebot veröffentlicht; dein lokales Nexi ist deshalb nicht defekt oder unvollständig installiert.</p><strong>Bis dahin: Nexi lokal verwenden und den Elternbereich mit dem kostenlosen Konto vorbereiten.</strong></article>
+    <section id="installieren" class="panel nexi-simple-flash" aria-labelledby="flash-title">
+      <p class="eyebrow">Schritt 1 von 2</p>
+      <h2 id="flash-title">Nexi auf dein Board flashen</h2>
+      <p>Du brauchst das <strong>Waveshare ESP32-S3 Audio Board mit 16&nbsp;MB Flash</strong>, einen passenden Lautsprecher und ein USB-Datenkabel. Die Firmware ist fertig gebaut; kein eigener Build ist erforderlich. Verbinde das Board mit deinem Computer und starte anschließend die Installation.</p>
+      <p class="safety"><strong>Hinweis:</strong> Beim Flashen wird die derzeitige Firmware auf dem angeschlossenen Board ersetzt.</p>
+      <div class="nexi-flash-action">
+        <button id="open-flash-dialog" class="action-button" type="button" aria-describedby="flash-entry-status" disabled>Nexi flashen</button>
+        <p id="flash-entry-status" class="step-status disabled-action-reason" aria-live="polite">Der geprüfte Nexi-Release wird geladen.</p>
       </div>
-    </section>
-
-    <section class="panel" aria-labelledby="equipment-title">
-      <p class="eyebrow">Was du brauchst</p>
-      <h2 id="equipment-title">Board, Lautsprecher und ein USB-Datenkabel.</h2>
-      <ul>
-        <li>Waveshare ESP32-S3 AI Smart Speaker Development Board mit 16 MB Flash</li>
-        <li>Geeigneter passiver Lautsprecher am vorgesehenen Lautsprecheranschluss</li>
-        <li>USB-Datenkabel und einen Computer zum direkten Flashen</li>
-      </ul>
-      <p><strong>Auf dem Board vorhanden:</strong> zwei Mikrofone, ES7210-Aufnahmecodec, ES8311-Wiedergabecodec, NS4150B-Verstärker, drei Funktionstasten und sieben RGB-LEDs.</p>
-      <p><strong>Für den ersten Test:</strong> Beginne mit etwas Abstand zum Lautsprecher und stelle die Lautstärke anschließend mit KEY3 passend ein.</p>
-    </section>
-
-    <section id="installieren" class="panel flash-flow rebuild-install-panel" aria-labelledby="flash-title">
-      <p class="eyebrow">Installation</p>
-      <h2 id="flash-title">Nexi auf dein Board bringen</h2>
-      <p>Die Firmware ist bereits für das <strong>Waveshare ESP32-S3 AI Smart Speaker Development Board mit 16&nbsp;MB Flash</strong> konfiguriert und gebaut. Verbinde das Board, wähle den USB-Port und starte den Flashvorgang – ohne Konto und ohne eigenen Build.</p>
-      <p class="safety"><strong>Achtung:</strong> Das Flashen ersetzt die aktuell installierte Firmware des angeschlossenen Boards. Verwende diesen Release nur für das oben genannte Board.</p>
-      <button id="open-flash-dialog" class="action-button" type="button" aria-describedby="flash-entry-status" disabled>Flashen…</button>
-      <p id="flash-entry-status" class="step-status disabled-action-reason" aria-live="polite">Noch nicht möglich: Der geprüfte Release wird geladen.</p>
-      <p class="step-status">Im Flash-Dialog werden Flash-Datei, USB, OTA, FlashBox und das gemeinsame Terminal angezeigt.</p>
-    </section>
-
-    <section class="panel rebuild-usage-guide" aria-labelledby="usage-title">
-      <p class="eyebrow">Bedienungsanleitung</p>
-      <h2 id="usage-title">Deine erste Aufnahme in vier Schritten</h2>
-      <ol class="rebuild-use-steps">
-        <li><span>1</span><div><strong>Nexi einschalten</strong><p>Nach dem Start leuchten die LEDs grün. Nexi ist bereit und wartet auf deine Aufnahme.</p></div></li>
-        <li><span>2</span><div><strong>Aufnehmen</strong><p>Halte KEY2 gedrückt und sprich. Während der Aufnahme leuchten die LEDs rot.</p></div></li>
-        <li><span>3</span><div><strong>Anhören</strong><p>Lass KEY2 los. Nexi beendet die Aufnahme und spielt sie mit dem gewählten Effekt ab; dabei leuchten die LEDs blau.</p></div></li>
-        <li><span>4</span><div><strong>Effekt wechseln</strong><p>Drücke KEY1. Nexi wählt den nächsten Stimmeffekt und spielt deine letzte Aufnahme damit erneut ab.</p></div></li>
-      </ol>
-      <div class="rebuild-controls" aria-labelledby="button-title">
-        <h3 id="button-title">Die drei Funktionstasten</h3>
-        <dl>
-          <div><dt>KEY1</dt><dd>Nächster Stimmeffekt: Normal, Roboter, Monster, Helium oder Echo.</dd></div>
-          <div><dt>KEY2</dt><dd>Gedrückt halten zum Aufnehmen; loslassen zum Abspielen.</dd></div>
-          <div><dt>KEY3</dt><dd>Nächste Lautstärkestufe; lang drücken für stumm oder wieder hörbar.</dd></div>
-        </dl>
-      </div>
-    </section>
-
-    <section class="panel rebuild-technical-notes" aria-labelledby="technical-title">
-      <p class="eyebrow">Gut zu wissen</p>
-      <h2 id="technical-title">Was Nexi im Hintergrund macht</h2>
-      <ul>
-        <li><strong>Hardwareprüfung:</strong> Beim Start prüft Nexi Lautsprechercodec, Mikrofoncodec, Tasten-/LED-Baustein und Echtzeituhr. Erwartet werden ES8311, ES7210, TCA9555 und PCF85063.</li>
-        <li><strong>Flüchtige Aufnahme:</strong> Die letzte Stimme bleibt nur im PSRAM. Eine neue Aufnahme überschreibt sie; beim Ausschalten verschwindet sie.</li>
-        <li><strong>Kein Cloud-Zwang:</strong> Nexi Basic arbeitet vollständig lokal. Ohne aktiven Provider sendet Nexi keine Aufnahme. Ein späterer KI-Sprachmodus ist eine getrennte Erweiterung und gehört nicht zu dieser Basisversion.</li>
-      </ul>
-    </section>
-
-    <section class="panel product-cta maker-download-cta">
-      <div><p class="eyebrow">Andere Perspektive</p><h2>Nexi verstehen oder selbst weiterentwickeln.</h2><p>Der Lernweg beginnt bei Audio und Datenschutz. Der Entwicklungsweg öffnet deine eigene versionierte Projektkopie in der GerNetiX-IDE.</p></div>
-      <a class="primary-action" href="/app/learning-project-overview/?catalog=nexi-voice-assistant">Alle Nexi-Einstiege →</a>
+      <p class="nexi-after-flash">Nach erfolgreichem Flashen öffnet sich automatisch <strong>Schritt 2: Inbetriebnahme</strong>.</p>
+      <a class="secondary-action nexi-already-flashed" href="inbetriebnahme/index.html">Nexi ist bereits geflasht → Zur Inbetriebnahme</a>
     </section>
   </main>
+
   <dialog id="serial-support-dialog" class="serial-support-dialog" aria-labelledby="serial-support-title">
     <div class="serial-support-header"><div><p class="eyebrow">USB-Verbindung</p><h2 id="serial-support-title">USB-Zugriff einrichten</h2></div><button class="dialog-button compact" type="button" data-close-serial-support>Schließen</button></div>
     <p id="serial-support-copy">Dieser Browser kann nicht direkt auf den USB-Port zugreifen.</p>
@@ -125,10 +61,11 @@
       <article><h3>Chrome oder Edge</h3><p>Öffne diese Seite in einem Browser mit Web Serial und verbinde das Board dort direkt.</p><button class="dialog-button" type="button" data-close-serial-support>Dialog schließen</button></article>
     </section>
   </dialog>
+
   <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav></footer>
   <script src="/landing.js?v=20260731-about-us-1"></script>
   <script src="/app/serial-service-client.js?v=20260719-02"></script>
-  <script src="/app/unified-flash-dialog.js?v=20260804-unified-flash-1"></script>
-  <script src="nexi-flash.js?v=20260804-unified-flash-1"></script>
+  <script src="/app/unified-flash-dialog.js?v=20260806-guided-flash-1"></script>
+  <script src="nexi-flash.js?v=20260806-guided-flow-1"></script>
 </body>
 </html>

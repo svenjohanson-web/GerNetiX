@@ -9,17 +9,22 @@ function read(relativePath) {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
-test("Nexi offline policy exposes only currently implemented local applications", () => {
+test("Nexi offline policy exposes the implemented local applications", () => {
   const policy = read("src/capability_policy.cpp");
 
   assert.match(policy, /CapabilityPolicy::offlineDefault/);
   assert.match(policy, /Capability::VoiceStudio/);
+  assert.match(policy, /Capability::ReactionGame/);
+  assert.match(policy, /Capability::LocalQuiz/);
+  assert.match(policy, /Capability::LocalStories/);
+  assert.match(policy, /Capability::VoiceCompanion/);
+  assert.match(policy, /Capability::PersistentMemory/);
+  assert.match(policy, /Capability::LocalTimer/);
   const offlineDefault = policy.match(
     /CapabilityPolicy::offlineDefault[\s\S]*?\n}\n/,
   )?.[0] || "";
   assert.doesNotMatch(offlineDefault, /Capability::Oracle/);
   assert.doesNotMatch(offlineDefault, /Capability::LearningCompanion/);
-  assert.doesNotMatch(offlineDefault, /Capability::VoiceCompanion/);
   assert.doesNotMatch(offlineDefault, /Capability::CloudConversation/);
 });
 

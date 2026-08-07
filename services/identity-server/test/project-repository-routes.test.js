@@ -5,7 +5,7 @@ const test = require("node:test");
 const { createRouteRegistry } = require("../src/dev/server/route-registry");
 const { registerProjectRoutes } = require("../src/dev/server/project-routes");
 
-function routeHarness({ requireSessionProject }) {
+function routeHarness({ requireSessionProject, handlePlatformProjectRead = async () => {} }) {
   const registry = createRouteRegistry();
   const calls = [];
   const responses = [];
@@ -23,10 +23,26 @@ function routeHarness({ requireSessionProject }) {
       return { session: { debug_session_id: "debug-session-1" } };
     },
     projectRepositoryRead,
+    handlePlatformProjectRead,
     sendJson: (_res, status, body) => responses.push([status, body]),
   });
   return { calls, registry, responses };
 }
+
+test("project detail route loads exactly the selected project", async () => {
+  const reads = [];
+  const harness = routeHarness({
+    requireSessionProject: async () => ({ project_server_id: "stored-project-1" }),
+    handlePlatformProjectRead: async (_res, session, projectId) => {
+      reads.push([session.account.user_id, projectId]);
+    },
+  });
+  await harness.registry.dispatch({
+    req: { method: "GET" }, res: {},
+    url: new URL("http://localhost/api/platform/projects/selected-project"),
+  });
+  assert.deepEqual(reads, [["account-1", "selected-project"]]);
+});
 
 test("repository proxy authorizes the session project before invoking the read contract", async () => {
   const authorized = [];

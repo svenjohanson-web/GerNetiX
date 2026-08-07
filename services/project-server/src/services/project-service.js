@@ -281,6 +281,12 @@ class ProjectService {
 
   async listProjects(query = {}) {
     await this.ready;
+    if (query.profile === "summary") {
+      const projects = this.repository.listProjectSummaries
+        ? await this.repository.listProjectSummaries({ user_id: query.user_id || query.userId || "" })
+        : await this.repository.listProjects({ user_id: query.user_id || query.userId || "" });
+      return projects.map(projectSummary);
+    }
     return Promise.all((await this.repository.listProjects({ user_id: query.user_id || query.userId || "" }))
       .map((project) => this.projectWithSummary(project)));
   }
@@ -1347,15 +1353,39 @@ class ProjectService {
 
   async createFeedback(input = {}) {
     await this.ready;
-    const project = await this.requireProject(required(input.project_id, "project_id"));
+    const projectId = required(input.project_id, "project_id");
+    const category = input.category || "project_feedback";
+    const project = category === "learning_experience_rating"
+      ? await this.requireOwnedProject(projectId, required(input.user_id, "user_id"))
+      : await this.requireProject(projectId);
+    let learningProgress = null;
+    if (category === "learning_experience_rating") {
+      if (!project.learning_project_id) {
+        throw new ProjectServerError("learning_project_required", "Eine Lernprojektbewertung ist nur fuer ein Lernprojekt moeglich.", 409);
+      }
+      learningProgress = await this.repository.findLearningProgress(project.project_id);
+      if (learningProgress?.status !== "completed") {
+        throw new ProjectServerError("learning_feedback_not_ready", "Das Lernprojekt kann erst nach dem letzten abgeschlossenen Schritt bewertet werden.", 409);
+      }
+      const previousRatings = await this.repository.listFeedback({ project_id: project.project_id, user_id: project.user_id });
+      if (previousRatings.some((feedback) => feedback.category === "learning_experience_rating")) {
+        throw new ProjectServerError("learning_feedback_already_submitted", "Dieses Lernprojekt wurde bereits bewertet.", 409);
+      }
+    }
     const now = new Date().toISOString();
     const feedback = {
-      feedback_id: input.feedback_id || createId("feedback"),
+      feedback_id: input.feedback_id || (category === "learning_experience_rating"
+        ? `learning_feedback.${project.project_id}`
+        : createId("feedback")),
       project_id: project.project_id,
       user_id: input.user_id || project.user_id,
-      learning_step_id: input.learning_step_id || "",
-      category: input.category || "project_feedback",
-      ratings: normalizeLearningRatings(input.ratings, input.category || "project_feedback"),
+      learning_project_id: project.learning_project_id || "",
+      project_title: project.title || "",
+      learning_step_id: category === "learning_experience_rating"
+        ? learningProgress.current_step_id || ""
+        : input.learning_step_id || "",
+      category,
+      ratings: normalizeLearningRatings(input.ratings, category),
       message: String(input.message || "").trim().slice(0, 2000),
       status: "new",
       contact_mode: input.contact_mode || "no_contact",
@@ -2395,6 +2425,25 @@ function sanitizeProject(project) {
     status: project.status,
     created_at: project.created_at,
     updated_at: project.updated_at,
+  };
+}
+
+function projectSummary(project) {
+  return {
+    project_id: project.project_id,
+    user_id: project.user_id,
+    plan_id: project.plan_id || "free",
+    title: project.title,
+    description: project.description || "",
+    learning_project_id: project.learning_project_id || "",
+    entry_mode: project.entry_mode || project.view_manifest?.entry_mode || "project_story",
+    hardware_profile_id: project.hardware_profile_id || "",
+    device_id: project.device_id || "",
+    device_ids: projectDeviceIds(project),
+    status: project.status,
+    has_project_app: project.has_project_app === true,
+    created_at: project.created_at || "",
+    updated_at: project.updated_at || "",
   };
 }
 

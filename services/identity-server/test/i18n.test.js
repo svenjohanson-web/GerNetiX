@@ -53,7 +53,7 @@ test("public entry page provides an initial English translation and visible lang
   assert.match(landingHtml, /data-i18n="landing\.hero\.title"/);
   assert.match(landingHtml, /data-i18n="landing\.paths\.read\.title"/);
   assert.match(landingHtml, /data-i18n="landing\.motivation\.title"/);
-  assert.equal(catalogs.en["landing.hero.title"], "from the cloud to embedded systems");
+  assert.equal(catalogs.en["landing.hero.title"], "Understand technology, develop your own systems or start directly with Nexi.");
   assert.equal(catalogs.en["dashboard.title"], "Welcome to GerNetiX");
   assert.match(landingSource, /addPublicLanguageSwitcher/);
   assert.match(landingSource, /public-language-switcher/);

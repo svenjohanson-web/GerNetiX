@@ -4,14 +4,19 @@
     "slug": "programming-fundamentals",
     "title": "Grundlagen der Programmierung",
     "area": "Programmierung",
-    "summary": "Lerne mit kleinen JavaScript-Beispielen, wie Werte, Entscheidungen, Wiederholungen und Funktionen ein Programm bilden.",
+    "summary": "Verstehe zuerst Eingabe, Verarbeitung, Ausgabe und Speicher – und lerne dann mit kleinen JavaScript-Beispielen Variablen, Rechnen, Entscheidungen, Schleifen und Funktionen.",
     "learning_category": "software_engineering",
     "tags": ["runtime:browser", "topic:programming", "level:beginner"],
     "steps": [
       {
-        "title": "Programme als Folge verständlicher Anweisungen",
-        "text": "Ordne kleine Anweisungen und beobachte, dass Reihenfolge und Eingabewerte das Ergebnis bestimmen.",
-        "insight": "Ein Programm beschreibt eindeutig, was mit Daten geschehen soll."
+        "title": "Was ein Computer grundsätzlich macht",
+        "text": "Verfolge eine Zahl von der Eingabe über Verarbeitung und Speicher bis zur Ausgabe.",
+        "insight": "Ein Computer stellt Informationen als Bits und Zahlen dar und verarbeitet sie nach eindeutigen Anweisungen."
+      },
+      {
+        "title": "Warum Programmiersprachen abstrahieren",
+        "text": "Vergleiche einfache Maschinenoperationen mit lesbarem JavaScript und erkenne, welche technischen Einzelheiten die Sprache verbirgt.",
+        "insight": "Abstraktion macht Programmieren verständlicher, ohne die Verarbeitung von Werten und Regeln aufzuheben."
       },
       {
         "title": "Werte, Variablen und Datentypen",
@@ -24,9 +29,9 @@
         "insight": "Ein Ausdruck wird ausgewertet und liefert genau einen Wert."
       },
       {
-        "title": "Mit Bedingungen entscheiden",
-        "text": "Verwende if und else, damit das Programm abhängig von Daten unterschiedliche Wege nimmt.",
-        "insight": "Eine Bedingung trennt Fälle anhand einer klaren Ja-Nein-Aussage."
+        "title": "Mit if und switch entscheiden",
+        "text": "Verwende if für Vergleiche und Wertebereiche sowie switch für mehrere klar benannte Einzelwerte.",
+        "insight": "Entscheidungen wählen abhängig von ausgewerteten Daten genau den passenden Programmweg."
       },
       {
         "title": "Mit Schleifen wiederholen",
@@ -53,29 +58,45 @@
     ]
   },
   "view_manifest": {
-    "schema_version": 1,
+    "schema_version": 2,
     "title": "Grundlagen der Programmierung",
-    "summary": "Ein kompakter Einstieg in Programmablauf, Variablen, Ausdrücke, Bedingungen, Schleifen und Funktionen.",
+    "summary": "Ein kompakter Einstieg vom Computermodell mit Eingabe, Verarbeitung, Ausgabe und Speicher bis zu Variablen, Ausdrücken, Entscheidungen, Schleifen und Funktionen.",
     "primary_source_path": "src/grundlagen.js",
     "hide_source_editor": false,
     "mode": "guided_ide",
     "views": [
       {
-        "id": "program-sequence",
+        "id": "computer-model",
         "type": "story_slide",
-        "title": "Was ist ein Programm?",
-        "summary": "Anweisungen werden in einer festgelegten Reihenfolge mit konkreten Daten ausgeführt.",
-        "completion": { "type": "acknowledge", "label": "Programmablauf verstanden" },
+        "title": "Was macht ein Computer?",
+        "summary": "Ein Computer nimmt Informationen auf, speichert und verarbeitet sie und gibt ein Ergebnis aus.",
+        "completion": { "type": "acknowledge", "label": "Computermodell verstanden" },
         "payload": {
           "artifact": {
             "type": "code",
-            "title": "Erste Anweisungen",
-            "content": "const name = \"Mia\";\nconst begruessung = \"Hallo \" + name;\nconsole.log(begruessung);"
+            "title": "Eine Zahl durchläuft das Programm",
+            "content": "const eingabe = 8;\nlet gespeicherterWert = eingabe;\nconst ergebnis = gespeicherterWert * 2;\nconsole.log(ergebnis);"
           },
           "model_lines": [
-            { "label": "Eingabe", "text": "Der Name ist ein Wert, mit dem das Programm arbeitet." },
-            { "label": "Verarbeitung", "text": "Aus Text und Name entsteht ein neuer Text." },
-            { "label": "Ausgabe", "text": "console.log macht das Ergebnis sichtbar." }
+            { "label": "Zahlen und Bits", "text": "Im Computer werden Zahlen, Texte, Bilder und Wahrheitswerte letztlich als Bitmuster dargestellt." },
+            { "label": "Eingabe", "text": "Die Zahl 8 kommt beispielsweise von einer Tastatur, einem Sensor, einer Datei oder einem Netzwerk." },
+            { "label": "Speicher", "text": "Der Wert wird aufbewahrt, damit spätere Anweisungen ihn wieder verwenden können." },
+            { "label": "Verarbeitung", "text": "Der Prozessor führt eine eindeutige Operation aus: Hier wird der Wert mit 2 multipliziert." },
+            { "label": "Ausgabe", "text": "console.log macht das berechnete Ergebnis 16 sichtbar." }
+          ]
+        }
+      },
+      {
+        "id": "abstraction",
+        "type": "explanation",
+        "title": "Abstraktion: verständlich statt maschinennah",
+        "summary": "JavaScript verbirgt Maschinenbefehle, Speicheradressen und viele technische Details, aber nicht die Logik des Programms.",
+        "completion": { "type": "acknowledge", "label": "Abstraktion eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Auf Maschinenebene", "text": "Ein Prozessor arbeitet mit einfachen Befehlen, Registern, Speicheradressen und Bitmustern." },
+            { "title": "In JavaScript", "text": "Sprechende Namen, Zahlen, Operatoren und Kontrollstrukturen beschreiben dieselbe Aufgabe lesbarer." },
+            { "title": "Die Laufzeit übernimmt Arbeit", "text": "Der Browser übersetzt und organisiert viele Details. Deine Regeln, Berechnungen und Entscheidungen musst du trotzdem eindeutig formulieren." }
           ]
         }
       },
@@ -104,22 +125,32 @@
           "artifact": {
             "type": "code",
             "title": "Ausdrücke",
-            "content": "const gesamt = 7 + 5;\nconst bestanden = gesamt >= 10;\nconst darfWeiter = bestanden && gesamt < 20;"
-          }
+            "content": "const grundwert = 7;\nconst bonus = 5;\nconst gesamt = grundwert + bonus * 2;\nconst durchschnitt = gesamt / 3;\nconst rest = gesamt % 3;\nconst bestanden = gesamt >= 10;"
+          },
+          "model_lines": [
+            { "label": "Arithmetik", "text": "+, -, *, / und % verbinden Zahlen zu einer neuen Zahl." },
+            { "label": "Reihenfolge", "text": "Wie in der Mathematik gilt Multiplikation vor Addition; Klammern machen die gewünschte Reihenfolge ausdrücklich sichtbar." },
+            { "label": "Vergleich", "text": ">=, < oder === liefern einen Wahrheitswert: true oder false." }
+          ]
         }
       },
       {
         "id": "conditions",
         "type": "story_slide",
-        "title": "Entscheidungen mit if und else",
-        "summary": "Das Programm wählt anhand einer Bedingung genau den passenden Fall.",
-        "completion": { "type": "acknowledge", "label": "Bedingung nachvollzogen" },
+        "title": "Entscheidungen mit if, else und switch",
+        "summary": "if prüft Bedingungen und Wertebereiche; switch ordnet einen Wert mehreren klar benannten Fällen zu.",
+        "completion": { "type": "acknowledge", "label": "Entscheidungen nachvollzogen" },
         "payload": {
           "artifact": {
             "type": "code",
-            "title": "Punktestand bewerten",
-            "content": "if (punkte >= 10) {\n  console.log(\"Bestanden\");\n} else {\n  console.log(\"Noch einmal üben\");\n}"
-          }
+            "title": "Zahlenbereich und benannter Fall",
+            "content": "if (punkte >= 10) {\n  console.log(\"Bestanden\");\n} else {\n  console.log(\"Noch einmal üben\");\n}\n\nconst stufe = \"mittel\";\nswitch (stufe) {\n  case \"leicht\":\n    console.log(\"6 Punkte reichen\");\n    break;\n  case \"mittel\":\n    console.log(\"10 Punkte reichen\");\n    break;\n  default:\n    console.log(\"Stufe unbekannt\");\n}"
+          },
+          "model_lines": [
+            { "label": "if", "text": "Gut für Ja-Nein-Fragen, Vergleiche und Bereiche wie Punkte >= 10." },
+            { "label": "switch", "text": "Gut für mehrere feste Werte wie leicht, mittel oder schwer." },
+            { "label": "Wichtig", "text": "Beide Formen werten Daten aus; sie denken oder entscheiden nicht selbst." }
+          ]
         }
       },
       {
@@ -174,12 +205,12 @@
     {
       "path": "src/grundlagen.js",
       "role": "user_code",
-      "content": "const name = \"Mia\";\nlet punkte = 7;\n\nfunction istBestanden(wert) {\n  return wert >= 10;\n}\n\npunkte = punkte + 5;\n\nif (istBestanden(punkte)) {\n  console.log(`${name} hat bestanden.`);\n} else {\n  console.log(`${name} übt weiter.`);\n}\n\nconst ergebnisse = [4, 10, 12, 7];\nlet summe = 0;\nlet bestanden = 0;\n\nfor (const ergebnis of ergebnisse) {\n  summe += ergebnis;\n  if (istBestanden(ergebnis)) bestanden += 1;\n}\n\nconsole.log({ summe, durchschnitt: summe / ergebnisse.length, bestanden });\n"
+      "content": "// Eingabe und Speicher\nconst name = \"Mia\";\nlet punkte = 7;\nconst schwierigkeitsgrad = \"mittel\";\n\n// Verarbeitung durch eine kleine, benannte Funktion\nfunction istBestanden(wert) {\n  return wert >= 10;\n}\n\npunkte = punkte + 5;\n\n// Entscheidung über einen Zahlenbereich\nif (istBestanden(punkte)) {\n  console.log(`${name} hat bestanden.`);\n} else {\n  console.log(`${name} übt weiter.`);\n}\n\n// Entscheidung über feste benannte Werte\nswitch (schwierigkeitsgrad) {\n  case \"leicht\":\n    console.log(\"Leichte Aufgabe\");\n    break;\n  case \"mittel\":\n    console.log(\"Mittlere Aufgabe\");\n    break;\n  default:\n    console.log(\"Schwierigkeitsgrad unbekannt\");\n}\n\nconst ergebnisse = [4, 10, 12, 7];\nlet summe = 0;\nlet bestanden = 0;\n\nfor (const ergebnis of ergebnisse) {\n  summe += ergebnis;\n  if (istBestanden(ergebnis)) bestanden += 1;\n}\n\n// Ausgabe\nconsole.log({ summe, durchschnitt: summe / ergebnisse.length, bestanden });\n"
     },
     {
       "path": "README.md",
       "role": "learning_guide",
-      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Lernziel\n\nDu kannst Werte benennen, Ausdrücke lesen, Entscheidungen formulieren, Daten wiederholt verarbeiten und Logik in Funktionen gliedern.\n\n## Abschlussaufgabe\n\nVerändere die Liste `ergebnisse` und ergänze eine Funktion, die Summe, Durchschnitt und Anzahl bestandener Ergebnisse zurückgibt.\n"
+      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Das Grundmodell\n\nEin Computer stellt Informationen als Bits und Zahlen dar. Ein Programm führt sie durch **Eingabe, Speicher, Verarbeitung und Ausgabe**. Moderne Programmiersprachen abstrahieren Maschinenbefehle und Speicheradressen, aber Werte, Berechnungen und eindeutige Regeln bleiben erhalten.\n\n## Lernziel\n\nDu kannst Werte in Variablen speichern, arithmetische Ausdrücke bilden, `if` für Bedingungen und Wertebereiche sowie `switch` für feste Fälle einsetzen, Daten wiederholt verarbeiten und Logik in Funktionen gliedern.\n\n## Kleine Abschlussaufgabe\n\nVerändere die Liste `ergebnisse` und ergänze eine Funktion, die Summe, Durchschnitt und Anzahl bestandener Ergebnisse zurückgibt. Probiere danach einen zweiten Schwierigkeitsgrad im `switch` aus.\n"
     }
   ]
 }

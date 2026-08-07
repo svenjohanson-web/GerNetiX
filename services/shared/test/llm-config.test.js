@@ -43,6 +43,7 @@ test("llm config store reloads external file changes", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
   const configPath = path.join(tmp, "identity-llm-config.json");
   fs.writeFileSync(configPath, JSON.stringify({
+    routingVersion: 2,
     provider: "ollama",
     ollamaBaseUrl: "http://127.0.0.1:11434",
     ollamaModel: "llama-local",
@@ -72,7 +73,7 @@ test("llm config store reloads external file changes", async () => {
   assert.equal(config.apiModel, "external-model");
 });
 
-test("llm config routes cost-sensitive artifact tasks to local model by default", () => {
+test("llm config routes cost-sensitive artifact tasks to the configured OpenAI API by default", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
   const configPath = path.join(tmp, "identity-llm-config.json");
   fs.writeFileSync(configPath, JSON.stringify({
@@ -91,23 +92,55 @@ test("llm config routes cost-sensitive artifact tasks to local model by default"
   });
 
   assert.equal(store.resolveRoute("general_chat").provider, "api");
-  assert.equal(store.resolveRoute("artifact_generation").provider, "ollama");
-  assert.equal(store.resolveRoute("artifact_generation").model, "local-code-model");
-  assert.equal(store.publicConfig().routes.artifact_generation.provider, "ollama");
+  assert.equal(store.resolveRoute("artifact_generation").provider, "api");
+  assert.equal(store.resolveRoute("artifact_generation").model, "gpt-expensive");
+  assert.equal(store.publicConfig().routes.artifact_generation.provider, "api");
 });
 
-test("llm config permanently routes GerNetiX Help to Ollama", () => {
+test("llm config routes GerNetiX Help through the cost-controlled API", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
   const configPath = path.join(tmp, "identity-llm-config.json");
   const store = createLlmConfigStore({ configPath, defaultOllamaBaseUrl: "http://127.0.0.1:11434", defaultOllamaModel: "llama-local" });
 
-  store.updateConfig({ provider: "api", apiModel: "gpt-external", routes: { help_chat: { provider: "api", reason: "must not be used" } } });
+  store.updateConfig({ provider: "api", apiModel: "gpt-external", routes: { help_chat: { provider: "api", reason: "Kuratierte Hilfe extern" } } });
 
   const route = store.resolveRoute("help_chat");
-  assert.equal(route.provider, "ollama");
-  assert.equal(route.model, "llama-local");
-  assert.equal(route.costPolicy, "local_only");
-  assert.equal(store.publicConfig().routes.help_chat.provider, "ollama");
+  assert.equal(route.provider, "api");
+  assert.equal(route.model, "gpt-external");
+  assert.equal(route.costPolicy, "external_costs_with_preflight");
+  assert.equal(store.publicConfig().routes.help_chat.provider, "api");
+});
+
+test("blank llm config defaults to the cheapest OpenAI model", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const store = createLlmConfigStore({
+    configPath: path.join(tmp, "identity-llm-config.json"),
+    defaultOllamaBaseUrl: "http://127.0.0.1:11434",
+    defaultOllamaModel: "llama-local",
+  });
+
+  assert.equal(store.getConfig().provider, "api");
+  assert.equal(store.getConfig().apiProvider, "openai-responses");
+  assert.equal(store.getConfig().apiModel, "gpt-5-nano");
+  assert.equal(store.resolveRoute("code_generation").provider, "api");
+  assert.equal(store.resolveRoute("help_chat").provider, "api");
+});
+
+test("legacy local routing is migrated once to the OpenAI default", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const configPath = path.join(tmp, "identity-llm-config.json");
+  fs.writeFileSync(configPath, JSON.stringify({
+    provider: "ollama",
+    ollamaModel: "legacy-local",
+    routes: { architecture_discovery: { provider: "ollama" }, code_generation: { provider: "ollama" }, help_chat: { provider: "ollama" } },
+  }));
+  const store = createLlmConfigStore({ configPath, defaultOllamaBaseUrl: "http://127.0.0.1:11434", defaultOllamaModel: "llama-local" });
+
+  assert.equal(store.getConfig().routingVersion, 2);
+  assert.equal(store.getConfig().provider, "api");
+  assert.equal(store.resolveRoute("architecture_discovery").provider, "api");
+  assert.equal(store.resolveRoute("code_generation").provider, "api");
+  assert.equal(store.resolveRoute("help_chat").provider, "api");
 });
 
 test("llm config permanently routes hardware lab analysis to external API", async () => {

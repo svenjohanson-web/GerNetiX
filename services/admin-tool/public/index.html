@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Admin Tool</title>
-    <link rel="stylesheet" href="/admin/app.css?v=20260802-learning-feedback" />
+    <link rel="stylesheet" href="/admin/app.css?v=20260806-learning-feedback-summary" />
     <link rel="stylesheet" href="/admin/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -146,6 +146,17 @@
           <button id="refreshLearningFeedbackButton" type="button">Aktualisieren</button>
         </section>
         <section class="metrics-grid" id="learningFeedbackMetrics"></section>
+        <section class="panel">
+          <div class="section-head">
+            <div><p class="eyebrow">Zusammenfassung</p><h2>Auswertung je Lernprojekt</h2></div>
+          </div>
+          <div class="table-wrap">
+            <table class="learning-feedback-summary-table">
+              <thead><tr><th>Lernprojekt</th><th>Anzahl</th><th>Ø Verständlichkeit</th><th>Ø Spaß</th><th>Ø Schwierigkeit</th><th>Ø Vollständigkeit</th><th>Verteilung 1–5</th></tr></thead>
+              <tbody id="learningFeedbackSummaryRows"></tbody>
+            </table>
+          </div>
+        </section>
         <section class="panel">
           <div class="section-head feedback-filter-head">
             <div><p class="eyebrow">Einträge</p><h2>Bewertungen und Verbesserungsvorschläge</h2></div>
@@ -452,8 +463,8 @@
           <h2>LLM-Routing</h2>
           <label>Antwortquelle
             <select id="adminLlmProvider">
-              <option value="ollama">Lokal</option>
-              <option value="api">Internet</option>
+              <option value="api">OpenAI / API</option>
+              <option value="ollama">Optional lokal</option>
             </select>
           </label>
 
@@ -524,9 +535,9 @@
             <div>
               <span>GerNetiX Help</span>
               <select id="adminRouteHelpChat" aria-describedby="adminRouteHelpChatHint">
-                <option value="ollama">Nur lokal (Ollama)</option>
+                <option value="api">OpenAI API</option>
               </select>
-              <small id="adminRouteHelpChatHint">Diese Route kann nicht an externe API-Provider gesendet werden.</small>
+              <small id="adminRouteHelpChatHint">Nur kuratierte Hilfeartikel werden nach AI-Usage-Preflight an OpenAI gesendet.</small>
             </div>
           </section>
 
@@ -541,7 +552,7 @@
           <p class="eyebrow">Aktiv</p>
           <h2>Konfiguration</h2>
           <dl id="adminLlmStatus" class="meta-list"></dl>
-          <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. Das Hardware-Labor verwendet verbindlich OpenAI Responses mit AI-Usage-Preflight; GerNetiX Help bleibt immer lokal in Ollama.</p>
+          <p class="helper-text">Der geplante Standard ist OpenAI Responses mit dem guenstigsten freigegebenen Modell. Hardware-Labor und GerNetiX Help verwenden verbindlich AI-Usage-Preflight; Ollama bleibt nur als optionale Konfiguration erhalten.</p>
         </aside>
       </section>
 
@@ -594,7 +605,7 @@
           <form id="aiHelpKnowledgeForm" class="panel">
             <p class="eyebrow">Lokaler Help-Agent</p>
             <h2>Help-Wissen pflegen</h2>
-            <p class="helper-text">Diese kuratierten Inhalte werden nur an das lokale Ollama-Modell weitergegeben. Sie aendern nicht die sichtbaren Hilfeartikel.</p>
+            <p class="helper-text">Diese kuratierten Inhalte werden nur nach Wissenstreffer und AI-Usage-Preflight an OpenAI weitergegeben. Sie aendern nicht die sichtbaren Hilfeartikel.</p>
             <div class="form-grid">
               <label>Artikel-ID<input id="aiHelpArticleId" required placeholder="help.provisioning.wlan" /></label>
               <label>Hilfe-Thema-ID<input id="aiHelpTopicId" required placeholder="provision-new-board" /></label>
@@ -781,6 +792,6 @@
         </section>
       </section>
     </main>
-    <script src="/admin/admin-config.js?v=20260802-learning-feedback"></script>
+    <script src="/admin/admin-config.js?v=20260806-learning-feedback-summary"></script>
   </body>
 </html>

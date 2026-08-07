@@ -23,12 +23,21 @@ enum class UserAction : uint8_t {
 
 enum class OperatingMode : uint8_t {
   VoiceStudio,
+  ReactionGame,
+  LocalQuiz,
+  LocalStories,
+  VoiceCompanion,
+  LocalTimer,
   AiStory,
   Count,
 };
 
 enum class ApplicationId : uint8_t {
   VoiceStudio,
+  ReactionGame,
+  LocalQuiz,
+  LocalStories,
+  LocalTimer,
   AiStory,
   Oracle,
   LearningCompanion,

@@ -28,6 +28,15 @@ class InMemoryProjectRepository {
       .map(clone);
   }
 
+  listProjectSummaries(filter = {}) {
+    return Array.from(this.projects.values())
+      .filter((project) => !filter.user_id || project.user_id === filter.user_id)
+      .map((project) => ({
+        ...clone(project),
+        has_project_app: this.sources.has(key(project.project_id, "project-app/manifest.json")),
+      }));
+  }
+
   saveSource(source) {
     this.sources.set(key(source.project_id, source.path), clone(source));
     return clone(source);

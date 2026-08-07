@@ -1235,6 +1235,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       focusIdeStepSource(project);
       try {
         await saveIdeGuidedProgress(project, next, Array.from(completed));
+        window.dispatchEvent(new CustomEvent("learning-progress-updated", { detail: { projectId: project.id } }));
       } catch (error) {
         console.warn("Lernfortschritt konnte nicht gespeichert werden.", error);
       }

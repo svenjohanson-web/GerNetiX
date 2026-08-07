@@ -171,7 +171,7 @@ Das UI-Pattern ist deshalb keine neue KI-Runtime und keine neue Persistenzquelle
 | --- | --- | --- |
 | Architektur-KI der Entwicklungsplattform | compact | Projektziel, Anforderungen und Architektur |
 | Code-Explorer in der IDE | compact | Projektquellen lesen und bestaetigungspflichtige Aenderungen vorschlagen |
-| GerNetiX Help | regular | lokaler, auf Hilfeartikel begrenzter Assistent |
+| GerNetiX Help | regular | kostenkontrollierter OpenAI-Assistent, auf passende Hilfeartikel begrenzt |
 | KI-Hardware-Assistent | large | Boardanalyse, Profilaufbau und sichere Discovery-Schritte |
 
 Neue Plattform-KI-Chats muessen dieses Pattern verwenden. Eine Abweichung

@@ -154,6 +154,54 @@ test("creates project with default source and lists it by user", async () => {
   assert.equal((await service.listProjects({ user_id: "user-1" })).length, 1);
 });
 
+test("lists compact project summaries without loading sources or build jobs", async () => {
+  const repository = new InMemoryProjectRepository({
+    projects: [{
+      project_id: "summary-project",
+      user_id: "summary-user",
+      plan_id: "free",
+      title: "Kleines Projekt",
+      description: "Nur der Kartentext",
+      learning_project_id: "learning_project.summary",
+      hardware_profile_id: "runtime.browser_javascript",
+      status: "active",
+      build_config: { large: "must not be returned" },
+      view_manifest: { views: [{ payload: { large: "must not be returned" } }] },
+      created_at: "2026-08-06T00:00:00.000Z",
+      updated_at: "2026-08-06T00:00:00.000Z",
+    }],
+    sources: [{ project_id: "summary-project", path: "project-app/manifest.json", content: "{}" }],
+  });
+  let sourceLoads = 0;
+  let buildLoads = 0;
+  const originalListSources = repository.listSources.bind(repository);
+  const originalListBuildJobs = repository.listBuildJobs.bind(repository);
+  repository.listSources = (...args) => { sourceLoads += 1; return originalListSources(...args); };
+  repository.listBuildJobs = (...args) => { buildLoads += 1; return originalListBuildJobs(...args); };
+  const service = new ProjectService({ repository });
+
+  const summaries = await service.listProjects({ user_id: "summary-user", profile: "summary" });
+
+  assert.deepEqual(summaries, [{
+    project_id: "summary-project",
+    user_id: "summary-user",
+    plan_id: "free",
+    title: "Kleines Projekt",
+    description: "Nur der Kartentext",
+    learning_project_id: "learning_project.summary",
+    entry_mode: "project_story",
+    hardware_profile_id: "runtime.browser_javascript",
+    device_id: "",
+    device_ids: [],
+    status: "active",
+    has_project_app: true,
+    created_at: "2026-08-06T00:00:00.000Z",
+    updated_at: "2026-08-06T00:00:00.000Z",
+  }]);
+  assert.equal(sourceLoads, 0);
+  assert.equal(buildLoads, 0);
+});
+
 test("clones an immutable system template into an account-owned project", async () => {
   const service = createMemoryProjectServer();
   await service.createProject({
@@ -992,20 +1040,46 @@ test("feedback hides contact data until explicit feedback consent exists", async
 
 test("learning feedback stores all four bounded experience ratings", async () => {
   const service = createMemoryProjectServer();
-  const project = await createDemoProject(service);
+  const project = await service.createProject({
+    user_id: "user-1",
+    title: "Grundlagen der Programmierung",
+    learning_project_id: "learning_project.programming_fundamentals",
+    view_manifest: { views: [{ id: "input", type: "explanation" }, { id: "abschluss", type: "story_slide" }] },
+  });
+  await assert.rejects(
+    service.createFeedback({
+      project_id: project.project_id,
+      user_id: "user-1",
+      category: "learning_experience_rating",
+      ratings: { clarity: 5, fun: 4, difficulty: 3, completeness: 5 },
+    }),
+    (error) => error.code === "learning_feedback_not_ready",
+  );
+  await service.updateLearningProgress(project.project_id, {
+    user_id: "user-1",
+    current_step_id: "abschluss",
+    completed_step_ids: ["input", "abschluss"],
+  });
   const feedback = await service.createFeedback({
     project_id: project.project_id,
+    user_id: "user-1",
     category: "learning_experience_rating",
-    learning_step_id: "step.ota",
+    learning_step_id: "forged-step",
     ratings: { clarity: 5, fun: 4, difficulty: 3, completeness: 5 },
     message: "Sehr hilfreich.",
   });
 
   assert.deepEqual(feedback.ratings, { clarity: 5, fun: 4, difficulty: 3, completeness: 5 });
   assert.equal(feedback.status, "new");
-  assert.equal(feedback.learning_step_id, "step.ota");
+  assert.equal(feedback.learning_step_id, "abschluss");
+  assert.equal(feedback.learning_project_id, "learning_project.programming_fundamentals");
+  assert.equal(feedback.project_title, "Grundlagen der Programmierung");
   await assert.rejects(
-    service.createFeedback({ project_id: project.project_id, category: "learning_experience_rating", ratings: { clarity: 6, fun: 4, difficulty: 3, completeness: 5 } }),
+    service.createFeedback({ project_id: project.project_id, user_id: "user-1", category: "learning_experience_rating", ratings: { clarity: 5, fun: 4, difficulty: 3, completeness: 5 } }),
+    (error) => error.code === "learning_feedback_already_submitted",
+  );
+  await assert.rejects(
+    service.createFeedback({ project_id: project.project_id, user_id: "user-1", category: "development_project_rating", ratings: { clarity: 6, fun: 4, difficulty: 3, completeness: 5 } }),
     (error) => error.code === "invalid_feedback_rating",
   );
 });

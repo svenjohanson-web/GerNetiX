@@ -226,6 +226,36 @@ class PostgresProjectRepository {
     return rows(result);
   }
 
+  async listProjectSummaries(filter = {}) {
+    const values = [];
+    const where = filter.user_id ? "WHERE p.user_id=$1" : "";
+    if (filter.user_id) values.push(filter.user_id);
+    const result = await this.pool.query(`
+      SELECT
+        p.project_id,
+        p.user_id,
+        p.status,
+        p.raw_json->>'plan_id' AS plan_id,
+        p.raw_json->>'title' AS title,
+        p.raw_json->>'description' AS description,
+        p.raw_json->>'learning_project_id' AS learning_project_id,
+        p.raw_json#>>'{view_manifest,entry_mode}' AS entry_mode,
+        p.raw_json->>'hardware_profile_id' AS hardware_profile_id,
+        p.raw_json->>'device_id' AS device_id,
+        COALESCE(p.raw_json->'device_ids', '[]'::jsonb) AS device_ids,
+        p.raw_json->>'created_at' AS created_at,
+        p.raw_json->>'updated_at' AS updated_at,
+        EXISTS (
+          SELECT 1 FROM project_sources source
+          WHERE source.project_id=p.project_id AND source.path='project-app/manifest.json'
+        ) AS has_project_app
+      FROM project_projects p
+      ${where}
+      ORDER BY p.updated_at DESC
+    `, values);
+    return result.rows.map((row) => ({ ...row, device_ids: row.device_ids || [] }));
+  }
+
   async saveSource(source) {
     await this.pool.query(`
       INSERT INTO project_sources (project_id, path, raw_json, updated_at)

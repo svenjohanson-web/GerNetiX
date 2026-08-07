@@ -10,10 +10,11 @@ const CREDIT_PACKAGES = Object.freeze([
   { package_id: "ai_credits_20_eur", title: "KI-Credits L", price_cents: 2000, currency: "EUR", credits: 500000, expires: false },
 ]);
 const BUILTIN_MODEL_PRICING = {
+  "gpt-5-nano": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.00005, provider_output_cost_per_1k_tokens: 0.0004 },
   "gpt-5.6-sol": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.005, provider_output_cost_per_1k_tokens: 0.03 },
   "gpt-5.6": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.005, provider_output_cost_per_1k_tokens: 0.03 },
-  "gpt-5.6-terra": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.0025, provider_output_cost_per_1k_tokens: 0.015 },
-  "gpt-5.6-luna": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.001, provider_output_cost_per_1k_tokens: 0.006 },
+  "gpt-5.6-terra": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.002, provider_output_cost_per_1k_tokens: 0.012 },
+  "gpt-5.6-luna": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.0002, provider_output_cost_per_1k_tokens: 0.0012 },
 };
 
 class AiUsageService {

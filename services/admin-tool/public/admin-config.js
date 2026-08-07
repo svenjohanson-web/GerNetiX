@@ -324,12 +324,13 @@ async function loadLearningFeedback(force) {
 
 function renderLearningFeedback() {
   const metrics = document.querySelector("#learningFeedbackMetrics");
+  const summaryRows = document.querySelector("#learningFeedbackSummaryRows");
   const rows = document.querySelector("#learningFeedbackRows");
   const filter = document.querySelector("#learningFeedbackProjectFilter");
-  if (!metrics || !rows || !filter) return;
+  if (!metrics || !summaryRows || !rows || !filter) return;
   const entries = (state.learningFeedback?.items || [])
     .map((item) => item.feedback || item);
-  const subjectId = (item) => item.template_id || item.subject_id || item.project_id || "";
+  const subjectId = (item) => item.learning_project_id || item.template_id || item.subject_id || item.project_id || "";
   const subjects = Array.from(new Set(entries.map(subjectId).filter(Boolean))).sort();
   const selectedProject = filter.value;
   filter.innerHTML = `<option value="">Alle</option>${subjects.map((id) => `<option value="${escapeHtml(id)}"${id === selectedProject ? " selected" : ""}>${escapeHtml(id)}</option>`).join("")}`;
@@ -339,6 +340,23 @@ function renderLearningFeedback() {
   metrics.innerHTML = state.learningFeedbackLoading
     ? metricCard("Bewertungen", "…", "werden geladen")
     : Object.entries(labels).map(([key, label]) => metricCard(label, averageRating(rated, key), `${formatNumber(rated.length)} Bewertungen`)).join("");
+  const learningRatings = entries.filter((item) => item.category === "learning_experience_rating"
+    && item.ratings && Object.keys(labels).every((key) => Number.isFinite(Number(item.ratings[key]))));
+  const projectGroups = new Map();
+  for (const item of learningRatings) {
+    const id = subjectId(item);
+    if (!id) continue;
+    if (!projectGroups.has(id)) projectGroups.set(id, []);
+    projectGroups.get(id).push(item);
+  }
+  summaryRows.innerHTML = projectGroups.size
+    ? Array.from(projectGroups.entries()).sort(([left], [right]) => left.localeCompare(right)).map(([id, items]) => `<tr>
+      <td><strong>${escapeHtml(items[0].project_title || id)}</strong><br><small>${escapeHtml(id)}</small></td>
+      <td>${formatNumber(items.length)}</td>
+      ${Object.keys(labels).map((key) => `<td>${averageRating(items, key)}</td>`).join("")}
+      <td>${ratingDistribution(items, Object.keys(labels))}</td>
+    </tr>`).join("")
+    : `<tr><td colspan="7" class="empty-cell">Noch keine abgeschlossenen Lernprojektbewertungen vorhanden.</td></tr>`;
   rows.innerHTML = visible.length ? visible
     .sort((left, right) => String(right.created_at || "").localeCompare(String(left.created_at || "")))
     .map((item) => `<tr>
@@ -348,6 +366,16 @@ function renderLearningFeedback() {
       <td>${escapeHtml(item.message || "-")}</td>
     </tr>`).join("")
     : `<tr><td colspan="7" class="empty-cell">${escapeHtml(state.learningFeedback?.error || "Noch keine Bewertungen vorhanden.")}</td></tr>`;
+}
+
+function ratingDistribution(items, keys) {
+  const counts = new Map([1, 2, 3, 4, 5].map((value) => [value, 0]));
+  for (const item of items) for (const key of keys) {
+    const value = Number(item.ratings?.[key]);
+    if (counts.has(value)) counts.set(value, counts.get(value) + 1);
+  }
+  const maximum = Math.max(...counts.values(), 1);
+  return `<div class="rating-distribution" aria-label="Verteilung aller vier Bewertungskriterien">${Array.from(counts, ([value, count]) => `<span><b>${value}</b><i style="--share:${count / maximum}" aria-hidden="true"></i><small>${formatNumber(count)}</small></span>`).join("")}</div>`;
 }
 
 function averageRating(items, key) {
@@ -1165,7 +1193,7 @@ function renderAiHelpKnowledge() {
   }
   rows.innerHTML = (result.items || []).length
     ? result.items.map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.article_id)}</span></td><td>${escapeHtml(item.help_topic_id)}</td><td>${escapeHtml(item.status)}</td><td><button type="button" data-edit-help-article="${escapeHtml(item.article_id)}">Bearbeiten</button></td></tr>`).join("")
-    : '<tr><td colspan="4" class="empty-cell">Noch kein lokales Help-Wissen vorhanden.</td></tr>';
+    : '<tr><td colspan="4" class="empty-cell">Noch kein kuratiertes Help-Wissen vorhanden.</td></tr>';
 }
 
 function renderEmailConfig() {
@@ -1247,7 +1275,7 @@ async function saveAiHelpKnowledge(event) {
   event.preventDefault();
   const status = document.querySelector("#aiHelpKnowledgeStatus");
   status.className = "flash-status running";
-  status.textContent = "Help-Wissen wird gespeichert und lokal eingebettet.";
+  status.textContent = "Help-Wissen wird gespeichert und für die OpenAI-Suche eingebettet.";
   try {
     await postJson("/api/admin/ai-help-articles", {
       article_id: value("#aiHelpArticleId").trim(),
@@ -1378,19 +1406,19 @@ function renderAiContextContentSources(content) {
 
 function renderForm() {
   const config = state.llm || {};
-  setValue("#adminLlmProvider", config.provider || "ollama");
+  setValue("#adminLlmProvider", config.provider || "api");
   setValue("#adminOllamaBaseUrl", config.ollamaBaseUrl || "http://127.0.0.1:11434");
   setValue("#adminOllamaModel", config.ollamaModel || config.model || "llama3.2:3b");
   setValue("#adminApiProvider", config.apiProvider || "openai-responses");
   setValue("#adminApiBaseUrl", config.apiBaseUrl || "https://api.openai.com/v1");
-  setValue("#adminApiModel", config.apiModel || "gpt-5.5");
+  setValue("#adminApiModel", config.apiModel || "gpt-5-nano");
   setValue("#adminApiKey", "");
   setValue("#adminRouteGeneralChat", routeProvider(config, "general_chat", "default"));
   setValue("#adminRouteArchitectureDiscovery", routeProvider(config, "architecture_discovery", "default"));
   setValue("#adminRouteHardwareLab", routeProvider(config, "hardware_lab_analysis", "api"));
-  setValue("#adminRouteArtifactGeneration", routeProvider(config, "artifact_generation", "ollama"));
-  setValue("#adminRouteCodeGeneration", routeProvider(config, "code_generation", "ollama"));
-  setValue("#adminRouteHelpChat", routeProvider(config, "help_chat", "ollama"));
+  setValue("#adminRouteArtifactGeneration", routeProvider(config, "artifact_generation", "api"));
+  setValue("#adminRouteCodeGeneration", routeProvider(config, "code_generation", "api"));
+  setValue("#adminRouteHelpChat", routeProvider(config, "help_chat", "api"));
   renderLocalModelOptions(config.ollamaModel || config.model || "");
   renderApiModelOptions(config.apiModel || "");
 }
@@ -1429,14 +1457,14 @@ function renderStatus() {
     ["API Key", config.hasApiKey ? "gesetzt" : "nicht gesetzt"],
     ["Chat-Route", routeLabel(routeProvider(config, "general_chat", "default"))],
     ["Architektur-Route", routeLabel(routeProvider(config, "architecture_discovery", "default"))],
-    ["Artefakt-Route", routeLabel(routeProvider(config, "artifact_generation", "ollama"))],
-    ["Code-Route", routeLabel(routeProvider(config, "code_generation", "ollama"))],
-    ["Help-Route", "Nur lokal (Ollama)"],
+    ["Artefakt-Route", routeLabel(routeProvider(config, "artifact_generation", "api"))],
+    ["Code-Route", routeLabel(routeProvider(config, "code_generation", "api"))],
+    ["Help-Route", "OpenAI API mit Usage-Preflight"],
   ].map(meta).join("");
 }
 
 function renderProviderFields() {
-  const provider = document.querySelector("#adminLlmProvider").value || "ollama";
+  const provider = document.querySelector("#adminLlmProvider").value || "api";
   document.querySelector("#adminOllamaFields").classList.toggle("hidden", provider !== "ollama");
   document.querySelector("#adminApiFields").classList.toggle("hidden", provider !== "api");
   const apiProvider = value("#adminApiProvider") || "openai-responses";
@@ -1473,7 +1501,7 @@ async function saveLlmConfig(event) {
       hardware_lab_analysis: { provider: "api", reason: "Herstellerquellen im KI-gefuehrten Hardware-Labor ueber OpenAI Responses nach AI-Usage-Preflight." },
       artifact_generation: { provider: value("#adminRouteArtifactGeneration"), reason: "PlantUML, Pseudocode und andere ableitbare Artefakte." },
       code_generation: { provider: value("#adminRouteCodeGeneration"), reason: "Quellcode- und Pseudocode-Generierung." },
-      help_chat: { provider: "ollama", reason: "GerNetiX Help bleibt ausschliesslich lokal." },
+      help_chat: { provider: "api", reason: "GerNetiX Help verwendet OpenAI nur mit kuratierten Hilfeartikeln und Usage-Preflight." },
     },
   };
   const apiKey = value("#adminApiKey");
@@ -1819,6 +1847,7 @@ function featureLabel(feature) {
     general_chat: "Chat",
     artifact_generation: "Artefakte",
     code_generation: "Codegenerierung",
+    help_assistance: "GerNetiX Help",
     ai_assistant: "KI-Assistent",
   }[feature] || feature || "-";
 }

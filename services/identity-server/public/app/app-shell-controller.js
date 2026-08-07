@@ -26,6 +26,8 @@ async function bootstrap() {
   renderInitialRoute();
   const initialRoute = routeName();
   await Promise.all([refreshBootstrap(initialRoute), loadRouteAssets(initialRoute)]);
+  await loadRouteProjectDetail(initialRoute);
+  await loadRouteAssets(initialRoute);
   await initializePlatformI18n();
   renderAll();
   renderRoute({ contentRendered: true });
@@ -163,7 +165,7 @@ const lazyAssetVersions = {
   flashDialog: "20260804-unified-flash-1",
   flashExecutor: "20260804-unified-flash-2",
   flashProgress: "20260802-flash-progress",
-  guidedProject: "20260805-standard-ai-chat-3",
+  guidedProject: "20260806-learning-feedback-final-1",
   onboarding: "20260719-04",
   onboardingModel: "20260803-performance-1",
   usbDisconnect: "20260801-shared-1",
@@ -186,7 +188,17 @@ async function loadGuidedProjectAssets() {
     loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
     loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
   ]);
+  await loadGuidedProjectCoreAssets();
+}
+
+async function loadGuidedProjectCoreAssets() {
   await loadPlatformScript(`/app/guided-project-view.js?v=${lazyAssetVersions.guidedProject}`);
+}
+
+function activeLearningProjectNeedsHardwareWorkbench() {
+  const projectId = new URLSearchParams(window.location.search).get("project") || "";
+  const project = projectById(projectId);
+  return Boolean(project && !String(project.targetRuntime || "").startsWith("runtime.browser_"));
 }
 
 async function loadIdeWorkbenchAssets() {
@@ -237,7 +249,7 @@ function routeAssetsMissing(route) {
     || typeof GuidedProjectView === "undefined"
     || typeof startBuild === "undefined";
   if (route === "learning-project") return typeof GuidedProjectView === "undefined"
-    || typeof startBuild === "undefined";
+    || (activeLearningProjectNeedsHardwareWorkbench() && typeof startBuild === "undefined");
   if (["device-inventory", "device-recovery"].includes(route)) return typeof startBuild === "undefined";
   if (route === "device-provisioning") return typeof startBuild === "undefined"
     || typeof DeviceOnboardingController === "undefined";
@@ -253,7 +265,7 @@ async function loadRouteAssets(route) {
       loadPlatformScript("/app/project-feedback-ui.js?v=20260802-project-feedback"),
       loadPlatformScript("/app/project-repository-card.js?v=20260803-forgejo-contract-v1"),
     ]);
-    await loadPlatformScript("/app/development-platform.js?v=20260805-applications-1");
+    await loadPlatformScript("/app/development-platform.js?v=20260806-project-summary-lazy-1");
     developmentPlatform().init();
     applyDevelopmentSummary();
     return;
@@ -263,7 +275,11 @@ async function loadRouteAssets(route) {
     return;
   }
   if (route === "learning-project") {
-    await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
+    if (activeLearningProjectNeedsHardwareWorkbench()) {
+      await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
+    } else {
+      await loadGuidedProjectCoreAssets();
+    }
     return;
   }
   if (["device-inventory", "device-recovery"].includes(route)) {
@@ -416,13 +432,14 @@ function platformSummarySectionsForRoute(route) {
   if (route === "dashboard") return ["devices", "builds", "ai", "community", "knowledge", "billing", "progress"];
   if (route === "applications") return ["devices"];
   if (["development-platform", "development-hardware", "ide", "debug", "project-app"].includes(route)) return ["devices", "builds", "progress"];
-  if (["learn", "learning-project-overview", "learning-project"].includes(route)) return ["progress"];
+  if (route === "learn") return ["progress"];
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return ["devices", "builds"];
   if (route === "billing") return ["ai", "billing"];
   return [];
 }
 
 const loadedPlatformBootstrapSections = new Set();
+const projectDetailLoads = new Map();
 
 function platformBootstrapSectionsForRoute(route) {
   const sections = [];
@@ -496,6 +513,40 @@ async function hydratePlatformState(route = routeName()) {
   } catch {
     return false;
   }
+}
+
+async function loadProjectDetail(projectId) {
+  const current = projectById(projectId);
+  if (current?.detailsLoaded) return current;
+  if (!projectDetailLoads.has(projectId)) {
+    const load = getJson(`/api/platform/projects/${encodeURIComponent(projectId)}`)
+      .then((response) => {
+        const project = response.project;
+        state.projects = state.projects.filter((item) => item.id !== project.id).concat(project);
+        if (response.learning_progress) {
+          state.progress = state.progress.filter((item) => item.projectId !== project.id).concat(response.learning_progress);
+        }
+        if (Object.hasOwn(response, "learning_feedback_submitted")) {
+          project.learningFeedbackSubmitted = response.learning_feedback_submitted === true;
+        }
+        return project;
+      })
+      .finally(() => projectDetailLoads.delete(projectId));
+    projectDetailLoads.set(projectId, load);
+  }
+  return projectDetailLoads.get(projectId);
+}
+
+function routeProjectDetailId(route = routeName()) {
+  if (!["learning-project-overview", "learning-project", "ide", "debug", "development-hardware"].includes(route)) return "";
+  return new URLSearchParams(window.location.search).get("project") || "";
+}
+
+async function loadRouteProjectDetail(route = routeName()) {
+  const projectId = routeProjectDetailId(route);
+  if (!projectId || projectById(projectId)?.detailsLoaded) return false;
+  await loadProjectDetail(projectId);
+  return true;
 }
 
 function renderAll() {
@@ -610,6 +661,7 @@ function learningProject() {
       renderDashboard,
       renderGuidedProject,
       projectById,
+      loadProjectDetail,
       progressFor,
       escapeHtml,
       localizeProject: (project) => LearningProjectLocales.project(project, currentLearningLocale()),
@@ -719,6 +771,10 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Meine Anwendungen", route: "" },
     ],
+    nexi: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Nexi", route: "" },
+    ],
     quiz: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Quiz", route: "/app/quiz/" },
@@ -812,6 +868,7 @@ function routeName() {
 
 function topLevelRouteName(route) {
   if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
+  if (route === "nexi") return "applications";
   if (route === "project-app") return "applications";
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
   if (["ide", "debug", "development-hardware"].includes(route)) return "development-platform";
@@ -844,9 +901,11 @@ function navigate(route) {
 function activateCurrentRoute() {
   const activeRoute = routeName();
   const waitingForAssets = routeAssetsMissing(activeRoute);
-  if (waitingForAssets) renderInitialRoute();
+  const projectId = routeProjectDetailId(activeRoute);
+  const waitingForProject = Boolean(projectId && !projectById(projectId)?.detailsLoaded);
+  if (waitingForAssets || waitingForProject) renderInitialRoute();
   else renderRoute();
-  void hydrateRouteAfterNavigation(activeRoute, { enterAfterHydration: waitingForAssets });
+  void hydrateRouteAfterNavigation(activeRoute, { enterAfterHydration: waitingForAssets || waitingForProject });
 }
 
 async function hydrateRouteAfterNavigation(activeRoute = routeName(), { enterAfterHydration = false } = {}) {
@@ -856,8 +915,9 @@ async function hydrateRouteAfterNavigation(activeRoute = routeName(), { enterAft
     hydratePlatformBootstrap(activeRoute).catch(() => false),
     hydratePlatformState(activeRoute),
   ]);
+  const projectChanged = await loadRouteProjectDetail(activeRoute).catch(() => false);
   if (routeName() !== activeRoute) return false;
-  const contentRendered = assetsChanged || bootstrapChanged || stateChanged;
+  const contentRendered = assetsChanged || bootstrapChanged || stateChanged || projectChanged;
   if (contentRendered) renderAll();
   if (enterAfterHydration) renderRoute({ contentRendered });
   return contentRendered;

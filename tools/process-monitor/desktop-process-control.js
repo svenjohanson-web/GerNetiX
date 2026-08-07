@@ -34,6 +34,7 @@ const services = [
 ];
 
 function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false,kind:options.kind||"node-service" }; }
+function monitorSshTarget(config) { return assertSafeSshTarget(config.GERNETIX_STAGING_MONITOR_SSH || config.GERNETIX_STAGING_SSH || ""); }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
 function isIdentityRemoteDevHealth(body){return body?.service==="identity-server"&&body?.persistence_backend==="postgres"&&body?.remote_dev===true;}
@@ -150,11 +151,11 @@ function alertKey(targetService,route){return `${String(targetService||"").repla
 async function remoteProcessStates(options={}) {
   const config=options.config||loadStagingConfig();
   if(!config.GERNETIX_STAGING_SSH)return {configured:false,items:[],error:"VPS nicht konfiguriert: .env.staging.local fehlt oder enthält kein GERNETIX_STAGING_SSH."};
-  const host=assertSafeSshTarget(config.GERNETIX_STAGING_SSH);
+  const host=monitorSshTarget(config);
   const remoteDir=String(config.GERNETIX_STAGING_DIR||"/opt/gernetix");
   if(!remoteDir.startsWith("/")||/[\r\n]/.test(remoteDir))throw new Error("Ungültiges GERNETIX_STAGING_DIR.");
   const run=options.execFileAsync||execFileAsync;
-  const command=`cd ${shellQuote(remoteDir)} && docker compose --env-file .env.vps -f compose.vps.yaml ps --format json`;
+  const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps";
   try {
     const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:12000,maxBuffer:2*1024*1024});
     return {configured:true,host,items:parseComposePs(stdout).filter(isVisibleVpsService),error:""};
@@ -176,11 +177,11 @@ async function remoteLinkIntegrity(options={}) {
     items:[],
     error:"Link-Integrität nicht konfiguriert: GERNETIX_STAGING_SSH fehlt.",
   };
-  const host=assertSafeSshTarget(config.GERNETIX_STAGING_SSH);
+  const host=monitorSshTarget(config);
   const remoteDir=String(config.GERNETIX_STAGING_DIR||"/opt/gernetix");
   if(!remoteDir.startsWith("/")||/[\r\n]/.test(remoteDir))throw new Error("Ungültiges GERNETIX_STAGING_DIR.");
   const run=options.execFileAsync||execFileAsync;
-  const command=`cd ${shellQuote(remoteDir)} && docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-link-integrity.js`;
+  const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic link-integrity";
   let value;
   try {
     const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:20000,maxBuffer:5*1024*1024});
@@ -397,11 +398,11 @@ async function securityRuleStates(options={}) {
   if (!config.GERNETIX_STAGING_SSH) {
     return { configured:false, ...presentSecurityRules(definitions, {}, false), error:"VPS-Sicherheitsstatus nicht konfiguriert: GERNETIX_STAGING_SSH fehlt." };
   }
-  const host = assertSafeSshTarget(config.GERNETIX_STAGING_SSH);
+  const host = monitorSshTarget(config);
   const run = options.execFileAsync || execFileAsync;
   let value;
   try {
-    const { stdout } = await run("ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", host, SECURITY_CHECK_SCRIPT], { windowsHide:true, timeout:15000, maxBuffer:1024*1024 });
+    const { stdout } = await run("ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", host, "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic security"], { windowsHide:true, timeout:15000, maxBuffer:1024*1024 });
     value = { configured:true, host, checkedAt:new Date().toISOString(), ...presentSecurityRules(definitions, parseSecurityCheckOutput(stdout), true), error:"" };
   } catch (error) {
     value = { configured:true, host, ...presentSecurityRules(definitions, {}, false), error:remoteError(error) };

@@ -4,7 +4,7 @@ const DevelopmentPlatform = (() => {
   let projectTemplateCatalog = [];
   let projectTemplatePreviews = {};
 
-  function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic, repositoryCard }) {
+  function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, loadProjectDetail, navigate, escapeHtml, escapeAttribute, openHelpTopic, repositoryCard }) {
     let initialized = false;
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
@@ -187,7 +187,7 @@ const DevelopmentPlatform = (() => {
       const applicationButton = event.target.closest("[data-open-development-application]");
       if (applicationButton) { navigate(`/app/project-app/?project=${encodeURIComponent(applicationButton.dataset.openDevelopmentApplication)}`); return; }
       const configureButton = event.target.closest("[data-configure-development-project]");
-      if (configureButton) { activateProject(configureButton.dataset.configureDevelopmentProject); return; }
+      if (configureButton) { await activateProject(configureButton.dataset.configureDevelopmentProject); return; }
       const rateButton = event.target.closest("[data-rate-development-project]");
       if (rateButton) { openDevelopmentProjectFeedback(rateButton.dataset.rateDevelopmentProject, "rating"); return; }
       const suggestButton = event.target.closest("[data-suggest-development-project]");
@@ -406,12 +406,13 @@ const DevelopmentPlatform = (() => {
       render();
     }
 
-    function openArchitecture(projectId) {
-      const project = developmentProjects().find((item) => item.id === projectId);
+    async function openArchitecture(projectId) {
+      let project = developmentProjects().find((item) => item.id === projectId);
       if (!project) {
         enterProjectStart();
         return;
       }
+      if (!project.detailsLoaded) project = await loadProjectDetail(projectId);
       state.developmentPlatform.activeProjectId = project.id;
       storeActiveProjectId(project.id);
       state.developmentPlatform.projectPanelMode = "closed";
@@ -1353,11 +1354,14 @@ const DevelopmentPlatform = (() => {
       if (!projectId) setProjectStatus("Bitte waehle ein vorhandenes Projekt aus.");
     }
 
-    function activateProject(projectId) {
-      state.developmentPlatform.activeProjectId = projectId;
+    async function activateProject(projectId) {
+      let project = developmentProjects().find((item) => item.id === projectId);
+      if (!project) return;
+      if (!project.detailsLoaded) project = await loadProjectDetail(projectId);
+      state.developmentPlatform.activeProjectId = project.id;
       storeActiveProjectId(projectId);
       state.developmentPlatform.projectPanelMode = "closed";
-      restoreDevelopmentDialog(currentProject());
+      restoreDevelopmentDialog(project);
       state.developmentPlatform.workflowStep = usesTemplateComponentConfiguration() || currentProjectTemplateId() === "touchscreen_game_collection"
         ? "configuration"
         : "project_start";

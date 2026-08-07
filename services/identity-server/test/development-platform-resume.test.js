@@ -25,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicApp, /loadPlatformScript\("\/app\/development-platform\.js\?v=20260805-applications-1"\)/);
+  assert.match(publicApp, /loadPlatformScript\("\/app\/development-platform\.js\?v=20260806-project-summary-lazy-1"\)/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -89,7 +89,8 @@ test("opens selected and last existing development projects directly in the IDE"
   assert.match(publicController, />In IDE oeffnen<\/button>/);
   assert.match(publicController, />Konfiguration<\/button>/);
   assert.match(publicController, /if \(openButton\) \{ await openExistingDevelopmentProject\(openButton\.dataset\.openDevelopmentProject\)/);
-  assert.match(publicController, /if \(configureButton\) \{ activateProject\(configureButton\.dataset\.configureDevelopmentProject\)/);
+  assert.match(publicController, /if \(configureButton\) \{ await activateProject\(configureButton\.dataset\.configureDevelopmentProject\)/);
+  assert.match(publicController, /async function activateProject\(projectId\)[\s\S]*await loadProjectDetail\(projectId\)/);
 });
 
 test("never traps an account without development projects in the open or manage panels", () => {
@@ -146,6 +147,9 @@ test("persists architecture derivation metadata in the project view manifest", (
   assert.match(devServer, /handleDevelopmentProjectDialogSave/);
   assert.match(devServer, /architecture_dialog: architectureDialog/);
   assert.match(devServer, /function normalizeArchitectureDialog/);
+  assert.match(devServer, /function projectViewManifestForClient/);
+  assert.match(devServer, /viewManifest\.architecture_dialog\.messages\.slice\(-12\)/);
+  assert.match(devServer, /input\.messages\.slice\(-12\)/);
   assert.match(devServer, /function stripPlantUmlNotes/);
   assert.match(devServer, /function normalizeArchitecturePlantUml/);
   assert.match(devServer, /function numberGenericIotDeviceInstances/);

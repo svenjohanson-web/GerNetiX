@@ -139,14 +139,14 @@ test("monitor reads VPS compose state through the established staging SSH config
   assert.match(client, /renderVps/);
   let remoteCommand = "";
   const remote = await control.remoteProcessStates({
-    config:{ GERNETIX_STAGING_SSH:"root@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
+    config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
     execFileAsync:async(_file,args)=>{remoteCommand=args.at(-1);return { stdout:[
       JSON.stringify({ Service:"identity-server", Name:"identity", State:"running", Health:"healthy" }),
       JSON.stringify({ Service:"project-postgres-migration", Name:"migration", State:"exited", Health:"" }),
       JSON.stringify({ Service:"project-server", Name:"project", State:"running", Health:"healthy" }),
     ].join("\n"), stderr:"" }}
   });
-  assert.match(remoteCommand, /docker compose --env-file \.env\.vps -f compose\.vps\.yaml ps --format json/);
+  assert.equal(remoteCommand, "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps");
   assert.deepEqual(remote.items.map((item)=>item.id), ["identity-server", "project-server"]);
 });
 
@@ -171,7 +171,7 @@ test("monitor reads link integrity through the fixed Admin Tool diagnostic comma
   let remoteCommand = "";
   const result = await control.remoteLinkIntegrity({
     force:true,
-    config:{ GERNETIX_STAGING_SSH:"root@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
+    config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
     execFileAsync:async(_file,args)=>{
       remoteCommand=args.at(-1);
       return {stdout:JSON.stringify({
@@ -184,7 +184,7 @@ test("monitor reads link integrity through the fixed Admin Tool diagnostic comma
       }),stderr:""};
     },
   });
-  assert.match(remoteCommand, /docker compose --env-file \.env\.vps -f compose\.vps\.yaml exec -T admin-tool node \/app\/services\/admin-tool\/scripts\/read-link-integrity\.js/);
+  assert.equal(remoteCommand, "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic link-integrity");
   assert.doesNotMatch(remoteCommand, /ADMIN_TOOL_ACCESS_TOKEN|postgres|password/i);
   assert.equal(result.summary.broken,1);
   assert.equal(result.items[1].access_scope,"authenticated");
@@ -412,7 +412,7 @@ test("monitor shows all VPS protection rules with status and recommended action"
   assert.equal(checks.firewall_protection, "active");
   assert.equal(checks.web_rate_limit, "missing");
   const result = await control.securityRuleStates({
-    config:{ GERNETIX_STAGING_SSH:"root@gernetix-vps" },
+    config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps" },
     execFileAsync:async()=>({ stdout:[
       "firewall_protection=active",
       "ssh_wireguard_only=active",

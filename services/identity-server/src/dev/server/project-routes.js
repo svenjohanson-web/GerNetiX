@@ -115,6 +115,9 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("DELETE", /^\/api\/platform\/projects\/([^/]+)$/, ({ res, match, session }) => (
     dependencies.handlePlatformProjectDelete(res, session, decodeURIComponent(match[1]))
   ));
+  registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)$/, ({ res, match, session }) => (
+    dependencies.handlePlatformProjectRead(res, session, decodeURIComponent(match[1]))
+  ));
   registerProjectPattern("POST", /^\/api\/platform\/development-projects\/([^/]+)\/dialog$/, ({ req, res, match, session }) => (
     dependencies.handleDevelopmentProjectDialogSave(req, res, session, decodeURIComponent(match[1]))
   ));
@@ -322,7 +325,7 @@ function registerProjectRoutes(dependencies) {
   registry.register({
     method: "POST",
     path: "/api/platform/help-assistant/chat",
-    handler: ({ req, res }) => withSession(req, res, () => helpAssistant.handleChat(req, res)),
+    handler: ({ req, res }) => withSession(req, res, (session) => helpAssistant.handleChat(req, res, session)),
   });
 
   for (const method of ["GET", "POST"]) {

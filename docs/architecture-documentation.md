@@ -64,3 +64,6 @@ externe KI und ausschliesslich lokal verwaltetes BYOK steht in
 Die eigenstaendige GerNetiX-Basissoftware, ihr versionierter Projektvertrag und
 die Modulgrenzen von Nexi sind in der
 [Nexi-Firmwarearchitektur](nexi-firmware-architecture.md) festgelegt.
+Die wiederholbare, jeweils auf einen vollstaendigen Funktionsdurchstich
+begrenzte Umsetzung wird in der
+[Nexi Bottom-up-Test-Roadmap](nexi-bottom-up-test-roadmap.md) fortgeschrieben.

@@ -16,8 +16,14 @@ if(DEFINED GERNETIX_PROJECT_SOURCE_DIR)
   # project stays outside the basissoftware tree, but is compiled into the
   # firmware's application component until project components are split into
   # their own public SDK target.
-  file(GLOB_RECURSE GERNETIX_PROJECT_SOURCES
-    "${GERNETIX_PROJECT_SOURCE_DIR}/*.cpp")
+  if(EXISTS "${GERNETIX_PROJECT_SOURCE_DIR}/sources.cmake")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      "${GERNETIX_PROJECT_SOURCE_DIR}/sources.cmake")
+    include("${GERNETIX_PROJECT_SOURCE_DIR}/sources.cmake")
+  else()
+    file(GLOB_RECURSE GERNETIX_PROJECT_SOURCES CONFIGURE_DEPENDS
+      "${GERNETIX_PROJECT_SOURCE_DIR}/*.cpp")
+  endif()
   if(EXISTS "${GERNETIX_PROJECT_SOURCE_DIR}/include")
     list(APPEND GERNETIX_PROJECT_INCLUDE_DIRS
       "${GERNETIX_PROJECT_SOURCE_DIR}/include")

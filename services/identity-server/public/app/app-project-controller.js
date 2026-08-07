@@ -188,12 +188,22 @@ function renderLearningProjectOverview() {
       <div class="button-row learning-project-overview-actions">
         <button type="button" data-back-to-learning-catalog>${escapeHtml(learningText("back", "Zurück"))}</button>
         <button class="primary" type="button" data-start-learning-project="${escapeAttribute(project.id)}">${escapeHtml(learningText("startProject", "Lernprojekt starten"))}</button>
+        <span class="helper-text" data-learning-project-start-status aria-live="polite"></span>
       </div>
     `;
   }
   target.querySelector("[data-back-to-learning-catalog]")?.addEventListener("click", () => navigate("/app/learn/"));
-  target.querySelector("[data-start-learning-project]")?.addEventListener("click", (event) => {
-    learningProject().open(event.currentTarget.dataset.startLearningProject);
+  target.querySelector("[data-start-learning-project]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const status = target.querySelector("[data-learning-project-start-status]");
+    button.disabled = true;
+    if (status) status.textContent = "Projekt wird vorbereitet …";
+    try {
+      await learningProject().open(button.dataset.startLearningProject);
+    } catch (error) {
+      button.disabled = false;
+      if (status) status.textContent = error?.message || "Das Projekt konnte nicht gestartet werden.";
+    }
   });
   target.querySelectorAll("[data-start-learning-entry]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -395,7 +405,8 @@ function renderLearn() {
 }
 
 function hasProjectApp(project) {
-  return (project.sourceFiles || []).some((source) => source.path === "project-app/manifest.json");
+  return project?.hasProjectApp === true
+    || (project?.sourceFiles || []).some((source) => source.path === "project-app/manifest.json");
 }
 
 function personalLearningProjects() {

@@ -31,7 +31,7 @@ test("all PlantUML renderers use the shared dark theme", () => {
   assert.doesNotMatch(css, /\.plantuml-(?:viewer|diagram)[^}]*background: #fff/);
   assert.doesNotMatch(html, /guided-project-view\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
-  assert.match(html, /app-runtime-utils\.js\?v=20260801-plantuml-contrast/);
+  assert.match(html, /app-runtime-utils\.js\?v=20260806-project-summary-lazy-1/);
 });
 
 test("dark PlantUML theme is injected before diagram elements", () => {

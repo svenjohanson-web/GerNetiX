@@ -61,7 +61,18 @@ Copy-Item .env.staging.example .env.staging.local
 ```
 
 `.env.staging.local` ist absichtlich nicht versioniert. Dort werden SSH-Ziel und VPS-Verzeichnis je Rechner konfiguriert.
-Das SSH-Ziel muss auf die private WireGuard-Adresse oder einen entsprechenden lokalen SSH-Alias zeigen. Oeffentliche SSH-Ziele sind fuer Staging-Administration nicht zulaessig.
+Das SSH-Ziel muss auf die private WireGuard-Adresse oder einen entsprechenden lokalen SSH-Alias zeigen. Oeffentliche SSH-Ziele sind fuer Staging-Administration nicht zulaessig. Der Desktop-Prozessmonitor verwendet dafuer den dedizierten Benutzer `gernetix-monitor`, nicht `root`.
+
+Der dauerhafte Diagnose-/Datenbanktunnel verwendet weiterhin `GERNETIX_STAGING_SSH`.
+Die kurzen Prozessmonitor-Abfragen verwenden dagegen das getrennte
+`GERNETIX_STAGING_MONITOR_SSH` und dürfen keine Portweiterleitungen aufbauen.
+Der Benutzer `gernetix-monitor` besitzt keine interaktive Shell, kein Passwort und
+keinen Docker-Gruppenzugriff. Der Monitor darf ausschliesslich das root-eigene,
+read-only Diagnoseprogramm `/usr/local/sbin/gernetix-monitor-diagnostic` ueber
+eng begrenzte `sudoers`-Eintraege ausfuehren. Das Programm akzeptiert nur die
+Kommandos `security`, `compose-ps` und `link-integrity`. Die Installation muss
+vor der Umstellung mit `visudo` validiert werden; ein Root-Login fuer den Monitor
+ist danach nicht mehr erforderlich.
 
 ## Private Plattform und internen Staging-Admin verwenden
 

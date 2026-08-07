@@ -322,6 +322,18 @@ Cloud ist hier kein Zwangsspeicher für ein Zuhause, sondern die kontoübergreif
 
 Die öffentliche, kundenverständliche Vergleichssicht liegt unter **`/tarife/`**. Sie beginnt nicht mit Tarifnamen oder Sperrstatus, sondern mit einem konkreten Funktionsweg: Was funktioniert bereits als Nachbau, was ergänzt ein kostenloses Konto, was benötigt einen Tarif oder KI-Verbrauch und was muss der Nutzer als Nächstes tun? Erst danach folgt der Tarifvergleich als Nachschlagewerk. Dabei muss die Sicht immer zwischen Zugang/Konto, Cloud-Tarif, KI-Credits, Recovery-Verfahren und separater Home-Lizenz unterscheiden. Noch nicht kaufbare Stufen, Preise oder Kontingente werden ausdrücklich als geplant markiert; zusätzlich nennt die Seite den fachlichen Grund und einen heute möglichen nächsten Schritt. Sie darf aus strategischen Zielwerten keine bereits verfügbare Leistung ableiten.
 
+Für Nexi gilt zusätzlich: Der öffentliche Einstieg führt zum Nachbau, der
+zweite echte Einstieg führt nach der Anmeldung zur eigenständigen
+Produkteinrichtung unter `/app/nexi/`. Diese darf weder durch eine
+Lernprojektseite noch durch eine allgemeine Projektübersicht ersetzt werden.
+Ein Nexi-Lernprojekt gehört separat zum Produkt Lernen. Erklärende Funktionsschritte dürfen nicht wie
+anklickbare Tarifkarten aussehen. Das kostenlose Konto ist der vorgesehene
+Ort für Gerätebindung, persönliche Konfiguration und begrenzte
+Online-Basisfunktionen wie Wetter, Uhrzeit oder einfache Sachauskünfte.
+Basic+ oder Premium werden dort erst bei der Auswahl einer tatsächlich
+zusätzlichen Funktion transparent vorgestellt; sie sind weder Voraussetzung
+für den öffentlichen Nachbau noch ein eigener Startweg auf der Homepage.
+
 | Leistung | Cloud Kostenlos | Cloud Basic+ | Cloud Premium |
 | --- | --- | --- |
 | Konto, Community, öffentliche Hilfe | Ja | Ja | Ja |
@@ -331,7 +343,7 @@ Die öffentliche, kundenverständliche Vergleichssicht liegt unter **`/tarife/`*
 | Geführte Grundlagen und Projektvorschau | Ja | Ja | Ja |
 | Zusätzliche geführte Lernprojekte, geprüfte Templates und Projekt-Assets | Vorschau bzw. einzelne kostenlose Inhalte | Enthalten: praxisnahe Standardbibliothek | Enthalten: vollständige Premium-Bibliothek und verbundene Erweiterungen |
 | Entwicklungs- und Community-KI | Kein enthaltenes Kontingent für kostenpflichtige externe KI; ein registriertes Konto kann bei Bedarf Prepaid-Credits kaufen | Kleines, klar veröffentlichtes Monatskontingent; zusätzlich Prepaid-Credits kaufbar | Höheres, klar veröffentlichtes Monatskontingent; zusätzlich Prepaid-Credits kaufbar |
-| GerNetiX Help KI | Kostenlos für jedes angemeldete Konto; ausschließlich lokales Help-Modell mit begrenztem Hilfe-Kontext | Kostenlos | Kostenlos |
+| GerNetiX Help KI | Kostenoptimiertes OpenAI-Modell mit begrenztem Hilfe-Kontext und KI-Credit-Limit | Im enthaltenen KI-Credit-Rahmen | Im enthaltenen KI-Credit-Rahmen |
 | Projekt-Push, Cloud-/OTA-Komfort und längere Retention | Kleine, transparent dokumentierte Basisquote | Praxis-Kontingent | Erweitertes Kontingent mit Limits und Kostenkontrolle |
 | Home-Server-Softwarelizenz | Nicht enthalten | Im Jahresabo für eine private Home-Instanz enthalten | Im Jahresabo für eine private Home-Instanz enthalten |
 

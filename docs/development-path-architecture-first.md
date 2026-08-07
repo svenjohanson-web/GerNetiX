@@ -66,7 +66,7 @@ Die LLM-Konfiguration ist als Task-Router gedacht:
 - `artifact_generation`: PlantUML, Pseudocode und andere ableitbare Artefakte
 - `code_generation`: Quellcode- und Pseudocode-zu-Code-Aufgaben
 
-Der Chat darf je nach Admin-Einstellung ueber eine externe API laufen. Artefakt- und Codegenerierung bevorzugen standardmaessig ein lokales LLM, um externe Providerkosten zu vermeiden und die Kundenmarge zu schuetzen.
+Chat, Artefakt- und Codegenerierung laufen standardmaessig ueber OpenAI Responses mit `gpt-5-nano`. AI-Usage-Preflight, Tages-/Monatslimits, Modellfreigaben und Kill-Switch schuetzen die Kundenmarge; ein lokales LLM ist nicht Teil des geplanten Standardbetriebs.
 
 Freigegebene Datenquellen im PoC:
 

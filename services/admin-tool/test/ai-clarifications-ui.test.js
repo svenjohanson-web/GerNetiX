@@ -15,15 +15,15 @@ test("admin UI provides a prioritized AI clarification workflow", () => {
   assert.match(script, /Prioritaet setzen/);
 });
 
-test("admin UI provides maintenance for local help knowledge", () => {
+test("admin UI provides maintenance for curated OpenAI help knowledge", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
   const script = fs.readFileSync(path.join(__dirname, "..", "public", "admin-config.js"), "utf8");
 
   assert.match(html, /data-admin-sub-view="ai-help-knowledge"/);
   assert.match(html, /id="aiHelpKnowledgeForm"/);
-  assert.match(html, /nur an das lokale Ollama-Modell/);
+  assert.match(html, /nur nach Wissenstreffer und AI-Usage-Preflight an OpenAI/);
   assert.match(script, /\/api\/admin\/ai-help-articles/);
-  assert.match(script, /Help-Wissen wird gespeichert und lokal eingebettet/);
+  assert.match(script, /Help-Wissen wird gespeichert und für die OpenAI-Suche eingebettet/);
 });
 
 test("admin UI provides encrypted IONOS SMTP configuration", () => {

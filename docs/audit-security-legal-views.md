@@ -63,7 +63,7 @@ Admin (WireGuard + separates Admin-Login)
 | Empfaenger / Grenze | Uebertragene Daten | Kontrollpunkt |
 | --- | --- | --- |
 | IONOS SMTP | E-Mail-Adresse und Nachrichteninhalt fuer Verifikation oder Passwort-Reset | TLS, verschluesselte SMTP-Konfiguration, kein Credential-Logging; Auftragsverarbeiter- und Transferpruefung offen. |
-| Lokaler Ollama | nur die fuer die jeweilige lokale Route benoetigten Prompts bzw. kuratierten Help-Artikel | GerNetiX Help nutzt ausschliesslich lokale `help_chat`-Route; ohne passenden Help-Treffer kein Modellaufruf. |
+| OpenAI | nur der fuer die jeweilige Route freigegebene Kontext; Help erhaelt ausschliesslich passende kuratierte Help-Artikel | Alle kostenpflichtigen Routen durchlaufen AI Usage. GerNetiX Help nutzt `store:false`; ohne passenden Help-Treffer gibt es keinen Modellaufruf und keine Credit-Reservierung. |
 | Optionaler externer LLM-Provider | nur per AI-Context-Policy und Grant freigegebener Kontext sowie Provider-/Modellmetadaten | Providervertrag, Region/Transfer, Datenminimierung und Freigabe muessen je aktivierter Route nachgewiesen werden. |
 | Web-Push-Provider | konto- und projektgebundene Push-Subscription und technische Nachricht | Kein globaler Broadcast; Projektmeldungen nur innerhalb derselben Konto-/Projektpartition, Sicherheitsalarme nur an explizite Empfaengergruppe. |
 | VPS/Hosting | alle produktiven Laufzeitdaten in verschluesselungsbeduerftigen Volumes | Externe, verschluesselte Backups und Restore-Test sind noch offen. |

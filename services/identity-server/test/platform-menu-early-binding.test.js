@@ -13,7 +13,7 @@ const eventBindings = fs.readFileSync(path.join(appRoot, "app-event-bindings.js"
 
 test("loads the hamburger binding before route and feature controllers", () => {
   const earlyIndex = html.indexOf("/app/app-shell-early.js?v=20260805-shell-menu-1");
-  const shellIndex = html.indexOf("/app/app-shell-controller.js?v=20260805-applications-1");
+  const shellIndex = html.indexOf("/app/app-shell-controller.js?v=20260806-learning-feedback-final-1");
   const bindingsIndex = html.indexOf("/app/app-event-bindings.js?v=20260805-shell-menu-1");
   assert.ok(earlyIndex >= 0);
   assert.ok(earlyIndex < shellIndex);

@@ -1,0 +1,143 @@
+.wake-lab {
+  --wake-accent: #5ce1e6;
+  --wake-green: #58d68d;
+  --wake-red: #ff7b86;
+}
+
+.wake-lab-privacy {
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--wake-accent);
+  background: rgba(92, 225, 230, 0.07);
+  color: var(--muted-text, #b8c3d7);
+}
+
+.wake-lab-console {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid rgba(126, 151, 184, 0.34);
+  border-radius: 0.75rem;
+  background: rgba(5, 12, 25, 0.42);
+}
+
+.wake-lab-indicator {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(92, 225, 230, 0.46);
+}
+
+.wake-lab-indicator span {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: #718096;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.wake-lab[data-wake-state="recording"] .wake-lab-indicator span {
+  background: var(--wake-red);
+  box-shadow: 0 0 0.9rem rgba(255, 123, 134, 0.75);
+  animation: wake-recording-pulse 900ms ease-in-out infinite;
+}
+
+.wake-lab[data-wake-state="ready"] .wake-lab-indicator span,
+.wake-lab[data-wake-state="detected"] .wake-lab-indicator span {
+  background: var(--wake-green);
+  box-shadow: 0 0 0.9rem rgba(88, 214, 141, 0.68);
+}
+
+.wake-lab[data-wake-state="rejected"] .wake-lab-indicator span,
+.wake-lab[data-wake-state="error"] .wake-lab-indicator span {
+  background: var(--wake-red);
+}
+
+.wake-lab-progress,
+.wake-lab-status {
+  margin: 0;
+}
+
+.wake-lab-progress {
+  color: var(--wake-accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wake-lab-status {
+  margin-top: 0.28rem;
+}
+
+.wake-lab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.wake-lab-actions button {
+  min-height: 2.75rem;
+}
+
+.wake-lab-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.wake-lab .text-action {
+  border: 0;
+  background: transparent;
+  color: var(--wake-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.wake-result {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 0.7rem;
+}
+
+.wake-result.detected {
+  border: 1px solid rgba(88, 214, 141, 0.5);
+  background: rgba(88, 214, 141, 0.1);
+}
+
+.wake-result.rejected {
+  border: 1px solid rgba(255, 123, 134, 0.46);
+  background: rgba(255, 123, 134, 0.08);
+}
+
+.wake-result span {
+  color: var(--muted-text, #b8c3d7);
+}
+
+.wake-lab-steps {
+  margin: 1rem 0 0;
+  padding-left: 1.3rem;
+}
+
+@keyframes wake-recording-pulse {
+  50% { transform: scale(1.25); }
+}
+
+@media (max-width: 640px) {
+  .wake-lab-console { grid-template-columns: 1fr; }
+  .wake-lab-indicator { width: 2.4rem; height: 2.4rem; }
+  .wake-lab-actions { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wake-lab[data-wake-state="recording"] .wake-lab-indicator span {
+    animation: none;
+  }
+}

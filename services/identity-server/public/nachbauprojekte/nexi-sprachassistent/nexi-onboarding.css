@@ -1,0 +1,220 @@
+.nexi-linear-main {
+  display: grid;
+  max-width: 980px;
+  gap: 0;
+}
+
+.nexi-linear-main > .panel {
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nexi-simple-intro,
+.nexi-simple-flash,
+.nexi-commissioning {
+  display: grid;
+  gap: 1rem;
+}
+
+.nexi-simple-intro h1,
+.nexi-simple-intro p,
+.nexi-simple-flash h2,
+.nexi-simple-flash p,
+.nexi-commissioning h1,
+.nexi-commissioning > p {
+  margin: 0;
+}
+
+.nexi-simple-intro h1 {
+  max-width: 760px;
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  line-height: 1.08;
+}
+
+.nexi-simple-intro .lead {
+  max-width: 790px;
+  color: #d7e2ee;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  line-height: 1.6;
+}
+
+.nexi-capability-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.6rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  color: #b8c8d8;
+  list-style: none;
+}
+
+.nexi-capability-line li::before {
+  content: "✓";
+  margin-right: 0.45rem;
+  color: #67e8f9;
+  font-weight: 900;
+}
+
+.nexi-local-note {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(126, 151, 184, 0.3);
+  color: #b8c8d8;
+}
+
+.nexi-simple-flash {
+  margin-top: 1.5rem;
+  padding-block: clamp(1.4rem, 4vw, 2.3rem);
+  border-top: 1px solid rgba(126, 151, 184, 0.3) !important;
+}
+
+.nexi-simple-flash > p:not(.eyebrow, .safety, .nexi-after-flash) {
+  max-width: 760px;
+  color: #c6d3df;
+  line-height: 1.65;
+}
+
+.nexi-flash-action {
+  display: grid;
+  max-width: 620px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 0.85rem 1rem;
+  margin-top: 0.4rem;
+}
+
+.nexi-flash-action p {
+  margin: 0;
+}
+
+.nexi-after-flash {
+  color: #9fb2c5;
+}
+
+.nexi-already-flashed {
+  width: fit-content;
+  margin-top: 0.25rem;
+}
+
+.nexi-stage-nav {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0;
+  color: #91a5b8;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.nexi-stage-nav .done,
+.nexi-stage-nav .current {
+  color: #67e8f9;
+}
+
+.nexi-commissioning-intro {
+  max-width: 760px;
+  color: #c6d3df;
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+.nexi-commissioning-steps {
+  display: grid;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: nexi-step;
+}
+
+.nexi-commissioning-step {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid rgba(126, 151, 184, 0.3);
+  counter-increment: nexi-step;
+}
+
+.nexi-commissioning-step::before {
+  content: counter(nexi-step);
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid #22d3ee;
+  border-radius: 50%;
+  color: #67e8f9;
+  font-weight: 900;
+}
+
+.nexi-step-content {
+  min-width: 0;
+}
+
+.nexi-step-content h2,
+.nexi-step-content h3,
+.nexi-step-content p {
+  margin: 0;
+}
+
+.nexi-step-content h2 {
+  font-size: clamp(1.2rem, 2.6vw, 1.55rem);
+}
+
+.nexi-step-content > p {
+  margin-top: 0.55rem;
+  color: #b8c8d8;
+  line-height: 1.6;
+}
+
+.nexi-led-key {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.nexi-led-key div {
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--led-color);
+}
+
+.nexi-led-key strong,
+.nexi-led-key span {
+  display: block;
+}
+
+.nexi-led-key span {
+  margin-top: 0.2rem;
+  color: #91a5b8;
+  font-size: 0.9rem;
+}
+
+.nexi-next-build {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-left: 3px solid #67e8f9;
+  background: rgba(103, 232, 249, 0.07);
+  color: #c7d6e4;
+  line-height: 1.55;
+}
+
+@media (max-width: 680px) {
+  .nexi-flash-action {
+    grid-template-columns: 1fr;
+  }
+
+  .nexi-flash-action .action-button {
+    width: 100%;
+  }
+
+  .nexi-commissioning-step {
+    grid-template-columns: 2.35rem minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .nexi-led-key {
+    grid-template-columns: 1fr;
+  }
+}

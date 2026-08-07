@@ -32,6 +32,10 @@ class HardwarePlatform final {
   esp_err_t waitForButtonState(BoardButton button, bool expectedPressed);
   esp_err_t readAudio(void *destination, size_t bytes);
   esp_err_t writeAudio(const void *source, size_t bytes);
+  esp_err_t readRtcRegisters(
+      uint8_t firstRegister, uint8_t *destination, size_t size);
+  esp_err_t writeRtcRegisters(
+      uint8_t firstRegister, const uint8_t *source, size_t size);
 
   static constexpr size_t STATUS_LED_COUNT = 7;
   static constexpr uint8_t STATUS_LED_BRIGHTNESS = 24;

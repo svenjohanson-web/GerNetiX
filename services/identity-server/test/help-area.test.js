@@ -122,7 +122,7 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(css, /\.help-topic-group \{/);
   assert.match(helpContent, /"ai-premium"/);
   assert.match(helpContent, /externe KI-Anbieter/);
-  assert.match(informationView, /lokale Hilfe-Modell und ist für angemeldete Konten kostenlos/);
+  assert.match(informationView, /kostenoptimierte OpenAI-Modell ausschließlich mit passenden Hilfeartikeln/);
   assert.match(informationView, /access\.hasAccount/);
 });
 

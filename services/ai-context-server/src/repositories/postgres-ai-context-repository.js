@@ -27,6 +27,7 @@ class PostgresAiContextRepository {
       client.release();
     }
     await this.seedDefaults();
+    await this.migrateOpenAiProviderDefaults();
     await this.pool.query("CREATE INDEX IF NOT EXISTS ai_context_architecture_components_embedding_hnsw ON ai_context_architecture_components USING hnsw (embedding vector_cosine_ops)");
     await this.pool.query("CREATE INDEX IF NOT EXISTS ai_context_intent_examples_embedding_hnsw ON ai_context_intent_examples USING hnsw (embedding vector_cosine_ops)");
     await this.pool.query("CREATE INDEX IF NOT EXISTS ai_context_help_articles_embedding_hnsw ON ai_context_help_articles USING hnsw (embedding vector_cosine_ops)");
@@ -42,6 +43,14 @@ class PostgresAiContextRepository {
       await this.saveHelpArticle(article, { preserveExisting:true, skipEmbedding:true });
     }
     await this.savePolicy(defaultPolicy(), { preserveExisting:true });
+  }
+
+  async migrateOpenAiProviderDefaults() {
+    const migrationId = "ai-context-openai-defaults-v1";
+    if (await this.hasMigration(migrationId)) return;
+    const helpSource = defaultSources().find((source) => source.source_id === "ai_source.help_knowledge");
+    if (helpSource) await this.saveSource(helpSource);
+    await this.markMigration(migrationId);
   }
 
   async backfillMissingEmbeddings() {

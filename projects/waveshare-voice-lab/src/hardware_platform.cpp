@@ -31,6 +31,7 @@ constexpr uint8_t TCA9555_ADDRESS = 0x20;
 constexpr uint8_t TCA9555_INPUT_PORT_1 = 0x01;
 constexpr uint8_t TCA9555_OUTPUT_PORT_1 = 0x03;
 constexpr uint8_t TCA9555_CONFIG_PORT_1 = 0x07;
+constexpr uint8_t PCF85063_ADDRESS = 0x51;
 constexpr uint8_t SPEAKER_PA_MASK = 0x01;  // EXIO8
 constexpr uint8_t EFFECT_BUTTON_MASK = 0x02;  // EXIO9 / KEY1
 constexpr uint8_t RECORD_BUTTON_MASK = 0x04;  // EXIO10 / KEY2
@@ -51,6 +52,7 @@ constexpr std::array<ExpectedDevice, 4> EXPECTED_DEVICES{{
 
 i2c_master_bus_handle_t controlBus = nullptr;
 i2c_master_dev_handle_t ioExpander = nullptr;
+i2c_master_dev_handle_t rtcDevice = nullptr;
 i2s_chan_handle_t txChannel = nullptr;
 i2s_chan_handle_t rxChannel = nullptr;
 const audio_codec_data_if_t *recordData = nullptr;
@@ -236,6 +238,14 @@ esp_err_t initializeExpander() {
       | RECORD_BUTTON_MASK | VOLUME_BUTTON_MASK);
   return writeExpanderRegister(TCA9555_CONFIG_PORT_1, direction);
 }
+
+esp_err_t initializeRtc() {
+  i2c_device_config_t config{};
+  config.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+  config.device_address = PCF85063_ADDRESS;
+  config.scl_speed_hz = 400000;
+  return i2c_master_bus_add_device(controlBus, &config, &rtcDevice);
+}
 }  // namespace
 
 HardwarePlatform &HardwarePlatform::instance() {
@@ -263,7 +273,8 @@ esp_err_t HardwarePlatform::initializeAudioHardware() {
   esp_err_t result = initializeControlBus();
   if (result != ESP_OK) return result;
   if (!probeExpectedDevices()) return ESP_ERR_NOT_FOUND;
-  result = initializeI2s();
+  result = initializeRtc();
+  if (result == ESP_OK) result = initializeI2s();
   if (result == ESP_OK) result = initializeRecordCodec();
   if (result == ESP_OK) result = initializePlayCodec();
   if (result == ESP_OK) result = initializeExpander();
@@ -347,6 +358,24 @@ esp_err_t HardwarePlatform::writeAudio(const void *source, size_t bytes) {
       == ESP_CODEC_DEV_OK ? ESP_OK : ESP_FAIL;
 }
 
+esp_err_t HardwarePlatform::readRtcRegisters(
+    uint8_t firstRegister, uint8_t *destination, size_t size) {
+  if (rtcDevice == nullptr) return ESP_ERR_INVALID_STATE;
+  if (destination == nullptr || size == 0) return ESP_ERR_INVALID_ARG;
+  return i2c_master_transmit_receive(
+      rtcDevice, &firstRegister, 1, destination, size, 50);
+}
+
+esp_err_t HardwarePlatform::writeRtcRegisters(
+    uint8_t firstRegister, const uint8_t *source, size_t size) {
+  if (rtcDevice == nullptr) return ESP_ERR_INVALID_STATE;
+  if (source == nullptr || size == 0 || size > 15) return ESP_ERR_INVALID_ARG;
+  uint8_t command[16]{};
+  command[0] = firstRegister;
+  for (size_t index = 0; index < size; ++index) command[index + 1] = source[index];
+  return i2c_master_transmit(rtcDevice, command, size + 1, 50);
+}
+
 void HardwarePlatform::shutdown() {
   const bool recordCodecOwnedRx = recordDevice != nullptr;
   const bool playCodecOwnedTx = playDevice != nullptr;
@@ -395,6 +424,10 @@ void HardwarePlatform::shutdown() {
   if (ioExpander != nullptr) {
     i2c_master_bus_rm_device(ioExpander);
     ioExpander = nullptr;
+  }
+  if (rtcDevice != nullptr) {
+    i2c_master_bus_rm_device(rtcDevice);
+    rtcDevice = nullptr;
   }
   if (controlBus != nullptr) {
     i2c_del_master_bus(controlBus);

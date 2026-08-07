@@ -60,7 +60,7 @@ const InformationView = (() => {
         <form id="helpChatForm" class="help-chat-form ai-chat__composer" data-ai-chat-form>
           <label for="helpChatInput">Your question</label>
           <span class="help-chat-input-box ai-chat__input-box"><textarea id="helpChatInput" class="ai-chat__input" data-ai-chat-input rows="2" placeholder="${access.hasAccount ? "Enter your question about GerNetiX..." : "Bitte melde dich an, um GerNetiX Help zu fragen."}" ${access.hasAccount && !chatBusy ? "" : "disabled"}></textarea><button class="help-chat-send-button ai-chat__send" data-ai-chat-send type="submit" aria-label="Frage senden" title="Frage senden" ${access.hasAccount && !chatBusy ? "" : "disabled"}>&uarr;</button></span>
-          <p class="chat-premium-hint">GerNetiX Help verwendet ausschließlich das lokale Hilfe-Modell und ist für angemeldete Konten kostenlos.</p>
+          <p class="chat-premium-hint">GerNetiX Help verwendet das kostenoptimierte OpenAI-Modell ausschließlich mit passenden Hilfeartikeln. Die Nutzung unterliegt den KI-Limits des Kontos.</p>
         </form>
       </section>`}`;
     if (article?.hardwareCatalog) loadHardwareCatalog(mount);

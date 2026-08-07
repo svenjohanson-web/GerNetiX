@@ -1,0 +1,41 @@
+#!/bin/sh
+set -eu
+
+# Fixed, read-only command surface for the desktop process monitor.
+# Install root-owned as /usr/local/sbin/gernetix-monitor-diagnostic and allow
+# only this exact path through sudoers for the gernetix-monitor account.
+
+case "${1:-}" in
+  security)
+    emit() {
+      key="$1"
+      command="$2"
+      if sh -c "$command"; then printf '%s=active\n' "$key"; else printf '%s=missing\n' "$key"; fi
+    }
+    emit firewall_protection 'systemctl is-active --quiet gernetix-firewall.service && nft list chain inet gernetix_host input 2>/dev/null | grep -q "policy drop"'
+    emit ssh_wireguard_only 'nft list chain inet gernetix_host input 2>/dev/null | grep -q "iifname \\"wg0\\" tcp dport 22 accept"'
+    emit ssh_password_disabled 'sshd -T 2>/dev/null | grep -q "^passwordauthentication no$"'
+    emit fail2ban_sshd 'systemctl is-active --quiet fail2ban.service && fail2ban-client status sshd >/dev/null 2>&1'
+    emit web_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_web_per_ip:10m rate=10r/s"'
+    emit auth_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_auth_per_ip:10m rate=5r/m"'
+    emit build_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_build_per_ip:10m rate=30r/s"'
+    emit mqtt_tls_auth 'docker exec gernetix-mqtt-broker-1 grep -q "allow_anonymous false" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^require_certificate true" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^use_identity_as_username true" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^acl_file " /mosquitto/config/mosquitto.conf'
+    emit mqtt_connection_rate 'nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv4" && nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv6"'
+    emit mqtt_resource_limits 'docker exec gernetix-mqtt-broker-1 grep -q "max_connections 2048" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "max_packet_size 131072" /mosquitto/config/mosquitto.conf'
+    emit admin_loopback 'ss -lnt 2>/dev/null | grep -q "127.0.0.1:4600"'
+    emit services_private '! ss -lnt 2>/dev/null | grep -Eq "(0.0.0.0|\\[::\\]):(4300|4400|4700|4800|4900|4910|5000|5500)"'
+    emit root_login_disabled 'sshd -T 2>/dev/null | grep -q "^permitrootlogin no$"'
+    ;;
+  compose-ps)
+    cd /opt/gernetix
+    exec docker compose --env-file .env.vps -f compose.vps.yaml ps --format json
+    ;;
+  link-integrity)
+    cd /opt/gernetix
+    exec docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-link-integrity.js
+    ;;
+  *)
+    echo "unsupported diagnostic command" >&2
+    exit 64
+    ;;
+esac

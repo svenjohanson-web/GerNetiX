@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Nutzer koennen Lernprojekte, Projekt-Templates und eigene Entwicklungsprojekte anhand derselben vier Kriterien bewerten. Templates und Entwicklungsprojekte bieten zusaetzlich einen eigenen Feedback-Knopf fuer konkrete Verbesserungsvorschlaege. Die zentrale Admin-Sicht macht wiederkehrende Staerken und Schwachstellen sichtbar, ohne das Admin Tool zur fachlichen Datenquelle zu machen.
+Nutzer koennen abgeschlossene Lernprojekte, Projekt-Templates und eigene Entwicklungsprojekte anhand derselben vier Kriterien bewerten. Ein Lernprojekt fragt diese Bewertung genau einmal und ausschliesslich nach dem letzten abgeschlossenen Schritt ab. Templates und Entwicklungsprojekte bieten zusaetzlich einen eigenen Feedback-Knopf fuer konkrete Verbesserungsvorschlaege. Die zentrale Admin-Sicht macht wiederkehrende Staerken und Schwachstellen sichtbar, ohne das Admin Tool zur fachlichen Datenquelle zu machen.
 
 ## Bewertungsskalen
 
@@ -19,10 +19,10 @@ Ein Verbesserungsvorschlag besteht aus einem verpflichtenden Freitext und enthae
 
 ## Verantwortlichkeiten
 
-- Die Plattform UI zeigt das Formular im accountgebundenen Lern- oder Entwicklungsprojekt sowie direkt an der ausgewaehlten Projektvorlage.
+- Die Plattform UI zeigt das Lernprojektformular erst, wenn der Project Server den vollstaendigen Projektfortschritt als `completed` gespeichert hat. Nach einer erfolgreichen Bewertung erscheint es fuer dieses accountgebundene Projekt nicht erneut.
 - Der Identity Server prueft die aktive Sitzung und bei Projekten den Projektbesitz. Template-IDs muessen im serverseitigen Katalog vorkommen. Projekt-, Template- und Account-Zuordnung werden nicht aus frei uebermittelten Nutzerwerten uebernommen.
-- Der Project Server validiert die vier Skalen und persistiert Projektfeedback in `project_learning_feedback` sowie Template-Feedback in `project_template_feedback` in PostgreSQL als fachliche Wahrheit.
-- Das Admin Tool liest beide Feedbackarten ueber die vorhandene Project-Server-Schnittstelle, berechnet Mittelwerte nur aus Bewertungen und bietet Projekt-/Templatefilter. Es persistiert keine zweite fachliche Kopie.
+- Der Project Server validiert die vier Skalen, prueft den vollstaendigen Lernfortschritt und weist jede zweite Lernprojektbewertung desselben Accounts und Projekts ab. Er persistiert Projektfeedback in `project_feedback` sowie Template-Feedback in `project_template_feedback` in PostgreSQL als fachliche Wahrheit.
+- Lernprojektfeedback enthaelt neben der accountgebundenen Projektinstanz die stabile `learning_project_id` und den Katalogtitel. Das Admin Tool gruppiert dadurch alle Instanzen desselben Lernprojekts, zeigt je Kriterium Mittelwert und Anzahl sowie die 1-bis-5-Verteilung aller vier Skalen. Es persistiert keine zweite fachliche Kopie.
 
 ## Datenschutz
 
@@ -30,6 +30,6 @@ Die Standardbewertung enthaelt keine Kontaktfreigabe. Account- und Kontaktdaten 
 
 ## Nachweis
 
-- Project-Server-Tests fuer vollstaendige 1-bis-5-Skalen, Template-Bewertungen und getrennte Verbesserungsvorschlaege
+- Project-Server-Tests fuer Projektabschluss, Einmaligkeit, vollstaendige 1-bis-5-Skalen, Template-Bewertungen und getrennte Verbesserungsvorschlaege
 - Identity-Routentests fuer serverseitig abgeleiteten Account, geprueften Projektbesitz und Katalog-Templates
 - Admin-UI-Vertragstest fuer Navigation, zentrale Sicht, Projekt-/Templatefilter und API-Abruf

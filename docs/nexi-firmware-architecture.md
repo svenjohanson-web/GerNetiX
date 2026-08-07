@@ -125,6 +125,9 @@ Die Runtime arbeitet mindestens mit diesen fachlichen Verträgen:
 | Vertrag | Eingabe | Ausgabe / Wirkung |
 | --- | --- | --- |
 | `InputProvider` | Audiostream oder Serviceereignis | null oder mehr typisierte `Intent`s |
+| `AudioFrameSource` | fluechtiges mono PCM16 mit 16 kHz | nicht besitzende 10-ms-Frames |
+| `WakeWordDetector` | einzelner `AudioFrame` | lokaler Treffer mit Konfidenz oder kein Treffer |
+| `WakeWordPipeline` | Audioframes, monotone Zeit und Abbruch-Intent | `WakeDetected`, begrenztes Befehlsfenster und Feedbackereignis |
 | `IntentRouter` | `Intent` plus Sitzungszustand | Runtime-Aktion oder Weitergabe an aktive Anwendung |
 | `Application` | Lifecycle und anwendungsspezifische Intents | deklarative Audio-/Feedback-Anforderungen |
 | `AudioEngine` | Capture-/Playback-Anforderung | Abschluss-, Pegel- oder Fehlerereignis |
@@ -268,6 +271,11 @@ flowchart LR
   Geraet verlassen.
 - Kleine Einstellungen und lokaler Fortschritt duerfen versioniert in NVS
   liegen; Konten, Credits und Entitlements bleiben Serverwahrheit.
+- Persoenliche Wake- und Befehlsprofile duerfen ausschliesslich als
+  versionierte, quantisierte Merkmalsfolgen in einem eigenen NVS-Namespace
+  liegen. Roh-PCM bleibt fluechtig. Phrasenbindung und Pruefsumme verhindern,
+  dass ein falsches oder beschaedigtes Profil aktiviert wird; KEY3 beim Start
+  loescht alle Sprachprofile fuer die bewusste Neueinrichtung.
 - Eine Aufnahme des Stimmenstudios bleibt nur fuer die laufende lokale Sitzung
   im PSRAM und wird danach sicher verworfen.
 - Das Aktivierungswort darf einen kleinen fluechtigen Ringpuffer verwenden;
@@ -286,6 +294,10 @@ Die Migration bleibt in jedem Schritt baubar und lokal nutzbar. Der bestehende
 Voice-Lab-Ablauf wird erst entfernt, wenn sein Ersatz denselben Vertragstest
 und einen echten Firmware-Build besteht.
 
+Die fortschreibbare Reihenfolge der einzelnen Funktionsdurchstiche, ihr
+Nachweisstatus und der jeweils genau eine naechste Arbeitsblock stehen in der
+[Nexi Bottom-up-Test-Roadmap](nexi-bottom-up-test-roadmap.md).
+
 Stand August 2026:
 
 | Baustein | Status | Nachweis |
@@ -295,9 +307,15 @@ Stand August 2026:
 | typisierte Intents und Application Manager | umgesetzt | hostseitiger Lifecycle-/Routing-Test |
 | Service-Tasten als InputProvider | umgesetzt | gleiche Intent-Schnittstelle wie kuenftige Spracheingabe |
 | Stimmenstudio als Anwendung | umgesetzt | Aufnahme, Effekte, Lautstaerke und fluechtiger PSRAM-Puffer |
+| Reaktionsspiel als Anwendung | in Umsetzung | Hardwareunabhaengiger Tick-Zustandsautomat fuer zufaellige Wartezeit, KEY1/KEY2/KEY3-Ziele, Fehlstart, Treffer und Timeout. Ein getrennter Waveshare-Adapter erzeugt LED-Muster und kurze lokale I2S-Toene. Hosttests und Firmware-Build erfolgreich, Boardtest offen. |
+| Klangquiz als Anwendung | in Umsetzung | `LocalQuizPack` fordert ID, Version, eindeutige Aufgaben und maximal zwoelf Eintraege; `LocalQuizCatalog` begrenzt auf vier eindeutige Pakete und 48 Aufgaben. Drei eingebaute v1-Pakete mit insgesamt 24 Aufgaben unterscheiden langsame, schnelle hohe und tiefere Tonfolgen. Der hardwareunabhaengige App-Kern bietet eine Tasten-Paketauswahl, begrenzt das Antwortfenster und haelt den Punktestand fluechtig. Ein Boardadapter nutzt den gemeinsamen lokalen Tongenerator und LEDs. Hosttests und Firmware-Build erfolgreich, Boardtest offen. |
+| Lokale Geschichten als Anwendung | in Umsetzung | `LocalStoryPack` und `LocalStoryCatalog` begrenzen Inhalte auf vier Pakete, vier Geschichten je Paket, zwoelf Geschichten und 120 Sekunden insgesamt; eine einzelne Geschichte darf hoechstens 45 Sekunden dauern. Zwei v1-Pakete enthalten drei eigene deutsche Kurzgeschichten als insgesamt 228.785 PCM8-Samples im Firmware-Flash. Der reine App-Kern bietet umlaufende Tastenwahl; der Boardadapter wandelt blockweise von 8-kHz-Mono nach 16-kHz-Stereo. Kein Konto, Provider, Download oder Laufzeit-Persistenzpfad ist beteiligt. Hosttests und Firmware-Build erfolgreich, Boardtest offen; die Ausgabe blockiert Eingaben noch bis zum Ende der Geschichte. |
+| Lokaler Begleiter als Anwendung | in Umsetzung | `VoiceCompanionApplication` fuehrt Energie, Freude, Vertrauen und Interaktionen hinter abstrakten Store- und Feedbackports. Das 16-Byte-v2-Format besitzt Kennung und Pruefsumme, liest das 13-Byte-v1-Format und schreibt migrierte Daten koalesziert in `nexi_friend/state`. Reset loescht nur diesen Schluessel. Der Kern importiert weder NVS, Treiber noch Netzwerk; ein Waveshare-Adapter erzeugt lokale LEDs und Toene. Hosttests und Firmware-Build erfolgreich, Boardtest offen. |
+| Lokaler Timer als Anwendung | in Umsetzung | `LocalTimerApplication` kapselt Auswahl, Countdown, Pause, Verlaengerung, Abbruch, Wiederanlauf und Alarm hinter `MonotonicClock`, `RetainedClock`, `TimerStateStore`, `TimerPowerControl` und Feedback. Der ESP-Adapter verwendet `esp_timer_get_time()` fuer den laufenden Countdown, liest den PCF85063 ueber den exklusiv von `HardwarePlatform` besessenen I2C-Bus, speichert einen geprueften 28-Byte-v1-Datensatz unter `nexi_timer/state` und kann einen laufenden Timer nach langem KEY3 ueber den internen ESP32-RTC-Timer aus Deep Sleep wecken. Der Kern importiert weder Treiber, NVS noch Netzwerk. Hosttests und Firmware-Build erfolgreich; RTC-Batterie-, Neustart-, Deep-Sleep- und Alarmtest auf dem Board offen. |
 | lokale Capability Policy und Privacy Gate | umgesetzt | Offline-/Freigabe-Contract-Test |
-| Wake Word und lokale Sprachbefehle | geplant | noch kein Produktversprechen in der Firmware |
-| Hellseher, Lernbegleiter und Sprach-Tamagotchi | geplant | Architektur- und Produktanforderung, noch keine Runtime-App |
+| Aktivierungsphrase | in Umsetzung | Der fruehere getrennte `Hey Nexi`-Boardpfad ist hardwarevalidiert. Der aktive Produktpfad bettet die Aktivierungsphrase nun in vollstaendige persoenliche Saetze ein, damit kein kuenstlicher Sprechstopp noetig ist. |
+| lokale Sprachbefehle | in Umsetzung | `LocalVoiceEntry` bindet bis zu acht feste lokale Saetze ohne dynamische Allokation. Alle acht Plaetze erzeugen aktuell `SelectApplication(VoiceStudio/ReactionGame/LocalQuiz/LocalStories)`, `StopApplication`, `AdjustVolume(+1/-1)` und `NextEffect`. Profile liegen in der 256-KiB-NVS-Partition `nexivoice2`; die fruehere 60-KiB-Partition wird schluesselweise und erst nach erfolgreichem Schreiben migriert. OTA-App-Adressen und Standard-NVS bleiben unveraendert. Hosttests und Firmware-Build erfolgreich, Satz-Boardtest offen; waehrend blockierender Aufnahme/Wiedergabe pausiert die Erkennung noch. |
+| Hellseher und Lernbegleiter | geplant | Architektur- und Produktanforderung, noch keine Runtime-App |
 | Cloud Provider, Credits und Premium | geplant | ohne explizite Freigabe ist technisch kein Uploadpfad vorhanden |
 
 Die aktuelle Tastenbedienung ist damit bewusst ein austauschbarer

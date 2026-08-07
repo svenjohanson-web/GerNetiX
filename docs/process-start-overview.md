@@ -161,7 +161,7 @@ Invoke-WebRequest http://127.0.0.1:5200/health
 
 | Prozess / Provider | Port / Zugriff | Wann starten oder konfigurieren |
 | --- | --- | --- |
-| Lokaler Ollama LLM | `http://127.0.0.1:11434/` | Nur wenn LLM-Routen lokal auf Ollama zeigen |
+| Optionaler Ollama LLM | `http://127.0.0.1:11434/` | Kein geplanter Standardprozess; nur bei bewusst aktivierter lokaler Admin-Route |
 | Externe LLM API | OpenAI-kompatibel oder Claude/Anthropic | Nur wenn Admin Tool / Entwicklungsplattform externe Provider testen soll |
 
 ## Hinweise

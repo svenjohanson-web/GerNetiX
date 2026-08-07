@@ -9,6 +9,7 @@ const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte"
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
+const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
 const motorFieldIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-magnetic-field.svg"), "utf8");
 const motorForceIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-force.svg"), "utf8");
@@ -86,33 +87,32 @@ test("publishes the HW-364A one-button game collection as an additional rebuild 
 test("publishes Nexi as a complete, prebuilt and directly flashable rebuild project", () => {
   assert.match(server, /path: "\/nachbauprojekte\/nexi-sprachassistent"[\s\S]*redirect\(res, "\/nachbauprojekte\/nexi-sprachassistent\/"\)/);
   assert.match(server, /path: "\/nachbauprojekte\/nexi-sprachassistent\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/nexi-sprachassistent\/index\.html"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/nexi-sprachassistent\/inbetriebnahme\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/nexi-sprachassistent\/inbetriebnahme\/index\.html"\)/);
   assert.match(page, /href="\/nachbauprojekte\/nexi-sprachassistent\/"/);
   assert.match(page, /Nexi – dein eigener Sprachassistent/);
   assert.match(page, /Fertig gebaut · direkt flashbar/);
   assert.match(page, /Öffnen &amp; flashen →/);
-  assert.match(nexiProject, /Was ist Nexi\?/);
-  assert.match(nexiProject, /Stimme aufnehmen[\s\S]*Effekte ausprobieren[\s\S]*Direkt am Board spielen/);
-  assert.match(nexiProject, /Nexi funktioniert sofort – Konto und KI sind getrennte Erweiterungen/);
-  assert.match(nexiProject, /Lokale Grundfunktionen[\s\S]*Persönlich verwalten[\s\S]*Später bewusst aktivieren/);
-  assert.match(nexiProject, /dein lokales Nexi ist deshalb nicht defekt oder unvollständig installiert/);
-  assert.match(nexiProject, /ES8311, ES7210, TCA9555 und PCF85063/);
-  assert.match(nexiProject, /KEY1[\s\S]*KEY2[\s\S]*KEY3/);
-  assert.match(nexiProject, /lokale Grundfunktion benötigt weder Cloud noch KI-Anbieter/);
+  assert.match(nexiProject, /Nexi – dein eigener Sprach- und Soundassistent/);
+  assert.match(nexiProject, /Sprache lokal erkennen[\s\S]*Stimmen aufnehmen und verändern[\s\S]*Spiele, Geschichten und Timer/);
+  assert.match(nexiProject, /Die Grundversion funktioniert ohne Konto/);
+  assert.match(nexiProject, /Sprachaufnahmen werden nicht in die Cloud geladen/);
+  assert.doesNotMatch(nexiProject, /rebuild-account-grid|rebuild-feature-list|Tastenhilfe|Aktivierungswort im Browser/);
   assert.match(server, /pattern: \/\^\\\/nachbauprojekte\\\/nexi-sprachassistent\\\/api\\\//);
-  assert.match(nexiProject, /Installation[\s\S]*Nexi auf dein Board bringen/);
-  assert.match(nexiProject, /Installationsstatus[\s\S]*Fertig gebaut und direkt flashbar[\s\S]*href="#installieren"/);
-  assert.ok(nexiProject.indexOf('id="about-nexi-title"') < nexiProject.indexOf('id="equipment-title"'));
-  assert.ok(nexiProject.indexOf('id="equipment-title"') < nexiProject.indexOf('id="installieren"'));
-  assert.ok(nexiProject.indexOf('id="installieren"') < nexiProject.indexOf('id="usage-title"'));
-  assert.match(nexiProject, /Deine erste Aufnahme in vier Schritten/);
-  assert.doesNotMatch(nexiProject, /Der Nachbau in sechs prüfbaren Schritten|Ehrlicher Softwarestand/);
-  assert.match(nexiProject, /ohne Konto und ohne eigenen Build/);
+  assert.match(nexiProject, /Schritt 1 von 2[\s\S]*Nexi auf dein Board flashen/);
+  assert.match(nexiProject, /Nach erfolgreichem Flashen öffnet sich automatisch[\s\S]*Schritt 2: Inbetriebnahme/);
+  assert.match(nexiProject, /href="inbetriebnahme\/index\.html"/);
+  assert.match(nexiCommissioning, /Schritt 2 von 2[\s\S]*Nexi in Betrieb nehmen/);
+  assert.match(nexiCommissioning, /RESET[\s\S]*BOOT[\s\S]*KEY3[\s\S]*KEY2[\s\S]*KEY1/);
+  assert.match(nexiCommissioning, /Lautsprecher anschließen[\s\S]*Die drei Nexi-Tasten testen[\s\S]*„Hey Nexi“ einrichten/);
+  assert.match(nexiCommissioning, /Noch nicht als Nutzerablauf freigegeben/);
+  assert.match(nexiProject, /Grundversion funktioniert ohne Konto/);
+  assert.match(nexiProject, /kein eigener Build ist erforderlich/);
   assert.match(nexiProject, /id="open-flash-dialog"/);
   assert.doesNotMatch(nexiProject, /id="retry-release"|Release erneut laden/);
   assert.match(nexiProject, /id="open-flash-dialog"[^>]*aria-describedby="flash-entry-status"[^>]*disabled/);
   assert.match(nexiProject, /unified-flash-dialog\.js/);
   assert.match(nexiProject, /nexi-flash\.js/);
-  assert.match(nexiProject, /nexi-flash\.js\?v=20260804-unified-flash-1/);
+  assert.match(nexiProject, /nexi-flash\.js\?v=20260806-guided-flow-1/);
   assert.match(nexiFlash, /const DEMO_ID = "nexi-basic-waveshare-s3"/);
   assert.match(nexiFlash, /manifest\.chip !== "esp32s3"/);
   assert.match(nexiFlash, /manifest\.flash_size !== "16MB"/);
@@ -122,6 +122,8 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiFlash, /loader\.writeFlash/);
   assert.match(nexiFlash, /serialService\.flash/);
   assert.match(nexiFlash, /GerNetiXFlashDialog\.create\(\)/);
+  assert.match(nexiFlash, /progressPresentation: "guided"/);
+  assert.match(nexiFlash, /window\.location\.assign\("inbetriebnahme\/index\.html"\)/);
   assert.match(nexiFlash, /methods:\s*\{[\s\S]*usb:[\s\S]*ota:[\s\S]*flashbox:/);
   assert.match(nexiFlash, /openFlashButton\.title = enabled \? "" : message/);
   assert.match(nexiFlash, /fetch\(`api\/public\/demos\/\$\{DEMO_ID\}`.*, \{ cache: "no-store" \}\)/);
@@ -129,7 +131,6 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiFlash, /if \(navigator\.serial\)/);
   assert.match(nexiFlash, /async function ensureUsbPort\(log\)/);
   assert.match(nexiFlash, /if \(ports\.length > 1\)/);
-  assert.match(nexiProject, /kein aktiver Provider|Ohne aktiven Provider/);
 });
 
 test("keeps the printed motor series compact and material-first", () => {

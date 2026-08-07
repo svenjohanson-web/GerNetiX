@@ -98,9 +98,11 @@ GET /api/admin/learning-feedback?actor_id=admin-1&role=administrator&purpose=fee
 
 Identifizierende Daten werden nur bei erlaubtem Zugriff sichtbar.
 
-Die Operator Console zeigt fuer Lernprojekte, Entwicklungsprojekte und
-Projekt-Templates die Mittelwerte von Verstaendlichkeit, Spass, Schwierigkeit
-und Vollstaendigkeit, einen Projekt-/Templatefilter sowie einzelne Bewertungen,
+Die Operator Console gruppiert abgeschlossene Bewertungen ueber die stabile
+Lernprojekt-ID und zeigt je Lernprojekt Anzahl, Mittelwerte von
+Verstaendlichkeit, Spass, Schwierigkeit und Vollstaendigkeit sowie die
+1-bis-5-Verteilung aller vier Skalen. Zusaetzlich bietet sie einen
+Projekt-/Templatefilter sowie einzelne Bewertungen,
 optionale Kommentare und getrennte Verbesserungsvorschlaege. Die Werte stammen
 live aus dem Project Server; das Admin Tool ist keine zweite fachliche
 Persistenz. Auch in der maskierten Sicht bleiben nicht-identifizierende
@@ -161,7 +163,7 @@ GET  /api/admin/llm-models
 POST /api/admin/llm-config/test
 ```
 
-Konfiguriert den Provider fuer Kunden-KI-Chat und Entwicklungsplattform: lokales Ollama, eine OpenAI-kompatible API oder Claude/Anthropic.
+Konfiguriert den Provider fuer Kunden-KI-Chat und Entwicklungsplattform. Standard ist OpenAI Responses mit `gpt-5-nano`; lokales Ollama, eine andere OpenAI-kompatible API oder Claude/Anthropic bleiben optionale Admin-Konfigurationen.
 
 `PUT /api/admin/llm-config` akzeptiert neben `provider`, Endpoint, Modell und API-Key auch `apiProvider`:
 
@@ -175,6 +177,7 @@ Zusaetzlich kann `routes` gesetzt werden. Unterstuetzte Task-Routen:
 - `architecture_discovery`
 - `artifact_generation`
 - `code_generation`
+- `help_chat`
 
 Jede Route akzeptiert `provider` mit `default`, `ollama` oder `api`. Artefakt- und Codegenerierung sind standardmaessig auf `ollama`, damit PlantUML-, Pseudocode- und Codeableitungen lokal und ohne externe Providerkosten laufen koennen.
 
