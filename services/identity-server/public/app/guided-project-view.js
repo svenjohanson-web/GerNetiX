@@ -16,7 +16,6 @@ const GuidedProjectView = (() => {
     function renderProjectViewManifest(project, targetSelector = "#ideProjectViewManifest") {
       const target = document.querySelector(targetSelector);
       if (!target) return;
-      const manifest = project?.viewManifest || {};
       const views = guidedViews(project);
       if (!views.length) {
         target.innerHTML = `<p class="empty">Dieses Projekt hat noch keine gespeicherte IDE-Ansicht.</p>`;
@@ -24,37 +23,54 @@ const GuidedProjectView = (() => {
       }
       state.activeIdeStep = Math.min(state.activeIdeStep || 0, views.length - 1);
       const activeView = views[state.activeIdeStep];
-      const validation = validateGuidedView(activeView);
+      const validation = validateGuidedView(project, activeView);
       target.innerHTML = `
-        <div class="manifest-head">
-          <p class="eyebrow">Projektansicht</p>
-          <h3>${escapeHtml(manifest.title || "IDE Ansicht")}</h3>
-          <p>${escapeHtml(manifest.summary || "")}</p>
-          ${renderLearningSoftwareTargetPanel(project)}
-        </div>
         <div class="guided-runner">
-          <section class="guided-step-panel">
-            <p class="eyebrow">Aktueller Lerninhalt</p>
-            <div class="guided-artifact-layout">
-              <section class="guided-artifact-pane">
-                ${renderLearningContext(activeView)}
-                ${renderGuidedArtifact(project, activeView)}
-              </section>
-              <aside class="guided-summary-pane">
-                ${renderManifestView(activeView, validation)}
-                ${renderGuidedValidation(activeView, validation)}
-                ${renderGuidedActions(project, activeView, validation)}
-              </aside>
-            </div>
-            ${renderGuidedCodeAssistant(project, activeView)}
+          <section class="guided-artifact-pane">
+            ${renderGuidedArtifact(project, activeView)}
           </section>
+          <aside class="guided-summary-pane">
+            ${renderLearningSoftwareTargetPanel(project)}
+            <div class="guided-task-heading">
+              <p class="eyebrow">Aufgabe</p>
+              <h3>${escapeHtml(activeView.title || "Aktueller Lernschritt")}</h3>
+            </div>
+            ${renderLearningContext(activeView)}
+            ${renderLearningGuidance(activeView)}
+            ${renderManifestPayload(activeView)}
+            ${renderGuidedCompletion(project, activeView, validation)}
+            ${renderRequiredFunctions(activeView)}
+            ${validation?.focus ? `<pre class="source-focus-box">${escapeHtml(validation.focus)}</pre>` : ""}
+            ${renderGuidedValidation(activeView, validation)}
+            ${renderGuidedActions(project, activeView, validation)}
+          </aside>
         </div>
+        ${renderGuidedCodeAssistant(project, activeView)}
       `;
       target.querySelector("[data-guided-back]")?.addEventListener("click", () => setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1), targetSelector));
       target.querySelector("[data-guided-next]")?.addEventListener("click", () => completeIdeGuidedStep(project, targetSelector));
       target.querySelector("[data-guided-preview]")?.addEventListener("click", () => openGuidedRuntimePreview(activeView));
       target.querySelectorAll("[data-guided-control]").forEach((button) => {
         button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl, targetSelector));
+      });
+      target.querySelectorAll("[data-guided-choice]").forEach((input) => {
+        input.addEventListener("change", () => {
+          setGuidedLessonResponse(project, activeView, { choice: input.value });
+          renderProjectViewManifest(project, targetSelector);
+        });
+      });
+      target.querySelectorAll("[data-guided-adaptive-choice]").forEach((input) => {
+        input.addEventListener("change", () => {
+          setGuidedLessonResponse(project, activeView, {
+            adaptiveMode: input.dataset.guidedAdaptiveMode,
+            adaptiveChoice: input.value,
+          });
+          renderProjectViewManifest(project, targetSelector);
+        });
+      });
+      target.querySelector("[data-guided-code-task]")?.addEventListener("input", (event) => {
+        setGuidedLessonResponse(project, activeView, { code: event.target.value });
+        updateGuidedCompletionState(target, project, activeView);
       });
       target.querySelectorAll("[data-guided-lab-action]").forEach((button) => {
         button.addEventListener("click", () => handleGuidedLabAction(project, activeView, button.dataset.guidedLabAction, targetSelector));
@@ -406,6 +422,7 @@ const GuidedProjectView = (() => {
       const artifact = view.payload?.artifact || {};
       const artifactRenderers = {
         code: renderGuidedCodeArtifact,
+        code_task: () => renderGuidedCodeTask(project, view, artifact),
         state_rows: renderGuidedStateRows,
         cycle: renderGuidedCycle,
         plantuml: () => renderGuidedPlantUmlArtifact(view),
@@ -456,6 +473,20 @@ const GuidedProjectView = (() => {
             <h3>${escapeHtml(artifact.title || "Quellcode")}</h3>
           </div>
           <pre>${lines.map((line, index) => `<span><b>${String(index + 1).padStart(3, " ")}</b>${escapeHtml(line)}</span>`).join("")}</pre>
+        </div>
+      `;
+    }
+
+    function renderGuidedCodeTask(project, view, artifact) {
+      const response = guidedLessonResponse(project, view);
+      const content = response?.code ?? artifact.content ?? "";
+      return `
+        <div class="guided-code-viewer guided-code-task">
+          <div class="guided-artifact-head">
+            <p class="eyebrow">Code-Aufgabe</p>
+            <h3>${escapeHtml(artifact.title || "Code ergänzen")}</h3>
+          </div>
+          <textarea data-guided-code-task spellcheck="false" aria-label="${escapeAttribute(artifact.title || "Code ergänzen")}">${escapeHtml(content)}</textarea>
         </div>
       `;
     }
@@ -563,6 +594,17 @@ const GuidedProjectView = (() => {
       }];
     }
 
+    function projectRequiresHardware(project) {
+      return !String(project?.targetRuntime || "").startsWith("runtime.browser_");
+    }
+
+    function renderBoardOptions(boards, selectedId) {
+      if (typeof BoardConfigurationPlugin === "undefined") {
+        throw new Error("Die Hardware-Konfiguration wurde für dieses Hardware-Lernprojekt nicht geladen");
+      }
+      return BoardConfigurationPlugin.renderBoardOptions(boards, selectedId);
+    }
+
     function selectedLearningSoftwareUnit(project) {
       state.guidedSoftwareUnitByProject ||= {};
       const units = learningSoftwareUnits(project);
@@ -577,6 +619,7 @@ const GuidedProjectView = (() => {
     }
 
     function renderLearningSoftwareTargetPanel(project) {
+      if (!projectRequiresHardware(project)) return "";
       const units = learningSoftwareUnits(project);
       if (!units.length || project.projectOrigin !== "account_project") return "";
       const selectedUnit = selectedLearningSoftwareUnit(project);
@@ -591,7 +634,7 @@ const GuidedProjectView = (() => {
         <header><div><p class="eyebrow">Software und Build-Ziel</p><strong>${escapeHtml(selectedUnit?.title || "Softwareeinheit")}</strong></div><span>${escapeHtml(selectedUnit?.build_system || "nicht konfiguriert")}</span></header>
         <div class="learning-software-target-grid">
           <label>Softwareeinheit<select data-learning-software-unit>${units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}" ${unit.software_unit_id === selectedUnit?.software_unit_id ? "selected" : ""}>${escapeHtml(unit.title)} · ${escapeHtml(unit.software_kind)}</option>`).join("")}</select></label>
-          ${platformio ? `<label>Zielboard<select data-learning-target-board><option value="">Zielboard auswählen</option>${BoardConfigurationPlugin.renderBoardOptions(state.processorBoards || [], selectedBoardId)}</select></label>
+          ${platformio ? `<label>Zielboard<select data-learning-target-board><option value="">Zielboard auswählen</option>${renderBoardOptions(state.processorBoards || [], selectedBoardId)}</select></label>
           <label>Oder Inventar-Device<select data-learning-target-device><option value="">Nur für das gewählte Board bauen</option>${compatibleDevices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === selectedDeviceId ? "selected" : ""}>${escapeHtml(device.display_name || device.device_id)}</option>`).join("")}</select></label>` : `<p class="helper-text">Diese Einheit kann bereits mit Quellen und Build-System gespeichert werden. Für ${escapeHtml(selectedUnit?.build_system || "dieses Build-System")} fehlt noch ein ausführender Runner.</p>`}
         </div>
         <footer><span>${platformio && selectedBoardId ? `${escapeHtml(config.platform || "PlatformIO")} · ${escapeHtml(config.board || "Boardziel")} · ${escapeHtml(config.framework || "ohne Framework")}` : "Wähle ein Build-Ziel für diese Softwareeinheit."}</span><button type="button" data-build-learning-software-unit ${platformio && selectedBoardId ? "" : "disabled"}>Ausgewähltes Target bauen</button></footer>
@@ -898,11 +941,109 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       return functions.length ? `<dl class="meta-list compact">${meta("Funktionen", functions.join(", "))}</dl>` : "";
     }
 
+    function guidedLessonResponse(project, view) {
+      state.guidedLessonResponses ||= {};
+      return state.guidedLessonResponses[`${project?.id || "project"}:${view?.id || "step"}`] || null;
+    }
+
+    function setGuidedLessonResponse(project, view, response) {
+      state.guidedLessonResponses ||= {};
+      const key = `${project?.id || "project"}:${view?.id || "step"}`;
+      state.guidedLessonResponses[key] = { ...(state.guidedLessonResponses[key] || {}), ...response };
+    }
+
+    function guidedStepIsCompleted(project, view) {
+      const views = guidedViews(project);
+      const index = views.findIndex((item) => item.id === view?.id);
+      const progress = progressFor(project?.id) || {};
+      return new Set(progress.completedSteps || []).has(index)
+        || new Set(progress.completedStepIds || []).has(view?.id);
+    }
+
+    function renderGuidedCompletion(project, view, validation) {
+      const completion = view?.completion || {};
+      if (completion.type === "hardware_or_simulator") {
+        return renderAdaptiveHardwareCompletion(project, view, completion);
+      }
+      if (completion.type !== "choice") return "";
+      const response = guidedLessonResponse(project, view);
+      const selected = response?.choice || "";
+      const options = Array.isArray(completion.options) ? completion.options : [];
+      return `
+        <fieldset class="guided-completion" aria-describedby="guidedCompletionStatus">
+          <legend>${escapeHtml(completion.prompt || "Wähle die richtige Antwort")}</legend>
+          <div class="guided-completion-options">
+            ${options.map((option) => {
+              const value = String(option?.id ?? option?.value ?? option);
+              const label = String(option?.label ?? option);
+              return `<label><input type="radio" name="guided-completion-${escapeAttribute(view.id || "step")}" value="${escapeAttribute(value)}" data-guided-choice ${selected === value ? "checked" : ""}><span>${escapeHtml(label)}</span></label>`;
+            }).join("")}
+          </div>
+        </fieldset>
+      `;
+    }
+
+    function renderAdaptiveHardwareCompletion(project, view, completion) {
+      const devices = adaptiveHardwareDevices(completion);
+      const mode = devices.length ? "hardware" : "simulator";
+      const branch = completion[mode] || {};
+      const response = guidedLessonResponse(project, view);
+      const selected = response?.adaptiveMode === mode ? response.adaptiveChoice || "" : "";
+      const options = Array.isArray(branch.options) ? branch.options : [];
+      const deviceLabel = devices.length
+        ? devices.slice(0, 2).map((device) => device.display_name || device.device_id || device.hardware_profile_id).join(", ")
+        : "Kein derzeit nutzbares kompatibles Board erkannt";
+      return `
+        <fieldset class="guided-completion guided-adaptive-completion" aria-describedby="guidedCompletionStatus">
+          <legend>${escapeHtml(branch.prompt || "Führe die verpflichtende Prüfung durch")}</legend>
+          <div class="guided-adaptive-mode ${mode}">
+            <strong>${mode === "hardware" ? "Pflichtprüfung am realen Gerät" : "Pflichtprüfung im Simulator"}</strong>
+            <span>${escapeHtml(deviceLabel)}</span>
+            ${branch.instructions ? `<p>${escapeHtml(branch.instructions)}</p>` : ""}
+          </div>
+          <div class="guided-completion-options">
+            ${options.map((option) => {
+              const value = String(option?.id ?? option?.value ?? option);
+              const label = String(option?.label ?? option);
+              return `<label><input type="radio" name="guided-adaptive-completion-${escapeAttribute(view.id || "step")}" value="${escapeAttribute(value)}" data-guided-adaptive-choice data-guided-adaptive-mode="${mode}" ${selected === value ? "checked" : ""}><span>${escapeHtml(label)}</span></label>`;
+            }).join("")}
+          </div>
+        </fieldset>
+      `;
+    }
+
+    function adaptiveHardwareDevices(completion) {
+      const prefixes = Array.isArray(completion?.hardware_profile_prefixes) && completion.hardware_profile_prefixes.length
+        ? completion.hardware_profile_prefixes.map(String)
+        : ["hardware.processor_board."];
+      return (state.devices || []).filter((device) => {
+        const profile = String(device?.hardware_profile_id || "");
+        return prefixes.some((prefix) => profile.startsWith(prefix)) && adaptiveHardwareIsUsable(device);
+      });
+    }
+
+    function adaptiveHardwareIsUsable(device) {
+      if (device?.usb_flash_supported || device?.usb_port || device?.serial_port) return true;
+      const status = String(device?.connectivity_status || "").toLowerCase();
+      if (["offline", "unreachable", "unknown", "disconnected"].includes(status)) return false;
+      return true;
+    }
+
+    function updateGuidedCompletionState(target, project, view) {
+      const validation = validateGuidedView(project, view);
+      const nextButton = target.querySelector('[data-guided-control="next_step"]');
+      if (nextButton) nextButton.disabled = !validation.canContinue;
+      const status = target.querySelector("[data-guided-validation]");
+      if (!status) return;
+      status.className = `validation ${validation.canContinue ? "ok" : "blocked"}`;
+      status.textContent = validation.message || (validation.canContinue ? "Aufgabe erfüllt." : "Dieser Schritt ist noch nicht bereit.");
+    }
+
     function guidedViews(project) {
       return Array.isArray(project?.viewManifest?.views) ? project.viewManifest.views : [];
     }
 
-    function validateGuidedView(view) {
+    function validateGuidedView(project, view) {
       const source = document.querySelector("#sourceEditor")?.value || "";
       const payloadSource = view?.payload?.source || "";
       const validation = view?.validation || {};
@@ -916,6 +1057,71 @@ if (digitalRead(BUTTON_PIN) == LOW) {
         return {
           canContinue: missing.length === 0,
           message: missing.length ? `Dieser Abschnitt braucht die Projektressource: ${missing.join(", ")}.` : "",
+          focus,
+        };
+      }
+
+      if (completion.type === "choice") {
+        if (guidedStepIsCompleted(project, view)) {
+          return { canContinue: true, message: completion.success || "Aufgabe erfüllt.", showStatus: true, focus };
+        }
+        const selected = guidedLessonResponse(project, view)?.choice || "";
+        const correct = String(completion.correct_option ?? completion.correct ?? "");
+        const canContinue = Boolean(selected) && selected === correct;
+        return {
+          canContinue,
+          message: canContinue
+            ? completion.success || "Richtig. Du kannst mit der nächsten Lektion fortfahren."
+            : selected
+              ? completion.failure || "Das passt noch nicht. Prüfe den Code noch einmal."
+              : "Beantworte die Aufgabe, bevor du fortfährst.",
+          showStatus: true,
+          focus,
+        };
+      }
+
+      if (completion.type === "code") {
+        if (guidedStepIsCompleted(project, view)) {
+          return { canContinue: true, message: completion.success || "Code-Aufgabe erfüllt.", showStatus: true, focus };
+        }
+        const code = guidedLessonResponse(project, view)?.code ?? view?.payload?.artifact?.content ?? "";
+        const required = Array.isArray(completion.must_contain) ? completion.must_contain : [];
+        const forbidden = Array.isArray(completion.must_not_contain) ? completion.must_not_contain : [];
+        const missing = required.filter((item) => !String(code).includes(String(item)));
+        const presentForbidden = forbidden.filter((item) => String(code).includes(String(item)));
+        const canContinue = missing.length === 0 && presentForbidden.length === 0;
+        return {
+          canContinue,
+          message: canContinue
+            ? completion.success || "Code-Aufgabe erfüllt."
+            : completion.failure || "Der Code erfüllt die beschriebene Aufgabe noch nicht.",
+          showStatus: true,
+          focus,
+        };
+      }
+
+      if (completion.type === "hardware_or_simulator") {
+        if (guidedStepIsCompleted(project, view)) {
+          return { canContinue: true, message: completion.success || "Pflichtprüfung erfüllt.", showStatus: true, focus };
+        }
+        const mode = adaptiveHardwareDevices(completion).length ? "hardware" : "simulator";
+        const branch = completion[mode] || {};
+        const response = guidedLessonResponse(project, view);
+        const selected = response?.adaptiveMode === mode ? response.adaptiveChoice || "" : "";
+        const correct = String(branch.correct_option ?? branch.correct ?? "");
+        const canContinue = Boolean(selected) && selected === correct;
+        return {
+          canContinue,
+          message: canContinue
+            ? completion.success || branch.success || (mode === "hardware"
+              ? "Reale Hardwareprüfung erfüllt. Du kannst fortfahren."
+              : "Simulatorprüfung erfüllt. Du kannst fortfahren.")
+            : selected
+              ? branch.failure || "Das Ergebnis passt noch nicht zur beschriebenen Prüfung."
+              : mode === "hardware"
+                ? "Führe die Pflichtprüfung am erkannten realen Gerät durch, bevor du fortfährst."
+                : "Führe die Pflichtprüfung im Simulator durch, bevor du fortfährst.",
+          showStatus: true,
           focus,
         };
       }
@@ -957,8 +1163,8 @@ if (digitalRead(BUTTON_PIN) == LOW) {
     }
 
     function renderGuidedValidation(view, validation) {
-      if (validation.canContinue) return "";
-      return `<div class="validation blocked">${escapeHtml(validation.message || "Dieser Schritt ist noch nicht bereit.")}</div>`;
+      if (validation.canContinue && !validation.showStatus) return "";
+      return `<div id="guidedCompletionStatus" data-guided-validation class="validation ${validation.canContinue ? "ok" : "blocked"}">${escapeHtml(validation.message || (validation.canContinue ? "Aufgabe erfüllt." : "Dieser Schritt ist noch nicht bereit."))}</div>`;
     }
 
     function renderGuidedActions(project, view, validation) {
@@ -1140,7 +1346,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       return `<label>GerNetiX- oder eigenes Account-Board
         <select data-guided-board-configuration>
           <option value="">Boardkonfiguration auswählen</option>
-          ${BoardConfigurationPlugin.renderBoardOptions(state.processorBoards || [], selectedId)}
+            ${renderBoardOptions(state.processorBoards || [], selectedId)}
         </select>
       </label>`;
     }
@@ -1163,6 +1369,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
     }
 
     async function buildGuidedSoftwareUnit(project, view, targetSelector) {
+      if (!projectRequiresHardware(project)) return;
       const softwareUnit = selectedLearningSoftwareUnit(project);
       if (!softwareUnit || softwareUnit.build_system !== "platformio") return;
       const lab = projectLabState(view);
@@ -1175,7 +1382,10 @@ if (digitalRead(BUTTON_PIN) == LOW) {
           device_id: softwareUnit.device_id || "",
           mode: "build",
         });
-        const completed = typeof waitForCompletedBuild === "function" ? await waitForCompletedBuild(build) : build;
+        if (typeof waitForCompletedBuild !== "function") {
+          throw new Error("Die Build-Überwachung wurde für dieses Hardware-Lernprojekt nicht geladen");
+        }
+        const completed = await waitForCompletedBuild(build);
         state.builds ||= [];
         state.builds.unshift(completed);
         lab.built = completed.status === "succeeded";

@@ -105,6 +105,7 @@ const { createMotorControlBasicsCourseModel } = require("./dev/project-models/mo
 const { createProximitySensorRadarCourseModel } = require("./dev/project-models/proximity-sensor-radar-course");
 const { filterSoftwareUnitsForArchitecture, softwareArchitectureComponents } = require("../../shared/project-software-ownership");
 const { createProgrammingFundamentalsCourseModel } = require("./dev/project-models/programming-fundamentals-course");
+const { createMicrocontrollerFundamentalsCourseModel } = require("./dev/project-models/microcontroller-fundamentals-course");
 const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
 const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml-fundamentals-course");
 const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
@@ -295,6 +296,7 @@ const homeAutomationSensorsCourseModel = createHomeAutomationSensorsCourseModel(
 const motorControlBasicsCourseModel = createMotorControlBasicsCourseModel();
 const proximitySensorRadarCourseModel = createProximitySensorRadarCourseModel();
 const programmingFundamentalsCourseModel = createProgrammingFundamentalsCourseModel();
+const microcontrollerFundamentalsCourseModel = createMicrocontrollerFundamentalsCourseModel();
 const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
 const yamlFundamentalsCourseModel = createYamlFundamentalsCourseModel();
 const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
@@ -4315,6 +4317,7 @@ function createUserIdeState() {
     motorControlBasicsCourseModel.createProject(project, step),
     proximitySensorRadarCourseModel.createProject(project, step),
     programmingFundamentalsCourseModel.createProject(project, step),
+    microcontrollerFundamentalsCourseModel.createProject(project, step),
     umlFundamentalsCourseModel.createProject(project, step),
     yamlFundamentalsCourseModel.createProject(project, step),
     storageLearningStoryCourseModel.createProject(project, step),
@@ -4433,6 +4436,7 @@ function normalizeLearningProjectTags(value) {
     "topic:motor-control",
     "topic:privacy",
     "topic:programming",
+    "topic:microcontroller",
     "topic:radar",
     "topic:radio",
     "topic:camera",
@@ -4532,6 +4536,12 @@ function projectViewManifest(project, options = {}) {
   }
   if (project.slug === programmingFundamentalsCourseModel.slug) {
     return programmingFundamentalsCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === microcontrollerFundamentalsCourseModel.slug) {
+    return microcontrollerFundamentalsCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -5594,6 +5604,9 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === programmingFundamentalsCourseModel.slug) {
     return programmingFundamentalsCourseModel.createSources();
+  }
+  if (project.slug === microcontrollerFundamentalsCourseModel.slug) {
+    return microcontrollerFundamentalsCourseModel.createSources();
   }
   if (project.slug === umlFundamentalsCourseModel.slug) {
     return umlFundamentalsCourseModel.createSources();

@@ -6,22 +6,39 @@ const GerNetiXSerialService = (() => {
 
   function create(options = {}) {
     const baseUrls = options.baseUrl ? [options.baseUrl] : DEFAULT_BASE_URLS;
+    const updateFlow = Object.prototype.hasOwnProperty.call(options, "updateFlow") ? options.updateFlow : requestBrowserUpdate;
     let baseUrl = baseUrls[0];
     let session = "";
 
     async function request(path, init = {}, authenticated = true, requestBaseUrl = baseUrl, retryInvalidSession = true) {
       if (authenticated && !session) await connect();
+      const { timeoutMs = 15000, ...fetchInit } = init;
       const headers = {
         "Content-Type": "application/json",
         ...(authenticated ? { "X-GerNetiX-Serial-Session": session } : {}),
-        ...(init.headers || {}),
+        ...(fetchInit.headers || {}),
       };
-      const response = await fetch(`${requestBaseUrl}${path}`, {
-        ...init,
-        headers,
-        cache: "no-store",
-        targetAddressSpace: "loopback",
-      });
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+      let response;
+      try {
+        response = await fetch(`${requestBaseUrl}${path}`, {
+          ...fetchInit,
+          headers,
+          cache: "no-store",
+          targetAddressSpace: "loopback",
+          ...(controller ? { signal: controller.signal } : {}),
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          const timeoutError = new Error("Der lokale GerNetiX Serial Service antwortet nicht. Bitte starte den USB-Flash erneut.");
+          timeoutError.code = "serial_service_request_timeout";
+          throw timeoutError;
+        }
+        throw error;
+      } finally {
+        if (timeout) clearTimeout(timeout);
+      }
       const payload = response.status === 204 ? null : await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 401 && authenticated) {
@@ -78,14 +95,20 @@ const GerNetiXSerialService = (() => {
     }
 
     async function flash({ port, files, ...options }) {
-      const serviceStatus = await status();
+      let serviceStatus = await status();
       if (compareVersions(serviceStatus?.version, MINIMUM_VERIFIED_FLASH_VERSION) < 0) {
         const installedVersion = String(serviceStatus?.version || "unbekannt");
-        const error = new Error(
-          `GerNetiX Serial Service ${MINIMUM_VERIFIED_FLASH_VERSION} oder neuer ist fuer einen verifizierten USB-Flash erforderlich. Installiert ist ${installedVersion}. Bitte aktualisiere den lokalen Helper.`,
-        );
-        error.code = "serial_service_update_required";
-        throw error;
+        if (typeof updateFlow !== "function") throw updateRequiredError(installedVersion);
+        await updateFlow({
+          installedVersion,
+          requiredVersion: MINIMUM_VERIFIED_FLASH_VERSION,
+          onProgress: options.onUpdateProgress,
+          readStatus: status,
+        });
+        serviceStatus = await status();
+        if (compareVersions(serviceStatus?.version, MINIMUM_VERIFIED_FLASH_VERSION) < 0) {
+          throw updateRequiredError(String(serviceStatus?.version || installedVersion));
+        }
       }
       const encodedFiles = files.map((file) => ({
         name: file.name || "firmware.bin",
@@ -95,23 +118,31 @@ const GerNetiXSerialService = (() => {
       let job = await request("/v1/flash-jobs", {
         method: "POST",
         body: JSON.stringify({ port, files: encodedFiles, ...options }),
+        timeoutMs: 30000,
       });
       options.onProgress?.(job);
+      const flashDeadline = Date.now() + 10 * 60 * 1000;
       while (["queued", "running"].includes(job.status)) {
+        if (Date.now() >= flashDeadline) {
+          const error = new Error("Der lokale Flashjob hat nach zehn Minuten keinen Abschluss gemeldet. Bitte trenne das Board nicht, solange es noch sichtbar arbeitet, und starte den Vorgang anschließend erneut.");
+          error.code = "serial_service_flash_timeout";
+          throw error;
+        }
         await delay(300);
-        job = await request(`/v1/flash-jobs/${encodeURIComponent(job.id)}`, { method: "GET" });
+        job = await request(`/v1/flash-jobs/${encodeURIComponent(job.id)}`, { method: "GET", timeoutMs: 10000 });
         options.onProgress?.(job);
       }
       if (job.status !== "succeeded") throw new Error(job.error || "Der lokale USB-Flash ist fehlgeschlagen.");
       return job;
     }
 
-    async function serialRequest(port, action, payload = {}) {
+    async function serialRequest(port, action, payload = {}, options = {}) {
       const requestId = crypto.randomUUID();
       return request("/v1/serial/requests", {
         method: "POST",
         body: JSON.stringify({
           port,
+          timeoutMs: options.timeoutMs,
           request: {
             type: "gernetix.serial_provisioning",
             action,
@@ -119,6 +150,7 @@ const GerNetiXSerialService = (() => {
             ...payload,
           },
         }),
+        timeoutMs: Math.max(15000, Number(options.timeoutMs) || 15000) + 2000,
       });
     }
 
@@ -168,6 +200,117 @@ const GerNetiXSerialService = (() => {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
+  function updateRequiredError(installedVersion) {
+    const error = new Error(
+      `GerNetiX Serial Service ${MINIMUM_VERIFIED_FLASH_VERSION} oder neuer ist fuer einen verifizierten USB-Flash erforderlich. Installiert ist ${installedVersion}.`,
+    );
+    error.code = "serial_service_update_required";
+    error.installedVersion = installedVersion;
+    error.requiredVersion = MINIMUM_VERIFIED_FLASH_VERSION;
+    return error;
+  }
+
+  async function requestBrowserUpdate({ installedVersion, requiredVersion, onProgress, readStatus }) {
+    const platform = /Mac/i.test(window.navigator?.platform || window.navigator?.userAgent || "") ? "macos"
+      : /Win/i.test(window.navigator?.platform || window.navigator?.userAgent || "") ? "windows" : "";
+    if (!platform || !window.document || typeof window.confirm !== "function") throw updateRequiredError(installedVersion);
+
+    const response = await fetch("/api/platform/downloads", { cache: "no-store", credentials: "same-origin" });
+    if (response.status === 401) {
+      const error = new Error("Melde dich kurz bei GerNetiX an, damit das freigegebene Helper-Paket geladen werden kann.");
+      error.code = "serial_service_update_login_required";
+      throw error;
+    }
+    if (!response.ok) {
+      const error = new Error(`Das Helper-Update konnte nicht vorbereitet werden (HTTP ${response.status}).`);
+      error.code = "serial_service_update_unavailable";
+      throw error;
+    }
+    const downloads = (await response.json()).downloads || [];
+    const download = downloads.find((item) => item.platform === platform && item.available
+      && compareVersions(item.version, requiredVersion) >= 0);
+    if (!download?.url) {
+      const error = new Error(`Für ${platform === "macos" ? "macOS" : "Windows"} ist noch kein Helper ${requiredVersion} oder neuer freigegeben.`);
+      error.code = "serial_service_update_unavailable";
+      throw error;
+    }
+
+    const accepted = window.confirm(
+      `GerNetiX Serial Service ${installedVersion} muss auf Version ${download.version || requiredVersion} aktualisiert werden.\n\n`
+      + "GerNetiX lädt jetzt das freigegebene Installationspaket. Öffne es anschließend und bestätige die Systeminstallation. Danach wird der Flashvorgang automatisch fortgesetzt.\n\nUpdate jetzt laden?",
+    );
+    if (!accepted) {
+      const error = new Error("Das Helper-Update wurde nicht bestätigt. Es wurde nichts installiert und nichts auf das Board geschrieben.");
+      error.code = "serial_service_update_declined";
+      throw error;
+    }
+
+    onProgress?.({ phase: "preparing", percent: 5, message: "Das freigegebene Helper-Update wird vorbereitet …" });
+    const packageResponse = await fetch(download.url, { cache: "no-store", credentials: "same-origin" });
+    if (!packageResponse.ok) {
+      const error = new Error(`Das Helper-Installationspaket konnte nicht geladen werden (HTTP ${packageResponse.status}).`);
+      error.code = "serial_service_update_download_failed";
+      throw error;
+    }
+    const packageBytes = await readDownload(packageResponse, download.size_bytes, (loaded, total) => {
+      const downloadPercent = total > 0 ? Math.min(100, Math.round(loaded / total * 100)) : 0;
+      onProgress?.({
+        phase: "download",
+        percent: 5 + Math.round(downloadPercent * 0.7),
+        message: `Helper-Update wird geladen: ${downloadPercent} %`,
+      });
+    });
+    const packageUrl = window.URL.createObjectURL(new window.Blob(packageBytes));
+    const link = window.document.createElement("a");
+    link.href = packageUrl;
+    link.download = download.file_name || "";
+    link.hidden = true;
+    window.document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(packageUrl), 60_000);
+    onProgress?.({ phase: "install", percent: 80, message: "Öffne das geladene Installationspaket und bestätige die macOS-Installation. GerNetiX wartet und setzt danach automatisch fort …" });
+
+    const deadline = Date.now() + 3 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await delay(2000);
+      try {
+        const current = await readStatus();
+        if (compareVersions(current?.version, requiredVersion) >= 0) {
+          onProgress?.({ phase: "ready", percent: 100, message: `GerNetiX Serial Service ${current.version} ist bereit. Der Flashvorgang wird fortgesetzt …` });
+          return current;
+        }
+      } catch {
+        // Der LaunchAgent ist während der Installation kurzzeitig nicht erreichbar.
+      }
+    }
+    const error = new Error("Das Helper-Update wurde nicht innerhalb von drei Minuten erkannt. Öffne das Installationspaket erneut und starte den USB-Flash danach noch einmal.");
+    error.code = "serial_service_update_timeout";
+    throw error;
+  }
+
+  async function readDownload(response, expectedSize, onChunk) {
+    const headerSize = Number(response.headers?.get?.("content-length") || 0);
+    const total = headerSize || Number(expectedSize || 0);
+    if (!response.body?.getReader) {
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      onChunk(bytes.byteLength, total || bytes.byteLength);
+      return [bytes];
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.byteLength;
+      onChunk(loaded, total);
+    }
+    if (!loaded) onChunk(0, total);
+    return chunks;
+  }
+
   function compareVersions(left, right) {
     const leftParts = String(left || "0").split(".").map((part) => Number.parseInt(part, 10) || 0);
     const rightParts = String(right || "0").split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -179,7 +322,7 @@ const GerNetiXSerialService = (() => {
     return 0;
   }
 
-  return { compareVersions, create, preferredPorts };
+  return { compareVersions, create, minimumVerifiedFlashVersion: MINIMUM_VERIFIED_FLASH_VERSION, preferredPorts, requestBrowserUpdate };
 })();
 
 window.GerNetiXSerialService = GerNetiXSerialService;

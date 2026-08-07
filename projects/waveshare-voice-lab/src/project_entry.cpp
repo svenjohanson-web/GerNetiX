@@ -4,8 +4,19 @@
 
 namespace {
 constexpr const char *TAG = "nexiEntry";
-static_assert(GERNETIX_PROJECT_HOOK_API_VERSION == 1,
+static_assert(GERNETIX_PROJECT_HOOK_API_VERSION == 2,
     "Nexi must be reviewed when the basissoftware project hook changes");
+}
+
+extern "C" bool projectSerialProvisioningEnabled() {
+  return true;
+}
+
+extern "C" bool handleProjectSerialCommand(
+    const char* action, const char*, char* event, std::size_t eventSize,
+    char* payload, std::size_t payloadSize) {
+  return nexi::handleVoiceSetupCommand(
+      action, event, eventSize, payload, payloadSize);
 }
 
 extern "C" void onProjectInit() {

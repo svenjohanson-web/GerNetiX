@@ -55,6 +55,10 @@
       <fieldset class="gernetix-flash-dialog__methods"><legend>Übertragungsweg</legend><div data-flash-methods></div><p data-flash-method-reason aria-live="polite"></p></fieldset>
       <section class="gernetix-flash-dialog__terminal" aria-labelledby="${terminalTitleId}">
         <header><strong id="${terminalTitleId}" data-flash-progress-title>TERMINAL</strong><button type="button" data-flash-clear>Leeren</button></header>
+        <div class="gernetix-flash-dialog__progress" data-flash-progress hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="gernetix-flash-dialog__progress-track"><span data-flash-progress-bar></span></div>
+          <strong data-flash-progress-value>0 %</strong>
+        </div>
         <pre data-flash-terminal aria-live="polite">GerNetiX Flash-Terminal bereit.</pre>
       </section>
       <footer><button type="button" data-flash-cancel>Abbrechen</button><button class="primary" type="button" data-flash-execute>Flashen</button></footer>`;
@@ -68,6 +72,9 @@
     const clearButton = dialog.querySelector("[data-flash-clear]");
     const executeButton = dialog.querySelector("[data-flash-execute]");
     const reason = dialog.querySelector("[data-flash-method-reason]");
+    const progressElement = dialog.querySelector("[data-flash-progress]");
+    const progressBar = dialog.querySelector("[data-flash-progress-bar]");
+    const progressValue = dialog.querySelector("[data-flash-progress-value]");
 
     function selected() {
       return normalizeMethods(config.methods).find((method) => method.id === selectedMethod);
@@ -109,6 +116,27 @@
       terminal.scrollTop = terminal.scrollHeight;
     }
 
+    function setProgress(value) {
+      if (value === null || value === undefined) {
+        progressElement.hidden = true;
+        progressElement.classList.remove("is-active");
+        progressElement.setAttribute("aria-valuenow", "0");
+        progressBar.style.width = "0%";
+        progressValue.textContent = "0 %";
+        return;
+      }
+      const details = typeof value === "object" ? value : { percent: value };
+      const numeric = Number(details.percent);
+      if (!Number.isFinite(numeric)) return;
+      const percent = Math.max(0, Math.min(100, Math.round(numeric)));
+      progressElement.hidden = false;
+      progressElement.classList.toggle("is-active", details.active === true && percent < 100);
+      progressElement.setAttribute("aria-valuenow", String(percent));
+      progressElement.setAttribute("aria-label", details.label ? `${details.label}: ${percent} Prozent` : `${percent} Prozent`);
+      progressBar.style.width = `${percent}%`;
+      progressValue.textContent = `${details.label ? `${details.label} · ` : ""}${percent} %`;
+    }
+
     function open(nextConfig = {}) {
       config = nextConfig;
       const guidedProgress = nextConfig.progressPresentation === "guided";
@@ -123,6 +151,7 @@
         ? nextConfig.selectedMethod
         : (methods.find((method) => method.enabled)?.id || methods[0].id);
       terminal.textContent = guidedProgress ? "Bereit zum Flashen." : "GerNetiX Flash-Terminal bereit.";
+      setProgress(null);
       running = false;
       renderMethods();
       write("running", `Flash-Auftrag geöffnet: ${nextConfig.artifact?.name || "Firmware-Build"}.`);
@@ -136,7 +165,7 @@
       renderSelection();
       write("running", `${method.label}: Flashvorgang gestartet.`);
       try {
-        await config.onExecute?.(method.id, { write, setArtifact: renderArtifact });
+        await config.onExecute?.(method.id, { write, setArtifact: renderArtifact, setProgress });
         await config.onComplete?.(method.id);
       } catch (error) {
         write("error", `Flash fehlgeschlagen: ${error?.message || "unbekannter Fehler"}`);
@@ -159,7 +188,7 @@
     });
     dialog.addEventListener("cancel", (event) => { if (running) event.preventDefault(); });
 
-    return { open, write, setArtifact: renderArtifact, setRunning(value) { running = Boolean(value); renderSelection(); }, element: dialog };
+    return { open, write, setArtifact: renderArtifact, setProgress, setRunning(value) { running = Boolean(value); renderSelection(); }, element: dialog };
   }
 
   const api = { create, normalizeMethods, formatBytes };

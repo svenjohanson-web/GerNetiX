@@ -162,10 +162,10 @@ async function loadProjectAppAssets() {
 const lazyAssetVersions = {
   boardConfiguration: "20260731-board-source-groups-1",
   build: "20260804-debug-artifact-protection-1",
-  flashDialog: "20260804-unified-flash-1",
+  flashDialog: "20260807-helper-progress-1",
   flashExecutor: "20260804-unified-flash-2",
   flashProgress: "20260802-flash-progress",
-  guidedProject: "20260806-learning-feedback-final-1",
+  guidedProject: "20260807-microcontroller-fundamentals-1",
   onboarding: "20260719-04",
   onboardingModel: "20260803-performance-1",
   usbDisconnect: "20260801-shared-1",
@@ -433,6 +433,7 @@ function platformSummarySectionsForRoute(route) {
   if (route === "applications") return ["devices"];
   if (["development-platform", "development-hardware", "ide", "debug", "project-app"].includes(route)) return ["devices", "builds", "progress"];
   if (route === "learn") return ["progress"];
+  if (route === "learning-project") return ["devices", "progress"];
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return ["devices", "builds"];
   if (route === "billing") return ["ai", "billing"];
   return [];

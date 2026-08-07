@@ -14,6 +14,7 @@ const builds = fs.readFileSync(path.join(root, "public", "app", "app-device-buil
 const projects = fs.readFileSync(path.join(root, "public", "app", "app-project-controller.js"), "utf8");
 const devServer = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
 const shell = fs.readFileSync(path.join(root, "public", "app", "app-shell-controller.js"), "utf8");
+const guided = fs.readFileSync(path.join(root, "public", "app", "guided-project-view.js"), "utf8");
 const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
 const knowledgeContent = fs.readFileSync(path.join(root, "public", "app", "knowledge-content.js"), "utf8");
 const hardwareFragment = fs.readFileSync(path.join(root, "public", "app", "fragments", "hardware-lab.html"), "utf8");
@@ -127,6 +128,10 @@ test("browser-only learning projects do not load build flash or board workbenche
   assert.match(shell, /startsWith\("runtime\.browser_"\)/);
   assert.match(shell, /if \(activeLearningProjectNeedsHardwareWorkbench\(\)\) \{[\s\S]*loadBuildWorkbenchAssets\(\)[\s\S]*\} else \{[\s\S]*loadGuidedProjectCoreAssets\(\)/);
   assert.match(shell, /route === "learning-project"[\s\S]*activeLearningProjectNeedsHardwareWorkbench\(\) && typeof startBuild === "undefined"/);
+  assert.match(guided, /function projectRequiresHardware\(project\)[\s\S]*startsWith\("runtime\.browser_"\)/);
+  assert.match(guided, /function renderLearningSoftwareTargetPanel\(project\) \{\s*if \(!projectRequiresHardware\(project\)\) return ""/);
+  assert.match(guided, /if \(typeof BoardConfigurationPlugin === "undefined"\) \{\s*throw new Error/);
+  assert.match(guided, /if \(typeof waitForCompletedBuild !== "function"\) \{\s*throw new Error/);
 });
 
 test("project file authorization does not reload every account project", () => {

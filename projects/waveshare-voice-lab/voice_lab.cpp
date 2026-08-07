@@ -1,11 +1,14 @@
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <new>
 
 #include "basissoftware/feedback.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "nexi/application_manager.h"
 #include "nexi/audio_engine.h"
@@ -51,10 +54,120 @@ constexpr const char* kNextEffectSentenceProfileKey = "effect_s1";
 constexpr const char* kReactionGameSentenceProfileKey = "game_s1";
 constexpr const char* kLocalQuizSentenceProfileKey = "quiz_s1";
 constexpr const char* kLocalStoriesSentenceProfileKey = "stories_s1";
-constexpr const char* kLegacyWakeProfileKey = "wake_v1";
+constexpr const char* kPersonalWakeProfileKey = "wake_v1";
 constexpr const char* kLegacyVoiceStudioProfileKey = "studio_v1";
 constexpr const char* kLegacyStopProfileKey = "stop_v1";
 bool runtimeStartRequested = false;
+nexi::WaveshareAudioFrameSource* voiceSetupAudio = nullptr;
+nexi::PersonalWakeWordDetector* voiceSetupDetector = nullptr;
+SemaphoreHandle_t voiceSetupAudioMutex = nullptr;
+
+bool readAudioFrame(
+    nexi::WaveshareAudioFrameSource& source, nexi::AudioFrame* frame) {
+  if (voiceSetupAudioMutex == nullptr ||
+      xSemaphoreTake(voiceSetupAudioMutex, pdMS_TO_TICKS(2000)) != pdTRUE) {
+    return false;
+  }
+  const bool read = source.read(frame);
+  xSemaphoreGive(voiceSetupAudioMutex);
+  return read;
+}
+
+void writeVoiceSetupPayload(
+    char* target, size_t targetSize, bool accepted = false,
+    bool includeAccepted = false, bool detected = false,
+    bool includeDetected = false) {
+  const size_t count = voiceSetupDetector == nullptr
+      ? 0 : voiceSetupDetector->referenceCount();
+  const bool ready = voiceSetupDetector != nullptr &&
+      voiceSetupDetector->ready();
+  std::snprintf(target, targetSize,
+      includeDetected
+          ? "{\"reference_count\":%u,\"ready\":%s,\"detected\":%s}"
+          : includeAccepted
+              ? "{\"reference_count\":%u,\"ready\":%s,\"accepted\":%s}"
+              : "{\"reference_count\":%u,\"ready\":%s}",
+      static_cast<unsigned>(count), ready ? "true" : "false",
+      (includeDetected ? detected : accepted) ? "true" : "false");
+}
+
+bool capturePersonalWakeReference(bool* accepted) {
+  if (accepted != nullptr) *accepted = false;
+  if (voiceSetupAudio == nullptr || voiceSetupDetector == nullptr ||
+      voiceSetupAudioMutex == nullptr || voiceSetupDetector->ready() ||
+      xSemaphoreTake(voiceSetupAudioMutex, pdMS_TO_TICKS(2000)) != pdTRUE) {
+    return false;
+  }
+  bool captureSucceeded = voiceSetupDetector->beginCalibrationSample();
+  auto& hardware = nexi::HardwarePlatform::instance();
+  hardware.setStatusLeds(
+      nexi::HardwarePlatform::STATUS_LED_COUNT,
+      nexi::HardwarePlatform::STATUS_LED_BRIGHTNESS, 0, 0);
+  vTaskDelay(pdMS_TO_TICKS(350));
+  for (size_t frameIndex = 0; frameIndex < 220 && captureSucceeded;
+       ++frameIndex) {
+    nexi::AudioFrame frame{nullptr, 0, 0};
+    captureSucceeded = voiceSetupAudio->read(&frame) &&
+        voiceSetupDetector->captureCalibrationFrame(frame);
+  }
+  const nexi::WakeCalibrationResult result =
+      voiceSetupDetector->finishCalibrationSample();
+  bool durable = true;
+  if (result.accepted && voiceSetupDetector->ready()) {
+    durable = nexi::PersonalVoiceProfileStore().save(
+        kPersonalWakeProfileKey, *voiceSetupDetector);
+    if (!durable) {
+      feedbackWarning(TAG,
+          "Personal Hey Nexi profile could not be persisted; enrollment reset");
+      voiceSetupDetector->resetCalibration();
+    }
+  }
+  hardware.setStatusLeds(result.referenceCount, 0,
+      nexi::HardwarePlatform::STATUS_LED_BRIGHTNESS, 0);
+  xSemaphoreGive(voiceSetupAudioMutex);
+  if (accepted != nullptr) *accepted = result.accepted && durable;
+  return captureSucceeded && durable;
+}
+
+bool testPersonalWake(bool* detected) {
+  if (detected != nullptr) *detected = false;
+  if (voiceSetupAudio == nullptr || voiceSetupDetector == nullptr ||
+      !voiceSetupDetector->ready() || voiceSetupAudioMutex == nullptr ||
+      xSemaphoreTake(voiceSetupAudioMutex, pdMS_TO_TICKS(2000)) != pdTRUE) {
+    return false;
+  }
+  const uint32_t initialEvaluations = voiceSetupDetector->evaluationCount();
+  nexi::WakeWordDetection detection = nexi::WakeWordDetection::noMatch();
+  auto& hardware = nexi::HardwarePlatform::instance();
+  hardware.setStatusLeds(
+      nexi::HardwarePlatform::STATUS_LED_COUNT,
+      nexi::HardwarePlatform::STATUS_LED_BRIGHTNESS, 0, 0);
+  for (size_t frameIndex = 0; frameIndex < 360; ++frameIndex) {
+    nexi::AudioFrame frame{nullptr, 0, 0};
+    if (!voiceSetupAudio->read(&frame)) break;
+    detection = voiceSetupDetector->process(frame);
+    if (detection.detected ||
+        voiceSetupDetector->evaluationCount() > initialEvaluations) break;
+  }
+  hardware.setStatusLeds(voiceSetupDetector->requiredReferenceCount(), 0,
+      nexi::HardwarePlatform::STATUS_LED_BRIGHTNESS, 0);
+  xSemaphoreGive(voiceSetupAudioMutex);
+  if (detected != nullptr) *detected = detection.detected;
+  return true;
+}
+
+void releaseVoiceSetupController() {
+  voiceSetupAudio = nullptr;
+  if (voiceSetupDetector != nullptr) {
+    voiceSetupDetector->~PersonalWakeWordDetector();
+    heap_caps_free(voiceSetupDetector);
+    voiceSetupDetector = nullptr;
+  }
+  if (voiceSetupAudioMutex != nullptr) {
+    vSemaphoreDelete(voiceSetupAudioMutex);
+    voiceSetupAudioMutex = nullptr;
+  }
+}
 
 bool calibratePersonalPhrase(
     nexi::WaveshareAudioFrameSource& source,
@@ -93,7 +206,7 @@ bool calibratePersonalPhrase(
       }
       // Keep DMA current while waiting; this discarded frame is never stored.
       nexi::AudioFrame discarded{nullptr, 0, 0};
-      source.read(&discarded);
+      readAudioFrame(source, &discarded);
     }
     if (hardware.waitForButtonState(
             nexi::BoardButton::Record, true) != ESP_OK ||
@@ -106,7 +219,7 @@ bool calibratePersonalPhrase(
         nexi::HardwarePlatform::STATUS_LED_BRIGHTNESS, 0, 0);
     while (recordPressed) {
       nexi::AudioFrame frame{nullptr, 0, 0};
-      if (!source.read(&frame) || !detector.captureCalibrationFrame(frame)) {
+      if (!readAudioFrame(source, &frame) || !detector.captureCalibrationFrame(frame)) {
         feedbackWarning(TAG,
             "Reference recording failed or exceeded 2.4 seconds");
         break;
@@ -189,7 +302,9 @@ bool prepareSentenceProfile(
   return true;
 }
 
-void runLocalVoiceEntryTest(nexi::ApplicationManager& applications) {
+void runLocalVoiceEntryTest(
+    nexi::WaveshareAudioFrameSource& source,
+    nexi::ApplicationManager& applications) {
   struct SentenceDefinition {
     const char* key;
     const char* phrase;
@@ -244,7 +359,6 @@ void runLocalVoiceEntryTest(nexi::ApplicationManager& applications) {
         nexi::PersonalWakeWordDetector(kSentences[index].phrase, 2);
   }
 
-  nexi::WaveshareAudioFrameSource source;
   nexi::PersonalVoiceProfileStore profileStore;
   bool resetProfiles = false;
   const esp_err_t resetButtonResult = nexi::HardwarePlatform::instance()
@@ -256,10 +370,15 @@ void runLocalVoiceEntryTest(nexi::ApplicationManager& applications) {
     nexi::HardwarePlatform::instance().waitForButtonState(
         nexi::BoardButton::Volume, false);
     const bool erased = profileStore.eraseAll() &&
-        profileStore.eraseLegacyDefault(kLegacyWakeProfileKey) &&
+        profileStore.eraseLegacyDefault(kPersonalWakeProfileKey) &&
         profileStore.eraseLegacyDefault(kLegacyVoiceStudioProfileKey) &&
         profileStore.eraseLegacyDefault(kLegacyStopProfileKey);
     if (erased) {
+      if (voiceSetupDetector != nullptr && voiceSetupAudioMutex != nullptr &&
+          xSemaphoreTake(voiceSetupAudioMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
+        voiceSetupDetector->resetCalibration();
+        xSemaphoreGive(voiceSetupAudioMutex);
+      }
       feedbackInfo(TAG,
           "KEY3 held at startup: saved personal sentences erased");
     } else {
@@ -294,7 +413,7 @@ void runLocalVoiceEntryTest(nexi::ApplicationManager& applications) {
   }
   if (allDurable) {
     const bool legacyErased =
-        profileStore.eraseLegacyDefault(kLegacyWakeProfileKey) &&
+        profileStore.eraseLegacyDefault(kPersonalWakeProfileKey) &&
         profileStore.eraseLegacyDefault(kLegacyVoiceStudioProfileKey) &&
         profileStore.eraseLegacyDefault(kLegacyStopProfileKey);
     if (legacyErased) {
@@ -361,7 +480,7 @@ void runLocalVoiceEntryTest(nexi::ApplicationManager& applications) {
     }
 
     nexi::AudioFrame frame{nullptr, 0, 0};
-    if (!source.read(&frame)) {
+    if (!readAudioFrame(source, &frame)) {
       feedbackWarning(TAG, "Voice-entry audio read failed");
       break;
     }
@@ -461,12 +580,34 @@ void runtimeTask(void *) {
     return;
   }
 
+  nexi::WaveshareAudioFrameSource setupAudioSource;
+  voiceSetupAudioMutex = xSemaphoreCreateMutex();
+  void* wakeDetectorMemory = heap_caps_malloc(
+      sizeof(nexi::PersonalWakeWordDetector),
+      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (voiceSetupAudioMutex != nullptr && wakeDetectorMemory != nullptr) {
+    voiceSetupAudio = &setupAudioSource;
+    voiceSetupDetector = new (wakeDetectorMemory)
+        nexi::PersonalWakeWordDetector("Hey Nexi", 3);
+    const nexi::VoiceProfileLoadResult wakeLoad =
+        nexi::PersonalVoiceProfileStore().load(
+            kPersonalWakeProfileKey, voiceSetupDetector);
+    feedbackInfo(TAG, wakeLoad == nexi::VoiceProfileLoadResult::Loaded
+        ? "Personal Hey Nexi board profile is ready for local USB setup"
+        : "Personal Hey Nexi board setup is ready for local USB enrollment");
+  } else {
+    feedbackWarning(TAG,
+        "Unable to reserve the local USB voice-setup controller");
+    if (wakeDetectorMemory != nullptr) heap_caps_free(wakeDetectorMemory);
+  }
+
   int16_t *recording = static_cast<int16_t *>(heap_caps_malloc(
       nexi::AudioEngine::RECORD_CAPACITY_BYTES,
       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
   if (recording == nullptr) {
     feedbackError(TAG, "Unable to reserve %u bytes of PSRAM for recording",
         static_cast<unsigned>(nexi::AudioEngine::RECORD_CAPACITY_BYTES));
+    releaseVoiceSetupController();
     hardware.shutdown();
     vTaskDelete(nullptr);
     return;
@@ -510,6 +651,7 @@ void runtimeTask(void *) {
     nexi::AudioEngine::secureErase(
         recording, nexi::AudioEngine::RECORD_CAPACITY_BYTES);
     heap_caps_free(recording);
+    releaseVoiceSetupController();
     hardware.shutdown();
     vTaskDelete(nullptr);
     return;
@@ -543,7 +685,7 @@ void runtimeTask(void *) {
     }
   }
 
-  runLocalVoiceEntryTest(applications);
+  runLocalVoiceEntryTest(setupAudioSource, applications);
 
   while (true) {
     nexi::OperatingMode operatingMode = nexi::OperatingMode::VoiceStudio;
@@ -587,6 +729,7 @@ void runtimeTask(void *) {
   nexi::AudioEngine::secureErase(
       recording, nexi::AudioEngine::RECORD_CAPACITY_BYTES);
   heap_caps_free(recording);
+  releaseVoiceSetupController();
   hardware.shutdown();
   vTaskDelete(nullptr);
 }
@@ -612,6 +755,84 @@ void startRuntime() {
 void tickRuntime() {
   // The basissoftware tick must never block on product audio. Nexi owns its
   // bounded project task and receives future configuration through adapters.
+}
+
+bool handleVoiceSetupCommand(
+    const char* action, char* event, std::size_t eventSize,
+    char* payload, std::size_t payloadSize) {
+  if (action == nullptr || event == nullptr || eventSize == 0 ||
+      payload == nullptr || payloadSize == 0 ||
+      std::strncmp(action, "nexi_voice_", 11) != 0) {
+    return false;
+  }
+  for (unsigned wait = 0;
+       wait < 100 && (voiceSetupDetector == nullptr || voiceSetupAudio == nullptr);
+       ++wait) {
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
+  if (voiceSetupDetector == nullptr || voiceSetupAudio == nullptr ||
+      voiceSetupAudioMutex == nullptr) {
+    std::snprintf(event, eventSize, "error");
+    std::snprintf(payload, payloadSize,
+        "{\"code\":\"nexi_voice_setup_not_ready\"}");
+    return true;
+  }
+
+  if (std::strcmp(action, "nexi_voice_status") == 0) {
+    std::snprintf(event, eventSize, "nexi_voice_status");
+    if (xSemaphoreTake(voiceSetupAudioMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
+      writeVoiceSetupPayload(payload, payloadSize);
+      xSemaphoreGive(voiceSetupAudioMutex);
+    } else {
+      std::snprintf(event, eventSize, "error");
+      std::snprintf(payload, payloadSize,
+          "{\"code\":\"nexi_voice_setup_busy\"}");
+    }
+    return true;
+  }
+
+  if (std::strcmp(action, "nexi_voice_enroll") == 0) {
+    bool accepted = false;
+    const bool captured = capturePersonalWakeReference(&accepted);
+    std::snprintf(event, eventSize, "nexi_voice_enrollment");
+    writeVoiceSetupPayload(payload, payloadSize,
+        captured && accepted, true);
+    return true;
+  }
+
+  if (std::strcmp(action, "nexi_voice_test") == 0) {
+    bool detected = false;
+    const bool tested = testPersonalWake(&detected);
+    std::snprintf(event, eventSize, "nexi_voice_test");
+    writeVoiceSetupPayload(payload, payloadSize,
+        false, false, tested && detected, true);
+    return true;
+  }
+
+  if (std::strcmp(action, "nexi_voice_reset") == 0) {
+    std::snprintf(event, eventSize, "nexi_voice_reset");
+    if (xSemaphoreTake(voiceSetupAudioMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
+      voiceSetupDetector->resetCalibration();
+      const nexi::PersonalVoiceProfileStore store;
+      const bool erased = store.erase(kPersonalWakeProfileKey) &&
+          store.eraseLegacyDefault(kPersonalWakeProfileKey);
+      if (erased) {
+        writeVoiceSetupPayload(payload, payloadSize);
+      } else {
+        std::snprintf(event, eventSize, "error");
+        std::snprintf(payload, payloadSize,
+            "{\"code\":\"nexi_voice_profile_erase_failed\"}");
+      }
+      xSemaphoreGive(voiceSetupAudioMutex);
+    } else {
+      std::snprintf(event, eventSize, "error");
+      std::snprintf(payload, payloadSize,
+          "{\"code\":\"nexi_voice_setup_busy\"}");
+    }
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace nexi

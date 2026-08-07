@@ -1,0 +1,1249 @@
+{
+  "slug": "microcontroller-fundamentals",
+  "project": {
+    "slug": "microcontroller-fundamentals",
+    "title": "Grundlagen der Mikrocontrollertechnik",
+    "area": "Mikrocontrollertechnik",
+    "summary": "Lerne schrittweise, wie Mikrocontroller Zahlen speichern, elektrische Signale verarbeiten, Ein- und Ausgänge steuern und zuverlässig mit ihrer Umgebung kommunizieren.",
+    "learning_category": "embedded",
+    "tags": ["runtime:browser", "platform:arduino", "platform:esp32", "topic:microcontroller", "topic:firmware", "level:beginner"],
+    "hardware_profile_id": "runtime.browser_microcontroller_simulator",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "src/mikrocontroller.cpp", "role": "user_code" },
+      { "path": "README.md", "role": "learning_guide" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Grundlagen der Mikrocontrollertechnik",
+    "summary": "50 kurze Pflichtlektionen führen vom Aufbau eines Mikrocontrollers bis zu einem kleinen, nicht blockierenden Sensorsystem.",
+    "primary_source_path": "src/mikrocontroller.cpp",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "adaptive_hardware_validation": true
+  },
+  "phases": [
+    "Mikrocontroller verstehen",
+    "Bits und Zahlendarstellung",
+    "Datentypen und Speicher",
+    "Elektrische Grundlagen",
+    "GPIO, ADC und PWM",
+    "Zeit, Timer und Interrupts",
+    "UART, I2C und SPI",
+    "Abschlussprojekt"
+  ],
+  "lessons": [
+    {
+      "id": "01-computer-processor-microcontroller",
+      "title": "Computer, Mikroprozessor und Mikrocontroller",
+      "summary": "Ein Mikroprozessor ist vor allem eine Recheneinheit; ein Mikrocontroller vereint Recheneinheit, Speicher und Hardware-Schnittstellen in einem Baustein.",
+      "insight": "Der Mikrocontroller ist ein kleiner vollständiger Rechner für eine klar abgegrenzte Aufgabe.",
+      "code": "// Personal Computer: viele wechselnde Anwendungen\n// Mikroprozessor: CPU als zentraler Baustein\n// Mikrocontroller: CPU + Speicher + Peripherie",
+      "task": "Ordne die drei Begriffe nach ihrem Umfang.",
+      "expected_result": "Du kannst erklären, warum ein Mikrocontroller ohne PC-Betriebssystem eine feste Aufgabe ausführen kann.",
+      "concepts": [
+        { "label": "CPU", "text": "Führt Maschinenbefehle aus und verarbeitet Daten." },
+        { "label": "Mikrocontroller", "text": "Verbindet CPU, Speicher und Peripherie auf einem Chip." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welche Aussage beschreibt einen Mikrocontroller am besten?",
+        "options": [
+          { "id": "a", "label": "Nur ein Speicherchip" },
+          { "id": "b", "label": "CPU, Speicher und Peripherie in einem Baustein" },
+          { "id": "c", "label": "Ein vollständiger Desktop-PC mit Bildschirm" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "02-cpu-ram-flash-peripherals",
+      "title": "CPU, RAM, Flash und Peripherie",
+      "summary": "CPU, flüchtiger Arbeitsspeicher, nichtflüchtiger Programmspeicher und Peripherie übernehmen unterschiedliche Aufgaben.",
+      "insight": "Ein Wert im RAM und ein Programm im Flash haben verschiedene Lebensdauern.",
+      "code": "Flash  -> Programmcode\nRAM    -> veränderliche Laufzeitdaten\nCPU    -> Befehle ausführen\nGPIO   -> elektrische Ein- und Ausgänge",
+      "task": "Ordne Programmcode, laufende Variablen und Pin-Signale dem passenden Baustein zu.",
+      "expected_result": "Programmcode liegt typischerweise im Flash, veränderliche Daten im RAM und Signale werden über Peripherie verarbeitet.",
+      "concepts": [
+        { "label": "RAM", "text": "Verliert seinen Inhalt normalerweise ohne Versorgung." },
+        { "label": "Flash", "text": "Bewahrt Firmware auch ohne Versorgung." },
+        { "label": "Peripherie", "text": "Hardwareblöcke wie GPIO, ADC, Timer oder UART." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wo bleiben die Programmbefehle nach dem Ausschalten normalerweise erhalten?",
+        "options": [
+          { "id": "a", "label": "Im Flash" },
+          { "id": "b", "label": "Nur im RAM" },
+          { "id": "c", "label": "Im GPIO-Pin" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "03-reset-boot-main-loop",
+      "title": "Vom Reset zur Hauptschleife",
+      "summary": "Nach Reset oder Einschalten startet zunächst die Bootlogik, initialisiert das System und übergibt an die Firmware.",
+      "insight": "Embedded-Programme warten selten auf ihr Ende; sie reagieren fortlaufend in einer Hauptschleife oder durch Ereignisse.",
+      "code": "void setup() {\n  // einmal initialisieren\n}\n\nvoid loop() {\n  // fortlaufend reagieren\n}",
+      "task": "Unterscheide die einmalige Initialisierung von der wiederholten Verarbeitung.",
+      "expected_result": "Du erkennst setup als Startphase und loop als fortlaufenden Programmbetrieb.",
+      "concepts": [
+        { "label": "Reset", "text": "Bringt den Controller in einen definierten Startzustand." },
+        { "label": "Bootloader", "text": "Kann Firmware laden oder die vorhandene Firmware starten." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welcher Teil wird im Arduino-Modell fortlaufend wiederholt?",
+        "options": [
+          { "id": "a", "label": "setup" },
+          { "id": "b", "label": "loop" },
+          { "id": "c", "label": "Der ausgeschaltete Flash" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "04-datasheet-pinout-board",
+      "title": "Datenblatt, Pinout und Entwicklungsboard",
+      "summary": "Chip, Modul und Entwicklungsboard sind nicht dasselbe; das Pinout und das konkrete Datenblatt bestimmen die nutzbaren Anschlüsse und Grenzwerte.",
+      "insight": "Eine aufgedruckte Pin-Nummer ist erst mit dem richtigen Board- und Chip-Datenblatt eindeutig.",
+      "code": "Board-Aufdruck -> Board-Schaltplan -> Modul/Chip -> Datenblatt\n\nPrüfe immer:\n- Versorgungsspannung\n- Pin-Funktion\n- besondere Boot- oder Flash-Pins",
+      "task": "Verfolge einen Pin vom Board-Aufdruck bis zur dokumentierten Chipfunktion.",
+      "expected_result": "Du behandelst Pinbelegung und elektrische Grenzen als boardspezifische Daten.",
+      "concepts": [
+        { "label": "Pinout", "text": "Übersicht, welche Funktionen an welchem Anschluss erreichbar sind." },
+        { "label": "Datenblatt", "text": "Verbindliche technische Quelle für das konkrete Bauteil." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Was konntest du am erkannten Board eindeutig zuordnen?",
+          "instructions": "Lies die genaue Boardbezeichnung ab und gleiche mindestens Versorgung, GND und einen GPIO mit dem passenden Pinout ab.",
+          "options": [
+            { "id": "a", "label": "Nur die Farbe der Platine" },
+            { "id": "b", "label": "Boardbezeichnung, Versorgung, GND und einen dokumentierten GPIO" },
+            { "id": "c", "label": "Jeder Pin ist ohne Datenblatt frei verwendbar" }
+          ],
+          "correct_option": "b"
+        },
+        "simulator": {
+          "prompt": "Welche Quelle entscheidet über Pin-Funktion und Grenzwerte?",
+          "instructions": "Untersuche das virtuelle Pinout und öffne gedanklich die Dokumentationskette.",
+          "options": [
+            { "id": "a", "label": "Die Farbe des Boards" },
+            { "id": "b", "label": "Pinout, Schaltplan und Datenblatt des konkreten Boards beziehungsweise Chips" },
+            { "id": "c", "label": "Eine beliebige Pinliste eines anderen Controllers" }
+          ],
+          "correct_option": "b"
+        }
+      }
+    },
+    {
+      "id": "05-bit-and-byte",
+      "title": "Bit und Byte",
+      "summary": "Ein Bit kennt zwei Zustände; acht Bits bilden ein Byte mit 256 möglichen Kombinationen.",
+      "insight": "Bitbreite bestimmt die Anzahl darstellbarer Kombinationen, nicht automatisch deren Bedeutung.",
+      "code": "1 Bit  = 0 oder 1\n8 Bit  = 1 Byte\n2^8    = 256 Kombinationen",
+      "task": "Berechne, wie viele unterschiedliche Bitmuster ein Byte besitzt.",
+      "expected_result": "Du leitest 256 mögliche Muster aus 2 hoch 8 ab.",
+      "concepts": [
+        { "label": "Bit", "text": "Kleinste binäre Informationseinheit." },
+        { "label": "Byte", "text": "Gruppe aus acht Bits." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wie viele verschiedene Muster besitzt ein Byte?",
+        "options": [
+          { "id": "a", "label": "8" },
+          { "id": "b", "label": "16" },
+          { "id": "c", "label": "256" }
+        ],
+        "correct_option": "c"
+      }
+    },
+    {
+      "id": "06-binary-numbers",
+      "title": "Binärzahlen lesen",
+      "summary": "Jede Stelle einer Binärzahl besitzt einen Stellenwert als Zweierpotenz.",
+      "insight": "1010 bedeutet 8 + 2 und damit dezimal 10.",
+      "code": "Bit:        3 2 1 0\nStellenwert: 8 4 2 1\nMuster:      1 0 1 0\nErgebnis:    8 + 2 = 10",
+      "task": "Wandle 1010₂ in eine Dezimalzahl um.",
+      "expected_result": "Du erhältst 10 und kannst jeden gesetzten Stellenwert benennen.",
+      "concepts": [
+        { "label": "LSB", "text": "Niederwertigstes Bit mit dem kleinsten Stellenwert." },
+        { "label": "MSB", "text": "Höchstwertiges Bit des betrachteten Musters." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welchen Dezimalwert hat 1010₂?",
+        "options": [
+          { "id": "a", "label": "5" },
+          { "id": "b", "label": "10" },
+          { "id": "c", "label": "12" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "07-hexadecimal",
+      "title": "Hexadezimalzahlen als kurze Binärschreibweise",
+      "summary": "Eine Hexadezimalstelle fasst genau vier Bits zusammen; die Ziffern reichen von 0 bis F.",
+      "insight": "0xA5 ist für Menschen kürzer lesbar als 0b10100101, beschreibt aber dasselbe Bitmuster.",
+      "code": "0b1010 0101\n     A    5\n= 0xA5\n= 165 dezimal",
+      "task": "Teile das Binärmuster in Vierergruppen und ordne die Hexziffern zu.",
+      "expected_result": "Du erkennst 1010 als A und 0101 als 5.",
+      "concepts": [
+        { "label": "0x", "text": "Üblicher Präfix für eine Hexadezimalzahl im Quellcode." },
+        { "label": "Nibble", "text": "Gruppe aus vier Bits." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welche Hexzahl entspricht 0b11111111?",
+        "options": [
+          { "id": "a", "label": "0x0F" },
+          { "id": "b", "label": "0xFF" },
+          { "id": "c", "label": "0xF0" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "08-set-clear-test-bits",
+      "title": "Bits setzen, löschen und prüfen",
+      "summary": "Bitoperationen verändern einzelne Schalter in einem Zahlenwert, ohne die übrigen Bits zu verlieren.",
+      "insight": "ODER setzt Bits, UND mit invertierter Maske löscht Bits und UND prüft Bits.",
+      "code": "uint8_t flags = 0;\n// Setze Bit 2.\n// Prüfe Bit 2.\n// Lösche Bit 2.",
+      "task": "Ergänze Setzen, Prüfen und Löschen von Bit 2.",
+      "expected_result": "Der Code enthält eine Verschiebung sowie ODER, UND und invertierte Maske.",
+      "concepts": [
+        { "label": "1 << 2", "text": "Erzeugt eine Maske, in der nur Bit 2 gesetzt ist." },
+        { "label": "Bitweise Operatoren", "text": "Arbeiten auf jedem einzelnen Bit eines Ganzzahlwertes." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["1 << 2", "flags |=", "flags &", "flags &= ~"],
+        "success": "Du kannst ein einzelnes Bit gezielt setzen, prüfen und löschen."
+      }
+    },
+    {
+      "id": "09-bitmasks-and-registers",
+      "title": "Bitmasken und Register",
+      "summary": "Hardware-Register bündeln häufig mehrere unabhängige Zustände oder Steuerbits in einem Zahlenwert.",
+      "insight": "Eine benannte Maske dokumentiert besser als eine rätselhafte nackte Zahl, welches Bit gemeint ist.",
+      "code": "const uint8_t ENABLE_MASK = 0b00000100;\nuint8_t control = 0b00000001;\n\n// Aktiviere ENABLE_MASK, ohne Bit 0 zu verändern.",
+      "task": "Setze ENABLE_MASK mit einem bitweisen ODER in control.",
+      "expected_result": "control enthält danach die zuvor gesetzten Bits und zusätzlich ENABLE_MASK.",
+      "concepts": [
+        { "label": "Register", "text": "Speichernahe Schnittstelle zu Hardwarezuständen und -funktionen." },
+        { "label": "Maske", "text": "Bitmuster zur Auswahl bestimmter Bits." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["control |= ENABLE_MASK"],
+        "success": "Die Maske setzt nur das gewünschte Bit."
+      }
+    },
+    {
+      "id": "10-uint8-range",
+      "title": "uint8_t: acht Bit ohne Vorzeichen",
+      "summary": "uint8_t beschreibt, sofern der exakte Typ verfügbar ist, eine vorzeichenlose Ganzzahl mit genau acht Bits und dem Bereich 0 bis 255.",
+      "insight": "Der Typname dokumentiert Breite und Vorzeichen unabhängig davon, wie breit int auf der Plattform ist.",
+      "code": "#include <stdint.h>\n\nuint8_t helligkeit = 255;\nuint8_t minimum = 0;",
+      "task": "Bestimme kleinsten und größten darstellbaren Wert.",
+      "expected_result": "Du nennst 0 und 255 und begründest den Bereich mit 2 hoch 8 Kombinationen.",
+      "concepts": [
+        { "label": "u", "text": "unsigned, also ohne negatives Vorzeichen." },
+        { "label": "8", "text": "Breite von genau acht Bits bei verfügbarem uint8_t." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welcher Bereich gehört zu uint8_t?",
+        "options": [
+          { "id": "a", "label": "−128 bis 127" },
+          { "id": "b", "label": "0 bis 255" },
+          { "id": "c", "label": "0 bis 65.535" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "11-uint16-uint32",
+      "title": "uint16_t und uint32_t",
+      "summary": "Mehr Bits vergrößern den Wertebereich, benötigen aber mehr Speicher und können auf kleinen Prozessoren mehr Rechenaufwand verursachen.",
+      "insight": "uint16_t reicht bis 65.535; uint32_t bis 4.294.967.295.",
+      "code": "uint16_t adcSumme = 60000;\nuint32_t laufzeitMs = 3000000000UL;",
+      "task": "Wähle für 60.000 und drei Milliarden jeweils den kleinsten passenden Typ.",
+      "expected_result": "60.000 passt in uint16_t; drei Milliarden benötigen uint32_t.",
+      "concepts": [
+        { "label": "16 Bit", "text": "2 hoch 16 unterschiedliche Muster." },
+        { "label": "32 Bit", "text": "2 hoch 32 unterschiedliche Muster." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welcher Typ kann drei Milliarden ohne Vorzeichen darstellen?",
+        "options": [
+          { "id": "a", "label": "uint8_t" },
+          { "id": "b", "label": "uint16_t" },
+          { "id": "c", "label": "uint32_t" }
+        ],
+        "correct_option": "c"
+      }
+    },
+    {
+      "id": "12-signed-integers",
+      "title": "Ganzzahlen mit Vorzeichen",
+      "summary": "Vorzeichenbehaftete Typen stellen negative und positive Werte dar; bei int8_t reicht der typische exakte Bereich von −128 bis 127.",
+      "insight": "Die gleiche Bitbreite liefert nicht gleichzeitig den vollen positiven unsigned-Bereich und negative Werte.",
+      "code": "int8_t temperatur = -12;\nuint8_t fuellstand = 200;",
+      "task": "Entscheide, welcher Messwert negative Werte benötigt.",
+      "expected_result": "Die Temperatur braucht hier einen vorzeichenbehafteten Typ; der Füllstand kann unsigned sein.",
+      "concepts": [
+        { "label": "signed", "text": "Ganzzahltyp mit negativen und positiven Werten." },
+        { "label": "unsigned", "text": "Ganzzahltyp ab null mit größerem positiven Bereich gleicher Breite." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welcher Typ passt zu −12 °C?",
+        "options": [
+          { "id": "a", "label": "uint8_t" },
+          { "id": "b", "label": "int8_t" },
+          { "id": "c", "label": "Ein einzelnes bool" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "13-twos-complement",
+      "title": "Zweierkomplement verstehen",
+      "summary": "Moderne Binärsysteme codieren negative Ganzzahlen im Zweierkomplement, sodass Addition mit denselben Binärschaltungen funktioniert.",
+      "insight": "Bei acht Bits ist 11111111 als int8_t −1, als uint8_t dagegen 255.",
+      "code": "Bitmuster: 11111111\nals uint8_t: 255\nals int8_t:   -1",
+      "task": "Unterscheide Bitmuster und Interpretation durch den Typ.",
+      "expected_result": "Du erklärst, dass nicht das Muster allein, sondern der Datentyp die Bedeutung festlegt.",
+      "concepts": [
+        { "label": "Zweierkomplement", "text": "Darstellung negativer Binär-Ganzzahlen mit eindeutiger Null." },
+        { "label": "Interpretation", "text": "Dasselbe Bitmuster kann je nach Typ einen anderen Zahlenwert bedeuten." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Was bedeutet 11111111 als int8_t?",
+        "options": [
+          { "id": "a", "label": "−1" },
+          { "id": "b", "label": "0" },
+          { "id": "c", "label": "255" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "14-overflow-underflow",
+      "title": "Überlauf und Unterlauf",
+      "summary": "Verlässt eine Rechnung den darstellbaren Bereich, ist das Ergebnis nicht einfach eine größere Zahl; unsigned Werte laufen modulo ihrer Bitbreite weiter.",
+      "insight": "Bei uint8_t wird aus 255 + 1 wieder 0; bei signed Überlauf darfst du kein verlässliches Wraparound-Verhalten annehmen.",
+      "code": "uint8_t zaehler = 255;\n\n// Verhindere den Überlauf vor zaehler++.",
+      "task": "Ergänze eine Bereichsprüfung, die nur unterhalb von UINT8_MAX erhöht.",
+      "expected_result": "Der Zähler wird bei 255 nicht weiter erhöht.",
+      "concepts": [
+        { "label": "Overflow", "text": "Das mathematische Ergebnis liegt oberhalb des Typbereichs." },
+        { "label": "Grenzprüfung", "text": "Prüft vor einer Operation, ob das Ergebnis darstellbar bleibt." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["zaehler < UINT8_MAX", "zaehler++"],
+        "success": "Die Erhöhung ist gegen den oberen Grenzwert geschützt."
+      }
+    },
+    {
+      "id": "15-float-and-double",
+      "title": "float und double",
+      "summary": "Gleitkommatypen stellen einen großen Wertebereich und Nachkommastellen dar, aber nur mit begrenzter Genauigkeit.",
+      "insight": "Wie breit float und double sind und wie schnell sie verarbeitet werden, hängt von Sprache, Compiler und Zielcontroller ab.",
+      "code": "float temperatur = 21.5f;\ndouble kalibrierfaktor = 1.000001;",
+      "task": "Unterscheide Wertebereich, Genauigkeit und Speicherbedarf.",
+      "expected_result": "Du weißt, dass double nicht auf jedem Mikrocontroller automatisch mehr Präzision als float bietet.",
+      "concepts": [
+        { "label": "float", "text": "Gleitkommatyp mit implementierungsabhängiger, mindestens standardkonformer Genauigkeit." },
+        { "label": "double", "text": "Gleitkommatyp mit mindestens so viel Genauigkeit wie float; konkrete Breite prüfen." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welche Aussage ist sicher?",
+        "options": [
+          { "id": "a", "label": "double ist auf jedem Controller immer exakt doppelt so genau wie float" },
+          { "id": "b", "label": "Die konkreten Eigenschaften müssen für Compiler und Zielcontroller geprüft werden" },
+          { "id": "c", "label": "Gleitkommazahlen sind immer mathematisch exakt" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "16-floating-point-precision",
+      "title": "Warum 0,1 nicht immer exakt ist",
+      "summary": "Viele Dezimalbrüche besitzen keine endliche Binärdarstellung und werden deshalb gerundet gespeichert.",
+      "insight": "Gleitkommawerte sollten meist mit einer Toleranz statt auf exakte Gleichheit verglichen werden.",
+      "code": "float wert = 0.1f + 0.2f;\nbool fastGleich = fabs(wert - 0.3f) < 0.0001f;",
+      "task": "Begründe, warum der Vergleich eine Toleranz verwendet.",
+      "expected_result": "Du erkennst Rundungsfehler als Eigenschaft der Darstellung und nicht als zufälligen Controllerfehler.",
+      "concepts": [
+        { "label": "Rundung", "text": "Nicht exakt darstellbare Werte werden auf ein verfügbares Bitmuster abgebildet." },
+        { "label": "Epsilon", "text": "Kleine akzeptierte Differenz beim Vergleich zweier Gleitkommawerte." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wie vergleichst du berechnete float-Werte meist robust?",
+        "options": [
+          { "id": "a", "label": "Nur mit exakter Bitgleichheit" },
+          { "id": "b", "label": "Über eine zur Aufgabe passende Toleranz" },
+          { "id": "c", "label": "Über die Länge des Variablennamens" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "17-memory-cost",
+      "title": "Datentypen belegen Speicher",
+      "summary": "Jede Variable belegt Bytes im RAM; Arrays vervielfachen diesen Bedarf mit ihrer Elementzahl.",
+      "insight": "1.000 uint8_t-Werte benötigen 1.000 Bytes, 1.000 uint32_t-Werte typischerweise 4.000 Bytes.",
+      "code": "uint8_t klein[1000];   // 1000 Byte\nuint32_t gross[1000]; // 4000 Byte",
+      "task": "Berechne den Speicherbedarf beider Arrays.",
+      "expected_result": "Du multiplizierst Elementgröße und Elementzahl.",
+      "concepts": [
+        { "label": "sizeof", "text": "Liefert die Größe eines Typs oder Objekts in Bytes." },
+        { "label": "Array", "text": "Speichert mehrere Elemente desselben Typs zusammenhängend." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wie viel Speicher benötigen 1.000 uint32_t-Elemente bei 32 Bit pro Element?",
+        "options": [
+          { "id": "a", "label": "1.000 Byte" },
+          { "id": "b", "label": "4.000 Byte" },
+          { "id": "c", "label": "32.000 Byte" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "18-choose-data-type",
+      "title": "Den passenden Datentyp wählen",
+      "summary": "Ein Datentyp muss Wertebereich, Vorzeichen, Genauigkeit, Rechenweg und Speicherbedarf der konkreten Größe abdecken.",
+      "insight": "So klein wie sinnvoll ist gut; zu klein oder semantisch falsch ist gefährlich.",
+      "code": "// 0..100 Prozent:\n// -40..125 Grad Celsius als ganze Zahl:\n// Laufzeit in Millisekunden über mehrere Wochen:",
+      "task": "Ergänze für die drei Größen uint8_t, int16_t und uint32_t.",
+      "expected_result": "Jede Größe besitzt einen begründeten Typ mit ausreichendem Bereich.",
+      "concepts": [
+        { "label": "Wertebereich", "text": "Alle gültigen und möglichen Zwischenwerte müssen passen." },
+        { "label": "Einheit", "text": "Skalierte Ganzzahlen können Nachkommastellen ohne float abbilden, etwa Zehntelgrad." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["uint8_t", "int16_t", "uint32_t"],
+        "success": "Du hast für jede Größe einen passenden Typ gewählt."
+      }
+    },
+    {
+      "id": "19-voltage-current-resistance",
+      "title": "Spannung, Strom und Widerstand",
+      "summary": "Spannung beschreibt eine elektrische Potentialdifferenz, Strom die bewegte Ladung pro Zeit und Widerstand den Zusammenhang zwischen beiden.",
+      "insight": "Ein Mikrocontroller-Pin gibt eine Spannung vor; der tatsächlich fließende Strom entsteht durch die angeschlossene Schaltung.",
+      "code": "U = Spannung in Volt\nI = Strom in Ampere\nR = Widerstand in Ohm",
+      "task": "Ordne Volt, Ampere und Ohm den drei Größen zu.",
+      "expected_result": "Du unterscheidest Antrieb, Ladungsfluss und Strombegrenzung.",
+      "concepts": [
+        { "label": "Spannung", "text": "Potentialdifferenz zwischen zwei Punkten." },
+        { "label": "Strom", "text": "Elektrische Ladung pro Zeit durch einen Leiter." },
+        { "label": "Widerstand", "text": "Begrenzt bei gegebener Spannung den Strom." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welche Einheit gehört zum elektrischen Strom?",
+        "options": [
+          { "id": "a", "label": "Volt" },
+          { "id": "b", "label": "Ampere" },
+          { "id": "c", "label": "Ohm" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "20-ground-reference",
+      "title": "GND ist der gemeinsame Bezug",
+      "summary": "Spannungen werden immer zwischen zwei Punkten gemessen; GND dient in einer Schaltung meist als gemeinsamer Bezugspunkt.",
+      "insight": "Zwei verbundene Geräte können digitale Pegel nur zuverlässig vergleichen, wenn sie einen geeigneten gemeinsamen Bezug besitzen.",
+      "code": "Sensor VCC  -> passende Versorgung\nSensor GND  -> Controller GND\nSensor OUT  -> geeigneter Eingang",
+      "task": "Erkläre, warum eine einzelne Signalleitung ohne gemeinsamen Bezug oft nicht genügt.",
+      "expected_result": "Du beschreibst Spannung als Differenz zum Bezugspunkt und verbindest GND bewusst.",
+      "concepts": [
+        { "label": "GND", "text": "Gewählter Bezugspunkt der Schaltung; nicht automatisch Schutzleiter oder Erde." },
+        { "label": "Potential", "text": "Elektrischer Zustand eines Punktes relativ zu einem Bezug." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Warum verbinden zwei Niederspannungsgeräte für ein einfaches Digitalsignal meist auch GND?",
+        "options": [
+          { "id": "a", "label": "Damit beide denselben Spannungsbezug verwenden" },
+          { "id": "b", "label": "Damit jeder Pin automatisch 5 V verträgt" },
+          { "id": "c", "label": "Damit kein Datenblatt mehr nötig ist" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "21-ohms-law",
+      "title": "Ohmsches Gesetz anwenden",
+      "summary": "Für einen ohmschen Widerstand verknüpft U = R · I Spannung, Widerstand und Strom.",
+      "insight": "Mit R = U / I lässt sich ein erster Strombegrenzungswiderstand berechnen; reale Bauteiltoleranzen und Grenzwerte bleiben zusätzlich zu prüfen.",
+      "code": "float spannung = 2.0f; // Volt am Widerstand\nfloat strom = 0.01f;    // Ampere\n\n// Berechne widerstand = spannung / strom.",
+      "task": "Ergänze die Berechnung und bestimme den Widerstand in Ohm.",
+      "expected_result": "Das Ergebnis beträgt 200 Ohm.",
+      "concepts": [
+        { "label": "U = R · I", "text": "Grundgleichung für ohmsche Widerstände." },
+        { "label": "Leistung", "text": "Auch die Verlustleistung des Widerstands muss zur Schaltung passen." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["spannung / strom", "200"],
+        "success": "Der berechnete Widerstand beträgt 200 Ohm."
+      }
+    },
+    {
+      "id": "22-logic-levels-and-limits",
+      "title": "Logikpegel und absolute Grenzwerte",
+      "summary": "LOW und HIGH sind Spannungsbereiche, keine universellen exakten Werte; zulässige Eingangs- und Ausgangspegel hängen vom konkreten Controller ab.",
+      "insight": "Absolute-Maximum-Werte sind keine Betriebswerte, sondern Grenzen, deren Überschreitung das Bauteil beschädigen kann.",
+      "code": "Vor dem Verbinden prüfen:\n1. empfohlene Versorgung\n2. LOW-/HIGH-Schwellen\n3. maximal zulässige Pinspannung\n4. Pegelwandler erforderlich?",
+      "task": "Entscheide, welche Datenblattabschnitte vor dem Anschluss eines fremden Signals nötig sind.",
+      "expected_result": "Du prüfst Betriebsbedingungen und Logikschwellen statt von einer pauschalen 3,3-V- oder 5-V-Verträglichkeit auszugehen.",
+      "concepts": [
+        { "label": "VIH/VIL", "text": "Grenzwerte, ab denen ein Eingang sicher HIGH oder LOW erkennt." },
+        { "label": "Absolute Maximum", "text": "Schadensgrenze, nicht empfohlener Dauerbetrieb." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wie behandelst du einen Absolute-Maximum-Wert?",
+        "options": [
+          { "id": "a", "label": "Als normalen Zielwert" },
+          { "id": "b", "label": "Als Grenze, die im Betrieb mit Reserve unterschritten werden muss" },
+          { "id": "c", "label": "Als unverbindlichen Beispielwert" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "23-pull-up-pull-down",
+      "title": "Pull-up und Pull-down verhindern offene Eingänge",
+      "summary": "Ein nicht getriebener digitaler Eingang kann schweben; ein Pull-Widerstand legt einen definierten Ruhezustand fest.",
+      "insight": "Bei INPUT_PULLUP ist ein Taster gegen GND im Ruhezustand HIGH und beim Drücken LOW.",
+      "code": "pinMode(TASTER_PIN, INPUT_PULLUP);\n\n// Ergänze die Abfrage für: Taster ist gedrückt.",
+      "task": "Schreibe einen booleschen Ausdruck mit digitalRead und LOW.",
+      "expected_result": "Die Abfrage berücksichtigt die invertierte Logik des Pull-ups.",
+      "concepts": [
+        { "label": "Floating", "text": "Offener Eingang ohne definiertes elektrisches Potential." },
+        { "label": "Pull-up", "text": "Schwacher Widerstand zum positiven Logikpegel." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["digitalRead(TASTER_PIN)", "== LOW"],
+        "success": "Die Pull-up-Logik wird korrekt als aktiv LOW ausgewertet."
+      }
+    },
+    {
+      "id": "24-pin-current-and-drivers",
+      "title": "Pins sind Signalausgänge, keine Leistungsversorgung",
+      "summary": "GPIO-Pins dürfen nur begrenzten Strom liefern oder aufnehmen; Motoren, Relais, Heizungen und starke LEDs benötigen geeignete Treiberstufen.",
+      "insight": "Datenblattgrenzen gelten pro Pin und oft zusätzlich für Gruppen oder den gesamten Chip.",
+      "code": "GPIO -> Vorwiderstand/Transistor/Treiber -> Last\n\nNie direkt am GPIO:\n- Motor\n- Relais-Spule\n- leistungsstarke LED",
+      "task": "Wähle für eine Motorlast den sicheren Signalweg.",
+      "expected_result": "Der GPIO steuert einen geeigneten Treiber; die Last erhält ihre Leistung nicht aus dem Pin.",
+      "concepts": [
+        { "label": "Treiber", "text": "Schaltstufe zwischen Logiksignal und höherer Last." },
+        { "label": "Freilaufpfad", "text": "Begrenzt bei induktiven Lasten gefährliche Abschaltspannungen." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wie steuerst du einen kleinen Gleichstrommotor?",
+        "options": [
+          { "id": "a", "label": "Direkt zwischen GPIO und GND" },
+          { "id": "b", "label": "Über passende Treiberstufe, Versorgung und Schutzbeschaltung" },
+          { "id": "c", "label": "Über einen offenen Analogeingang" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "25-gpio-output",
+      "title": "GPIO als digitaler Ausgang",
+      "summary": "Ein Ausgang muss konfiguriert werden, bevor die Firmware gezielt LOW oder HIGH ausgibt.",
+      "insight": "Pin-Nummer, Ausgangsfähigkeit und Boot-Besonderheiten bleiben boardspezifisch.",
+      "code": "pinMode(LED_PIN, OUTPUT);\ndigitalWrite(LED_PIN, HIGH);\ndigitalWrite(LED_PIN, LOW);",
+      "task": "Verfolge Konfiguration und beide Ausgangszustände.",
+      "expected_result": "Du erkennst, dass Konfiguration und Zustandsänderung getrennte Schritte sind.",
+      "concepts": [
+        { "label": "OUTPUT", "text": "Konfiguriert einen geeigneten Pin als digitalen Ausgang." },
+        { "label": "HIGH/LOW", "text": "Fordern einen hohen oder niedrigen digitalen Pegel an." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Welche Beobachtung bestätigt den GPIO-Test?",
+          "instructions": "Nutze einen laut Board-Dokumentation geeigneten Ausgang und eine korrekt beschaltete LED oder den dokumentierten Board-Ausgang.",
+          "options": [
+            { "id": "a", "label": "Der Ausgang wechselt nachvollziehbar zwischen LOW und HIGH" },
+            { "id": "b", "label": "Der Pin bleibt unkonfiguriert und zeigt zufällige Zustände" },
+            { "id": "c", "label": "Ein Motor wird direkt aus dem GPIO versorgt" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Welche Reihenfolge ist richtig?",
+          "instructions": "Schalte den virtuellen Ausgang einmal HIGH und danach LOW.",
+          "options": [
+            { "id": "a", "label": "Erst OUTPUT konfigurieren, dann HIGH oder LOW schreiben" },
+            { "id": "b", "label": "Erst eine hohe Last anschließen, dann das Datenblatt suchen" },
+            { "id": "c", "label": "Ein Ausgang braucht nie eine Konfiguration" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "26-led-with-resistor",
+      "title": "Eine LED sicher ansteuern",
+      "summary": "Eine LED benötigt richtige Polarität und eine Strombegrenzung; der Vorwiderstand wird aus Versorgung, Flussspannung und Zielstrom abgeschätzt.",
+      "insight": "Der Widerstand begrenzt den Strom, während die LED-Flussspannung und zulässige Pinbelastung geprüft werden müssen.",
+      "code": "float versorgung = 3.3f;\nfloat ledSpannung = 2.0f;\nfloat zielstrom = 0.005f;\n\n// Berechne R = (versorgung - ledSpannung) / zielstrom.",
+      "task": "Ergänze die Widerstandsberechnung und wähle anschließend einen verfügbaren Normwert, der den Strom nicht erhöht.",
+      "expected_result": "Die Rechnung ergibt 260 Ohm; ein passender höherer Normwert reduziert den Strom leicht.",
+      "concepts": [
+        { "label": "Flussspannung", "text": "Spannungsabfall an der leitenden LED." },
+        { "label": "Vorwiderstand", "text": "Begrenzt den Strom durch LED und Ausgang." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["versorgung - ledSpannung", "/ zielstrom", "260"],
+        "success": "Die Dimensionierung berücksichtigt LED-Spannung und Zielstrom."
+      }
+    },
+    {
+      "id": "27-digital-input",
+      "title": "Digitale Eingänge lesen",
+      "summary": "Ein digitaler Eingang ordnet die anliegende Spannung anhand der dokumentierten Schwellen einem LOW- oder HIGH-Zustand zu.",
+      "insight": "Ein Taster liefert keinen Text, sondern verändert einen elektrischen Pegel, den die Firmware interpretiert.",
+      "code": "pinMode(TASTER_PIN, INPUT_PULLUP);\nbool gedrueckt = digitalRead(TASTER_PIN) == LOW;",
+      "task": "Beobachte beziehungsweise simuliere Ruhe- und Tastzustand.",
+      "expected_result": "Ruhezustand und gedrückter Zustand sind eindeutig und werden wegen Pull-up korrekt invertiert interpretiert.",
+      "concepts": [
+        { "label": "Eingang", "text": "Misst einen logischen Zustand, treibt ihn aber nicht aktiv." },
+        { "label": "Aktiv LOW", "text": "Die Funktion gilt beim niedrigen Pegel als aktiv." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Welche Zustandsfolge zeigt ein korrekt beschalteter Taster mit INPUT_PULLUP?",
+          "instructions": "Prüfe mit geeignetem Taster und dokumentiertem GPIO den Pegel in Ruhe und beim Drücken.",
+          "options": [
+            { "id": "a", "label": "Ruhe HIGH, gedrückt LOW" },
+            { "id": "b", "label": "Ruhe und gedrückt immer undefiniert" },
+            { "id": "c", "label": "Ruhe LOW, gedrückt bleibt LOW" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Welche Zustandsfolge gehört zu INPUT_PULLUP mit Taster gegen GND?",
+          "instructions": "Betätige den virtuellen Taster und beobachte das Eingangssignal.",
+          "options": [
+            { "id": "a", "label": "Ruhe HIGH, gedrückt LOW" },
+            { "id": "b", "label": "Ruhe LOW, gedrückt HIGH" },
+            { "id": "c", "label": "Beide Zustände sind analog" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "28-button-debounce",
+      "title": "Taster entprellen",
+      "summary": "Mechanische Kontakte wechseln beim Betätigen kurz mehrfach zwischen offen und geschlossen; Firmware muss daraus ein stabiles Ereignis bilden.",
+      "insight": "Entprellen heißt nicht lange blind warten, sondern einen Zustand erst nach einer stabilen Zeit übernehmen.",
+      "code": "uint32_t letzteAenderung = 0;\nbool stabil = false;\n\n// Übernimm den neuen Zustand erst nach 30 ms Stabilität.",
+      "task": "Ergänze eine Prüfung mit millis(), letzteAenderung und mindestens 30 Millisekunden.",
+      "expected_result": "Kurze Pegelwechsel erzeugen nicht mehrere Tast-Ereignisse.",
+      "concepts": [
+        { "label": "Prellen", "text": "Mehrfache schnelle Kontaktwechsel bei einer mechanischen Betätigung." },
+        { "label": "Stabilitätszeit", "text": "Mindestdauer, bevor ein neuer Zustand akzeptiert wird." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["millis()", "letzteAenderung", ">= 30"],
+        "success": "Die Entprellung verwendet eine messbare Stabilitätszeit."
+      }
+    },
+    {
+      "id": "29-adc",
+      "title": "Analoge Spannungen mit dem ADC messen",
+      "summary": "Ein Analog-Digital-Wandler ordnet eine Eingangsspannung einem diskreten Zahlenwert zu; Auflösung und nutzbarer Spannungsbereich sind controllerspezifisch.",
+      "insight": "Ein ADC-Wert ist zunächst ein Code, keine fertige physikalische Messgröße.",
+      "code": "uint16_t adcCode = analogRead(SENSOR_PIN);\n// Kalibrierung und Referenz bestimmen erst die Spannung.",
+      "task": "Verändere eine analoge Eingangsgröße und beobachte den ADC-Code.",
+      "expected_result": "Der Code verändert sich stufenweise mit dem Eingang und wird nicht mit Volt verwechselt.",
+      "concepts": [
+        { "label": "Auflösung", "text": "Anzahl der Bits beziehungsweise Codes des Wandlers." },
+        { "label": "Kalibrierung", "text": "Ordnet rohe Codes einer besser bekannten physikalischen Größe zu." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Was bestätigt einen funktionierenden ADC-Versuch?",
+          "instructions": "Nutze nur einen laut Datenblatt ADC-fähigen Pin und halte die Eingangsspannung innerhalb des zulässigen Bereichs.",
+          "options": [
+            { "id": "a", "label": "Der Rohcode ändert sich nachvollziehbar mit der Eingangsspannung" },
+            { "id": "b", "label": "Jeder Rohcode ist ohne Kalibrierung direkt Grad Celsius" },
+            { "id": "c", "label": "Der Eingang darf beliebig hohe Spannung erhalten" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Was liefert der ADC zunächst?",
+          "instructions": "Bewege den virtuellen Analogeingang und vergleiche Spannung und Rohcode.",
+          "options": [
+            { "id": "a", "label": "Einen diskreten Rohcode" },
+            { "id": "b", "label": "Immer einen fertigen Temperaturwert" },
+            { "id": "c", "label": "Nur HIGH oder LOW" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "30-pwm",
+      "title": "PWM: Leistung über Zeitanteile steuern",
+      "summary": "Pulsweitenmodulation schaltet einen digitalen Ausgang schnell ein und aus; der Tastgrad beschreibt den Ein-Anteil einer Periode.",
+      "insight": "PWM erzeugt ohne Filter keinen echten konstanten Analogpegel, kann aber mittlere Leistung oder Helligkeit steuern.",
+      "code": "Tastgrad 0 %   -> immer aus\nTastgrad 25 %  -> ein Viertel ein\nTastgrad 100 % -> immer ein",
+      "task": "Vergleiche 25, 50 und 75 Prozent Tastgrad bei gleicher Frequenz.",
+      "expected_result": "Du ordnest höheren Tastgrad einem größeren mittleren Ein-Anteil zu.",
+      "concepts": [
+        { "label": "Tastgrad", "text": "Verhältnis von Einschaltzeit zur gesamten Periodendauer." },
+        { "label": "Frequenz", "text": "Anzahl der PWM-Perioden pro Sekunde." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Welche Beobachtung passt zu einer LED bei wachsendem PWM-Tastgrad?",
+          "instructions": "Verwende einen dokumentierten PWM-Ausgang und eine sicher beschaltete LED; ändere nur den Tastgrad.",
+          "options": [
+            { "id": "a", "label": "Die mittlere Helligkeit nimmt im Allgemeinen zu" },
+            { "id": "b", "label": "Die LED wird zum analogen Sensor" },
+            { "id": "c", "label": "Der Pin darf nun einen Motor direkt versorgen" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Was ändert sich bei wachsendem Tastgrad?",
+          "instructions": "Vergleiche im virtuellen Zeitdiagramm 25, 50 und 75 Prozent.",
+          "options": [
+            { "id": "a", "label": "Der Ein-Anteil pro Periode wird größer" },
+            { "id": "b", "label": "Die Bitbreite der CPU wird größer" },
+            { "id": "c", "label": "Der Flash wird gelöscht" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "31-scale-and-clamp",
+      "title": "Messwerte skalieren und begrenzen",
+      "summary": "Rohwerte werden auf den benötigten Zielbereich abgebildet und anschließend auf gültige Grenzen begrenzt.",
+      "insight": "Skalieren verändert die Einheit; Begrenzen verhindert ungültige Ausgabewerte.",
+      "code": "uint16_t adc = 3000;\nuint8_t pwm = 0;\n\n// Skaliere den virtuellen 12-Bit-ADC von 0..4095 auf 0..255 und begrenze das Ergebnis.",
+      "task": "Ergänze eine ganzzahlige Skalierung sowie constrain oder eine gleichwertige Begrenzung.",
+      "expected_result": "Der PWM-Wert bleibt unabhängig vom Eingang im Bereich 0 bis 255.",
+      "concepts": [
+        { "label": "Skalierung", "text": "Bildet einen Eingangsbereich auf einen Zielbereich ab." },
+        { "label": "Clamp", "text": "Begrenzt Werte auf ein erlaubtes Minimum und Maximum." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["4095", "255", "constrain"],
+        "success": "Der ADC-Rohwert wird skaliert und sicher auf den PWM-Bereich begrenzt."
+      }
+    },
+    {
+      "id": "32-clock-and-execution-time",
+      "title": "Takt ist nicht gleich Reaktionszeit",
+      "summary": "Der Prozessortakt beschreibt Taktzyklen pro Sekunde; eine Anweisung kann mehrere Zyklen benötigen und Peripherie arbeitet teilweise parallel.",
+      "insight": "Aus 240 MHz folgt nicht automatisch, dass jede Programmschleife 240 Millionen Mal pro Sekunde läuft.",
+      "code": "CPU-Takt\n  -> Maschinenbefehle mit unterschiedlicher Zykluszahl\n  -> Speicherzugriffe und Wartezeiten\n  -> Scheduler, Interrupts und Peripherie",
+      "task": "Nenne zwei Gründe, warum die reale Schleifenrate kleiner als der CPU-Takt ist.",
+      "expected_result": "Du berücksichtigst Befehlsdauer, Speicher, Systemsoftware oder Unterbrechungen.",
+      "concepts": [
+        { "label": "Hertz", "text": "Ereignisse oder Takte pro Sekunde." },
+        { "label": "Latenz", "text": "Zeit zwischen einem Ereignis und der Reaktion darauf." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Was lässt sich aus 240 MHz allein sicher ableiten?",
+        "options": [
+          { "id": "a", "label": "240 Millionen vollständige loop-Durchläufe pro Sekunde" },
+          { "id": "b", "label": "240 Millionen Taktzyklen pro Sekunde bei diesem Takt" },
+          { "id": "c", "label": "Jede Operation dauert genau einen Zyklus" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "33-blocking-delays",
+      "title": "Blockierende Wartezeiten",
+      "summary": "Während delay wartet der aktuelle Ablauf; andere Abfragen in derselben Schleife reagieren in dieser Zeit nicht.",
+      "insight": "Ein einfaches Blink-Beispiel darf blockieren, eine reaktionsfähige Steuerung meist nicht.",
+      "code": "digitalWrite(LED_PIN, HIGH);\ndelay(1000);\ndigitalWrite(LED_PIN, LOW);\ndelay(1000);\n// Taster wird während der Wartezeit nicht geprüft.",
+      "task": "Markiere die Zeitabschnitte, in denen der Taster nicht abgefragt wird.",
+      "expected_result": "Du erkennst beide delay-Aufrufe als Lücken der Reaktionsfähigkeit.",
+      "concepts": [
+        { "label": "Blockierend", "text": "Der aktuelle Ablauf kann bis zum Ende der Operation keine nächste Aufgabe bearbeiten." },
+        { "label": "Reaktionszeit", "text": "Maximale Zeit, bis ein Ereignis verarbeitet wird." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Was ist das Hauptproblem von delay(1000) in einer Tastersteuerung?",
+        "options": [
+          { "id": "a", "label": "Der Flash wird größer" },
+          { "id": "b", "label": "Die Hauptschleife kann bis zu einer Sekunde nicht auf den Taster reagieren" },
+          { "id": "c", "label": "Der Datentyp wird signed" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "34-nonblocking-time",
+      "title": "Nicht blockierend mit Zeitmarken arbeiten",
+      "summary": "Statt zu warten, vergleicht die Schleife die aktuelle Zeit mit einer gespeicherten Zeitmarke und bearbeitet daneben weitere Aufgaben.",
+      "insight": "Die Subtraktion aktueller minus früherer unsigned Zeit funktioniert auch über einen Zähler-Wraparound hinweg, solange das Intervall passend gewählt ist.",
+      "code": "uint32_t letzteZeit = 0;\nconst uint32_t intervall = 500;\n\nvoid loop() {\n  uint32_t jetzt = millis();\n  if (jetzt - letzteZeit >= intervall) {\n    letzteZeit = jetzt;\n    // LED umschalten\n  }\n  // Taster weiterhin prüfen\n}",
+      "task": "Vergleiche das Zeitmarken-Muster mit einer blockierenden Wartezeit.",
+      "expected_result": "LED-Zeitsteuerung und Tasterabfrage können in derselben Schleife fortlaufend arbeiten.",
+      "concepts": [
+        { "label": "Zeitmarke", "text": "Gespeicherter Zählerstand eines früheren Ereignisses." },
+        { "label": "Intervall", "text": "Geforderte Zeitdifferenz bis zur nächsten Aktion." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Welche Beobachtung bestätigt den nicht blockierenden Ablauf?",
+          "instructions": "Lass eine LED zeitgesteuert wechseln und betätige währenddessen den Taster; verwende keine lange delay-Wartezeit.",
+          "options": [
+            { "id": "a", "label": "Die LED läuft weiter und der Taster wird zeitnah erkannt" },
+            { "id": "b", "label": "Der Taster wird nur alle mehrere Sekunden gelesen" },
+            { "id": "c", "label": "Das Programm hält in jeder Periode vollständig an" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Welche Struktur bleibt reaktionsfähig?",
+          "instructions": "Starte die virtuelle Zeitlinie und löse zwischen zwei LED-Wechseln ein Tasterereignis aus.",
+          "options": [
+            { "id": "a", "label": "Zeitdifferenz prüfen und danach sofort weitere Eingänge bearbeiten" },
+            { "id": "b", "label": "In jeder Runde das ganze Intervall blockierend warten" },
+            { "id": "c", "label": "Den Zeitwert als String speichern" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "35-hardware-timers",
+      "title": "Hardware-Timer",
+      "summary": "Ein Hardware-Timer zählt unabhängig vom normalen Programmablauf Takte oder Ereignisse und kann bei einem Vergleichswert eine Aktion auslösen.",
+      "insight": "Timer sind begrenzte Hardware-Ressourcen und können bereits von PWM, Betriebssystem oder Bibliotheken verwendet werden.",
+      "code": "Taktquelle -> Vorteiler -> Timerzähler -> Alarmwert -> Ereignis",
+      "task": "Ordne Vorteiler, Zähler und Alarm in die zeitliche Verarbeitungskette ein.",
+      "expected_result": "Du beschreibst, wie aus einem schnellen Takt ein langsameres, definiertes Timerereignis entsteht.",
+      "concepts": [
+        { "label": "Vorteiler", "text": "Teilt die Eingangsfrequenz des Timers." },
+        { "label": "Alarm", "text": "Vergleichswert, bei dem der Timer ein Ereignis erzeugt." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wozu dient ein Timer-Vorteiler?",
+        "options": [
+          { "id": "a", "label": "Er teilt die Taktfrequenz für den Timer" },
+          { "id": "b", "label": "Er erhöht die Pinspannung" },
+          { "id": "c", "label": "Er speichert das gesamte Programm" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "36-interrupts",
+      "title": "Interrupts: auf Ereignisse reagieren",
+      "summary": "Ein Interrupt unterbricht den normalen Ablauf kurz, damit eine Interrupt-Service-Routine ein dringendes Ereignis behandelt.",
+      "insight": "Eine ISR soll kurz, vorhersehbar und frei von blockierenden Operationen bleiben.",
+      "code": "volatile bool ereignis = false;\n\nvoid onEdge() {\n  ereignis = true;\n}\n\nvoid loop() {\n  if (ereignis) {\n    ereignis = false;\n    // aufwendige Verarbeitung hier\n  }\n}",
+      "task": "Trenne die schnelle Ereignismarkierung von der längeren Verarbeitung.",
+      "expected_result": "Die ISR setzt nur ein Flag; die Hauptlogik verarbeitet das Ereignis später.",
+      "concepts": [
+        { "label": "ISR", "text": "Kurze Funktion, die als Reaktion auf einen Interrupt ausgeführt wird." },
+        { "label": "Priorität", "text": "Bestimmt, welche Unterbrechungen dringlicher behandelt werden." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welche Aufgabe gehört typischerweise in eine ISR?",
+        "options": [
+          { "id": "a", "label": "Ein Flag setzen und schnell zurückkehren" },
+          { "id": "b", "label": "Mehrere Sekunden blockierend warten" },
+          { "id": "c", "label": "Eine lange Netzwerkübertragung vollständig abwickeln" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "37-shared-state",
+      "title": "Gemeinsame Daten und Nebenläufigkeit",
+      "summary": "Hauptprogramm und ISR können dieselbe Variable zu unterschiedlichen Zeitpunkten lesen oder schreiben; Sichtbarkeit und atomarer Zugriff müssen bewusst behandelt werden.",
+      "insight": "volatile verhindert bestimmte Compileroptimierungen, macht aber eine mehrteilige Operation nicht automatisch atomar oder threadsicher.",
+      "code": "volatile uint32_t impulse = 0;\n\nvoid onPulse() {\n  impulse++;\n}\n\n// Lies impulse in einem passenden kritischen Abschnitt in eine lokale Kopie.",
+      "task": "Ergänze die Begriffe enterCritical, lokaleKopie und exitCritical als plattformabhängiges Schutzmuster.",
+      "expected_result": "Du schützt den zusammengehörigen Zugriff und arbeitest danach mit einer lokalen Kopie weiter.",
+      "concepts": [
+        { "label": "volatile", "text": "Signalisiert, dass sich ein Objekt außerhalb des normalen Kontrollflusses ändern kann." },
+        { "label": "Atomar", "text": "Eine Operation ist aus Sicht anderer Ausführungskontexte unteilbar." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["enterCritical", "lokaleKopie", "exitCritical"],
+        "success": "Der gemeinsame Wert wird geschützt in eine lokale Kopie übernommen."
+      }
+    },
+    {
+      "id": "38-watchdog-and-error-states",
+      "title": "Watchdog und definierte Fehlerzustände",
+      "summary": "Ein Watchdog erkennt, wenn Software zu lange nicht mehr planmäßig vorankommt; sichere Systeme definieren zusätzlich ein kontrolliertes Verhalten nach Fehlern.",
+      "insight": "Den Watchdog nur regelmäßig zu füttern genügt nicht: Das Programm muss nachweisen, dass seine wichtigen Aufgaben tatsächlich leben.",
+      "code": "Eingänge prüfen\nAufgaben ausführen\nErgebnisse plausibilisieren\nNur bei gesundem Zyklus Watchdog bedienen\nBei Fehler: Ausgänge in definierten Zustand",
+      "task": "Ordne Erkennung, Reaktion und Wiederanlauf eines Fehlers.",
+      "expected_result": "Du behandelst Watchdog-Reset als letzte Schutzschicht und definierst vorher einen sicheren Ausgangszustand.",
+      "concepts": [
+        { "label": "Watchdog", "text": "Unabhängiger Zeitwächter gegen festhängende Software." },
+        { "label": "Fail-safe", "text": "Fehlerreaktion, die das Risiko des Systems begrenzt." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Wann sollte ein anwendungsbezogener Watchdog bedient werden?",
+        "options": [
+          { "id": "a", "label": "Unbedingt in jeder Endlosschleife, auch wenn Aufgaben hängen" },
+          { "id": "b", "label": "Wenn die überwachten Aufgaben den erwarteten Fortschritt gezeigt haben" },
+          { "id": "c", "label": "Nur nach dem Ausschalten" }
+        ],
+        "correct_option": "b"
+      }
+    },
+    {
+      "id": "39-uart",
+      "title": "UART: asynchrone serielle Kommunikation",
+      "summary": "UART überträgt Bits über TX und RX ohne gemeinsame Taktleitung; beide Seiten müssen unter anderem Baudrate, Datenbits, Parität und Stopbits passend konfigurieren.",
+      "insight": "TX einer Seite wird mit RX der anderen verbunden; beide Teilnehmer brauchen einen geeigneten gemeinsamen Bezug.",
+      "code": "Serial.begin(115200);\nSerial.println(\"sensor=512\");",
+      "task": "Sende eine nachvollziehbare Textzeile und prüfe die gemeinsame Übertragungskonfiguration.",
+      "expected_result": "Die Meldung ist mit richtiger Baudrate lesbar und endet als vollständige Zeile.",
+      "concepts": [
+        { "label": "Baudrate", "text": "Symbolrate; bei einfacher UART entspricht ein Symbol üblicherweise einem übertragenen Bitzustand." },
+        { "label": "Frame", "text": "Startbit, Datenbits, optionale Parität und Stopbit bilden eine Übertragungseinheit." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Welche Beobachtung bestätigt die UART-Konfiguration?",
+          "instructions": "Öffne den seriellen Monitor mit derselben Baudrate wie die Firmware und prüfe mehrere vollständige Zeilen.",
+          "options": [
+            { "id": "a", "label": "Die Zeilen sind stabil und lesbar; Sender und Empfänger verwenden dieselbe Konfiguration" },
+            { "id": "b", "label": "Unlesbare Zeichen sind ein sicherer Erfolgsnachweis" },
+            { "id": "c", "label": "TX wird grundsätzlich mit TX verbunden" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Was müssen beide UART-Seiten gemeinsam festlegen?",
+          "instructions": "Vergleiche im virtuellen Monitor passende und unpassende Baudraten.",
+          "options": [
+            { "id": "a", "label": "Unter anderem Baudrate und Frameformat" },
+            { "id": "b", "label": "Die Farbe der Leitung" },
+            { "id": "c", "label": "Die Größe des Flash-Speichers" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "40-i2c",
+      "title": "I²C: adressierter Bus mit zwei Signalleitungen",
+      "summary": "I²C verwendet SDA für Daten und SCL für den Takt; Teilnehmer werden über Adressen angesprochen und die Leitungen benötigen Pull-ups.",
+      "insight": "Gleiche Adresse, fehlende Pull-ups oder ungeeignete Leitungskapazität sind typische Ursachen für Busfehler.",
+      "code": "Controller/Master -> START -> Adresse + R/W -> ACK\n                -> Datenbytes -> ACK/NACK -> STOP\nLeitungen: SDA, SCL und gemeinsamer Bezug",
+      "task": "Ordne Adresse, Bestätigung und Datenbytes in einen I²C-Transfer ein.",
+      "expected_result": "Du erklärst, wie mehrere adressierte Geräte dieselben beiden Signalleitungen teilen.",
+      "concepts": [
+        { "label": "SDA", "text": "Bidirektionale Datenleitung." },
+        { "label": "SCL", "text": "Taktleitung, meist vom Controller erzeugt." },
+        { "label": "Open Drain", "text": "Teilnehmer ziehen Leitungen aktiv LOW; Pull-ups erzeugen HIGH." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Warum braucht ein typischer I²C-Bus Pull-up-Widerstände?",
+        "options": [
+          { "id": "a", "label": "Weil die Teilnehmer die Leitungen typischerweise aktiv nur nach LOW ziehen" },
+          { "id": "b", "label": "Damit SPI schneller wird" },
+          { "id": "c", "label": "Damit jede Adresse automatisch eindeutig wird" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "41-spi",
+      "title": "SPI: schneller synchroner Datenaustausch",
+      "summary": "SPI verwendet eine Taktleitung, getrennte Datenrichtungen und meist eine Chip-Select-Leitung pro Zielgerät.",
+      "insight": "SPI kennt verschiedene Taktmodi; Controller und Peripherie müssen Polarität, Phase, Bitreihenfolge und Frequenz passend verwenden.",
+      "code": "SCLK -> gemeinsamer Takt\nMOSI -> Controller zum Gerät\nMISO -> Gerät zum Controller\nCS   -> ausgewähltes Gerät",
+      "task": "Ordne die vier klassischen SPI-Signale ihrer Richtung und Funktion zu.",
+      "expected_result": "Du kannst SPI von I²C und UART anhand der Leitungen und Auswahlmechanik unterscheiden.",
+      "concepts": [
+        { "label": "Full Duplex", "text": "Senden und Empfangen können über getrennte Leitungen gleichzeitig erfolgen." },
+        { "label": "Chip Select", "text": "Aktiviert den angesprochenen SPI-Teilnehmer." }
+      ],
+      "completion": {
+        "type": "choice",
+        "prompt": "Welche Leitung wählt beim klassischen SPI typischerweise ein Zielgerät aus?",
+        "options": [
+          { "id": "a", "label": "CS" },
+          { "id": "b", "label": "GND allein" },
+          { "id": "c", "label": "ADC" }
+        ],
+        "correct_option": "a"
+      }
+    },
+    {
+      "id": "42-packets-and-protocols",
+      "title": "Aus Bytes werden Nachrichten",
+      "summary": "Eine zuverlässige Kommunikation benötigt ein vereinbartes Nachrichtenformat mit Grenzen, Bedeutung und oft einer Fehlererkennung.",
+      "insight": "Eine Folge von Bytes ist erst dann eine Nachricht, wenn Sender und Empfänger dieselbe Struktur verstehen.",
+      "code": "struct Nachricht {\n  uint8_t typ;\n  uint16_t laenge;\n  // Nutzdaten\n  // Prüfsumme\n};",
+      "task": "Ergänze version und pruefsumme als benannte Felder des Nachrichtenkopfs beziehungsweise -endes.",
+      "expected_result": "Die Nachricht besitzt Typ, Version, Länge, Nutzdaten und Fehlererkennung.",
+      "concepts": [
+        { "label": "Framing", "text": "Markiert Anfang, Ende oder Länge einer Nachricht." },
+        { "label": "Prüfsumme", "text": "Hilft Übertragungsfehler zu erkennen, ersetzt aber nicht automatisch Authentizitätsschutz." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["version", "pruefsumme"],
+        "success": "Das Nachrichtenformat kann Versionen und beschädigte Daten unterscheiden."
+      }
+    },
+    {
+      "id": "43-invalid-and-incomplete-data",
+      "title": "Fehlerhafte und unvollständige Daten behandeln",
+      "summary": "Empfangene Daten dürfen nie ungeprüft als vollständig, gültig oder innerhalb erlaubter Grenzen angenommen werden.",
+      "insight": "Erst Länge, Version, Typ, Wertebereiche und Prüfsumme prüfen; danach Nutzdaten verwenden.",
+      "code": "bool gueltig(const Nachricht& n) {\n  // Prüfe zuerst Länge und Version.\n  // Prüfe dann Typ, Wertebereiche und Prüfsumme.\n}",
+      "task": "Ergänze Rückgaben false für unpassende laenge, version und pruefsumme sowie return true am Ende.",
+      "expected_result": "Unvollständige oder beschädigte Nachrichten erreichen die Anwendungslogik nicht.",
+      "concepts": [
+        { "label": "Validierung", "text": "Prüft externe Daten vor ihrer Verwendung gegen klare Regeln." },
+        { "label": "Timeout", "text": "Beendet einen unvollständigen Empfang nach einer definierten Zeit." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["laenge", "version", "pruefsumme", "return false", "return true"],
+        "success": "Die Nachricht wird vor der Nutzung vollständig validiert."
+      }
+    },
+    {
+      "id": "44-final-requirements",
+      "title": "Abschlussprojekt: Anforderungen trennen",
+      "summary": "Das Abschlussprojekt liest einen analogen Sensor, verarbeitet einen entprellten Taster, steuert eine LED per PWM und meldet Zustand und Fehler seriell.",
+      "insight": "Vor dem Code werden beobachtbares Verhalten, Hardwaregrenzen und Fehlerreaktionen festgelegt.",
+      "code": "// Formuliere fünf prüfbare Anforderungen.\n// Beginne jede Zeile mit dem Namen des betroffenen Bereichs.",
+      "task": "Formuliere zu sensor, taster, led, seriell und fehler jeweils mindestens eine prüfbare Anforderung.",
+      "expected_result": "Hardware- und Softwareverhalten sind getrennt beschrieben und können später einzeln getestet werden.",
+      "concepts": [
+        { "label": "Anforderung", "text": "Beschreibt überprüfbares Sollverhalten, noch nicht dessen Implementierung." },
+        { "label": "Fehlerfall", "text": "Definiert Verhalten bei unplausiblen Messwerten oder fehlender Reaktion." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["sensor:", "taster:", "led:", "seriell:", "fehler:"],
+        "success": "Alle fünf Bereiche besitzen eine prüfbare Anforderung."
+      }
+    },
+    {
+      "id": "45-final-pins-and-resources",
+      "title": "Abschlussprojekt: Pins und Ressourcen planen",
+      "summary": "Vor dem Verdrahten werden ADC-fähiger Eingang, digitaler Tastereingang, PWM-Ausgang, UART und gemeinsam genutzte Timer gegen das konkrete Board geprüft.",
+      "insight": "Ein Pin kann elektrisch vorhanden und trotzdem durch Bootfunktion, Flash, Debugging oder eine andere Peripherie ungeeignet sein.",
+      "code": "// Ergänze die geprüften Ressourcen:\nconst int SENSOR_PIN = ;\nconst int TASTER_PIN = ;\nconst int LED_PIN = ;\n// ADC-Einheit:\n// PWM-Timer/Kanal:\n// UART:",
+      "task": "Trage nur dokumentierte Pins und die benötigten Peripherieressourcen ein; im Simulator verwendest du die vorgegebenen virtuellen Pins.",
+      "expected_result": "Kein Pin und keine Timer- oder Kommunikationsressource ist doppelt oder ungeprüft belegt.",
+      "concepts": [
+        { "label": "Pin-Multiplexing", "text": "Ein physischer Pin kann mehreren internen Funktionen zugeordnet werden, aber nicht beliebig gleichzeitig." },
+        { "label": "Ressourcenplan", "text": "Dokumentiert Pins, Kanäle, Timer und Schnittstellen vor der Implementierung." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["SENSOR_PIN =", "TASTER_PIN =", "LED_PIN =", "ADC-Einheit:", "PWM-Timer/Kanal:", "UART:"],
+        "must_not_contain": ["SENSOR_PIN = ;", "TASTER_PIN = ;", "LED_PIN = ;"],
+        "success": "Pins und Peripherieressourcen sind konkret geplant."
+      }
+    },
+    {
+      "id": "46-final-data-types",
+      "title": "Abschlussprojekt: Datentypen festlegen",
+      "summary": "Rohwert, gefilterter Wert, PWM-Ausgabe, Zeitmarken und Fehlerzustand erhalten Typen, die Bereich und Bedeutung ausdrücken.",
+      "insight": "Zwischenergebnisse der Skalierung können breiter sein müssen als Ein- und Ausgangswerte.",
+      "code": "// Ergänze passende Typen:\n adcRohwert = 0;\n pwmWert = 0;\n letzteMessungMs = 0;\n fehlerAktiv = false;",
+      "task": "Verwende uint16_t für den ADC-Code, uint8_t für PWM, uint32_t für Zeit und bool für den Fehlerzustand.",
+      "expected_result": "Jede Variable besitzt einen nachvollziehbaren und ausreichenden Typ.",
+      "concepts": [
+        { "label": "Rohwert", "text": "Unmittelbares Ergebnis der Hardwaremessung." },
+        { "label": "Ausgabewert", "text": "Auf den gültigen Aktorbereich skalierter Wert." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["uint16_t adcRohwert", "uint8_t pwmWert", "uint32_t letzteMessungMs", "bool fehlerAktiv"],
+        "success": "Die zentralen Projektvariablen besitzen passende Typen."
+      }
+    },
+    {
+      "id": "47-final-sensor-input",
+      "title": "Abschlussprojekt: Sensorpfad prüfen",
+      "summary": "Der Sensorpfad liest den ADC-Code, prüft den gültigen Bereich und glättet nur so stark, dass das System noch rechtzeitig reagiert.",
+      "insight": "Filterung reduziert Rauschen, kann aber Reaktionen verzögern und darf ungültige Messungen nicht verstecken.",
+      "code": "adcRohwert = analogRead(SENSOR_PIN);\nfehlerAktiv = adcRohwert < ADC_MIN || adcRohwert > ADC_MAX;",
+      "task": "Prüfe drei Eingänge: Minimum, Mitte und Maximum sowie einen ungültigen Fall.",
+      "expected_result": "Gültige Werte werden verarbeitet; ein Wert außerhalb des festgelegten Bereichs setzt den Fehlerzustand.",
+      "concepts": [
+        { "label": "Plausibilität", "text": "Prüft, ob ein Messwert physikalisch und technisch möglich ist." },
+        { "label": "Filter", "text": "Reduziert schnelle Schwankungen auf Kosten zusätzlicher Verzögerung." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Welche Beobachtung bestätigt den Sensorpfad?",
+          "instructions": "Führe nur innerhalb der dokumentierten Eingangsspannung Messungen nahe Minimum, Mitte und Maximum durch und simuliere den Fehlerfall im Code.",
+          "options": [
+            { "id": "a", "label": "Gültige Werte ändern sich plausibel; der definierte ungültige Fall setzt den Fehlerzustand" },
+            { "id": "b", "label": "Jeder Wert wird ungeprüft als gültig behandelt" },
+            { "id": "c", "label": "Der ADC-Pin wird als Motorausgang verwendet" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Welche Testmenge deckt den Sensorbereich sinnvoll ab?",
+          "instructions": "Setze den virtuellen ADC auf Minimum, Mitte, Maximum und einen als ungültig markierten Zustand.",
+          "options": [
+            { "id": "a", "label": "Grenzen, typischer Mittelwert und mindestens ein ungültiger Fall" },
+            { "id": "b", "label": "Nur ein einzelner Mittelwert" },
+            { "id": "c", "label": "Nur die UART-Baudrate" }
+          ],
+          "correct_option": "a"
+        }
+      }
+    },
+    {
+      "id": "48-final-output-control",
+      "title": "Abschlussprojekt: Ausgang sicher steuern",
+      "summary": "Der gültige Sensorwert wird auf PWM skaliert; bei Fehlern erhält der Ausgang einen definierten sicheren Wert.",
+      "insight": "Eine Ausgangsbegrenzung gehört unmittelbar vor die Hardwareausgabe und darf nicht nur in der Benutzeroberfläche existieren.",
+      "code": "if (fehlerAktiv) {\n  pwmWert = 0;\n} else {\n  // adcRohwert auf 0..255 skalieren und begrenzen\n}\nanalogWrite(LED_PIN, pwmWert);",
+      "task": "Ergänze Skalierung und constrain im else-Zweig.",
+      "expected_result": "Der Ausgang bleibt zwischen 0 und 255 und wird im Fehlerfall auf 0 gesetzt.",
+      "concepts": [
+        { "label": "Sicherer Zustand", "text": "Vorab definierter Ausgangswert, der das Risiko im Fehlerfall begrenzt." },
+        { "label": "Ausgangsgrenze", "text": "Letzte technische Begrenzung vor dem Aktor." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["fehlerAktiv", "pwmWert = 0", "constrain", "analogWrite"],
+        "success": "Der Ausgang ist skaliert, begrenzt und besitzt einen definierten Fehlerwert."
+      }
+    },
+    {
+      "id": "49-final-nonblocking-flow",
+      "title": "Abschlussprojekt: Alles nicht blockierend verbinden",
+      "summary": "Taster, Messintervall, PWM-Ausgabe und serielle Statusmeldung werden als kurze Aufgaben in einer fortlaufenden Schleife koordiniert.",
+      "insight": "Jede Aufgabe bekommt eine klare Bedingung und kehrt schnell zur gemeinsamen Schleife zurück.",
+      "code": "void loop() {\n  // Taster immer prüfen\n  // Messung nach Zeitdifferenz ausführen\n  // Ausgang aktualisieren\n  // Status nach eigenem Intervall senden\n}",
+      "task": "Ergänze millis(), jetzt, messIntervall, statusIntervall und beide Zeitdifferenzprüfungen; verwende kein delay.",
+      "expected_result": "Messung und Status laufen mit eigenen Intervallen, während der Taster in jedem Durchlauf geprüft wird.",
+      "concepts": [
+        { "label": "Kooperative Schleife", "text": "Mehrere kurze Aufgaben teilen sich die Rechenzeit und blockieren einander nicht unnötig." },
+        { "label": "Eigener Takt", "text": "Jede Aufgabe kann ein zur Anforderung passendes Intervall besitzen." }
+      ],
+      "completion": {
+        "type": "code",
+        "must_contain": ["millis()", "jetzt", "messIntervall", "statusIntervall", "jetzt -"],
+        "must_not_contain": ["delay("],
+        "success": "Der Projektablauf koordiniert alle Aufgaben ohne blockierende Wartezeit."
+      }
+    },
+    {
+      "id": "50-final-validation",
+      "title": "Abschlussprüfung: Systematisch nachweisen",
+      "summary": "Der Abschluss ist kein einzelner Glückstreffer, sondern eine Testreihe für Normalbetrieb, Grenzwerte, Bedienung, Zeitverhalten, Kommunikation und Fehlerfall.",
+      "insight": "Ohne Board ist die Simulatorprüfung verpflichtend; mit erkanntem kompatiblem Board ist der reale Hardwaretest verpflichtend.",
+      "code": "Prüfmatrix:\n1. Sensor: Minimum, Mitte, Maximum\n2. Taster: einmaliges Ereignis trotz Prellen\n3. PWM: 0 %, 50 %, 100 %\n4. Reaktion: Taster während Mess- und Sendeintervall\n5. UART: vollständige Statuszeile\n6. Fehler: sicherer Ausgangszustand",
+      "task": "Führe alle sechs Prüfgruppen im automatisch gewählten Prüfweg aus.",
+      "expected_result": "Jede Anforderung besitzt ein beobachtetes Ergebnis; kein Prüfpunkt bleibt optional.",
+      "concepts": [
+        { "label": "Testfall", "text": "Definiert Ausgangslage, Aktion und erwartetes Ergebnis." },
+        { "label": "Nachweis", "text": "Dokumentiert, dass das beobachtete Ergebnis die Anforderung erfüllt." }
+      ],
+      "completion": {
+        "type": "hardware_or_simulator",
+        "hardware_profile_prefixes": ["hardware.processor_board."],
+        "hardware": {
+          "prompt": "Wann ist die reale Abschlussprüfung bestanden?",
+          "instructions": "Arbeite die Prüfmatrix am erkannten Board vollständig ab und vergleiche jede Beobachtung mit der jeweiligen Anforderung.",
+          "options": [
+            { "id": "a", "label": "Alle sechs Prüfgruppen zeigen das erwartete Verhalten am realen Aufbau" },
+            { "id": "b", "label": "Nur die LED hat einmal geleuchtet" },
+            { "id": "c", "label": "Fehlerfälle wurden bewusst ausgelassen" }
+          ],
+          "correct_option": "a"
+        },
+        "simulator": {
+          "prompt": "Wann ist die simulierte Abschlussprüfung bestanden?",
+          "instructions": "Arbeite die Prüfmatrix im Simulator vollständig ab, einschließlich Grenz- und Fehlerfällen.",
+          "options": [
+            { "id": "a", "label": "Alle sechs Prüfgruppen stimmen mit den Anforderungen überein" },
+            { "id": "b", "label": "Nur ein mittlerer Sensorwert wurde getestet" },
+            { "id": "c", "label": "Der Fehlerfall wurde übersprungen" }
+          ],
+          "correct_option": "a"
+        },
+        "success": "Das Mikrocontrollersystem ist im vorgeschriebenen Prüfweg vollständig nachgewiesen."
+      }
+    }
+  ],
+  "sources": [
+    {
+      "path": "src/mikrocontroller.cpp",
+      "role": "user_code",
+      "content": "#include <Arduino.h>\n#include <stdint.h>\n\n// Dieses Gerüst wächst in den Abschlusslektionen.\n// Die folgenden Pins gehören nur zum virtuellen ESP32-Beispiel.\n// Ersetze sie für reale Hardware erst nach Prüfung von Pinout und Datenblatt.\nconst int SENSOR_PIN = 34;\nconst int TASTER_PIN = 27;\nconst int LED_PIN = 25;\n\nuint16_t adcRohwert = 0;\nuint8_t pwmWert = 0;\nuint32_t letzteMessungMs = 0;\nbool fehlerAktiv = false;\n\nvoid setup() {\n  Serial.begin(115200);\n  pinMode(TASTER_PIN, INPUT_PULLUP);\n  pinMode(LED_PIN, OUTPUT);\n}\n\nvoid loop() {\n  // Baue hier schrittweise den nicht blockierenden Ablauf auf.\n}\n"
+    },
+    {
+      "path": "README.md",
+      "role": "learning_guide",
+      "content": "# Grundlagen der Mikrocontrollertechnik\n\nDieses Anschlussprojekt setzt die Grundlagen der Programmierung voraus. Die Beispiele verwenden eine kleine Arduino-C++-Schreibweise, erklären aber herstellerunabhängige Konzepte: CPU, RAM und Flash, Bits und Datentypen, elektrische Grenzen, GPIO, ADC, PWM, Zeitverhalten, Interrupts sowie UART, I²C und SPI.\n\n## Prüfregel\n\nJede Lektion besitzt eine Pflichtprüfung. Ist kein derzeit nutzbares kompatibles ProcessorBoard erkannt, werden die praktischen Schritte verpflichtend im Simulator geprüft. Ist ein passendes Board erkannt, wechselt derselbe Schritt automatisch zur verpflichtenden Prüfung am realen Gerät. Es gibt keinen optionalen Überspringen-Schalter.\n\n## Sicherheit\n\nPinbelegung, Betriebsspannung, Logikschwellen, Stromgrenzen und besondere Boot-Pins sind immer im Datenblatt des konkreten Chips und im Schaltplan beziehungsweise Pinout des konkreten Boards zu prüfen. Motoren, Relais, Heizungen und andere Lasten werden nicht direkt aus einem GPIO versorgt.\n\n## Primärquellen\n\n- Espressif ESP32 Series Datasheet: https://documentation.espressif.com/esp32_datasheet_en.html\n- ESP-IDF Peripheral API Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/index.html\n- Arduino Language Reference: https://docs.arduino.cc/language-reference/\n- ISO/IEC JTC1/SC22/WG14, Programmiersprache C: https://open-std.org/jtc1/sc22/wg14/\n- IEEE 754-2019, Floating-Point Arithmetic: https://standards.ieee.org/ieee/754/6210/\n"
+    }
+  ]
+}

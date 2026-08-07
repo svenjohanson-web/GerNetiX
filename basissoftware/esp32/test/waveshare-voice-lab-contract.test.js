@@ -106,7 +106,7 @@ test("Waveshare Voice Lab probes the documented audio control devices", () => {
   assert.match(source, /class PersonalWakeWordDetector/);
   assert.doesNotMatch(source, /Hi ESP|EspSrWakeWordDetector|esp_srmodel_init/);
   assert.match(source, /codecSamples_\[sample \* kCodecChannels\] >> 16/);
-  assert.match(source, /runLocalVoiceEntryTest\(nexi::ApplicationManager&/);
+  assert.match(source, /runLocalVoiceEntryTest\([\s\S]*WaveshareAudioFrameSource& source,[\s\S]*ApplicationManager& applications/);
   assert.match(source, /record '%s' %u times with KEY2/);
   assert.match(source, /MALLOC_CAP_SPIRAM/);
   assert.match(source, /"Hey Nexi, starte das Stimmenstudio"/);
@@ -173,12 +173,15 @@ test("Nexi uses a versioned project boundary and separately compiled product mod
   );
   const entry = readProjectModule("src/project_entry.cpp");
 
-  assert.match(hooks, /GERNETIX_PROJECT_HOOK_API_VERSION 1/);
+  assert.match(hooks, /GERNETIX_PROJECT_HOOK_API_VERSION 2/);
+  assert.match(hooks, /handleProjectSerialCommand/);
   assert.match(weakInit, /__attribute__\(\(weak\)\) void onProjectInit/);
   assert.match(component,
     /GLOB_RECURSE GERNETIX_PROJECT_SOURCES CONFIGURE_DEPENDS/);
   assert.match(component, /GERNETIX_PROJECT_SOURCE_DIR}\/include/);
-  assert.match(entry, /static_assert\(GERNETIX_PROJECT_HOOK_API_VERSION == 1/);
+  assert.match(entry, /static_assert\(GERNETIX_PROJECT_HOOK_API_VERSION == 2/);
+  assert.match(entry, /projectSerialProvisioningEnabled/);
+  assert.match(entry, /nexi::handleVoiceSetupCommand/);
   assert.match(entry, /nexi::startRuntime\(\)/);
   assert.doesNotMatch(entry, /driver\/|esp_codec|i2c_|i2s_/);
 });

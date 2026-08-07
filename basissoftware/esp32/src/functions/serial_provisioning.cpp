@@ -18,6 +18,7 @@
 #include "basissoftware/crash_diagnostics.h"
 #include "basissoftware/feedback.h"
 #include "basissoftware/ota_update.h"
+#include "basissoftware/project_hooks.h"
 #include "basissoftware/wifi_manager.h"
 #include "gernetix/runtime_core.h"
 
@@ -277,6 +278,18 @@ void handleCommand(const char *command) {
     return;
   }
 
+  char projectEvent[48] = {};
+  char projectPayload[384] = {};
+  if (handleProjectSerialCommand(
+          action, command,
+          projectEvent, sizeof(projectEvent),
+          projectPayload, sizeof(projectPayload))) {
+    sendJson(requestId,
+        projectEvent[0] == '\0' ? "project_response" : projectEvent,
+        projectPayload[0] == '\0' ? "{}" : projectPayload);
+    return;
+  }
+
   sendError(requestId, "unsupported_action");
 }
 
@@ -284,9 +297,9 @@ void serialProvisioningTask(void *) {
   char command[COMMAND_MAX_BYTES] = {};
   size_t length = 0;
   while (true) {
-    // Once WiFi is connected the setup AP is closed.  Stop the USB receiver
-    // before it can contend with the running WiFi stack on ESP32-S3.
-    if (!wifiSetupPortalIsActive()) {
+    // Once WiFi is connected, the generic setup receiver stops. A project may
+    // explicitly retain it for its bounded local setup actions.
+    if (!wifiSetupPortalIsActive() && !projectSerialProvisioningEnabled()) {
       feedbackInfo(TAG, "USB WiFi provisioning finished after station connection");
       vTaskDelete(nullptr);
       return;
@@ -325,5 +338,7 @@ void startSerialProvisioning() {
     feedbackWarning(TAG, "Serial provisioning task could not be started");
     return;
   }
-  feedbackInfo(TAG, "Local USB WiFi provisioning is ready");
+  feedbackInfo(TAG, projectSerialProvisioningEnabled()
+      ? "Local USB provisioning and project setup are ready"
+      : "Local USB WiFi provisioning is ready");
 }

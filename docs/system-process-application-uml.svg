@@ -290,7 +290,7 @@
   <path class="line" d="M 1530 585 L 1530 795"/>
   <text class="label" x="1540" y="694">Status</text>
   <path class="line" d="M 1530 652 L 1530 643"/>
-  <text class="label" x="1540" y="650">Project Hook API</text>
+  <text class="label" x="1540" y="650">Project Hook API v2</text>
   <path class="line dashed" d="M 1445 614 L 1360 177"/>
   <text class="label" x="1368" y="380">Firmware HTTPS</text>
 

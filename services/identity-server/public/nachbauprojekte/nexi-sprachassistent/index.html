@@ -10,7 +10,7 @@
   <title>Nexi kennenlernen und flashen · GerNetiX</title>
   <link rel="stylesheet" href="/landing.css?v=20260805-function-path-1" />
   <link rel="stylesheet" href="/s3-touch-spielesammlung/app.css?v=20260804-nexi-flash-1" />
-  <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260806-guided-flash-1" />
+  <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260807-helper-progress-2" />
   <link rel="stylesheet" href="nexi-onboarding.css?v=20260806-linear-flow-1" />
 </head>
 <body class="nexi-linear-page">
@@ -42,10 +42,11 @@
     <section id="installieren" class="panel nexi-simple-flash" aria-labelledby="flash-title">
       <p class="eyebrow">Schritt 1 von 2</p>
       <h2 id="flash-title">Nexi auf dein Board flashen</h2>
-      <p>Du brauchst das <strong>Waveshare ESP32-S3 Audio Board mit 16&nbsp;MB Flash</strong>, einen passenden Lautsprecher und ein USB-Datenkabel. Die Firmware ist fertig gebaut; kein eigener Build ist erforderlich. Verbinde das Board mit deinem Computer und starte anschließend die Installation.</p>
+      <p>Du brauchst das <strong>Waveshare ESP32-S3 Audio Board mit 16&nbsp;MB Flash</strong> und ein USB-Datenkabel. Der Lautsprecher ist bereits integriert. Die Firmware ist fertig gebaut; kein eigener Build ist erforderlich. Verbinde das Board mit deinem Computer und starte anschließend die Installation.</p>
       <p class="safety"><strong>Hinweis:</strong> Beim Flashen wird die derzeitige Firmware auf dem angeschlossenen Board ersetzt.</p>
       <div class="nexi-flash-action">
         <button id="open-flash-dialog" class="action-button" type="button" aria-describedby="flash-entry-status" disabled>Nexi flashen</button>
+        <button id="retry-release" class="secondary-action" type="button" aria-describedby="flash-entry-status" hidden>Release erneut prüfen</button>
         <p id="flash-entry-status" class="step-status disabled-action-reason" aria-live="polite">Der geprüfte Nexi-Release wird geladen.</p>
       </div>
       <p class="nexi-after-flash">Nach erfolgreichem Flashen öffnet sich automatisch <strong>Schritt 2: Inbetriebnahme</strong>.</p>
@@ -64,8 +65,8 @@
 
   <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav></footer>
   <script src="/landing.js?v=20260731-about-us-1"></script>
-  <script src="/app/serial-service-client.js?v=20260719-02"></script>
-  <script src="/app/unified-flash-dialog.js?v=20260806-guided-flash-1"></script>
-  <script src="nexi-flash.js?v=20260806-guided-flow-1"></script>
+  <script src="/app/serial-service-client.js?v=20260807-helper-progress-1"></script>
+  <script src="/app/unified-flash-dialog.js?v=20260807-helper-progress-2"></script>
+  <script src="nexi-flash.js?v=20260807-helper-progress-2"></script>
 </body>
 </html>

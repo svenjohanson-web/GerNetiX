@@ -41,7 +41,26 @@ const LearningProjectController = (() => {
         learningText,
       });
       if (!target || !project || !rendered) return;
-      renderGuidedProject(localizedProject);
+      if (typeof GuidedProjectView === "undefined") {
+        const status = target.querySelector("[data-learning-project-status]");
+        if (status) {
+          status.className = "flash-status";
+          status.textContent = "Die geführte Lernansicht wird noch geladen. Bitte kurz warten.";
+        }
+        return;
+      }
+      try {
+        renderGuidedProject(localizedProject);
+      } catch (error) {
+        const status = target.querySelector("[data-learning-project-status]");
+        if (status) {
+          status.className = "flash-status error";
+          const reason = error?.message ? ` (${error.message})` : "";
+          status.textContent = `Die Lernansicht konnte nicht geladen werden${reason}. Bitte die Seite neu laden.`;
+        }
+        console.error("Guided learning project rendering failed", error);
+        return;
+      }
       target.querySelector("[data-learning-rating-form]")?.addEventListener("submit", (event) => submitRating(event, project));
     }
 
@@ -71,7 +90,6 @@ const LearningProjectController = (() => {
         : -1;
       const currentStep = requestedStep >= 0 ? requestedStep : Number(progress.currentStep || 0);
       navigate(`/app/learning-project/?project=${encodeURIComponent(project.id)}`);
-      render();
       void saveStep(project, currentStep, progress.completedSteps || [], false)
         .catch((error) => showError(error));
     }
@@ -93,7 +111,6 @@ const LearningProjectController = (() => {
       const project = response.project;
       state.projects = state.projects.filter((item) => item.id !== project.id).concat(project);
       navigate(`/app/learning-project/?project=${encodeURIComponent(project.id)}`);
-      render();
       void saveStep(project, 0, [], false).catch((error) => showError(error));
     }
 

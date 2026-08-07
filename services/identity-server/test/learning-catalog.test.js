@@ -68,6 +68,7 @@ test("creates an account-bound project from the catalog before opening it", () =
 test("opens the learning workspace before saving initial progress", () => {
   const openMethod = learningController.match(/async function open\(projectId, options = \{\}\) \{[\s\S]*?\n    \}/)?.[0] || "";
   assert.ok(openMethod.indexOf("navigate(") < openMethod.indexOf("saveStep("));
+  assert.doesNotMatch(openMethod, /navigate\([\s\S]*?\);\s*render\(\);/);
   assert.match(openMethod, /\.catch\(\(error\) => showError\(error\)\)/);
 });
 
@@ -261,15 +262,22 @@ test("balances the guided learning workspace and keeps optional AI help outside 
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
   const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
   const runner = guidedView.match(/function renderProjectViewManifest[\s\S]*?function renderGuidedCodeAssistant/)?.[0] || "";
-  assert.match(runner, /guided-artifact-pane[\s\S]*renderLearningContext\(activeView\)[\s\S]*renderGuidedArtifact/);
-  assert.match(runner, /guided-summary-pane[\s\S]*renderManifestView[\s\S]*renderGuidedActions/);
+  assert.match(runner, /guided-artifact-pane[\s\S]*renderGuidedArtifact/);
+  assert.match(runner, /guided-summary-pane[\s\S]*renderLearningContext\(activeView\)[\s\S]*renderLearningGuidance\(activeView\)[\s\S]*renderGuidedCompletion[\s\S]*renderGuidedActions/);
+  assert.match(runner, /guided-task-heading[\s\S]*>Aufgabe</);
   assert.ok(runner.indexOf("renderGuidedCodeAssistant(project, activeView)") > runner.indexOf("</div>"));
   assert.doesNotMatch(runner.match(/<aside class="guided-summary-pane">[\s\S]*?<\/aside>/)?.[0] || "", /renderCodeExplorerChat/);
   assert.match(guidedView, /<details class="guided-code-assistant">/);
   assert.match(guidedView, /Worum es geht/);
   assert.match(guidedView, /Prüffragen/);
+  assert.match(guidedView, /completion\.type === "choice"/);
+  assert.match(guidedView, /completion\.type === "code"/);
+  assert.match(guidedView, /data-guided-code-task/);
+  assert.match(guidedView, /guidedStepIsCompleted/);
   assert.match(css, /\.guided-artifact-pane \{[\s\S]*display: grid;[\s\S]*gap: 12px/);
   assert.match(css, /\.guided-artifact-empty \{[\s\S]*min-height: 260px/);
+  assert.match(css, /\.guided-completion-options/);
+  assert.match(css, /\.guided-code-task textarea/);
 });
 
 test("catalog includes the home automation network course with a resource boundary", () => {
@@ -375,30 +383,113 @@ test("catalog includes a software-only programming fundamentals course", () => {
   assert.ok(course.project.tags.includes("runtime:browser"));
   assert.ok(course.project.tags.includes("topic:programming"));
   assert.ok(course.project.tags.includes("level:beginner"));
-  assert.equal(course.project.steps.length, 8);
-  assert.equal(course.view_manifest.schema_version, 2);
-  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
-    "computer-model",
-    "abstraction",
-    "values-and-variables",
-    "expressions",
-    "conditions",
-    "loops",
-    "functions",
-    "score-challenge",
+  assert.equal(course.lessons.length, 43);
+  assert.equal(course.view_manifest.schema_version, 4);
+  assert.deepEqual(course.lessons.slice(0, 10).map((lesson) => lesson.id), [
+    "01-what-is-a-program",
+    "02-statements-and-order",
+    "03-input-processing-output",
+    "04-values",
+    "05-basic-data-types",
+    "06-typeof",
+    "07-trace-a-program",
+    "08-variables",
+    "09-declaration-initial-value",
+    "10-variable-value-type",
   ]);
-  assert.match(JSON.stringify(course.view_manifest), /Eingabe[\s\S]*Speicher[\s\S]*Verarbeitung[\s\S]*Ausgabe/);
-  assert.match(JSON.stringify(course.view_manifest), /Maschinenbefehle[\s\S]*Abstraktion/);
-  assert.match(JSON.stringify(course.view_manifest), /if[\s\S]*switch/);
-  assert.match(course.sources.find((source) => source.path === "src/grundlagen.js").content, /function istBestanden/);
-  assert.match(course.sources.find((source) => source.path === "src/grundlagen.js").content, /switch \(schwierigkeitsgrad\)/);
+  assert.deepEqual(course.lessons.slice(-6).map((lesson) => lesson.id), [
+    "38-error-types",
+    "39-test-cases",
+    "40-decompose-problem",
+    "41-pseudocode-plan",
+    "42-guided-final",
+    "43-transfer-project",
+  ]);
+  assert.ok(course.lessons.every((lesson) => ["choice", "code"].includes(lesson.completion?.type)));
+  assert.ok(course.lessons.every((lesson) => lesson.payload?.task && lesson.payload?.expected_result));
+  assert.match(JSON.stringify(course.lessons), /initiale Belegung[\s\S]*Rechenoperatoren[\s\S]*Logisches UND/);
+  assert.match(JSON.stringify(course.lessons), /Funktionen[\s\S]*return[\s\S]*Bedingungen[\s\S]*for\.\.\.of/);
+  const firstViewCode = course.lessons[0].payload.artifact.content;
+  assert.doesNotMatch(firstViewCode, /\bfunction\b|\breturn\b|\bif\b|\bfor\b/);
+  const starterSource = course.sources.find((source) => source.path === "src/grundlagen.js").content;
+  assert.match(starterSource, /console\.log\("Start"\);[\s\S]*console\.log\("Ende"\);/);
+  assert.doesNotMatch(starterSource, /\bfunction\b|\breturn\b|\bif\b|\bfor\b|\bswitch\b/);
   assert.match(course.sources.find((source) => source.path === "README.md").content, /benötigt keine Hardware/);
-  assert.equal(model.createProgrammingFundamentalsCourseModel().slug, "programming-fundamentals");
+  assert.match(course.sources.find((source) => source.path === "README.md").content, /separate Lernprojekt Grundlagen der Mikrocontrollertechnik/);
+  const courseModel = model.createProgrammingFundamentalsCourseModel();
+  const manifest = courseModel.createViewManifest({}, { primarySourcePath: () => "src/grundlagen.js" });
+  assert.equal(manifest.views.length, 43);
+  assert.equal(manifest.views[0].lesson_id, "programming-fundamentals.lesson-01");
+  assert.equal(courseModel.slug, "programming-fundamentals");
   assert.match(server, /createProgrammingFundamentalsCourseModel/);
   assert.match(server, /programmingFundamentalsCourseModel\.createProject/);
   assert.match(server, /programmingFundamentalsCourseModel\.createViewManifest/);
   assert.match(server, /programmingFundamentalsCourseModel\.createSources/);
   assert.match(app, /"topic:programming": "Programmierung"/);
+});
+
+test("catalog includes the progressive microcontroller fundamentals course", () => {
+  const course = require("../src/dev/project-models/microcontroller-fundamentals-course.json");
+  const model = require("../src/dev/project-models/microcontroller-fundamentals-course");
+
+  assert.equal(course.project.title, "Grundlagen der Mikrocontrollertechnik");
+  assert.equal(course.project.area, "Mikrocontrollertechnik");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_microcontroller_simulator");
+  assert.equal(course.project.default_device_id, "");
+  assert.deepEqual(course.project.required_capability_ids, []);
+  assert.equal(course.project.access_model, "free");
+  assert.ok(course.project.tags.includes("runtime:browser"));
+  assert.ok(course.project.tags.includes("topic:microcontroller"));
+  assert.ok(course.project.tags.includes("level:beginner"));
+  assert.equal(course.lessons.length, 50);
+  assert.equal(course.phases.length, 8);
+  assert.deepEqual(course.lessons.slice(0, 5).map((lesson) => lesson.id), [
+    "01-computer-processor-microcontroller",
+    "02-cpu-ram-flash-peripherals",
+    "03-reset-boot-main-loop",
+    "04-datasheet-pinout-board",
+    "05-bit-and-byte",
+  ]);
+  assert.deepEqual(course.lessons.slice(-7).map((lesson) => lesson.id), [
+    "44-final-requirements",
+    "45-final-pins-and-resources",
+    "46-final-data-types",
+    "47-final-sensor-input",
+    "48-final-output-control",
+    "49-final-nonblocking-flow",
+    "50-final-validation",
+  ]);
+  assert.ok(course.lessons.every((lesson) => ["choice", "code", "hardware_or_simulator"].includes(lesson.completion?.type)));
+  assert.ok(course.lessons.every((lesson) => lesson.task && lesson.expected_result && lesson.code));
+  const codeLessons = course.lessons.filter((lesson) => lesson.completion?.type === "code");
+  assert.ok(codeLessons.every((lesson) => {
+    const missingRequired = (lesson.completion.must_contain || []).some((item) => !lesson.code.includes(item));
+    const presentForbidden = (lesson.completion.must_not_contain || []).some((item) => lesson.code.includes(item));
+    return missingRequired || presentForbidden;
+  }));
+  const adaptiveLessons = course.lessons.filter((lesson) => lesson.completion?.type === "hardware_or_simulator");
+  assert.equal(adaptiveLessons.length, 9);
+  assert.ok(adaptiveLessons.every((lesson) => lesson.completion.hardware?.correct_option));
+  assert.ok(adaptiveLessons.every((lesson) => lesson.completion.simulator?.correct_option));
+  assert.match(JSON.stringify(course.lessons), /uint8_t[\s\S]*uint32_t[\s\S]*Zweierkomplement[\s\S]*float und double/);
+  assert.match(JSON.stringify(course.lessons), /Spannung, Strom und Widerstand[\s\S]*GPIO[\s\S]*ADC[\s\S]*PWM/);
+  assert.match(JSON.stringify(course.lessons), /Timer[\s\S]*Interrupts[\s\S]*Watchdog[\s\S]*UART[\s\S]*I²C[\s\S]*SPI/);
+  const readme = course.sources.find((source) => source.path === "README.md").content;
+  assert.match(readme, /kein derzeit nutzbares kompatibles ProcessorBoard[\s\S]*verpflichtend im Simulator/);
+  assert.match(readme, /passendes Board erkannt[\s\S]*verpflichtenden Prüfung am realen Gerät/);
+  assert.match(readme, /documentation\.espressif\.com[\s\S]*open-std\.org[\s\S]*standards\.ieee\.org/);
+  const courseModel = model.createMicrocontrollerFundamentalsCourseModel();
+  const manifest = courseModel.createViewManifest({}, { primarySourcePath: () => "src/mikrocontroller.cpp" });
+  assert.equal(manifest.views.length, 50);
+  assert.equal(manifest.views[0].lesson_id, "microcontroller-fundamentals.lesson-01");
+  assert.equal(manifest.views[49].lesson_id, "microcontroller-fundamentals.lesson-50");
+  assert.equal(courseModel.slug, "microcontroller-fundamentals");
+  assert.match(server, /createMicrocontrollerFundamentalsCourseModel/);
+  assert.match(server, /microcontrollerFundamentalsCourseModel\.createProject/);
+  assert.match(server, /microcontrollerFundamentalsCourseModel\.createViewManifest/);
+  assert.match(server, /microcontrollerFundamentalsCourseModel\.createSources/);
+  assert.match(app, /"topic:microcontroller": "Mikrocontroller"/);
 });
 
 test("models the storage story as one development project with reusable standalone lessons", () => {

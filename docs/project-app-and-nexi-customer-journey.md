@@ -46,10 +46,12 @@ durch reine UI-Duplikation vorgetaeuscht.
 
 ## Kundeneinstiege fuer Nexi
 
-Nexi ist ein eigenständiger öffentlicher Produkteinstieg und wird direkt auf
-der GerNetiX-Startseite vor den allgemeinen Lernwegen vorgestellt. Die
-Startseite führt entweder ohne Konto zum fertigen Nachbau- und Flashweg oder
-mit kostenlosem Konto direkt zur eigenständigen internen Nexi-Einrichtung
+Nexi bleibt ein eigenständiger öffentlicher Produkteinstieg. Auf der
+GerNetiX-Startseite folgt Nexi jedoch als konkretes Beispiel auf die zwei
+gleichwertigen Hauptbereiche Lernen und Entwickeln sowie ihre gemeinsamen
+Begleiter Wissensportal und Community; Nexi ist kein dritter Plattformbereich.
+Die Startseite führt entweder ohne Konto zum fertigen Nachbau- und Flashweg
+oder mit kostenlosem Konto direkt zur eigenständigen internen Nexi-Einrichtung
 unter `/app/nexi/`. Diese Seite ist eine Produktseite und ausdrücklich kein
 Lernprojekt. Nexi darf damit nicht nur als Unterpunkt des Nachbaukatalogs oder
 der Lern- und Entwicklungsplattform auffindbar sein.

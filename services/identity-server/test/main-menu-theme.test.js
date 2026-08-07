@@ -37,8 +37,8 @@ test("groups the main destinations under clear user-facing headings", () => {
 });
 
 test("invalidates cached route assets when the hardware lab route is introduced", () => {
-  assert.match(html, /app-shell-controller\.js\?v=20260806-learning-feedback-final-1/);
-  assert.match(html, /app\.js\?v=20260806-project-summary-lazy-1/);
+  assert.match(html, /app-shell-controller\.js\?v=20260807-microcontroller-fundamentals-1/);
+  assert.match(html, /app\.js\?v=20260807-flat-guided-learning-2/);
 });
 
 test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {

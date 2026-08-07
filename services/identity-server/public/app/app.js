@@ -157,7 +157,7 @@ function guidedProjectView() {
       getJson,
       postJson,
       putJson,
-      waitForCompletedBuild,
+      waitForCompletedBuild: typeof waitForCompletedBuild === "function" ? waitForCompletedBuild : null,
       progressFor,
       escapeHtml,
       escapeAttribute,

@@ -1,0 +1,367 @@
+schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.measurement_tools_basics
+slug: umgang-mit-messmitteln
+title: Umgang mit Messmitteln
+projectStatus: idea
+domain: electronics
+summary: Du lernst Schritt für Schritt, wie du mit Multimeter, Logikanalysator und Oszilloskop eine Schaltung sicher prüfst und Messwerte verständlich erklärst.
+salesRole: Eigenständiges Grundlagen-Lernprojekt für Elektronik und Embedded-Entwicklung.
+accessPolicy:
+  accessTier: free
+  grantModel:
+    principle: Die Lerninhalte sollen den sicheren Einstieg in typische Messaufgaben ermöglichen.
+targetAudience:
+  - Einsteiger in Elektronik und Embedded-Entwicklung
+  - Lernende, die Schaltungen nicht nur nachbauen, sondern elektrisch prüfen wollen
+  - Maker mit Multimeter und späteren digitalen Messmitteln
+hardwareLevel: basic
+learnerPromise: Nach dem Projekt weißt du nicht nur, welchen Knopf du drückst. Du kannst vor jeder Messung erklären, was du erwartest, wie du das Messgerät anschließt und ob das Ergebnis plausibel ist.
+learningPattern:
+  - Vorhersagen: Welche Größe möchte ich messen und welchen Wert oder Verlauf erwarte ich?
+  - Aufbauen: Signal einstellen, richtige Buchse wählen und das Messgerät sicher anschließen.
+  - Messen: Wert, Einheit, Messbereich und sichtbare Schwankungen protokollieren.
+  - Verändern: Immer nur einen Parameter wie Frequenz oder Tastverhältnis ändern.
+  - Erklären: Beobachtung mit der Vorhersage vergleichen und die Grenze des Messgeräts benennen.
+recommendedHardware:
+  - Digitalmultimeter mit Spannungs-, Strom- und Widerstandsmessung sowie mehreren Messbereichen
+  - Übungsaufbau mit Batterie oder Kleinspannungsquelle, Widerständen, LED und Schalter
+  - Logikanalysator mit digitalen Eingängen und passender PC-Software
+  - Oszilloskop mit mindestens einem Tastkopf und geeigneten Masseleitungen
+  - Optional: Funktionsgenerator oder Mikrocontroller für reproduzierbare Signale
+safetyBoundary:
+  - Der Kurs arbeitet ausschließlich mit Batterie, USB und berührsicherer Kleinspannung.
+  - Netzspannung und Messungen in Netzgeräten sind ausdrücklich nicht Bestandteil dieses Einsteigerprojekts.
+  - Vor jeder Strommessung wird die Schaltung ausgeschaltet. Erst danach werden Buchse, Messart und Anschluss geprüft.
+  - Ein Messgerät wird nie parallel zur Quelle im Strommessbereich angeschlossen.
+  - Beim Oszilloskop wird vor dem Anschließen geklärt, womit die Masseklemme elektrisch verbunden ist. Eine falsch gesetzte Masseklemme kann einen Kurzschluss verursachen.
+visualAssets:
+  - id: visual.measurement_tools.learning_path
+    path: Projektideen/assets/measurement-tools-basics/01-lernweg-messmittel.png
+    usedBy: project-introduction
+    altText: Lernweg vom Multimeter über den Logikanalysator bis zum Oszilloskop an sicheren Kleinspannungsschaltungen.
+  - id: visual.multimeter.voltage_parallel
+    path: Projektideen/assets/measurement-tools-basics/02-spannung-parallel-messen.png
+    usedBy: lesson.multimeter.voltage
+    altText: Das Multimeter misst die Spannung mit zwei Prüfspitzen parallel an den beiden Anschlüssen einer LED.
+  - id: visual.multimeter.current_series
+    path: Projektideen/assets/measurement-tools-basics/03-strom-in-reihe-messen.png
+    usedBy: lesson.multimeter.current
+    altText: Der Stromkreis ist an einer Stelle geöffnet und das Multimeter ist dort in Reihe eingesetzt.
+  - id: visual.multimeter.resistance_unpowered
+    path: Projektideen/assets/measurement-tools-basics/04-widerstand-spannungsfrei-messen.png
+    usedBy: lesson.multimeter.resistance
+    altText: Ein Widerstand wird bei sichtbar abgetrennter Batterie mit dem Multimeter geprüft.
+  - id: visual.multimeter.measurement_range
+    path: Projektideen/assets/measurement-tools-basics/05-passenden-messbereich-waehlen.png
+    usedBy: lesson.multimeter.ranges
+    altText: Vergleich zwischen zu kleinem, passendem und unnötig großem Spannungsmessbereich.
+  - id: visual.logic_analyzer.connection
+    path: Projektideen/assets/measurement-tools-basics/06-logikanalysator-anschliessen.png
+    usedBy: lesson.logic-analyzer.basics
+    altText: Ein Logikanalysator beobachtet eine digitale Signalleitung und ist über eine gemeinsame Masse verbunden.
+  - id: visual.oscilloscope.trigger_and_scales
+    path: Projektideen/assets/measurement-tools-basics/07-oszilloskop-trigger-und-skalen.png
+    usedBy: lesson.oscilloscope.orientation
+    altText: Ein Oszilloskop zeigt ein stabiles Rechtecksignal mit markierter Periodendauer, Höhe und Triggerlinie.
+  - id: visual.measurement_tools.comparison
+    path: Projektideen/assets/measurement-tools-basics/08-vergleich-der-messmittel.png
+    usedBy: lesson.oscilloscope.compare
+    altText: Dasselbe PWM-Signal erscheint am Multimeter als einzelner Mittelwert, am Logikanalysator als digitale Zustände und am Oszilloskop mit seiner wirklichen Signalform.
+learningIntent:
+  - Messaufgaben vor dem Anschließen als Schaltung und erwartete Größen beschreiben.
+  - Spannung, Strom und Widerstand als unterschiedliche Messgrößen unterscheiden.
+  - Messbereiche passend zur erwarteten Größe auswählen und Messwerte plausibilisieren.
+  - Digitale Zustände, Pegel, Flanken und Protokollabläufe mit einem Logikanalysator untersuchen.
+  - Zeitverläufe, Amplitude, Frequenz, Tastverhältnis, Offset und Störungen mit einem Oszilloskop beurteilen.
+  - Messergebnisse mit Messpunkt, Einheit, Bereich, Randbedingungen und Unsicherheit dokumentieren.
+didacticFlow:
+  - title: Multimeter – elektrische Grundgrößen messen
+    id: chapter.multimeter
+    purpose: Das Multimeter als erstes Diagnosewerkzeug sicher und bewusst einsetzen.
+    lessons:
+      - id: lesson.multimeter.orientation
+        title: Messgerät, Buchsen und Messleitungen kennenlernen
+        topics:
+          - COM-, Spannungs- und Strombuchse
+          - Messart, Polarität, Anzeige und Durchgangsprüfung
+          - Handbereich oder Autorange: Den Messbereich selbst wählen oder automatisch wählen lassen
+        learnerQuestion: Wo müssen die schwarze und die rote Messleitung eingesteckt werden, bevor ich beginne?
+        outcome: Die Lernenden können vor dem Messen Messart, Buchse und erwartete Größenordnung benennen.
+      - id: lesson.multimeter.voltage
+        title: Spannung messen
+        topics:
+          - Gleichspannung und Wechselspannung im Kleinspannungsbereich
+          - Parallel messen: Die beiden Prüfspitzen berühren zwei Messpunkte, ohne den Stromkreis zu öffnen
+          - Bezugspunkt, Plus/Minus-Richtung und Spannung einer unbelasteten Quelle
+          - Messbereich wählen, ablesen und plausibilisieren
+        learnerQuestion: Wie groß ist der Spannungsunterschied zwischen diesen beiden Punkten?
+        experiment: Batterie, LED-Schaltung und Versorgungsspannung an mehreren Messpunkten vergleichen.
+        outcome: Die Lernenden messen Spannung parallel, wählen einen geeigneten Bereich und erklären den Bezugspunkt.
+      - id: lesson.multimeter.current
+        title: Strom messen
+        topics:
+          - In Reihe messen: Den Stromkreis öffnen und das Messgerät in die entstandene Lücke einsetzen
+          - Unterschied zwischen Milliampere- und Ampere-Buchse
+          - Warum das Messgerät den Stromkreis etwas beeinflusst und warum der Strommessbereich eine Sicherung besitzt
+          - Erwarteten Strom vor der Messung abschätzen
+        learnerQuestion: Wie viel Strom fließt durch dieses Bauteil?
+        experiment: Strom durch einen Widerstand und eine LED-Schaltung messen, ohne die Quelle kurzzuschließen.
+        outcome: Die Lernenden bauen eine sichere Strommessung auf und erkennen einen falsch gewählten Anschluss.
+      - id: lesson.multimeter.resistance
+        title: Widerstand und Durchgang prüfen
+        topics:
+          - Widerstandsmessung nur im spannungsfreien Zustand
+          - Aufgedruckter Wert, erlaubte Abweichung und tatsächlich gemessener Wert
+          - Reihen- und Parallelschaltung
+          - Durchgangsprüfung als schnelle qualitative Aussage
+        learnerQuestion: Ist die Verbindung unterbrochen und passt der Widerstand ungefähr zum erwarteten Wert?
+        experiment: Einzelne Widerstände sowie Reihen- und Parallelschaltungen messen und mit der Rechnung vergleichen.
+        outcome: Die Lernenden unterscheiden berechneten, erwarteten und gemessenen Widerstand.
+      - id: lesson.multimeter.ranges
+        title: Messbereiche und Messfehler verstehen
+        topics:
+          - Messbereich zu klein: Das Gerät zeigt Überlauf, häufig als OL oder 1
+          - Messbereich passend: Der Wert wird mit genügend Stellen angezeigt
+          - Messbereich unnötig groß: Die Anzeige verliert feine Unterschiede
+          - Warum auch ein Messgerät die Schaltung geringfügig beeinflusst
+          - Kontaktfehler, lose Masse und unerwartete Rückwege
+          - Messwert mit Einheit und Rahmenbedingungen dokumentieren
+        learnerQuestion: Ist der Messbereich groß genug, aber noch fein genug für eine sinnvolle Anzeige?
+        experiments:
+          - experiment.pwm_slow_to_fast
+          - experiment.pwm_duty_cycle
+        outcome: Die Lernenden begründen einen Messbereich und können einen auffälligen Messwert systematisch hinterfragen.
+  - title: Logikanalysatoren – digitale Signale sichtbar machen
+    id: chapter.logic-analyzer
+    purpose: Digitale Signalfolgen zeitlich erfassen und einfache Kommunikationsfehler finden.
+    lessons:
+      - id: lesson.logic-analyzer.basics
+        title: Digitale Pegel und Anschlüsse
+        topics:
+          - HIGH und LOW: hohe und niedrige Spannungszustände eines Digitalsignals
+          - Schaltschwelle: Ab welcher Spannung das Gerät einen Zustand als HIGH erkennt
+          - Gemeinsame Masse und zulässige Eingangsspannung
+          - Kanalzuordnung und Abtastrate
+        learnerQuestion: Welche Leitung trägt das Signal und welche Masse teilen sich Schaltung und Messgerät?
+        outcome: Die Lernenden schließen einen Logikanalysator passend zum Signalpegel an.
+      - id: lesson.logic-analyzer.timing
+        title: Flanken, Pulsbreite und Timing
+        topics:
+          - Steigende und fallende Flanke: Der Wechsel zwischen LOW und HIGH
+          - Frequenz, Periodendauer, Pulsbreite und Tastverhältnis
+          - Abtastrate: Wie oft der Logikanalysator pro Sekunde nach dem Signal schaut
+          - Zu langsame Abtastung: Schnelle Wechsel können fehlen und ein falsches Bild erzeugen
+        learnerQuestion: Wann wechselt das Signal seinen Zustand und wie lange bleibt es dort?
+        experiments:
+          - experiment.same_pwm_three_tools
+          - experiment.logic_analyzer_sampling
+        outcome: Die Lernenden können zwischen einem statischen Pegel und einem zeitlichen Digitalsignal unterscheiden.
+      - id: lesson.logic-analyzer.protocols
+        title: Ein einfaches Protokoll dekodieren
+        topics:
+          - UART: Eine einfache serielle Verbindung, die Bits nacheinander überträgt
+          - Baudrate, Startbit, Datenbits, Stopbit und Polarität
+          - Automatisch gelesene Zeichen immer mit dem sichtbaren Rohsignal vergleichen
+          - Fehlerbilder wie falsche Baudrate oder fehlende Masse
+        learnerQuestion: Werden die Bits mit der erwarteten Geschwindigkeit und Reihenfolge übertragen?
+        outcome: Die Lernenden finden einen einfachen UART-Fehler anhand von Rohsignal und Dekodergebnis.
+  - title: Oszilloskope – analoge Zeitverläufe beurteilen
+    id: chapter.oscilloscope
+    purpose: Spannungsverläufe im Zeitbereich messen und die Aussagekraft des Messaufbaus bewerten.
+    lessons:
+      - id: lesson.oscilloscope.orientation
+        title: Anzeige, Skalen und Tastkopf
+        topics:
+          - Volt pro Kästchen: Wie viel Spannung ein senkrechtes Rasterfeld darstellt
+          - Zeit pro Kästchen: Wie viel Zeit ein waagerechtes Rasterfeld darstellt
+          - Trigger: Das Ereignis, an dem das Oszilloskop die Darstellung immer wieder ausrichtet
+          - Tastkopf 1x/10x, korrekte Einstellung und Abgleich am Testsignal
+          - Kurze Masseverbindung, begrenzte Bandbreite und Einfluss des Tastkopfs
+        learnerQuestion: Wie stelle ich das Signal so ein, dass es groß, vollständig und ruhig auf dem Bildschirm steht?
+        outcome: Die Lernenden stellen einen stabilen Verlauf ein und lesen die Skalen korrekt ab.
+      - id: lesson.oscilloscope.waveforms
+        title: Amplitude, Frequenz und Offset
+        topics:
+          - Spitze-Spitze-Wert: Abstand vom niedrigsten bis zum höchsten Punkt
+          - Spitzenwert und Effektivwert als unterschiedliche Aussagen über die Signalhöhe
+          - Frequenz und Periodendauer
+          - Gleichanteil: Verschiebung des gesamten Signals nach oben oder unten
+          - Wechselanteil: Der Teil des Signals, der sich mit der Zeit verändert
+          - Sinus, Rechteck, PWM und verrauschte Signale
+        learnerQuestion: Wie hoch ist das Signal, wie schnell wiederholt es sich und ist seine Form sauber?
+        experiments:
+          - experiment.same_pwm_three_tools
+          - experiment.oscilloscope_trigger_and_edges
+        outcome: Die Lernenden beschreiben einen Verlauf mit den passenden Größen und Einheiten.
+      - id: lesson.oscilloscope.compare
+        title: Messmittel sinnvoll kombinieren
+        topics:
+          - Multimeter: Liefert einen gut ablesbaren Zahlenwert, zeigt aber schnelle Änderungen kaum
+          - Logikanalysator: Zeigt HIGH/LOW-Zustände und digitale Protokolle über längere Zeit
+          - Oszilloskop: Zeigt die wirkliche Spannungsform, Flanken und Störungen
+          - Grenzen und typische Fehlinterpretationen
+        learnerQuestion: Brauche ich einen Zahlenwert, digitale Zustände oder die wirkliche Signalform?
+        outcome: Die Lernenden wählen für eine konkrete Diagnoseaufgabe das passende Messmittel und begründen die Wahl.
+plainLanguageGlossary:
+  - term: Messbereich
+    meaning: Der größte Wert, den das Gerät in der gewählten Einstellung anzeigen kann.
+  - term: plausibel
+    meaning: Der Messwert passt ungefähr zu dem, was Schaltung, Bauteile und Versorgung erwarten lassen.
+  - term: Abtastrate
+    meaning: Wie oft ein digitales Messgerät pro Sekunde nach dem Eingangssignal schaut.
+  - term: Tastverhältnis
+    meaning: Welcher Anteil einer Periode im hohen Zustand verbracht wird; bei 50 Prozent sind HIGH und LOW gleich lang.
+  - term: Trigger
+    meaning: Ein wiedererkennbarer Signalpunkt, an dem das Oszilloskop die Darstellung ausrichtet, damit das Bild nicht wandert.
+  - term: PWM
+    meaning: Ein schnell ein- und ausgeschaltetes Signal, dessen Tastverhältnis zum Beispiel Helligkeit oder Motorleistung steuert.
+experimentInfrastructure:
+  testSignal:
+    description: Ein Mikrocontroller oder Funktionsgenerator erzeugt ein Rechtecksignal zwischen ungefähr 0 Volt und einer sicheren HIGH-Spannung von 3,3 oder 5 Volt.
+    adjustableParameters:
+      - Frequenz: 0,5 Hz, 2 Hz, 20 Hz, 200 Hz und 1 kHz
+      - Tastverhältnis: 0, 25, 50, 75 und 100 Prozent
+    learnerInterface: Zwei Regler oder eine einfache serielle Auswahl ändern Frequenz und Tastverhältnis getrennt voneinander.
+    principle: Für jeden Versuch wird immer nur ein Parameter verändert; alle anderen Einstellungen bleiben gleich.
+  pwmModel:
+    period: Eine Periode besteht aus einer HIGH-Zeit und einer LOW-Zeit.
+    dutyCycle: Das Tastverhältnis D ist der Anteil der Periode im HIGH-Zustand.
+    expectedDcAverage: Bei LOW nahe 0 Volt gilt näherungsweise U_DC = D × U_HIGH.
+    importantLimit: Das ist ein zeitlicher Mittelwert. Er beschreibt weder die wirkliche Signalform noch automatisch den Effektivwert.
+experiments:
+  - id: experiment.static_levels_reference
+    title: Referenzwerte für LOW und HIGH bestimmen
+    learningQuestion: Welche beiden Spannungen schaltet der PWM-Ausgang tatsächlich?
+    equipment:
+      - Mikrocontroller oder Funktionsgenerator mit sicherem 3,3- oder 5-Volt-Ausgang
+      - Multimeter im Gleichspannungsbereich
+    predict:
+      - LOW liegt ungefähr bei 0 Volt.
+      - HIGH liegt ungefähr bei der Versorgungsspannung, kann unter Last aber etwas kleiner sein.
+    steps:
+      - Ausgang dauerhaft auf LOW stellen und Spannung gegen Masse messen.
+      - Messwert als U_LOW notieren.
+      - Ausgang dauerhaft auf HIGH stellen und erneut messen.
+      - Messwert als U_HIGH notieren.
+    expectedObservation: Das Multimeter zeigt zwei stabile Werte. Diese gemessenen Werte werden für alle folgenden Vorhersagen verwendet.
+    learnerEvidence: Tabelle mit U_LOW, U_HIGH, Messbereich und verwendetem Board oder Signalgenerator.
+  - id: experiment.pwm_slow_to_fast
+    title: Was zeigt das Multimeter bei langsamer und schneller PWM?
+    prerequisites:
+      - experiment.static_levels_reference
+    learningQuestion: Ändert die PWM-Frequenz den angezeigten Gleichspannungswert, obwohl das Tastverhältnis gleich bleibt?
+    fixedParameters:
+      - Tastverhältnis 50 Prozent
+      - gleiche HIGH- und LOW-Spannung
+      - Multimeter im Gleichspannungsbereich
+    variableParameter: Frequenz nacheinander auf 0,5 Hz, 2 Hz, 20 Hz, 200 Hz und 1 kHz stellen.
+    predict:
+      - Der ideale zeitliche Mittelwert bleibt bei jeder Frequenz ungefähr 0,5 × U_HIGH.
+      - Bei sehr langsamer PWM kann die Anzeige zwischen LOW, HIGH und Zwischenwerten springen, weil das Multimeter nur wenige Messwerte pro Sekunde aktualisiert und intern mittelt.
+      - Bei schneller PWM wird die Anzeige vieler Multimeter ruhiger und nähert sich dem Mittelwert an.
+    steps:
+      - Für jede Frequenz vor der Messung notieren, ob eine springende oder stabile Anzeige erwartet wird.
+      - PWM einschalten und die Anzeige mindestens zehn Sekunden beobachten.
+      - Kleinsten, größten und typischen angezeigten Wert sowie den Eindruck stabil oder springend notieren.
+      - Frequenz ändern, Tastverhältnis aber unverändert lassen.
+      - Beobachtungen mit dem berechneten Mittelwert vergleichen.
+    expectedObservation:
+      - Bei 0,5 oder 2 Hz folgt die Anzeige abhängig vom Multimeter sichtbar den Schaltzuständen oder zeigt wechselnde Zwischenwerte.
+      - Ab einer geräteabhängigen Frequenz wirkt die Anzeige stabil und liegt bei einem 0-bis-U_HIGH-Signal ungefähr bei der halben HIGH-Spannung.
+      - Der genaue Übergang ist eine Eigenschaft des Multimeters und deshalb selbst Teil des Experiments.
+    explanation: Ein Multimeter zeigt keine vollständige Kurve. Es nimmt Messwerte auf, verarbeitet und mittelt sie und aktualisiert seine Anzeige nur einige Male pro Sekunde. Darum können zwei Multimeter am selben langsamen PWM-Signal unterschiedlich unruhig wirken.
+    learnerEvidence: Messreihe mit Frequenz, Minimum, Maximum, typischem Wert und Stabilität der Anzeige.
+  - id: experiment.pwm_duty_cycle
+    title: Tastverhältnis gegen Multimeteranzeige
+    prerequisites:
+      - experiment.static_levels_reference
+      - experiment.pwm_slow_to_fast
+    learningQuestion: Folgt der angezeigte Gleichspannungsmittelwert dem Tastverhältnis?
+    fixedParameters:
+      - Frequenz 500 Hz oder eine andere Frequenz mit stabiler Multimeteranzeige
+      - gleiche HIGH- und LOW-Spannung
+    variableParameter: Tastverhältnis nacheinander auf 0, 25, 50, 75 und 100 Prozent stellen.
+    predictionFormula: U_erwartet = U_LOW + D × (U_HIGH - U_LOW)
+    exampleExpectations:
+      - Bei 3,3 Volt HIGH und 0 Volt LOW: 0 Prozent = 0 V, 25 Prozent ≈ 0,83 V, 50 Prozent ≈ 1,65 V, 75 Prozent ≈ 2,48 V, 100 Prozent ≈ 3,3 V.
+      - Bei 5 Volt HIGH und 0 Volt LOW: 0 Prozent = 0 V, 25 Prozent ≈ 1,25 V, 50 Prozent ≈ 2,5 V, 75 Prozent ≈ 3,75 V, 100 Prozent ≈ 5 V.
+    steps:
+      - Für jedes Tastverhältnis den erwarteten Wert mit den zuvor gemessenen U_LOW und U_HIGH berechnen.
+      - Tastverhältnis einstellen und Gleichspannung messen.
+      - Abweichung zwischen Vorhersage und Anzeige notieren.
+      - Messreihe als kleines Diagramm Tastverhältnis gegen Spannung darstellen.
+    expectedObservation: Bei ausreichend schneller PWM steigt der angezeigte Gleichspannungswert ungefähr linear mit dem Tastverhältnis.
+    importantLimit: Die Anzeige beweist nicht, dass eine echte konstante Zwischen­spannung anliegt. Das Signal schaltet weiterhin zwischen LOW und HIGH; nur sein Mittelwert ändert sich.
+    learnerEvidence: Tabelle und Diagramm mit vorhergesagter und gemessener Spannung.
+  - id: experiment.same_pwm_three_tools
+    title: Dasselbe PWM-Signal mit drei Messgeräten
+    prerequisites:
+      - experiment.pwm_duty_cycle
+    signal: PWM mit 500 Hz und 25, 50 und 75 Prozent Tastverhältnis.
+    learningQuestion: Welche Information zeigt jedes Messgerät und welche bleibt unsichtbar?
+    steps:
+      - Multimeter im Gleichspannungsbereich parallel zwischen PWM-Ausgang und Masse anschließen und Mittelwert notieren.
+      - Logikanalysator mit Signalkanal und gemeinsamer Masse anschließen; Frequenz, HIGH-Zeit, LOW-Zeit und Tastverhältnis ablesen.
+      - Oszilloskop mit kurzem Masseanschluss verbinden; LOW- und HIGH-Spannung, Periodendauer und Flankenform untersuchen.
+      - Für jedes Messgerät einen Satz schreiben: Das sehe ich; das sehe ich nicht.
+    expectedObservation:
+      - Das Multimeter liefert einen einzelnen, meist gemittelten Zahlenwert.
+      - Der Logikanalysator zeigt die zeitliche HIGH/LOW-Folge und kann Frequenz sowie Tastverhältnis genau bestimmen, verbirgt aber die analoge Flankenform.
+      - Das Oszilloskop zeigt Spannung und Zeit einschließlich Flanken, Überschwingen oder Störungen, dekodiert aber nicht automatisch jede fachliche Bedeutung.
+    learnerEvidence: Drei Messnachweise desselben Signals und eine Vergleichstabelle.
+  - id: experiment.logic_analyzer_sampling
+    title: Zu langsam abgetastet – ein glaubwürdiges falsches Bild
+    learningQuestion: Was passiert, wenn der Logikanalysator zu selten nach dem Signal schaut?
+    signal: PWM mit konstanter Frequenz und konstantem Tastverhältnis.
+    steps:
+      - Signal zuerst mit einer deutlich höheren Abtastrate als der PWM-Frequenz aufzeichnen.
+      - Frequenz und Tastverhältnis als Referenz notieren.
+      - Abtastrate schrittweise verringern, ohne das PWM-Signal zu ändern.
+      - Beobachten, wann Flanken verschoben erscheinen, Pulse fehlen oder eine falsche Frequenz plausibel aussieht.
+    expectedObservation: Mit zu wenigen Messpunkten pro Periode kann der digitale Verlauf falsch aussehen, obwohl die Software weiterhin eine saubere Linie zeichnet.
+    explanation: Eine schöne digitale Darstellung ist kein Beweis für eine ausreichende Abtastrate.
+    learnerEvidence: Zwei Aufzeichnungen desselben Signals mit geeigneter und ungeeigneter Abtastrate.
+  - id: experiment.oscilloscope_trigger_and_edges
+    title: Vom wandernden Bild zur sichtbaren Flanke
+    learningQuestion: Wie verändern Trigger und Zeitbasis die Aussage des Oszilloskopbilds?
+    signal: PWM mit ungefähr 1 kHz und 50 Prozent Tastverhältnis.
+    steps:
+      - Signal zunächst ohne passend eingestellten Trigger beobachten und den wandernden Eindruck beschreiben.
+      - Triggerquelle auf den Messkanal und Triggerflanke auf steigend stellen.
+      - Triggerpegel zwischen LOW und HIGH setzen, bis das Bild stabil steht.
+      - Zeitbasis zuerst so wählen, dass mehrere Perioden sichtbar sind.
+      - Danach in eine einzelne Flanke hineinzoomen und Anstiegszeit, Überschwingen oder Störungen suchen.
+      - Optional lange und kurze Masseverbindung vergleichen, ohne den zulässigen Messaufbau zu verlassen.
+    expectedObservation: Das Signal selbst bleibt gleich, aber Trigger und Zeitbasis entscheiden, welcher Teil davon verständlich sichtbar wird. Eine ungeeignete Masseverbindung kann zusätzliche scheinbare Störungen zeigen.
+    learnerEvidence: Zwei Screenshots oder Skizzen mit den jeweiligen Einstellungen und einer Erklärung des Unterschieds.
+  - id: experiment.optional_pwm_ac_mode
+    title: Optional – warum der AC-Bereich etwas anderes anzeigen kann
+    learningQuestion: Misst der Wechselspannungsbereich denselben Wert wie der Gleichspannungsbereich?
+    prerequisites:
+      - experiment.same_pwm_three_tools
+    safetyAndDeviceCheck: Nur durchführen, wenn Handbuch, Frequenzbereich und True-RMS-Eigenschaft des Multimeters bekannt sind.
+    steps:
+      - PWM-Frequenz und Tastverhältnis konstant halten.
+      - Zuerst den Gleichspannungswert messen.
+      - Danach in den Wechselspannungsbereich wechseln und Anzeige notieren.
+      - Im Handbuch prüfen, ob der AC-Bereich gleichspannungsgekoppelt oder wechselspannungsgekoppelt ist und für die verwendete Frequenz gilt.
+    expectedObservation: Der AC-Bereich kann nur den wechselnden Anteil erfassen und deshalb einen anderen Wert anzeigen. Ein nicht True-RMS-fähiges oder außerhalb seiner Bandbreite betriebenes Multimeter kann bei PWM deutlich falsch anzeigen.
+    importantLimit: Der AC-Anzeigewert darf ohne Kenntnis des Messverfahrens nicht als Gesamt-Effektivwert des PWM-Signals interpretiert werden.
+    learnerEvidence: DC- und AC-Anzeige zusammen mit den relevanten Angaben aus dem Gerätehandbuch.
+learningEvidence:
+  - Experimentprotokolle mit Vorhersage, Aufbau, verändertem Parameter, Messwert und Erklärung
+  - PWM-Messreihe langsam bis schnell sowie 0 bis 100 Prozent Tastverhältnis
+  - Logikanalysator-Aufzeichnung eines Tasters oder UART-Signals mit kommentierten Zeitparametern
+  - Oszilloskop-Screenshot oder Skizze mit Trigger, Zeitbasis, Spannungsbereich und Messwerten
+  - Abschlussaufgabe: Einen absichtlich eingebauten Fehler mit mindestens zwei Messmitteln eingrenzen
+completionCriteria:
+  - Messarten, Buchsen und Messbereiche werden vor dem Anschließen korrekt ausgewählt.
+  - Spannung, Strom und Widerstand werden sicher und nachvollziehbar gemessen.
+  - Digitale Signale werden anhand von Pegel, Timing und optionalem Protokolldekoder bewertet.
+  - Ein analoger Zeitverlauf wird mit Skalen, Trigger und mindestens drei Messgrößen beschrieben.
+  - Grenzen und Sicherheitsrisiken des jeweiligen Messaufbaus werden dokumentiert.
+followUpIdeas:
+  - Fehlersuche an GPIO, I2C und SPI
+  - Netzteil- und Spannungsversorgung diagnostizieren
+  - Sensoren mit Multimeter und Oszilloskop charakterisieren
