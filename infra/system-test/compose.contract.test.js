@@ -13,13 +13,34 @@ const postgres = fs.readFileSync(path.join(directory, "postgres", "init-database
 const mosquitto = fs.readFileSync(path.join(directory, "mosquitto", "mosquitto.conf"), "utf8");
 const bootstrap = fs.readFileSync(path.join(directory, "toxiproxy", "configure-proxies.sh"), "utf8");
 
-test("uses isolated, project-scoped resources without host ports", () => {
+test("uses isolated, project-scoped resources with loopback-only host ports", () => {
   assert.match(compose, /^name: gernetix-system-test$/m);
-  assert.doesNotMatch(compose, /^\s+ports:/m);
   assert.doesNotMatch(compose, /container_name:/);
+  assert.doesNotMatch(compose, /(?:^|["'])0\.0\.0\.0:/m);
   assert.match(compose, /control-plane:\n    internal: true/);
   assert.match(compose, /data-plane:\n    internal: true/);
   assert.match(compose, /com\.gernetix\.scope: system-test/);
+  for (const binding of [
+    "127.0.0.1:55432:5432",
+    "127.0.0.1:51883:1883",
+    "127.0.0.1:58474:8474",
+    "127.0.0.1:51884:11883",
+    "127.0.0.1:53001:13000",
+    "127.0.0.1:55433:15432",
+    "127.0.0.1:53000:3000",
+  ]) {
+    assert.match(compose, new RegExp(`- "${binding.replaceAll(".", "\\.")}"`), `${binding} is missing`);
+  }
+  const portSections = [...compose.matchAll(/^\s{4}ports:\n((?:\s{6}- .+\n)+)/gm)];
+  assert.equal(portSections.length, 4, "only the four declared host-facing services may publish ports");
+  for (const [, entries] of portSections) {
+    for (const entry of entries.trim().split("\n")) {
+      assert.match(entry.trim(), /^- "127\.0\.0\.1:\d+:\d+"$/, `unsafe host binding: ${entry}`);
+    }
+  }
+  const publishedBindings = [...compose.matchAll(/^\s+- "([^\"]+:\d+:\d+)"$/gm)].map((match) => match[1]);
+  assert.equal(publishedBindings.length, 7, "the direct, proxied and control bindings must stay explicit");
+  assert.ok(publishedBindings.every((binding) => binding.startsWith("127.0.0.1:")));
   for (const volume of ["system_test_postgres_data", "system_test_forgejo_data", "system_test_mqtt_data"]) {
     assert.ok(compose.includes(volume), `${volume} is missing`);
   }
@@ -69,13 +90,15 @@ test("routes all selected dependencies through deterministic Toxiproxy listeners
   assert.match(bootstrap, /create_proxy mqtt "0\.0\.0\.0:11883" "mosquitto:1883"/);
   assert.match(bootstrap, /create_proxy forgejo "0\.0\.0\.0:13000" "forgejo:3000"/);
   assert.match(compose, /TOXIPROXY_API_URL: http:\/\/toxiproxy:8474/);
+  assert.match(compose, /"127\.0\.0\.1:58474:8474"/);
 });
 
-test("allows anonymous MQTT only on the internal test listener", () => {
+test("allows anonymous MQTT only on the isolated test listener and loopback host binding", () => {
   assert.match(mosquitto, /listener 1883 0\.0\.0\.0/);
   assert.match(mosquitto, /allow_anonymous true/);
   assert.doesNotMatch(mosquitto, /listener 8883|listener 9001/);
-  assert.doesNotMatch(compose, /1883:1883|8883:8883|9001:9001/);
+  assert.match(compose, /"127\.0\.0\.1:51883:1883"/);
+  assert.doesNotMatch(compose, /(?:^|[^\d])8883:8883|9001:9001/);
 });
 
 test("Docker Compose accepts the file without starting containers", (t) => {

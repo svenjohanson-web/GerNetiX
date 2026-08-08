@@ -1,18 +1,23 @@
 "use strict";
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
+const FIXTURE_SERVICE_PORTS = Object.freeze({ identity: "14300", project: "14800", device: "14700" });
 
 function createSeedClient(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   if (typeof fetchImpl !== "function") throw new Error("A fetch implementation is required");
   const targets = Object.freeze({
-    identity: safeBaseUrl(options.identityBaseUrl, "identityBaseUrl"),
-    project: safeBaseUrl(options.projectBaseUrl, "projectBaseUrl"),
-    device: safeBaseUrl(options.deviceBaseUrl, "deviceBaseUrl"),
+    identity: safeBaseUrl(options.identityBaseUrl, "identityBaseUrl", FIXTURE_SERVICE_PORTS.identity),
+    project: safeBaseUrl(options.projectBaseUrl, "projectBaseUrl", FIXTURE_SERVICE_PORTS.project),
+    device: safeBaseUrl(options.deviceBaseUrl, "deviceBaseUrl", FIXTURE_SERVICE_PORTS.device),
   });
+  const writeConfirmed = options.writeConfirmed === true;
   const timeoutMs = integer(options.timeoutMs || 5_000, "timeoutMs", 100, 60_000);
 
   async function seed(manifest, password) {
+    if (!writeConfirmed) {
+      throw new Error("Fixture writes require explicit confirmation");
+    }
     if (typeof password !== "string" || password.length < 12) {
       throw new Error("Fixture password must contain at least 12 characters");
     }
@@ -135,12 +140,15 @@ function createSeedClient(options = {}) {
   return { seed, targets };
 }
 
-function safeBaseUrl(value, field) {
+function safeBaseUrl(value, field, expectedPort) {
   if (typeof value !== "string" || !value) throw new Error(`${field} is required`);
   const url = new URL(value);
   assertLoopback(url);
   if (url.protocol !== "http:") throw new Error(`${field} must use http for the isolated local environment`);
   if (url.username || url.password || url.search || url.hash) throw new Error(`${field} must not contain credentials, query, or fragment`);
+  if (url.port !== String(expectedPort || "")) {
+    throw new Error(`${field} must use dedicated system-test port ${expectedPort}`);
+  }
   url.pathname = url.pathname.replace(/\/*$/, "/");
   return url;
 }
@@ -158,4 +166,4 @@ function integer(value, field, minimum, maximum) {
   return value;
 }
 
-module.exports = { LOOPBACK_HOSTS, createSeedClient, safeBaseUrl };
+module.exports = { FIXTURE_SERVICE_PORTS, LOOPBACK_HOSTS, createSeedClient, safeBaseUrl };

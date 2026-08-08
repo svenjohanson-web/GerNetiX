@@ -14,10 +14,12 @@ Eine bereits gestartete, isolierte Testumgebung befuellen:
 
 ```sh
 GERNETIX_SYSTEM_TEST_FIXTURE_PASSWORD='ein-langes-nur-lokales-testkennwort' \
-  node tools/system-tests/fixtures/cli.js
+  node tools/system-tests/fixtures/cli.js --confirm-write
 ```
 
-Optionale Zielvariablen sind `GERNETIX_SYSTEM_TEST_IDENTITY_URL`, `GERNETIX_SYSTEM_TEST_PROJECT_URL` und `GERNETIX_SYSTEM_TEST_DEVICE_URL`. Nicht-lokale Ziele werden auch bei expliziter Konfiguration abgelehnt. Der Identity Server muss ohne SMTP laufen, damit synthetische Accounts lokal automatisch verifiziert werden; ein `202 requires_email_verification` beendet den Lauf sicher.
+Der Schreibmodus verlangt immer `--confirm-write`. Er akzeptiert ausschliesslich die dedizierten lokalen Testports Identity `14300`, Project `14800` und Device `14700`; normale Dev-Ports werden auch bei expliziter Konfiguration abgelehnt. Optionale Zielvariablen sind `GERNETIX_SYSTEM_TEST_IDENTITY_URL`, `GERNETIX_SYSTEM_TEST_PROJECT_URL` und `GERNETIX_SYSTEM_TEST_DEVICE_URL`. Nicht-lokale Ziele werden ebenfalls abgelehnt. Der Identity Server muss ohne SMTP laufen, damit synthetische Accounts lokal automatisch verifiziert werden; ein `202 requires_email_verification` beendet den Lauf sicher.
+
+Jedes Fixture-Geraet verweist explizit auf genau ein Projekt desselben Fixture-Kontos. Derselbe validierte Manifestvertrag dient dem MQTT-Simulator als deterministische Device-Map.
 
 Verwendete Laufzeitvertraege:
 

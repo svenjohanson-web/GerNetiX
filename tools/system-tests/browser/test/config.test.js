@@ -5,13 +5,13 @@ const test = require("node:test");
 const { assertSafeBaseUrl, loadConfig } = require("../src/config");
 
 const credentials = {
-  GERNETIX_BROWSER_SESSION_COOKIE_NAME: "gernetix_test_session",
   GERNETIX_BROWSER_SESSION_COOKIE_VALUE: "test-secret-from-env",
 };
 
 test("accepts loopback targets and conservative single-worker defaults", () => {
-  const config = loadConfig({ ...credentials, GERNETIX_BROWSER_BASE_URL: "http://127.0.0.1:4300" });
-  assert.equal(config.baseUrl.origin, "http://127.0.0.1:4300");
+  const config = loadConfig(credentials);
+  assert.equal(config.baseUrl.origin, "http://127.0.0.1:14300");
+  assert.equal(config.sessionCookieName, "gernetix_demo_session");
   assert.equal(config.workers, 1);
   assert.equal(config.timeoutMs, 30_000);
 });
@@ -23,7 +23,7 @@ test("rejects remote targets and credentials embedded in target URLs", () => {
 
 test("requires prepared-session credentials from the environment", () => {
   assert.throws(() => loadConfig({ GERNETIX_BROWSER_SESSION_COOKIE_NAME: "session" }), /SESSION_COOKIE_VALUE_required/);
-  assert.throws(() => loadConfig({ GERNETIX_BROWSER_SESSION_COOKIE_VALUE: "secret" }), /SESSION_COOKIE_NAME_required/);
+  assert.equal(loadConfig({ GERNETIX_BROWSER_SESSION_COOKIE_VALUE: "secret" }).sessionCookieName, "gernetix_demo_session");
 });
 
 test("limits the browser worker count", () => {

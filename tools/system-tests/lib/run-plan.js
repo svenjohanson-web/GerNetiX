@@ -4,9 +4,9 @@ const path = require("node:path");
 const { assertSafeTarget } = require("./config");
 
 function buildRunPlan(profile, options = {}) {
-  const identityUrl = assertSafeTarget(options.identityUrl || "http://127.0.0.1:4300").toString().replace(/\/$/, "");
-  const brokerUrl = assertSafeMqttTarget(options.brokerUrl || "mqtt://127.0.0.1:1883");
-  const reportDirectory = options.reportDirectory || "reports/system-tests";
+  const identityUrl = assertDedicatedIdentityTarget(options.identityUrl || "http://127.0.0.1:14300");
+  const brokerUrl = assertSafeMqttTarget(options.brokerUrl || "mqtt://127.0.0.1:51883");
+  const reportDirectory = options.reportDirectory || ".runtime/reports";
   const duration = secondsToK6Duration(profile.duration_seconds);
   return Object.freeze({
     schema_version: 1,
@@ -33,6 +33,7 @@ function buildRunPlan(profile, options = {}) {
         P95_MS: String(profile.api.p95_ms),
         P99_MS: String(profile.api.p99_ms),
         MAX_ERROR_RATE: String(profile.api.unexpected_error_rate),
+        REQUEST_TIMEOUT_MS: String(profile.api.request_timeout_ms),
         SUMMARY_PATH: path.posix.join(reportDirectory, `k6-${profile.profile}.json`),
       },
       secret_environment: ["USERNAME", "USERNAME_TEMPLATE", "PASSWORD", "PASSWORD_TEMPLATE"],
@@ -42,6 +43,7 @@ function buildRunPlan(profile, options = {}) {
       arguments: [
         "tools/system-tests/devices/src/cli.js",
         "--broker-url", brokerUrl,
+        "--device-map", "tools/system-tests/fixtures/manifest.v1.json",
         "--device-count", String(profile.devices.count),
         "--duration-ms", String(profile.duration_seconds * 1000),
         "--telemetry-interval-ms", String(profile.devices.publish_interval_ms),
@@ -68,6 +70,13 @@ function assertSafeMqttTarget(target) {
   if (url.username || url.password || (url.pathname && url.pathname !== "/")) {
     throw new Error("System-test broker URL must not contain credentials or a path");
   }
+  if (url.port !== "51883") throw new Error("MQTT system-test target must use dedicated port 51883");
+  return url.toString().replace(/\/$/, "");
+}
+
+function assertDedicatedIdentityTarget(target) {
+  const url = assertSafeTarget(target);
+  if (url.port !== "14300") throw new Error("Identity system-test target must use dedicated port 14300");
   return url.toString().replace(/\/$/, "");
 }
 
@@ -75,4 +84,4 @@ function secondsToK6Duration(seconds) {
   return seconds % 60 === 0 ? `${seconds / 60}m` : `${seconds}s`;
 }
 
-module.exports = { assertSafeMqttTarget, buildRunPlan, secondsToK6Duration };
+module.exports = { assertDedicatedIdentityTarget, assertSafeMqttTarget, buildRunPlan, secondsToK6Duration };

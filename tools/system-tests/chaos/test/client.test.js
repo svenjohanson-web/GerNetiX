@@ -2,7 +2,11 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { assertLoopbackControlUrl, createToxiproxyClient } = require("../client");
+const { DEFAULT_CONTROL_URL, assertLoopbackControlUrl, createToxiproxyClient } = require("../client");
+
+test("defaults to the loopback control port published by system-test Compose", () => {
+  assert.equal(DEFAULT_CONTROL_URL, "http://127.0.0.1:58474");
+});
 
 test("accepts only numeric loopback control origins", () => {
   assert.equal(assertLoopbackControlUrl("http://127.0.0.1:8474"), "http://127.0.0.1:8474");
@@ -37,7 +41,7 @@ test("sends only allowlisted toxic fields to Toxiproxy", async () => {
     arbitrary: "discarded",
   });
 
-  assert.equal(calls[0].url, "http://127.0.0.1:8474/proxies/forgejo/toxics");
+  assert.equal(calls[0].url, "http://127.0.0.1:58474/proxies/forgejo/toxics");
   assert.deepEqual(JSON.parse(calls[0].options.body), {
     name: "gernetix_test_forgejo_latency",
     type: "latency",

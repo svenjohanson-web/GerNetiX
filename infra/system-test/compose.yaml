@@ -37,6 +37,8 @@ services:
       FORGEJO_POSTGRES_PASSWORD: ${SYSTEM_TEST_FORGEJO_POSTGRES_PASSWORD:?synthetic Forgejo system-test password required}
     expose:
       - "5432"
+    ports:
+      - "127.0.0.1:55432:5432"
     networks:
       - data-plane
     volumes:
@@ -58,6 +60,8 @@ services:
     image: eclipse-mosquitto:2.0.22
     expose:
       - "1883"
+    ports:
+      - "127.0.0.1:51883:1883"
     networks:
       - data-plane
     volumes:
@@ -84,6 +88,11 @@ services:
       - "11883"
       - "13000"
       - "15432"
+    ports:
+      - "127.0.0.1:58474:8474"
+      - "127.0.0.1:51884:11883"
+      - "127.0.0.1:53001:13000"
+      - "127.0.0.1:55433:15432"
     networks:
       - control-plane
       - data-plane
@@ -165,6 +174,8 @@ services:
       FORGEJO__metrics__ENABLED: "false"
     expose:
       - "3000"
+    ports:
+      - "127.0.0.1:53000:3000"
     networks:
       - data-plane
     volumes:

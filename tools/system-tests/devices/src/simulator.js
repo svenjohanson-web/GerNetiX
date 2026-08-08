@@ -9,6 +9,9 @@ class DeviceSimulator extends EventEmitter {
     this.random = random;
     this.now = now;
     this.timers = timers;
+    if (!Array.isArray(config.deviceMappings) || config.deviceMappings.length !== config.deviceCount) {
+      throw new Error("Simulator requires one validated device mapping per configured device");
+    }
     this.sessions = new Map();
     this.stopping = false;
     this.stats = createStats(config.deviceCount);
@@ -17,8 +20,9 @@ class DeviceSimulator extends EventEmitter {
   async start() {
     this.stopping = false;
     for (let index = 0; index < this.config.deviceCount; index += 1) {
-      const deviceId = normalizeDeviceId(`${this.config.devicePrefix}-${String(index + 1).padStart(5, "0")}`);
-      const session = { deviceId, sequence: 0, reconnectAttempts: 0, connected: false, timers: new Set() };
+      const mapping = this.config.deviceMappings[index];
+      const deviceId = normalizeDeviceId(mapping.deviceId);
+      const session = { deviceId, projectId: mapping.projectId, sequence: 0, reconnectAttempts: 0, connected: false, timers: new Set() };
       session.client = this.clientFactory({ deviceId });
       session.client.on?.("disconnect", () => this.handleDisconnect(session));
       this.sessions.set(deviceId, session);
@@ -75,7 +79,7 @@ class DeviceSimulator extends EventEmitter {
     const measuredAt = this.now();
     const payload = buildTelemetryPayload({
       deviceId: session.deviceId,
-      projectId: this.config.projectId,
+      projectId: session.projectId,
       sequence: session.sequence,
       measuredAt,
       value: Number((20 + this.random() * 10).toFixed(3)),

@@ -1,6 +1,6 @@
 "use strict";
 
-const DEFAULT_CONTROL_URL = "http://127.0.0.1:8474";
+const DEFAULT_CONTROL_URL = "http://127.0.0.1:58474";
 const DEFAULT_REQUEST_TIMEOUT_MS = 2_000;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "[::1]"]);
 const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;

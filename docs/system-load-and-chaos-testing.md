@@ -72,13 +72,22 @@ ausgewertet.
 1. Lokale Contract-Tests und isolierte Infrastrukturgrundlage: umgesetzt.
 2. Deterministische Fixtures fuer Accounts, Projekte und Geraete: umgesetzt;
    individuelle mTLS-Testzertifikate sind noch offen.
-3. Gemeinsamer Smoke-Lauf aus k6 und MQTT-Simulator: Orchestrierung offen.
+3. Gemeinsamer Smoke-Lauf aus k6 und MQTT-Simulator: sicherer lokaler
+   Orchestrator umgesetzt; realer Lauf gegen separat gestartete GerNetiX-
+   Dienste noch offen.
 4. Einzelne Forgejo-, PostgreSQL- und MQTT-Ausfaelle mit Wiederanlaufpruefung:
    sichere Steuerung umgesetzt, realer Lauf offen.
 5. Kleine authentifizierte Playwright-Ablaufe: Vertrag umgesetzt, realer
    Browserlauf unter Last offen.
 6. Wiederholbare Load-, Stress- und Soak-Baselines: offen.
 7. Erst nach eigener Freigabe ein nicht destruktiver Staging-Nachweis: offen.
+
+Der lokale Smoke-Durchstich verwendet dedizierte Ports (Identity `14300`,
+Project `14800`, Device `14700`, MQTT `51883`) und vier fest einem Account und
+Projekt zugeordnete Geraete. Die groesseren Profile bleiben fail-closed, bis
+ein entsprechend skaliertes Fixture-Manifest vorhanden ist. Der normale
+k6-Ablauf ist lesend; schreibende Project-App-CAS-Last und ein
+produktionsnaher MQTT-mTLS-/ACL-Nachweis sind eigene offene Ausbauschritte.
 
 Der vorhandene Compute-Last- und Chaos-Harness fuer Queue, Fairness,
 Backpressure und Worker-Ausfall bleibt bestehen und wird als spezialisierter

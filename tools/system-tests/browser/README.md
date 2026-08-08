@@ -29,12 +29,12 @@ npm test
 Voraussetzungen sind eine isolierte lokale GerNetiX-Umgebung, ein darin vorbereiteter Testaccount mit mindestens einem sichtbaren Lernprojekt und ein gültiges Session-Cookie:
 
 ```sh
-GERNETIX_BROWSER_BASE_URL=http://127.0.0.1:4300 \
-GERNETIX_BROWSER_SESSION_COOKIE_NAME=gernetix_session \
+GERNETIX_BROWSER_BASE_URL=http://127.0.0.1:14300 \
+GERNETIX_BROWSER_SESSION_COOKIE_NAME=gernetix_demo_session \
 GERNETIX_BROWSER_SESSION_COOKIE_VALUE='<nur-aus-testumgebung>' \
 npm run test:browser
 ```
 
-Optional kann `GERNETIX_BROWSER_TIMEOUT_MS` gesetzt werden. `GERNETIX_BROWSER_WORKERS` ist auf 1 bis 4 begrenzt; der erste Referenzablauf verlangt bewusst den Wert `1`.
+Ohne Angabe verwendet der Browserlauf den dedizierten lokalen Identity-Testport `14300` und den Cookie-Namen `gernetix_demo_session`; nur der Cookie-Wert ist zwingend aus der isolierten Testumgebung bereitzustellen. Optional kann `GERNETIX_BROWSER_TIMEOUT_MS` gesetzt werden. `GERNETIX_BROWSER_WORKERS` ist auf 1 bis 4 begrenzt; der erste Referenzablauf verlangt bewusst den Wert `1`.
 
 Der Lauf gibt ausschließlich Ziel-Origin, Szenarionamen und Erfolg aus. Das Session-Cookie wird weder protokolliert noch in Berichte geschrieben.

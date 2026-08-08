@@ -6,9 +6,10 @@ const { loadManifest } = require("../manifest");
 const { createSeedClient, safeBaseUrl } = require("../seed-client");
 
 test("seed client rejects every non-loopback or credential-bearing target", () => {
-  assert.throws(() => safeBaseUrl("https://staging.example.invalid", "target"), /non-loopback/);
-  assert.throws(() => safeBaseUrl("http://user:secret@127.0.0.1:4300", "target"), /must not contain credentials/);
-  assert.throws(() => safeBaseUrl("https://127.0.0.1:4300", "target"), /must use http/);
+  assert.throws(() => safeBaseUrl("https://staging.example.invalid", "target", "14300"), /non-loopback/);
+  assert.throws(() => safeBaseUrl("http://user:secret@127.0.0.1:14300", "target", "14300"), /must not contain credentials/);
+  assert.throws(() => safeBaseUrl("https://127.0.0.1:14300", "target", "14300"), /must use http/);
+  assert.throws(() => safeBaseUrl("http://127.0.0.1:4300", "target", "14300"), /dedicated system-test port 14300/);
 });
 
 test("seed uses real service routes and is idempotent", async () => {
@@ -17,9 +18,10 @@ test("seed uses real service routes and is idempotent", async () => {
   const fetchImpl = createFakeFetch(state);
   const client = createSeedClient({
     fetchImpl,
-    identityBaseUrl: "http://127.0.0.1:4300",
-    projectBaseUrl: "http://localhost:4400",
-    deviceBaseUrl: "http://[::1]:4700",
+    identityBaseUrl: "http://127.0.0.1:14300",
+    projectBaseUrl: "http://localhost:14800",
+    deviceBaseUrl: "http://[::1]:14700",
+    writeConfirmed: true,
   });
 
   const first = await client.seed(manifest, "fixture-password-123");
@@ -38,6 +40,16 @@ test("seed uses real service routes and is idempotent", async () => {
   assert.ok(state.calls.some((call) => call === "POST /api/register"));
   assert.ok(state.calls.some((call) => call === "POST /api/projects"));
   assert.ok(state.calls.some((call) => call === "POST /api/device-management/devices/register"));
+});
+
+test("seed refuses writes unless the caller confirms them explicitly", async () => {
+  const client = createSeedClient({
+    fetchImpl: async () => { throw new Error("must not be called"); },
+    identityBaseUrl: "http://127.0.0.1:14300",
+    projectBaseUrl: "http://127.0.0.1:14800",
+    deviceBaseUrl: "http://127.0.0.1:14700",
+  });
+  await assert.rejects(() => client.seed(loadManifest(), "fixture-password-123"), /explicit confirmation/);
 });
 
 function createFakeFetch(state) {

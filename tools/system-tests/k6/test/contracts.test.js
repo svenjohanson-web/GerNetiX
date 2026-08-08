@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ROUTES, compactSummary, selectProject, settingUpdate } from "../lib/contracts.js";
+import { ROUTES, compactSummary, requestParams, requestParamsForConfig, selectProject, settingUpdate } from "../lib/contracts.js";
 
 test("routes match the Identity browser-facing API", () => {
   assert.equal(ROUTES.login, "/api/login");
@@ -38,6 +38,17 @@ test("settings update preserves the CAS contract and supports false values", () 
     () => settingUpdate({ manifest_version: 3, revision: 7, values: {} }, { settingKey: "missing" }),
     /SETTING_VALUE is required/,
   );
+});
+
+test("request parameters apply the configured timeout to every HTTP call", () => {
+  assert.deepEqual(requestParams(5_000, "login", "POST", { flow: "auth" }, { "X-Test": "yes" }), {
+    headers: { "Content-Type": "application/json", "X-Test": "yes" },
+    tags: { endpoint: "login", operation: "POST", flow: "auth" },
+    timeout: "5000ms",
+  });
+  assert.equal(requestParams(10_000, "session", "GET").timeout, "10000ms");
+  assert.equal(requestParamsForConfig({ requestTimeoutMs: 7_500 })("project_list", "GET").timeout, "7500ms");
+  assert.throws(() => requestParams(99, "session", "GET"), /between 100 and 120000/);
 });
 
 test("compact summary is JSON-compatible and flattens nested checks", () => {

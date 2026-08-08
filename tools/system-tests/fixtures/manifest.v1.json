@@ -61,6 +61,7 @@
     {
       "device_id": "systemtest-device-alpha-01",
       "account_fixture_id": "account-alpha",
+      "project_id": "systemtest-project-alpha-01",
       "serial_number": "ST-ALPHA-0001",
       "display_name": "Alpha Board 1",
       "board_short_name": "alpha-01",
@@ -72,6 +73,7 @@
     {
       "device_id": "systemtest-device-alpha-02",
       "account_fixture_id": "account-alpha",
+      "project_id": "systemtest-project-alpha-02",
       "serial_number": "ST-ALPHA-0002",
       "display_name": "Alpha Board 2",
       "board_short_name": "alpha-02",
@@ -83,6 +85,7 @@
     {
       "device_id": "systemtest-device-beta-01",
       "account_fixture_id": "account-beta",
+      "project_id": "systemtest-project-beta-01",
       "serial_number": "ST-BETA-0001",
       "display_name": "Beta Board 1",
       "board_short_name": "beta-01",
@@ -94,6 +97,7 @@
     {
       "device_id": "systemtest-device-gamma-01",
       "account_fixture_id": "account-gamma",
+      "project_id": "systemtest-project-gamma-01",
       "serial_number": "ST-GAMMA-0001",
       "display_name": "Gamma Board 1",
       "board_short_name": "gamma-01",

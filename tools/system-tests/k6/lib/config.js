@@ -3,20 +3,21 @@ const PROFILE_DEFAULTS = Object.freeze({
     vus: 10,
     iterations: 10,
     maxDuration: "2m",
+    requestTimeoutMs: 5_000,
   }),
   load: Object.freeze({
     vus: 100,
     rampUp: "2m",
     steady: "10m",
     rampDown: "2m",
+    requestTimeoutMs: 10_000,
   }),
 });
 
 export function buildConfig(env = {}) {
   const profile = enumValue(env.PROFILE || "smoke", ["smoke", "load"], "PROFILE");
   const defaults = PROFILE_DEFAULTS[profile];
-  const allowRemoteTarget = booleanValue(env.ALLOW_REMOTE_TARGET, false);
-  const baseUrl = normalizedBaseUrl(env.BASE_URL || "http://127.0.0.1:4300", allowRemoteTarget);
+  const baseUrl = normalizedBaseUrl(env.BASE_URL || "http://127.0.0.1:14300");
   const saveSettings = booleanValue(env.SAVE_SETTINGS, false);
   const settingKey = String(env.SETTING_KEY || "").trim();
   if (saveSettings && !settingKey) {
@@ -26,7 +27,6 @@ export function buildConfig(env = {}) {
   const config = {
     profile,
     baseUrl,
-    allowRemoteTarget,
     username: String(env.USERNAME || "").trim(),
     usernameTemplate: String(env.USERNAME_TEMPLATE || "").trim(),
     password: String(env.PASSWORD || ""),
@@ -37,6 +37,7 @@ export function buildConfig(env = {}) {
     settingKey,
     settingValue: env.SETTING_VALUE === undefined ? undefined : jsonValue(env.SETTING_VALUE, "SETTING_VALUE"),
     pauseSeconds: numberValue(env.PAUSE_SECONDS, profile === "smoke" ? 0.2 : 1, { min: 0, max: 60 }),
+    requestTimeoutMs: integerValue(env.REQUEST_TIMEOUT_MS, defaults.requestTimeoutMs, { min: 100, max: 120_000 }),
     p95Ms: numberValue(env.P95_MS, 500, { min: 1 }),
     p99Ms: numberValue(env.P99_MS, 1000, { min: 1 }),
     maxErrorRate: numberValue(env.MAX_ERROR_RATE, 0.01, { min: 0, max: 1 }),
@@ -90,7 +91,7 @@ export function buildK6Options(profile, env, defaults, config) {
       suite: "gernetix-system-tests",
       scenario: "authenticated-project-flow",
       settings_save: String(config.saveSettings),
-      target_scope: config.allowRemoteTarget ? "explicit-remote" : "isolated-local",
+      target_scope: "isolated-local",
     },
     summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
   };
@@ -108,7 +109,7 @@ function interpolate(template, index) {
   return String(template).replaceAll("{vu}", String(index)).replaceAll("{index}", String(index));
 }
 
-function normalizedBaseUrl(value, allowRemoteTarget) {
+function normalizedBaseUrl(value) {
   let url;
   try {
     url = new URL(String(value));
@@ -117,9 +118,10 @@ function normalizedBaseUrl(value, allowRemoteTarget) {
   }
   if (!/^https?:$/.test(url.protocol)) throw new Error("BASE_URL must use HTTP or HTTPS");
   if (url.username || url.password || url.search || url.hash) throw new Error("BASE_URL must not contain credentials, query parameters, or a fragment");
-  if (!allowRemoteTarget && !isLoopbackHost(url.hostname)) {
-    throw new Error("Remote BASE_URL requires ALLOW_REMOTE_TARGET=true; isolated-local is the default");
+  if (!isLoopbackHost(url.hostname)) {
+    throw new Error(`Refusing non-loopback BASE_URL: ${url.hostname}`);
   }
+  if (url.port !== "14300") throw new Error("BASE_URL must use dedicated system-test port 14300");
   return url.toString().replace(/\/$/, "");
 }
 
@@ -140,6 +142,7 @@ function integerValue(value, fallback, limits = {}) {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed)) throw new Error(`Expected an integer, got: ${value}`);
   if (limits.min !== undefined && parsed < limits.min) throw new Error(`Integer must be >= ${limits.min}`);
+  if (limits.max !== undefined && parsed > limits.max) throw new Error(`Integer must be <= ${limits.max}`);
   return parsed;
 }
 

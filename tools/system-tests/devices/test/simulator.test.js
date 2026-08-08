@@ -3,6 +3,11 @@ const { EventEmitter } = require("node:events");
 const test = require("node:test");
 const { normalizeConfig } = require("../src/config");
 const { DeviceSimulator, safeErrorReason } = require("../src/simulator");
+const { applyDeviceMap, loadDeviceMap } = require("../src/device-map");
+
+function mappedConfig(input) {
+  return applyDeviceMap(normalizeConfig(input), loadDeviceMap());
+}
 
 class FakeClient extends EventEmitter {
   constructor({ failures = 0 } = {}) { super(); this.failures = failures; this.published = []; this.closed = false; }
@@ -25,14 +30,15 @@ function immediateTimers() {
 test("publishes original, duplicate and delayed telemetry with stable ids", async () => {
   const timers = immediateTimers();
   const client = new FakeClient();
-  const config = normalizeConfig({ deviceCount: 1, duplicateRate: 1, delayedRate: 1, heartbeatEvery: 0 });
+  const config = mappedConfig({ deviceCount: 1, duplicateRate: 1, delayedRate: 1, heartbeatEvery: 0 });
   const simulator = new DeviceSimulator({ config, clientFactory: () => client, random: () => 0, now: () => new Date("2026-08-08T10:00:00Z"), timers });
   await simulator.start();
   await timers.runOne(); // connect
   await timers.runOne(); // publish cycle; delayed publish is scheduled and duplicate is immediate
   await timers.runOne(); // delayed publish
   assert.equal(client.published.length, 2);
-  assert.equal(client.published[0][0], "gernetix/devices/system-test-device-00001/telemetry");
+  assert.equal(client.published[0][0], "gernetix/devices/systemtest-device-alpha-01/telemetry");
+  assert.equal(client.published[0][1].project_id, "systemtest-project-alpha-01");
   assert.equal(client.published[0][1].measurements[0].measurement_id, client.published[1][1].measurements[0].measurement_id);
   assert.deepEqual(simulator.summary(), { ...simulator.summary(), published: 2, duplicatePublished: 1, delayedPublished: 1 });
   simulator.stop();
@@ -42,7 +48,7 @@ test("publishes original, duplicate and delayed telemetry with stable ids", asyn
 test("bounds reconnect attempts and reports only normalized failure reasons", async () => {
   const timers = immediateTimers();
   const client = new FakeClient({ failures: 10 });
-  const config = normalizeConfig({ deviceCount: 1, maxReconnectAttempts: 2, reconnectBaseMs: 1, reconnectMaxMs: 2 });
+  const config = mappedConfig({ deviceCount: 1, maxReconnectAttempts: 2, reconnectBaseMs: 1, reconnectMaxMs: 2 });
   const simulator = new DeviceSimulator({ config, clientFactory: () => client, random: () => 0.5, timers });
   const failures = [];
   simulator.on("deviceFailed", (event) => failures.push(event));
@@ -53,6 +59,6 @@ test("bounds reconnect attempts and reports only normalized failure reasons", as
   assert.equal(simulator.summary().connectAttempts, 3);
   assert.equal(simulator.summary().reconnectScheduled, 2);
   assert.equal(simulator.summary().reconnectExhausted, 1);
-  assert.deepEqual(failures, [{ deviceId: "system-test-device-00001", reason: "ECONNREFUSED" }]);
+  assert.deepEqual(failures, [{ deviceId: "systemtest-device-alpha-01", reason: "ECONNREFUSED" }]);
   assert.equal(safeErrorReason(new Error("password=not-for-logs")), "connection_error");
 });

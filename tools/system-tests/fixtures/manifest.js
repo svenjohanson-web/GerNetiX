@@ -31,12 +31,14 @@ function validateManifest(manifest) {
     if (!new Set(["de", "en"]).has(account.locale)) throw new Error(`Unsupported fixture locale: ${account.locale}`);
   }
 
-  uniqueIds(manifest.projects, "project_id", "projects");
+  const projectIds = uniqueIds(manifest.projects, "project_id", "projects");
+  const projectOwners = new Map();
   for (const project of manifest.projects) {
     requireIdentifier(project.project_id, "project.project_id");
     requireReference(project.account_fixture_id, accountIds, "project.account_fixture_id");
     requireText(project.title, "project.title");
     requireText(project.hardware_profile_id, "project.hardware_profile_id");
+    projectOwners.set(project.project_id, project.account_fixture_id);
   }
 
   uniqueIds(manifest.devices, "device_id", "devices");
@@ -44,6 +46,10 @@ function validateManifest(manifest) {
   for (const device of manifest.devices) {
     requireIdentifier(device.device_id, "device.device_id");
     requireReference(device.account_fixture_id, accountIds, "device.account_fixture_id");
+    requireReference(device.project_id, projectIds, "device.project_id", "project");
+    if (projectOwners.get(device.project_id) !== device.account_fixture_id) {
+      throw new Error(`Device project ownership mismatch: ${device.device_id}`);
+    }
     requireText(device.serial_number, "device.serial_number");
     requireText(device.display_name, "device.display_name");
     requireText(device.hardware_profile_id, "device.hardware_profile_id");
@@ -70,8 +76,8 @@ function uniqueValues(items, field, collection) {
   return values;
 }
 
-function requireReference(value, allowed, field) {
-  if (!allowed.has(value)) throw new Error(`${field} references unknown account: ${value}`);
+function requireReference(value, allowed, field, target = "account") {
+  if (!allowed.has(value)) throw new Error(`${field} references unknown ${target}: ${value}`);
 }
 
 function requireIdentifier(value, field) {

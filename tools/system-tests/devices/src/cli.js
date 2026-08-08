@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require("node:fs");
 const { parseArgs } = require("./config");
+const { applyDeviceMap, loadDeviceMap } = require("./device-map");
 const { DeviceMqttClient } = require("./mqtt-client");
 const { DeviceSimulator } = require("./simulator");
 
@@ -8,9 +9,8 @@ const HELP = `GerNetiX MQTT device simulator
 
 Usage: node src/cli.js [options]
   --broker-url URL             mqtt:// loopback or mqtts:// remote broker
-  --device-count N             virtual devices (default: 10, max: 10000)
-  --device-prefix PREFIX       unique device identity prefix
-  --project-id ID              registered target project
+  --device-count N             mapped virtual devices (default: 4, max: 10000)
+  --device-map PATH            validated fixture manifest with device-to-project mappings
   --duration-ms N              run duration (default: 60000)
   --telemetry-interval-ms N    interval per device
   --connection-ramp-ms N       spread initial connections over this duration
@@ -27,7 +27,8 @@ The broker URL must not contain credentials. Reports contain aggregate counters 
 `;
 
 async function main(argv = process.argv.slice(2)) {
-  const config = parseArgs(argv);
+  const parsedConfig = parseArgs(argv);
+  const config = parsedConfig.help ? parsedConfig : applyDeviceMap(parsedConfig, loadDeviceMap(parsedConfig.deviceMap));
   if (config.help) { process.stdout.write(HELP); return; }
   const tlsOptions = loadTlsOptions(config);
   const simulator = new DeviceSimulator({

@@ -10,12 +10,15 @@ Der Telemetry Server leitet die vertrauenswürdige `device_id` aus dem ACL-gesch
 
 ## Sicherer Start
 
-Standardmäßig ist ausschließlich der lokale Broker `mqtt://127.0.0.1:1883` vorgesehen:
+Standardmäßig wird ausschließlich der dedizierte lokale Systemtest-Broker
+`mqtt://127.0.0.1:51883` verwendet:
 
 ```sh
 npm test
-npm start -- --device-count 100 --project-id system-test-project --duration-ms 60000
+npm start -- --device-map ../fixtures/manifest.v1.json --device-count 4 --duration-ms 60000
 ```
+
+Der Simulator erzeugt keine freien Identitaeten. `--device-map` verweist auf den versionierten, validierten Fixture-Manifestvertrag; fuer jedes ausgewaehlte Geraet werden `device_id` und das zugehoerige `project_id` daraus uebernommen. `--device-count` darf die Zahl der vorhandenen Fixture-Geraete nicht ueberschreiten.
 
 Ein entfernter Broker benötigt `mqtts://` und die ausdrückliche Option `--allow-remote`. Zugangsdaten dürfen nicht in der Broker-URL stehen. CA, Testzertifikat und Testschlüssel können über `--ca-file`, `--cert-file` und `--key-file` geladen werden. Zertifikate und Schlüssel werden weder in Meldungen noch in der aggregierten JSON-Ausgabe ausgegeben.
 

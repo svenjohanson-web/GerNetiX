@@ -1,10 +1,10 @@
 const { isIP } = require("node:net");
+const { DEFAULT_DEVICE_MAP } = require("./device-map");
 
 const DEFAULTS = Object.freeze({
-  brokerUrl: "mqtt://127.0.0.1:1883",
-  deviceCount: 10,
-  devicePrefix: "system-test-device",
-  projectId: "system-test-project",
+  brokerUrl: "mqtt://127.0.0.1:51883",
+  deviceCount: 4,
+  deviceMap: DEFAULT_DEVICE_MAP,
   durationMs: 60_000,
   telemetryIntervalMs: 1_000,
   connectionRampMs: 5_000,
@@ -40,8 +40,7 @@ function normalizeConfig(input = {}) {
     ...DEFAULTS,
     ...input,
     brokerUrl: String(input.brokerUrl || DEFAULTS.brokerUrl),
-    devicePrefix: String(input.devicePrefix || DEFAULTS.devicePrefix),
-    projectId: String(input.projectId || DEFAULTS.projectId),
+    deviceMap: String(input.deviceMap || DEFAULTS.deviceMap),
     allowRemote: input.allowRemote === true,
   };
   for (const key of ["deviceCount", "durationMs", "telemetryIntervalMs", "connectionRampMs", "delayedByMs", "heartbeatEvery", "maxReconnectAttempts", "reconnectBaseMs", "reconnectMaxMs", "connectTimeoutMs"]) {
@@ -50,8 +49,7 @@ function normalizeConfig(input = {}) {
   config.duplicateRate = rate(input.duplicateRate ?? DEFAULTS.duplicateRate, "duplicateRate");
   config.delayedRate = rate(input.delayedRate ?? DEFAULTS.delayedRate, "delayedRate");
   if (config.deviceCount > 10_000) throw new Error("deviceCount exceeds the safety limit of 10000");
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,96}$/.test(config.devicePrefix)) throw new Error("devicePrefix contains unsupported characters");
-  if (!config.projectId.trim() || config.projectId.length > 128) throw new Error("projectId is required and must not exceed 128 characters");
+  if (!config.deviceMap.trim()) throw new Error("deviceMap must be a non-empty path");
   if (config.reconnectBaseMs > config.reconnectMaxMs) throw new Error("reconnectBaseMs must not exceed reconnectMaxMs");
   if (Boolean(config.certFile) !== Boolean(config.keyFile)) throw new Error("certFile and keyFile must be provided together");
   validateBrokerUrl(config.brokerUrl, config.allowRemote);

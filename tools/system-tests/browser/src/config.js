@@ -3,8 +3,8 @@
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
 function loadConfig(environment = process.env) {
-  const baseUrl = assertSafeBaseUrl(environment.GERNETIX_BROWSER_BASE_URL || "http://127.0.0.1:4300");
-  const sessionCookieName = required(environment.GERNETIX_BROWSER_SESSION_COOKIE_NAME, "GERNETIX_BROWSER_SESSION_COOKIE_NAME");
+  const baseUrl = assertSafeBaseUrl(environment.GERNETIX_BROWSER_BASE_URL || "http://127.0.0.1:14300");
+  const sessionCookieName = required(environment.GERNETIX_BROWSER_SESSION_COOKIE_NAME || "gernetix_demo_session", "GERNETIX_BROWSER_SESSION_COOKIE_NAME");
   const sessionCookieValue = required(environment.GERNETIX_BROWSER_SESSION_COOKIE_VALUE, "GERNETIX_BROWSER_SESSION_COOKIE_VALUE");
   const timeoutMs = integer(environment.GERNETIX_BROWSER_TIMEOUT_MS || "30000", "GERNETIX_BROWSER_TIMEOUT_MS", 1_000, 120_000);
   const workers = integer(environment.GERNETIX_BROWSER_WORKERS || "1", "GERNETIX_BROWSER_WORKERS", 1, 4);

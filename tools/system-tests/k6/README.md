@@ -16,13 +16,13 @@ Die Routen entsprechen den oeffentlichen Identity-Routen, die auch die GerNetiX-
 - Die Zielumgebung laeuft bereits und enthaelt vorab angelegte Testkonten und Projekte.
 - Niemals Produktionskonten oder Produktionsdaten verwenden.
 
-`BASE_URL` akzeptiert standardmaessig nur Loopback-Ziele (`localhost`, `127.x.x.x`, `::1`). Ein Remote-Ziel erfordert zusaetzlich `ALLOW_REMOTE_TARGET=true` und wird im Ergebnis als `target_scope=explicit-remote` markiert. Zugangsdaten, Query-Parameter und Fragmente sind in `BASE_URL` immer verboten. Das Flag ist nur eine technische Doppelbestaetigung und keine Freigabe fuer Staging oder Produktion.
+`BASE_URL` akzeptiert ausschließlich Loopback-Ziele (`localhost`, `127.x.x.x`, `::1`). Remote-Ziele bleiben auch bei gesetztem `ALLOW_REMOTE_TARGET` verboten. Zugangsdaten, Query-Parameter und Fragmente sind in `BASE_URL` ebenfalls verboten.
 
 ## Smoke-Profil
 
 ```sh
 k6 run \
-  -e BASE_URL=http://127.0.0.1:4300 \
+  -e BASE_URL=http://127.0.0.1:14300 \
   -e USERNAME=load-user \
   -e PASSWORD=test-password \
   tools/system-tests/k6/scenario.js
@@ -35,7 +35,7 @@ Standard: 10 VUs, 10 Iterationen, maximal 2 Minuten. `VUS`, `ITERATIONS` und `MA
 ```sh
 k6 run \
   -e PROFILE=load \
-  -e BASE_URL=http://127.0.0.1:4300 \
+  -e BASE_URL=http://127.0.0.1:14300 \
   -e USERNAME_TEMPLATE='load-user-{vu}' \
   -e PASSWORD_TEMPLATE='test-password-{vu}' \
   -e VUS=100 \
@@ -68,6 +68,7 @@ Ohne `SETTING_VALUE` wird der aktuelle Wert erneut geschrieben. Der Test sendet 
 - `P95_MS` (Standard `500`)
 - `P99_MS` (Standard `1000`)
 - `MAX_ERROR_RATE` (Standard `0.01`)
+- `REQUEST_TIMEOUT_MS` (Smoke `5000`, Load `10000`; erlaubt `100` bis `120000`)
 - `PAUSE_SECONDS` (Smoke `0.2`, Load `1`)
 - `SUMMARY_PATH`, z. B. `reports/k6-smoke-summary.json`
 

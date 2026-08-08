@@ -10,10 +10,12 @@ Unit-, Contract- und E2E-Tests getrennt.
 - HTTP-Ziele muessen standardmaessig auf Loopback liegen.
 - Der Geraetesimulator akzeptiert entfernte Broker nur nach ausdruecklichem
   Opt-in und dann ausschliesslich ueber MQTT-TLS.
-- Die Compose-Infrastruktur publiziert keine Host-Ports und verwendet nur
-  eindeutig als `system-test` markierte Netze und Volumes.
+- Die Compose-Infrastruktur bindet benoetigte Host-Ports ausschliesslich an
+  `127.0.0.1` und verwendet nur eindeutig als `system-test` markierte Netze
+  und Volumes.
 - Staging-, VPS- und Produktionszugangsdaten gehoeren nicht in diese Suite.
-- Laufzeitberichte, lokale Fixture-Daten und Zertifikats-/Schluesseldateien
+- Laufzeitberichte unter `.runtime/`, lokale Fixture-Daten und
+  Zertifikats-/Schluesseldateien
   sind durch die lokale `.gitignore` vom Repository ausgeschlossen.
 - Das Loeschen von Volumes ist kein Chaos-Szenario. Persistenz- und
   Restore-Tests bleiben eigene, kontrollierte Nachweise.
@@ -29,6 +31,8 @@ Unit-, Contract- und E2E-Tests getrennt.
 | `browser/` | Kleine Playwright-Ablaufe aus Sicht eines echten Browsers |
 | `chaos/` | Allowlist-basierte Toxiproxy-Steuerung mit garantiertem Recovery |
 | `integrity/` | Fachliche Nachpruefung eines Test-Snapshots |
+| `orchestrator/` | Sicherer gemeinsamer lokaler Lauf von k6, MQTT und optional Browser |
+| `reports/` | Fail-closed Normalisierung und Bewertung der Teilberichte |
 | `lib/` | Profilvalidierung und gemeinsame Ergebnis-Gates |
 | `test/` | Hardware- und serverfreie Contract-Tests |
 | `../../infra/system-test/` | Isolierte PostgreSQL-, Forgejo-, MQTT- und Toxiproxy-Basis |
@@ -44,6 +48,8 @@ node --test tools/system-tests/test/*.test.js \
   tools/system-tests/fixtures/test/*.test.js \
   tools/system-tests/chaos/test/*.test.js \
   tools/system-tests/browser/test/*.test.js \
+  tools/system-tests/orchestrator/test/*.test.js \
+  tools/system-tests/reports/test/*.test.js \
   infra/system-test/compose.contract.test.js
 ```
 
@@ -64,7 +70,7 @@ Messwerte fuehren dabei zu einem Fehlerstatus.
 
 ## Profile
 
-- `smoke`: 10 API-Nutzer, 20 Geraete, zwei Minuten, kein Chaos.
+- `smoke`: 3 API-Nutzer, 4 gemappte Fixture-Geraete, zwei Minuten, kein Chaos.
 - `load`: 500 API-Nutzer, 2.000 Geraete, 15 Minuten, kein Chaos.
 - `chaos`: 100 API-Nutzer, 1.000 Geraete und einzeln aktivierte Ausfaelle von
   Forgejo, PostgreSQL oder MQTT.
@@ -72,11 +78,21 @@ Messwerte fuehren dabei zu einem Fehlerstatus.
 Die Schwellwerte sind anfangs bewusst versionierte Startwerte. Sie werden erst
 nach reproduzierbaren Messlaeufen als belastbare SLO-Baseline eingestuft.
 
+Der Smoke-Lauf ist mit den vier versionierten Geraeten aus dem Fixture-Manifest
+ausfuehrbar, sobald die GerNetiX-Dienste getrennt auf den Testports Identity
+`14300`, Project `14800` und Device `14700` gestartet und die Fixtures bewusst
+mit `--confirm-write` angelegt wurden. PostgreSQL, MQTT, Forgejo und Toxiproxy
+stehen ueber die ausschliesslich an Loopback gebundene Compose-Basis bereit.
+
+Die Profile `load` und `chaos` brechen derzeit absichtlich ab, weil ihr Bedarf
+von 2.000 beziehungsweise 1.000 Geraeten das vier Eintraege umfassende
+Fixture-Manifest uebersteigt. Vor realen Lastlaeufen wird das Manifest
+deterministisch skaliert. Der Standard-k6-Lauf ist lesend; schreibende Project-
+App-CAS-Ablaufe benoetigen zusaetzliche, pro Nutzer isolierte Projekt-Fixtures.
+
 ## Noch nicht Teil dieses Durchstichs
 
 - automatische Erzeugung individueller mTLS-Zertifikate fuer jedes Geraet,
-- der ausfuehrende gemeinsame Prozess-Orchestrator; der aktuelle CLI-Befehl
-  plant und bewertet nur,
 - produktionsnahes MQTT-mTLS mit einem Zertifikat pro simuliertem Geraet,
 - ein realer verteilter Dauerlauf,
 - Staging- oder VPS-Ausfuehrung.

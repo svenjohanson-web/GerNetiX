@@ -49,6 +49,23 @@ export function settingUpdate(snapshot, config) {
   };
 }
 
+export function requestParams(requestTimeoutMs, endpoint, method, tags = {}, headers = {}) {
+  if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 100 || requestTimeoutMs > 120_000) {
+    throw new Error("requestTimeoutMs must be an integer between 100 and 120000");
+  }
+  return {
+    headers: method === "GET" ? headers : { "Content-Type": "application/json", ...headers },
+    tags: { endpoint, operation: method, ...tags },
+    timeout: `${requestTimeoutMs}ms`,
+  };
+}
+
+export function requestParamsForConfig(config) {
+  return (endpoint, method, tags = {}, headers = {}) => (
+    requestParams(config.requestTimeoutMs, endpoint, method, tags, headers)
+  );
+}
+
 export function compactSummary(data, metadata = {}) {
   const metrics = {};
   for (const [name, metric] of Object.entries(data?.metrics || {})) {

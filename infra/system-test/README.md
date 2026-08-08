@@ -6,7 +6,9 @@ or production services.
 
 ## Safety contract
 
-- Both networks are Docker-internal and no service publishes a host port.
+- Both networks are Docker-internal. The few host ports required by local test
+  runners are published exclusively on numeric IPv4 loopback (`127.0.0.1`),
+  never on a LAN- or internet-reachable interface.
 - Compose-scoped volumes and resources carry `com.gernetix.scope=system-test`.
 - Startup stops unless the two explicit system-test guard values match.
 - Forgejo registration, SSH, hooks, webhooks, Actions and external integrations
@@ -22,17 +24,22 @@ Copy `.env.example` to a separate local env file, replace all synthetic secret
 placeholders, and use an explicit unique Compose project name for every run.
 Do not reuse `.env.vps`, staging credentials or production credentials.
 
-The dependency paths used by later test runners are:
+The dependency paths used inside Compose and by host-side test runners are:
 
-| Dependency | Normal address | Fault-injectable address |
-| --- | --- | --- |
-| PostgreSQL | `postgres:5432` | `toxiproxy:15432` |
-| MQTT | `mosquitto:1883` | `toxiproxy:11883` |
-| Forgejo | `forgejo:3000` | `toxiproxy:13000` |
+| Dependency | Direct in Compose | Proxied in Compose | Direct from host | Proxied from host |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | `postgres:5432` | `toxiproxy:15432` | `127.0.0.1:55432` | `127.0.0.1:55433` |
+| MQTT | `mosquitto:1883` | `toxiproxy:11883` | `127.0.0.1:51883` | `127.0.0.1:51884` |
+| Forgejo | `forgejo:3000` | `toxiproxy:13000` | `http://127.0.0.1:53000` | `http://127.0.0.1:53001` |
 
-Toxiproxy's control API is available only inside `control-plane` at
-`http://toxiproxy:8474`. Test orchestrators that inject faults must join that
-network explicitly.
+Toxiproxy's control API is available at `http://toxiproxy:8474` inside
+`control-plane` and at `http://127.0.0.1:58474` for the host-side orchestrator.
+The latter is the default used by `tools/system-tests/chaos`; it is not
+reachable through another host interface.
+
+The fixed high host ports intentionally avoid the common development ports.
+A port conflict must fail startup visibly; do not broaden a binding or silently
+fall back to another interface.
 
 ## Static verification
 

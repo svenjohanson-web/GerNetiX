@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const { DEFAULT_TARGETS } = require("../cli");
+const { DEFAULT_TARGETS, parseArgs } = require("../cli");
 
 const repositoryRoot = path.resolve(__dirname, "..", "..", "..", "..");
 
@@ -26,10 +26,17 @@ test("fixture seed routes remain registered by their owning services", () => {
 
 test("fixture defaults target the documented local service ports", () => {
   assert.deepEqual(DEFAULT_TARGETS, {
-    identity: "http://127.0.0.1:4300",
-    project: "http://127.0.0.1:4800",
-    device: "http://127.0.0.1:4700",
+    identity: "http://127.0.0.1:14300",
+    project: "http://127.0.0.1:14800",
+    device: "http://127.0.0.1:14700",
   });
+});
+
+test("fixture CLI requires an explicit write confirmation", () => {
+  assert.deepEqual(parseArgs(["--plan"]), { plan: true, confirmWrite: false });
+  assert.deepEqual(parseArgs(["--confirm-write"]), { plan: false, confirmWrite: true });
+  assert.throws(() => parseArgs([]), /explicit --confirm-write/);
+  assert.throws(() => parseArgs(["--plan", "--confirm-write"]), /cannot be combined/);
 });
 
 function source(relativePath) {

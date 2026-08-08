@@ -20,7 +20,7 @@ test("enforces device identity boundaries for publish topics", () => {
 test("requires explicit TLS-protected opt-in for remote brokers", () => {
   assert.throws(() => normalizeConfig({ brokerUrl: "mqtts://mqtt.example.test:8883" }), /allow-remote/);
   assert.throws(() => normalizeConfig({ brokerUrl: "mqtt://mqtt.example.test:1883", allowRemote: true }), /require mqtts/);
-  assert.equal(normalizeConfig({ brokerUrl: "mqtts://mqtt.example.test:8883", allowRemote: true }).deviceCount, 10);
+  assert.equal(normalizeConfig({ brokerUrl: "mqtts://mqtt.example.test:8883", allowRemote: true }).deviceCount, 4);
   assert.throws(() => normalizeConfig({ brokerUrl: "mqtt://user:secret@127.0.0.1:1883" }), /without embedded credentials/);
   assert.equal(normalizeConfig({ brokerUrl: "mqtt://[::1]:1883" }).brokerUrl, "mqtt://[::1]:1883");
   assert.throws(() => normalizeConfig({ certFile: "/test/cert.pem" }), /provided together/);

@@ -8,7 +8,7 @@ const { evaluateRun } = require("../lib/summary");
 test("passes a smoke run within all limits", () => {
   const result = evaluateRun(loadProfile("smoke"), {
     api: { p95_ms: 400, p99_ms: 900, unexpected_error_rate: 0.005 },
-    devices: { connected: 20, secret_leaks: 0 },
+    devices: { connected: 4, secret_leaks: 0 },
     integrity: { ok: true },
   });
   assert.equal(result.passed, true);

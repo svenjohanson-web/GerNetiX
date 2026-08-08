@@ -1,5 +1,5 @@
 .env
-reports/
+.runtime/
 fixtures/runtime/
 **/*.key
 **/*.pem

@@ -15,6 +15,22 @@ test("versioned fixture manifest is deterministic and contains only synthetic ac
   assert.equal(JSON.stringify(loadManifest()), JSON.stringify(manifest));
   assert.ok(Object.isFrozen(manifest));
   assert.ok(Object.isFrozen(manifest.accounts));
+  assert.deepEqual(manifest.devices.map(({ device_id, project_id }) => [device_id, project_id]), [
+    ["systemtest-device-alpha-01", "systemtest-project-alpha-01"],
+    ["systemtest-device-alpha-02", "systemtest-project-alpha-02"],
+    ["systemtest-device-beta-01", "systemtest-project-beta-01"],
+    ["systemtest-device-gamma-01", "systemtest-project-gamma-01"],
+  ]);
+});
+
+test("manifest rejects dangling and cross-account device project mappings", () => {
+  const dangling = structuredClone(loadManifest());
+  dangling.devices[0].project_id = "missing-project";
+  assert.throws(() => validateManifest(dangling), /references unknown project/);
+
+  const crossAccount = structuredClone(loadManifest());
+  crossAccount.devices[0].project_id = "systemtest-project-beta-01";
+  assert.throws(() => validateManifest(crossAccount), /project ownership mismatch/);
 });
 
 test("manifest rejects duplicate IDs and dangling account references", () => {

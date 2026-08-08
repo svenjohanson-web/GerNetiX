@@ -11,6 +11,10 @@ entfernte Hosts, Zugangsdaten und URL-Pfade werden abgewiesen. Eine Stoerung
 darf zwischen 100 ms und 60 s dauern. Der jeweilige Toxic wird im
 `finally`-Pfad entfernt beziehungsweise der Proxy wieder aktiviert.
 
+Der Default `http://127.0.0.1:58474` entspricht dem expliziten
+Loopback-Portbinding in `infra/system-test/compose.yaml`. Eine abweichende
+Control-URL muss ebenfalls eine numerische Loopback-Origin ohne Pfad sein.
+
 Das Modul stellt bewusst kein direkt ausfuehrbares CLI bereit. Der spaetere
 Systemtest-Orchestrator muss Szenarien einzeln aufrufen und darf erst nach dem
 erfolgreichen Recovery-Ergebnis fortfahren.
