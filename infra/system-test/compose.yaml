@@ -1,0 +1,199 @@
+name: gernetix-system-test
+
+x-system-test-labels: &system-test-labels
+  com.gernetix.scope: system-test
+  com.gernetix.disposable: "true"
+
+x-hardened-service: &hardened-service
+  init: true
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  environment-guard:
+    <<: *hardened-service
+    image: alpine:3.22.1
+    network_mode: none
+    environment:
+      SYSTEM_TEST_ENVIRONMENT: ${SYSTEM_TEST_ENVIRONMENT:?must be exactly system-test}
+      SYSTEM_TEST_CONFIRM_ISOLATED: ${SYSTEM_TEST_CONFIRM_ISOLATED:?must be exactly gernetix-system-test-only}
+    command:
+      - /bin/sh
+      - -euc
+      - |
+        test "$$SYSTEM_TEST_ENVIRONMENT" = "system-test"
+        test "$$SYSTEM_TEST_CONFIRM_ISOLATED" = "gernetix-system-test-only"
+    labels: *system-test-labels
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: gernetix_runtime
+      POSTGRES_USER: gernetix_runtime
+      POSTGRES_PASSWORD: ${SYSTEM_TEST_POSTGRES_PASSWORD:?synthetic system-test password required}
+      FORGEJO_POSTGRES_PASSWORD: ${SYSTEM_TEST_FORGEJO_POSTGRES_PASSWORD:?synthetic Forgejo system-test password required}
+    expose:
+      - "5432"
+    networks:
+      - data-plane
+    volumes:
+      - system_test_postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/10-system-test-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_runtime -d gernetix_runtime"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      environment-guard:
+        condition: service_completed_successfully
+    labels: *system-test-labels
+
+  mosquitto:
+    <<: *hardened-service
+    image: eclipse-mosquitto:2.0.22
+    expose:
+      - "1883"
+    networks:
+      - data-plane
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - system_test_mqtt_data:/mosquitto/data
+    tmpfs:
+      - /mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/broker/version' -C 1 -W 5 >/dev/null 2>&1"]
+      interval: 2s
+      timeout: 6s
+      retries: 20
+      start_period: 3s
+    depends_on:
+      environment-guard:
+        condition: service_completed_successfully
+    labels: *system-test-labels
+
+  toxiproxy:
+    <<: *hardened-service
+    image: shopify/toxiproxy:2.12.0
+    expose:
+      - "8474"
+      - "11883"
+      - "13000"
+      - "15432"
+    networks:
+      - control-plane
+      - data-plane
+    healthcheck:
+      test: ["CMD", "/toxiproxy-cli", "-h", "127.0.0.1", "-p", "8474", "list"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 3s
+    depends_on:
+      environment-guard:
+        condition: service_completed_successfully
+    labels: *system-test-labels
+
+  toxiproxy-bootstrap:
+    <<: *hardened-service
+    image: curlimages/curl:8.14.1
+    entrypoint: ["/bin/sh", "/bootstrap/configure-proxies.sh"]
+    environment:
+      TOXIPROXY_API_URL: http://toxiproxy:8474
+    networks:
+      - control-plane
+    volumes:
+      - ./toxiproxy/configure-proxies.sh:/bootstrap/configure-proxies.sh:ro
+    depends_on:
+      toxiproxy:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    labels: *system-test-labels
+
+  forgejo:
+    <<: *hardened-service
+    image: codeberg.org/forgejo/forgejo:15.0.6-rootless
+    user: "1000:1000"
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: toxiproxy:15432
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: forgejo
+      FORGEJO__database__PASSWD: ${SYSTEM_TEST_FORGEJO_POSTGRES_PASSWORD:?synthetic Forgejo system-test password required}
+      FORGEJO__database__SSL_MODE: disable
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__security__SECRET_KEY: ${SYSTEM_TEST_FORGEJO_SECRET_KEY:?synthetic Forgejo secret required}
+      FORGEJO__security__INTERNAL_TOKEN: ${SYSTEM_TEST_FORGEJO_INTERNAL_TOKEN:?synthetic Forgejo token required}
+      FORGEJO__security__REVERSE_PROXY_TRUSTED_PROXIES: 127.0.0.0/8,::1/128
+      FORGEJO__security__DISABLE_GIT_HOOKS: "true"
+      FORGEJO__security__DISABLE_WEBHOOKS: "true"
+      FORGEJO__server__DOMAIN: forgejo
+      FORGEJO__server__ROOT_URL: http://forgejo:3000/
+      FORGEJO__server__HTTP_PORT: 3000
+      FORGEJO__server__PROTOCOL: http
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__server__START_SSH_SERVER: "false"
+      FORGEJO__server__LFS_START_SERVER: "false"
+      FORGEJO__server__OFFLINE_MODE: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__service__SHOW_REGISTRATION_BUTTON: "false"
+      FORGEJO__service__REQUIRE_SIGNIN_VIEW: "true"
+      FORGEJO__service__DEFAULT_ALLOW_CREATE_ORGANIZATION: "false"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_USER: "false"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_ORG: "false"
+      FORGEJO__repository__DISABLED_REPO_UNITS: repo.issues,repo.ext_issues,repo.pulls,repo.wiki,repo.ext_wiki,repo.projects,repo.packages,repo.actions
+      FORGEJO__repository__DEFAULT_REPO_UNITS: repo.code,repo.releases
+      FORGEJO__admin__DISABLE_REGULAR_ORG_CREATION: "true"
+      FORGEJO__actions__ENABLED: "false"
+      FORGEJO__packages__ENABLED: "false"
+      FORGEJO__openid__ENABLE_OPENID_SIGNIN: "false"
+      FORGEJO__openid__ENABLE_OPENID_SIGNUP: "false"
+      FORGEJO__oauth2_client__ENABLE_AUTO_REGISTRATION: "false"
+      FORGEJO__mailer__ENABLED: "false"
+      FORGEJO__federation__ENABLED: "false"
+      FORGEJO__cron.update_checker__ENABLED: "false"
+      FORGEJO__api__ENABLE_SWAGGER: "false"
+      FORGEJO__metrics__ENABLED: "false"
+    expose:
+      - "3000"
+    networks:
+      - data-plane
+    volumes:
+      - system_test_forgejo_data:/var/lib/gitea
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
+    depends_on:
+      toxiproxy-bootstrap:
+        condition: service_completed_successfully
+    labels: *system-test-labels
+
+networks:
+  control-plane:
+    internal: true
+    labels: *system-test-labels
+  data-plane:
+    internal: true
+    labels: *system-test-labels
+
+volumes:
+  system_test_postgres_data:
+    labels: *system-test-labels
+  system_test_forgejo_data:
+    labels: *system-test-labels
+  system_test_mqtt_data:
+    labels: *system-test-labels

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "profile": "load",
+  "environment": "isolated-local",
+  "duration_seconds": 900,
+  "api": {
+    "virtual_users": 500,
+    "request_timeout_ms": 10000,
+    "p95_ms": 500,
+    "p99_ms": 1500,
+    "unexpected_error_rate": 0.01
+  },
+  "devices": {
+    "count": 2000,
+    "publish_interval_ms": 10000,
+    "reconnect_base_ms": 500,
+    "reconnect_max_ms": 30000,
+    "duplicate_rate": 0.01,
+    "late_rate": 0.01
+  },
+  "chaos": {
+    "enabled": false,
+    "scenarios": []
+  }
+}

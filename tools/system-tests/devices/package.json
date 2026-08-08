@@ -1,0 +1,14 @@
+{
+  "name": "@gernetix/system-test-devices",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test",
+    "check": "node --check src/cli.js && node --check src/config.js && node --check src/contracts.js && node --check src/mqtt-client.js && node --check src/simulator.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

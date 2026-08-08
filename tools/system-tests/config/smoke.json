@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "profile": "smoke",
+  "environment": "isolated-local",
+  "duration_seconds": 120,
+  "api": {
+    "virtual_users": 10,
+    "request_timeout_ms": 5000,
+    "p95_ms": 500,
+    "p99_ms": 1000,
+    "unexpected_error_rate": 0.01
+  },
+  "devices": {
+    "count": 20,
+    "publish_interval_ms": 5000,
+    "reconnect_base_ms": 250,
+    "reconnect_max_ms": 10000,
+    "duplicate_rate": 0,
+    "late_rate": 0
+  },
+  "chaos": {
+    "enabled": false,
+    "scenarios": []
+  }
+}

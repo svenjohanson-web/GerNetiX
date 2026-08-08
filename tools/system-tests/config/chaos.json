@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "profile": "chaos",
+  "environment": "isolated-local",
+  "duration_seconds": 1200,
+  "api": {
+    "virtual_users": 100,
+    "request_timeout_ms": 10000,
+    "p95_ms": 750,
+    "p99_ms": 2000,
+    "unexpected_error_rate": 0.01
+  },
+  "devices": {
+    "count": 1000,
+    "publish_interval_ms": 10000,
+    "reconnect_base_ms": 500,
+    "reconnect_max_ms": 30000,
+    "duplicate_rate": 0.02,
+    "late_rate": 0.02
+  },
+  "chaos": {
+    "enabled": true,
+    "scenarios": [
+      "forgejo_latency",
+      "forgejo_unavailable",
+      "postgres_connection_cut",
+      "mqtt_connection_cut"
+    ]
+  }
+}

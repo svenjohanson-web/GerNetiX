@@ -1,0 +1,13 @@
+{
+  "name": "@gernetix/system-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "plan": "node cli.js --profile smoke",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
