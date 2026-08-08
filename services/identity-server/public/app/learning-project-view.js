@@ -1,5 +1,5 @@
 const LearningProjectView = (() => {
-  function render({ target, project, progress = {}, activeStep = 0, showRating = false, escapeHtml, learningText = (_key, fallback) => fallback }) {
+  function render({ target, project, progress = {}, activeStep = 0, showRating = false, showStartChoice = false, escapeHtml, learningText = (_key, fallback) => fallback }) {
     if (!target) return false;
     target.classList.toggle("hidden", !project);
     if (!project) {
@@ -19,13 +19,16 @@ const LearningProjectView = (() => {
     target.innerHTML = `
       <div class="section-head">
         <div><p class="eyebrow">${escapeHtml(eyebrow)}</p><h2>${escapeHtml(project.name)}</h2>${lesson ? `<p class="learning-entry-context">${escapeHtml(learningText("prepared", "Vorbereiteter Einzelstart"))} · Snapshot ${escapeHtml(lesson.standalone_start?.snapshot_id || "")}</p>` : ""}</div>
-        <a class="back-to-dashboard" href="/app/learn/">← ${escapeHtml(learningText("allProjects", "Alle Lernprojekte"))}</a>
+        <div class="learning-project-header-actions">
+          ${renderProgressMap(structure, escapeHtml, learningText)}
+          <a class="back-to-dashboard" href="/app/learn/">← ${escapeHtml(learningText("allProjects", "Alle Lernprojekte"))}</a>
+        </div>
       </div>
       <p class="flash-status hidden" data-learning-project-status aria-live="polite"></p>
       <div class="learning-project-body">
-        ${renderProgressMap(structure, escapeHtml, learningText)}
         <section id="learningProjectArtifact" class="learning-project-artifact" aria-live="polite"></section>
       </div>
+      ${showStartChoice ? renderStartChoice(project, progress, escapeHtml, learningText) : ""}
       ${showRating ? `<section class="learning-rating" data-learning-rating-section aria-labelledby="learningRatingTitle">
         <div>
           <p class="eyebrow">Deine Rückmeldung</p>
@@ -45,6 +48,31 @@ const LearningProjectView = (() => {
       </section>` : ""}
     `;
     return true;
+  }
+
+  function renderStartChoice(project, progress, escapeHtml, learningText) {
+    const views = project.viewManifest?.views || [];
+    const currentStep = Math.max(0, Math.min(Number(progress.currentStep || 0), Math.max(0, views.length - 1)));
+    const currentView = views[currentStep] || {};
+    const lesson = (project.developmentLessons || []).find((item) => item.id === currentView.lesson_id);
+    const position = `${escapeHtml(learningText("step", "Schritt"))} ${currentStep + 1} / ${views.length}`;
+    return `<dialog class="learning-project-start-choice" data-learning-start-choice aria-labelledby="learningStartChoiceTitle">
+      <form>
+        <p class="eyebrow">${escapeHtml(learningText("welcomeBack", "Willkommen zurück"))}</p>
+        <h3 id="learningStartChoiceTitle">${escapeHtml(learningText("startChoiceTitle", "Wie möchtest du beginnen?"))}</h3>
+        <p>${escapeHtml(learningText("startChoiceText", "Für dieses Lernprojekt ist bereits ein Fortschritt gespeichert."))}</p>
+        <div class="learning-project-resume-position">
+          <span>${escapeHtml(learningText("lastPosition", "Dein letzter Stand"))}</span>
+          ${lesson?.title ? `<strong>${escapeHtml(lesson.title)}</strong>` : ""}
+          <small>${position}${currentView.title ? ` · ${escapeHtml(currentView.title)}` : ""}</small>
+        </div>
+        <div class="learning-project-start-choice-actions">
+          <button type="button" data-learning-start-new>${escapeHtml(learningText("startNew", "Neu beginnen"))}</button>
+          <button class="primary" type="button" data-learning-start-continue autofocus>${escapeHtml(learningText("continueLast", "Am letzten Stand fortsetzen"))}</button>
+        </div>
+        <p class="flash-status hidden" data-learning-start-choice-status aria-live="polite"></p>
+      </form>
+    </dialog>`;
   }
 
   function renderProgressMap(structure, escapeHtml, learningText) {

@@ -46,6 +46,9 @@ const LearningProjectLocales = (() => {
       guided: "Geführtes Lernprojekt", story: "Entwicklungsprojekt · Projektstory", standalone: "Entwicklungslesson · einzeln gestartet",
       prepared: "Vorbereiteter Einzelstart", allProjects: "Alle Lernprojekte",
       lessons: "Lessons", step: "Schritt", steps: "Schritte", completed: "erledigt", projectProgress: "Projektfortschritt", showProgressDetails: "Lessons und Schritte anzeigen",
+      welcomeBack: "Willkommen zurück", startChoiceTitle: "Wie möchtest du beginnen?", startChoiceText: "Für dieses Lernprojekt ist bereits ein Fortschritt gespeichert.",
+      lastPosition: "Dein letzter Stand", startNew: "Neu beginnen", continueLast: "Am letzten Stand fortsetzen",
+      resettingProgress: "Fortschritt wird zurückgesetzt …", resetProgressFailed: "Der Lernfortschritt konnte nicht zurückgesetzt werden.",
       ready: "bereit", running: "laufend", finished: "abgeschlossen",
     },
     en: {
@@ -61,6 +64,9 @@ const LearningProjectLocales = (() => {
       guided: "Guided learning project", story: "Development project · project story", standalone: "Development lesson · started separately",
       prepared: "Prepared standalone start", allProjects: "All learning projects",
       lessons: "lessons", step: "step", steps: "steps", completed: "completed", projectProgress: "Project progress", showProgressDetails: "Show lessons and steps",
+      welcomeBack: "Welcome back", startChoiceTitle: "How would you like to begin?", startChoiceText: "Progress has already been saved for this learning project.",
+      lastPosition: "Your last position", startNew: "Start again", continueLast: "Continue from the last position",
+      resettingProgress: "Resetting progress …", resetProgressFailed: "The learning progress could not be reset.",
       ready: "ready", running: "in progress", finished: "completed",
     },
     nl: {
@@ -76,6 +82,9 @@ const LearningProjectLocales = (() => {
       guided: "Begeleid leerproject", story: "Ontwikkelproject · projectverhaal", standalone: "Ontwikkelles · afzonderlijk gestart",
       prepared: "Voorbereide afzonderlijke start", allProjects: "Alle leerprojecten",
       lessons: "lessen", step: "stap", steps: "stappen", completed: "voltooid", projectProgress: "Projectvoortgang", showProgressDetails: "Lessen en stappen tonen",
+      welcomeBack: "Welkom terug", startChoiceTitle: "Hoe wil je beginnen?", startChoiceText: "Voor dit leerproject is al voortgang opgeslagen.",
+      lastPosition: "Je laatste positie", startNew: "Opnieuw beginnen", continueLast: "Doorgaan vanaf de laatste positie",
+      resettingProgress: "Voortgang wordt gereset …", resetProgressFailed: "De leervoortgang kon niet worden gereset.",
       ready: "gereed", running: "bezig", finished: "voltooid",
     },
   };

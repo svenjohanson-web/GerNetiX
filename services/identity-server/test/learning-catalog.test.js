@@ -204,6 +204,8 @@ test("learning progress persists the current lesson and exact step through the p
   assert.doesNotMatch(server, /learningProgress: new Map/);
   assert.match(controller, /currentLessonId: currentView\.lesson_id/);
   assert.match(controller, /currentStepId: currentView\.id/);
+  assert.match(controller, /resetProgress: options\.resetProgress === true/);
+  assert.match(server, /reset_progress: input\.resetProgress === true/);
   assert.match(guidedView, /currentLessonId: currentView\.lesson_id/);
   assert.match(guidedView, /completedStepIds:/);
 });

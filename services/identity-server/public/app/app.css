@@ -1147,20 +1147,33 @@ button.danger:hover {
   .learning-project-overview-actions { align-items: stretch; flex-direction: column; }
 }
 
-.learning-project-body { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 14px; }
+.learning-project-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.learning-project-body { margin-top: 14px; }
 .learning-project-artifact { min-width: 0; }
-.learning-project-progress-map { position: sticky; top: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 0; background: #0f1827; }
-.learning-project-progress-map > summary { display: grid; gap: 13px; padding: 15px; cursor: pointer; list-style: none; }
+.learning-project-start-choice { width: min(470px, calc(100vw - 28px)); border: 1px solid #334155; border-radius: 12px; padding: 0; background: #111827; color: var(--text); box-shadow: 0 28px 80px rgba(0, 0, 0, .58); }
+.learning-project-start-choice::backdrop { background: rgba(2, 8, 23, .76); backdrop-filter: blur(3px); }
+.learning-project-start-choice form { display: grid; gap: 14px; padding: 22px; }
+.learning-project-start-choice h3, .learning-project-start-choice p { margin: 0; }
+.learning-project-start-choice h3 { font-size: 20px; }
+.learning-project-start-choice form > p:not(.eyebrow, .flash-status) { color: var(--muted); line-height: 1.5; }
+.learning-project-resume-position { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: 9px; padding: 12px; background: #0b1220; }
+.learning-project-resume-position > span { color: #67e8f9; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.learning-project-resume-position > strong { font-size: 14px; }
+.learning-project-resume-position > small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.learning-project-start-choice-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.learning-project-start-choice-actions button { min-height: 40px; }
+.learning-project-progress-map { position: relative; width: clamp(185px, 19vw, 220px); border: 1px solid var(--line); border-radius: 8px; padding: 0; background: #0f1827; }
+.learning-project-progress-map > summary { display: grid; gap: 5px; min-height: 38px; box-sizing: border-box; padding: 6px 8px; cursor: pointer; list-style: none; }
 .learning-project-progress-map > summary::-webkit-details-marker { display: none; }
 .learning-project-progress-map > summary::marker { content: ""; }
-.learning-project-progress-map > summary:focus-visible { border-radius: 9px; outline: 2px solid var(--accent); outline-offset: 2px; }
-.learning-project-progress-map > summary > header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
-.learning-project-progress-map > summary > header p { margin: 0 0 5px; color: #67e8f9; font-size: 12px; letter-spacing: .08em; }
-.learning-project-progress-map > summary > header strong { font-size: 15px; }
-.learning-project-progress-map > summary > header > span { border-radius: 999px; padding: 7px 10px; background: #155e75; color: #67e8f9; font-size: 15px; font-weight: 850; }
-.learning-project-progress-track { height: 6px; overflow: hidden; border-radius: 999px; background: var(--soft); }
+.learning-project-progress-map > summary:focus-visible { border-radius: 7px; outline: 2px solid var(--accent); outline-offset: 2px; }
+.learning-project-progress-map > summary > header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.learning-project-progress-map > summary > header p { margin: 0 0 1px; color: #67e8f9; font-size: 8px; line-height: 1; letter-spacing: .07em; }
+.learning-project-progress-map > summary > header strong { display: block; font-size: 10px; line-height: 1.15; white-space: nowrap; }
+.learning-project-progress-map > summary > header > span { flex: 0 0 auto; border-radius: 999px; padding: 3px 6px; background: #155e75; color: #67e8f9; font-size: 10px; font-weight: 850; }
+.learning-project-progress-track { height: 3px; overflow: hidden; border-radius: 999px; background: var(--soft); }
 .learning-project-progress-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
-.learning-project-progress-lessons { display: none; max-height: calc(100vh - 210px); overflow: auto; margin: 0 12px 12px; padding: 11px 3px 2px; border-top: 1px solid var(--line); }
+.learning-project-progress-lessons { position: absolute; z-index: 30; top: calc(100% - 1px); right: 0; display: none; width: min(330px, calc(100vw - 32px)); max-height: calc(100vh - 150px); overflow: auto; box-sizing: border-box; margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; background: #0f1827; box-shadow: 0 16px 36px rgba(0, 0, 0, .4); }
 .learning-project-progress-map[open] > .learning-project-progress-lessons,
 .learning-project-progress-map:hover > .learning-project-progress-lessons,
 .learning-project-progress-map:focus-within > .learning-project-progress-lessons { display: grid; }
@@ -1182,7 +1195,9 @@ button.danger:hover {
 .learning-project-progress-lessons ol li.is-active > span { border-color: var(--accent); background: var(--accent); color: #07121b; }
 .learning-project-progress-lessons ol li.is-done { color: #86efac; }
 .learning-project-progress-lessons ol li.is-done > span { border-color: #15803d; background: #15803d; color: #fff; }
-@media (max-width: 920px) { .learning-project-body { grid-template-columns: 1fr; } .learning-project-progress-map { position: static; } .learning-project-progress-map:hover:not([open]) > .learning-project-progress-lessons { display: none; } }
+@media (max-width: 920px) { .learning-project-progress-map:hover:not([open]) > .learning-project-progress-lessons { display: none; } }
+@media (max-width: 560px) { .learning-project-header-actions { width: 100%; align-items: stretch; } .learning-project-progress-map { width: auto; flex: 1 1 auto; } .learning-project-header-actions .back-to-dashboard { flex: 0 0 auto; } }
+@media (max-width: 480px) { .learning-project-start-choice form { padding: 17px; } .learning-project-start-choice-actions { align-items: stretch; flex-direction: column-reverse; } }
 
 .download-grid {
   display: grid;

@@ -757,6 +757,22 @@ test("persists the exact lesson and step position for a learning project", async
   const resumed = await restartedService.getLearningProgress(project.project_id, "user-1");
   assert.equal(resumed.current_lesson_id, "lesson.actuatorics");
   assert.equal(resumed.current_step_id, "actuator-switch");
+
+  const reset = await restartedService.updateLearningProgress(project.project_id, {
+    user_id: "user-1",
+    reset_progress: true,
+    current_step_id: "sensor-read",
+    current_step_index: 0,
+    completed_step_indexes: [],
+    completed_step_ids: [],
+  });
+  assert.equal(reset.status, "active");
+  assert.equal(reset.current_lesson_id, "lesson.sensorics");
+  assert.equal(reset.current_step_id, "sensor-read");
+  assert.equal(reset.current_step_index, 0);
+  assert.deepEqual(reset.completed_step_ids, []);
+  assert.deepEqual(reset.completed_step_indexes, []);
+  assert.equal(reset.completed_at, null);
 });
 
 test("rejects learning progress access from a different account", async () => {

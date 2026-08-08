@@ -67,7 +67,7 @@ test("connects chat, source analysis and safe discovery actions to the board pro
 });
 
 test("invalidates cached hardware-lab UI assets", () => {
-  assert.match(html, /app\.css\?v=20260808-learning-progress-map-2/);
+  assert.match(html, /app\.css\?v=20260808-learning-entry-choice/);
   assert.match(html, /api-client\.js\?v=20260807-action-observability-1/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
   assert.match(shellController, /const version = "20260805-route-lazy-3"/);

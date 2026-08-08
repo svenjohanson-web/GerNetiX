@@ -639,6 +639,8 @@ Regeln:
 - Bei `DevelopmentLesson`-basierten Projekten werden zusaetzlich `currentDevelopmentLessonId` und `currentDevelopmentLessonStepId` gespeichert, damit der Wiedereinstieg nicht nur den globalen Projektabschnitt, sondern die konkrete Lesson und den konkreten Step wiederherstellt.
 - Abgeschlossene Steps werden ueber stabile Step-IDs und nicht ausschliesslich ueber ihre aktuelle Listenposition referenziert.
 - Der accountgebundene Fortschrittsdatensatz wird gemeinsam mit dem accountgebundenen Projekt im Project Server dauerhaft in SQL gespeichert; Browser-State und Prozessspeicher sind keine fachliche Quelle.
+- Beim erneuten Oeffnen eines bereits begonnenen Lernprojekts entscheidet der Benutzer zwischen dem exakten gespeicherten Wiedereinstieg und einem bewussten Neustart.
+- `Fortsetzen` veraendert den gespeicherten Stand nicht. `Neu beginnen` setzt aktuelle Lesson und Step auf den Projektanfang und entfernt bisherige Step-Abschluesse nur ueber einen ausdruecklichen serverseitigen Reset; ein normales Fortschritts-Update bleibt additiv.
 - Beim Wiedereinstieg kann anhand referenzierter `Condition` geprueft werden, ob der Benutzer fortsetzen kann oder ob technischer Projektzustand wiederhergestellt werden muss.
 
 ## 6. Berechtigungen

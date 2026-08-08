@@ -3836,6 +3836,7 @@ async function updateLearningProgress(session, input = {}) {
       current_step_index: currentStep,
       completed_step_indexes: completedSteps,
       completed_step_ids: input.completedStepIds || input.completed_step_ids || [],
+      reset_progress: input.resetProgress === true || input.reset_progress === true,
     },
   });
   touchWorkspace(session, projectId, "learn", `/app/learn/?project=${encodeURIComponent(projectId)}`);

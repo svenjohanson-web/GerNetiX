@@ -17,6 +17,12 @@ function learningProjectView() {
   return context.view;
 }
 
+function learningProjectController() {
+  const context = { window: { addEventListener() {} } };
+  vm.runInNewContext(`${controllerSource}\nthis.controller = LearningProjectController;`, context);
+  return context.controller;
+}
+
 const project = {
   lessonId: "lesson-1",
   developmentLessons: [
@@ -91,6 +97,7 @@ test("renders lessons and every step as a visible progress map", () => {
   assert.match(target.innerHTML, /aria-current="step"/);
   assert.match(target.innerHTML, /aria-valuenow="1"/);
   assert.match(target.innerHTML, /Geführtes Lernprojekt/);
+  assert.match(target.innerHTML, /learning-project-header-actions[\s\S]*learning-project-progress-map[\s\S]*Alle Lernprojekte/);
 });
 
 test("uses the project-story label only for projects that actually define a story", () => {
@@ -104,6 +111,32 @@ test("uses the project-story label only for projects that actually define a stor
   assert.match(target.innerHTML, /Entwicklungsprojekt · Projektstory/);
 });
 
+test("asks whether to restart or continue and shows the exact saved position", () => {
+  const target = { innerHTML: "", classList: { toggle() {} } };
+  learningProjectView().render({
+    target,
+    project: { ...project, name: "Beispielprojekt" },
+    progress: { status: "active", currentStep: 1, completedSteps: [0] },
+    activeStep: 1,
+    showStartChoice: true,
+    escapeHtml: (value) => String(value),
+    learningText: (_key, fallback) => fallback,
+  });
+  assert.match(target.innerHTML, /data-learning-start-choice/);
+  assert.match(target.innerHTML, /Wie möchtest du beginnen\?/);
+  assert.match(target.innerHTML, /Grundlage[\s\S]*Schritt 2 \/ 3 · Begriffe klären/);
+  assert.match(target.innerHTML, /data-learning-start-new>Neu beginnen/);
+  assert.match(target.innerHTML, /data-learning-start-continue autofocus>Am letzten Stand fortsetzen/);
+});
+
+test("recognizes only genuinely saved progress as resumable", () => {
+  const { hasSavedProgress } = learningProjectController();
+  assert.equal(hasSavedProgress({ status: "not_started", currentStep: 0, completedSteps: [] }), false);
+  assert.equal(hasSavedProgress({ status: "active", currentStep: 0, completedSteps: [] }), true);
+  assert.equal(hasSavedProgress({ status: "not_started", updatedAt: "2026-08-08T10:00:00Z" }), true);
+  assert.equal(hasSavedProgress({ status: "not_started", completedStepIds: ["step-1"] }), true);
+});
+
 test("project overview and workspace expose lesson and step counts continuously", () => {
   assert.match(catalogSource, /structure\.lessons\.length[\s\S]*structure\.totalSteps/);
   assert.match(catalogSource, /structure\.lessons\.map[\s\S]*lesson\.stepCount/);
@@ -112,8 +145,12 @@ test("project overview and workspace expose lesson and step counts continuously"
   assert.match(viewSource, /aria-current="step"/);
   assert.match(controllerSource, /project: localizedProject,\s*progress,\s*activeStep/);
   assert.match(controllerSource, /state\.activeIdeStep[\s\S]*progress\.currentStep/);
-  assert.match(css, /\.learning-project-body[^{]*\{[^}]*grid-template-columns/);
-  assert.match(css, /\.learning-project-progress-map[^{]*\{[^}]*position: sticky/);
+  assert.match(controllerSource, /resetProgress: options\.resetProgress === true/);
+  assert.match(controllerSource, /dialog\.showModal\(\)/);
+  assert.match(css, /\.learning-project-header-actions[^{]*\{[^}]*display: flex/);
+  assert.match(css, /\.learning-project-progress-map[^{]*\{[^}]*position: relative[^}]*width: clamp\(185px, 19vw, 220px\)/);
+  assert.match(css, /\.learning-project-progress-lessons[^{]*\{[^}]*position: absolute/);
   assert.match(css, /\.learning-project-progress-map:hover > \.learning-project-progress-lessons/);
   assert.match(css, /\.learning-project-progress-map\[open\] > \.learning-project-progress-lessons/);
+  assert.match(css, /\.learning-project-start-choice::backdrop/);
 });

@@ -228,6 +228,10 @@ Der Server leitet Lesson- und Step-Zuordnung aus den `lesson_id`- und `id`-Felde
 der Manifest-Views ab. Lesen und Schreiben erfordern dieselbe `user_id` wie das
 zugehoerige Projekt; ein abweichender Account erhaelt `403 project_access_denied`.
 Alte Lernprojekte ohne `lesson_id` behalten ihren globalen Schrittfortschritt.
+Ein normales `PUT` fuehrt bestaetigte Step-Abschluesse weiterhin additiv zusammen.
+Nur ein ausdrueckliches `reset_progress: true` darf beim vom Benutzer gewaehlten
+Neustart die bisherigen Abschluesse und Lesson-Staende loeschen und den ersten
+Manifest-Step als neue aktuelle Position speichern.
 
 ## Verantwortliche Schnittstellen
 

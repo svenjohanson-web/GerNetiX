@@ -1457,6 +1457,7 @@ class ProjectService {
     }
     const previous = (await this.repository.findLearningProgress(projectId))
       || emptyLearningProgress(project);
+    const resetProgress = input.reset_progress === true || input.resetProgress === true;
     const views = Array.isArray(project.view_manifest?.views) ? project.view_manifest.views : [];
     const requestedStepId = String(input.current_step_id || input.currentStepId || "");
     const requestedStepIndex = requestedStepId
@@ -1486,7 +1487,7 @@ class ProjectService {
       input.completed_step_indexes || input.completedSteps || input.completed_steps || [],
     );
     const submittedCompletedStepIds = Array.from(new Set([
-      ...(previous.completed_step_ids || []),
+      ...(resetProgress ? [] : previous.completed_step_ids || []),
       ...(input.completed_step_ids || input.completedStepIds || []).map(String),
       ...completedStepIndexes.map((index) => views[index]?.id).filter(Boolean),
     ]));
@@ -1503,7 +1504,7 @@ class ProjectService {
       currentLessonId,
       currentStepId,
       currentStepIndex,
-      previous.lesson_progress,
+      resetProgress ? [] : previous.lesson_progress,
     );
     const allStepIds = views.map((view) => String(view.id || "")).filter(Boolean);
     const status = allStepIds.length && allStepIds.every((stepId) => completedStepIds.includes(stepId))
@@ -1523,7 +1524,7 @@ class ProjectService {
       completed_step_indexes: persistedCompletedStepIndexes,
       completed_step_ids: completedStepIds,
       lesson_progress: lessonProgress,
-      started_at: previous.started_at || now,
+      started_at: resetProgress ? now : previous.started_at || now,
       last_seen_at: now,
       completed_at: status === "completed" ? (previous.completed_at || now) : null,
     });
