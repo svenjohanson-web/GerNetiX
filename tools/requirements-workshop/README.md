@@ -1,6 +1,11 @@
-# Anforderungswerkstatt
+# Anforderungswerkstatt – deterministische Entwicklungsreferenz
 
-Die Anforderungswerkstatt ist ein kostenloses, browserbasiertes Lernprojekt fuer Requirements Engineering in deutscher Sprache. Am Praxisfall „Zugang an einer Maschine“ lernt der Nutzer, seine Absicht so zu beschreiben, dass eine umsetzende KI moeglichst wenig still annehmen muss.
+Dieser lokale Stand ist die deterministische Entwicklungs- und Testreferenz fuer
+das regulaere Katalog-Lernprojekt
+`learning_project.ai_requirements_workshop` der GerNetiX-Plattform. Er ist kein
+zweiter Nutzerweg und wird nicht in der Plattformnavigation angeboten. Am
+Praxisfall „Zugang an einer Maschine“ prueft er reproduzierbar die fachlichen
+Regeln, die auch den gefuehrten Lerninhalt begruenden.
 
 ## Lernziele
 
@@ -21,9 +26,14 @@ Die Anforderungswerkstatt ist ein kostenloses, browserbasiertes Lernprojekt fuer
 6. typische Fallen anhand von Rueckfragen bearbeiten,
 7. ein strukturiertes Anforderungspaket erzeugen und den Lernstand auswerten.
 
-## Lokaler KI-Lernmodus
+## Deterministischer Testmodus
 
-Der erste Stand verwendet eine deterministische, getestete Auswertung direkt im Browser. Sie erkennt fuer die Lektion relevante Begriffe und Luecken, uebertraegt keine Eingaben und macht ihre Regeln nachvollziehbar. Sie gibt sich nicht als allgemein intelligentes Sprachmodell aus. Der Lernablauf ist so getrennt, dass spaeter ein zentral freigegebener GerNetiX-KI-Adapter denselben Verstaendnisspiegel liefern kann.
+Die Referenz verwendet eine deterministische, getestete Auswertung direkt im
+Browser. Sie erkennt fuer die Lektion relevante Begriffe und Luecken,
+uebertraegt keine Eingaben und macht ihre Regeln nachvollziehbar. Sie gibt sich
+nicht als allgemein intelligentes Sprachmodell aus. Das Plattform-Lernprojekt
+verwendet im entsprechenden Schritt den zentral freigegebenen
+GerNetiX-KI-Adapter.
 
 Browser-State wird nur fuer die aktuelle, fluechtige Lektion verwendet und ist keine fachliche Persistenzquelle.
 

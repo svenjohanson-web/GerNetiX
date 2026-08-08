@@ -33,10 +33,17 @@ Der erste vollstaendige Lernpfad verwendet die Anmeldung eines Mitarbeiters an e
 
 Sicherheitsanforderungen werden nicht pauschal als NFR behandelt. Eine Sperrreaktion nach drei falschen PIN-Eingaben ist funktionales Verhalten; das allgemeine Schutzziel oder eine geforderte Widerstandsfaehigkeit kann dagegen nicht-funktional sein.
 
-## Plattformintegration und Offline-Modus
+## Plattformintegration
 
-Der primaere Lernweg ist in die angemeldete GerNetiX-Plattform unter
-`/app/requirements-workshop/` integriert. Der Browser sendet einen freien
+Der primaere Lernweg ist ein regulaeres, freies Lernprojekt im Katalog der
+angemeldeten GerNetiX-Plattform unter `/app/learn/`. Beim Start materialisiert
+Identity wie bei anderen Lernprojekten eine accountgebundene Projektinstanz.
+Vier Lessons mit neun gefuehrten Schritten behandeln Absicht und
+KI-Interpretation, Identitaet und Nachweisverfahren, Anforderungsarten und
+Denkfallen sowie Akzeptanzkriterien und offene Fragen. Lesson, aktueller Schritt
+und abgeschlossene Schritte werden ueber den Project Server persistiert.
+
+Im Schritt `KI-Verstaendnisspiegel` sendet der Browser einen freien
 Anforderungsvorschlag an
 `POST /api/platform/requirements-workshop/feedback`. Identity leitet die
 Account-ID ausschliesslich aus der serverseitigen Sitzung ab, fuehrt vor dem
@@ -45,12 +52,12 @@ Tokens oder den Fehler. Der OpenAI-Responses-Aufruf verwendet `store: false`,
 einen pseudonymisierten Safety-Identifier und ein striktes JSON-Schema. Die
 Antwort wird serverseitig begrenzt und als Verstaendnisspiegel dargestellt.
 
-Eingabe und Auswertung werden in diesem Stand nicht als fachlicher Lernstand
-persistiert. Der Browser erhaelt keinen Provider-Schluessel und darf weder
-Account-ID noch Nutzungsstatus vorgeben. Der lokale Stand unter
-`tools/requirements-workshop` bleibt als kostenloser, reproduzierbarer und
-offline-faehiger Lernpfad erhalten. Er ist bewusst als lokaler Lernmodus
-gekennzeichnet und ersetzt nicht das echte KI-Feedback der Plattform.
+Eingabe und KI-Auswertung werden nicht als Projektinhalt oder fachlicher
+Lernstand persistiert. Der Browser erhaelt keinen Provider-Schluessel und darf
+weder Account-ID noch Nutzungsstatus vorgeben. Der Stand unter
+`tools/requirements-workshop` bleibt als deterministische Entwicklungs- und
+Testreferenz erhalten, ist aber kein zweiter Nutzerweg und kein eigener Eintrag
+in der Plattformnavigation.
 
 ## Nachweis
 
@@ -58,7 +65,9 @@ gekennzeichnet und ersetzt nicht das echte KI-Feedback der Plattform.
   serverseitige Accountableitung sowie Preflight- und Tokenabschlussbuchung.
 - UI-Vertragstests pruefen das gemeinsame KI-Chat-Muster einschliesslich
   Enter, Shift+Enter, Pending- und Fehlerzustand.
-- Die Offline-Browseranwendung kann direkt aus `index.html` oder ueber den
-  kleinen lokalen Server gestartet werden; ihre deterministischen Tests
-  pruefen Auswertung, Klassifikation, Spezifikation und Abschlussbewertung.
-- Beide Varianten speichern in diesem Stand keinen fachlichen Lernstand.
+- Katalogtests pruefen die regulaere Lernprojektdefinition mit vier Lessons,
+  neun Schritten, accountgebundener Materialisierung und gefuehrtem KI-Schritt.
+- Die deterministische Entwicklungsreferenz prueft weiterhin Auswertung,
+  Klassifikation, Spezifikation und Abschlussbewertung ohne Provideraufruf.
+- Der Project Server speichert den Lernfortschritt, aber weder freien
+  Anforderungstext noch KI-Auswertung.

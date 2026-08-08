@@ -90,6 +90,7 @@ test("renders lessons and every step as a visible progress map", () => {
   });
   assert.equal(rendered, true);
   assert.match(target.innerHTML, /2 Lessons · 3 Schritte/);
+  assert.match(target.innerHTML, /1\/3 erledigt/);
   assert.match(target.innerHTML, /<details class="learning-project-progress-map"/);
   assert.match(target.innerHTML, /<summary title="Lessons und Schritte anzeigen">/);
   assert.match(target.innerHTML, /Grundlage[\s\S]*Problem verstehen[\s\S]*Begriffe klären/);
@@ -143,6 +144,7 @@ test("project overview and workspace expose lesson and step counts continuously"
   assert.match(viewSource, /learning-project-progress-map/);
   assert.match(viewSource, /learning-project-progress-lessons/);
   assert.match(viewSource, /aria-current="step"/);
+  assert.match(viewSource, /completedSteps[^\n]*totalSteps[^\n]*completedLabel/);
   assert.match(controllerSource, /project: localizedProject,\s*progress,\s*activeStep/);
   assert.match(controllerSource, /state\.activeIdeStep[\s\S]*progress\.currentStep/);
   assert.match(controllerSource, /resetProgress: options\.resetProgress === true/);

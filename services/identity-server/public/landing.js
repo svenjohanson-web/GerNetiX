@@ -18,6 +18,7 @@ function normalizePublicNavigation() {
     ["/community/", "Community"],
     ["/hilfe/", "Hilfe"],
     ["/support/", "Support"],
+    ["/leistungen/", "Leistungen"],
     ["/tarife/", "Konten & Tarife"],
     ["/shop/", "Webshop"],
     ["/app/auth/", "Anmelden"],
@@ -58,7 +59,6 @@ function showAuthenticatedPublicNavigation(account) {
     createNavigationLink("/app/applications/", "Meine Anwendungen", "platform.nav.applications"),
     createNavigationGroup("Lernen & Entwickeln", "platform.menu.learn_develop", [
       ["/app/learn/", "Lernplattform", "platform.nav.learning"],
-      ["/app/requirements-workshop/", "KI-Anforderungswerkstatt"],
       ["/app/development-platform/", "Entwicklungsplattform", "platform.nav.development"],
       ["/app/quiz/", "Quiz", "platform.nav.quiz"],
       ["/wissen/", "Wissensspeicher", "platform.nav.knowledge_store"],
@@ -74,6 +74,7 @@ function showAuthenticatedPublicNavigation(account) {
     createNavigationGroup("Service & Shop", "platform.menu.service_shop", [
       ["/app/about/", "Über uns", "footer.about"],
       ["/support/", "Support", "nav.support"],
+      ["/leistungen/", "Leistungen", "nav.services"],
       ["/shop/", "Webshop", "nav.shop"],
     ]),
     createNavigationGroup("Konto", "platform.menu.account", [
@@ -178,6 +179,7 @@ function decoratePublicNavigation() {
     "/community/": "nav.community",
     "/hilfe/": "nav.help",
     "/support/": "nav.support",
+    "/leistungen/": "nav.services",
     "/shop/": "nav.shop",
     "/app/auth/": "nav.login",
   };

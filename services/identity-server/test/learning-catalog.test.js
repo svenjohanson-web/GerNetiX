@@ -9,6 +9,7 @@ const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html")
 const app = readPlatformAppSource();
 const learningController = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-controller.js"), "utf8");
 const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const webRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/web-routes.js"), "utf8");
 
 test("learning area leads with a dedicated project catalog", () => {
   const catalogPosition = html.indexOf("Lernprojekt-Katalog");
@@ -122,6 +123,27 @@ test("catalog includes a free browser-based YAML fundamentals project", () => {
   assert.match(server, /"topic:yaml"/);
 });
 
+test("catalog includes the requirements workshop as a regular guided learning project", () => {
+  const course = require("../src/dev/project-models/requirements-workshop-course.json");
+  const model = require("../src/dev/project-models/requirements-workshop-course");
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  assert.equal(course.project.slug, "ai-requirements-workshop");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_text");
+  assert.deepEqual(course.project.required_capability_ids, []);
+  assert.equal(course.project.access_model, "free");
+  assert.equal(course.development_lessons.length, 4);
+  assert.equal(course.view_manifest.views.length, 9);
+  assert.equal(course.view_manifest.views[1].payload.artifact.type, "requirements_mirror");
+  assert.ok(course.project.tags.includes("topic:requirements-engineering"));
+  assert.equal(typeof model.createRequirementsWorkshopCourseModel, "function");
+  assert.match(server, /createRequirementsWorkshopCourseModel/);
+  assert.match(server, /requirementsWorkshopCourseModel\.createProject/);
+  assert.match(server, /"topic:requirements-engineering"/);
+  assert.match(guidedView, /\/api\/platform\/requirements-workshop\/feedback/);
+  assert.doesNotMatch(html, /\/app\/requirements-workshop\//);
+  assert.match(webRoutes, /learning-project-overview\/\?project=catalog_ai-requirements-workshop/);
+});
+
 test("catalog includes the free browser-based radio technologies project", () => {
   const course = require("../src/dev/project-models/radio-technologies-course.json");
   const model = require("../src/dev/project-models/radio-technologies-course");
@@ -141,6 +163,53 @@ test("catalog includes the free browser-based radio technologies project", () =>
   assert.equal(typeof model.createRadioTechnologiesCourseModel, "function");
   assert.match(server, /createRadioTechnologiesCourseModel/);
   assert.match(server, /radioTechnologiesCourseModel\.createProject/);
+});
+
+test("catalog includes the free measurement tools learning project", () => {
+  const course = require("../src/dev/project-models/measurement-tools-basics-course.json");
+  const model = require("../src/dev/project-models/measurement-tools-basics-course");
+
+  assert.equal(course.project.slug, "measurement-tools-basics");
+  assert.equal(course.project.title, "Umgang mit Messmitteln");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.equal(course.project.access_model, "free");
+  assert.deepEqual(course.project.required_capability_ids, []);
+  assert.ok(course.project.tags.includes("topic:measurement"));
+  assert.equal(course.project.steps.length, 11);
+  assert.equal(course.view_manifest.views.length, 11);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "multimeter-orientation",
+    "multimeter-voltage",
+    "multimeter-current",
+    "multimeter-resistance",
+    "multimeter-ranges",
+    "logic-analyzer-basics",
+    "logic-analyzer-timing",
+    "logic-analyzer-uart",
+    "oscilloscope-orientation",
+    "oscilloscope-waveforms",
+    "measurement-tools-comparison",
+  ]);
+  assert.match(JSON.stringify(course), /Netzspannung.*ausgeschlossen/);
+  assert.match(JSON.stringify(course), /nie parallel an eine Quelle/);
+  assert.match(JSON.stringify(course), /Abtastrate/);
+  assert.match(JSON.stringify(course), /Masseklemme/);
+  assert.match(JSON.stringify(course), /Dasselbe PWM-Signal mit drei Messmitteln/);
+
+  const courseModel = model.createMeasurementToolsBasicsCourseModel();
+  const created = courseModel.createProject(
+    (slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }),
+    (title, text, insight) => ({ title, text, insight }),
+  );
+  assert.equal(created.slug, "measurement-tools-basics");
+  assert.equal(created.steps.length, 11);
+  assert.equal(courseModel.createSources()[0].path, "docs/messprotokoll.md");
+  assert.equal(courseModel.createViewManifest({}, { primarySourcePath: () => "docs/messprotokoll.md" }).views.length, 11);
+  assert.match(server, /createMeasurementToolsBasicsCourseModel/);
+  assert.match(server, /measurementToolsBasicsCourseModel\.createProject/);
+  assert.match(server, /measurementToolsBasicsCourseModel\.createViewManifest/);
+  assert.match(server, /measurementToolsBasicsCourseModel\.createSources/);
+  assert.match(app, /"topic:measurement": "Messtechnik"/);
 });
 
 test("button-to-smartphone course starts with a simulated button and serial-monitor lab", () => {
@@ -257,6 +326,7 @@ test("asks for learning-project feedback once after the final completed step", (
   assert.match(learningController, /project\.learningFeedbackSubmitted = true/);
   assert.match(learningView, /showRating \? `<section class="learning-rating"/);
   assert.match(guidedView, /learning-progress-updated/);
+  assert.match(guidedView, /function setIdeGuidedStep[\s\S]*saveIdeGuidedProgress[\s\S]*learning-progress-updated/);
   assert.match(server, /hasSubmittedLearningFeedback/);
 });
 
@@ -265,7 +335,7 @@ test("balances the guided learning workspace and keeps optional AI help outside 
   const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
   const runner = guidedView.match(/function renderProjectViewManifest[\s\S]*?function renderGuidedCodeAssistant/)?.[0] || "";
   assert.match(runner, /guided-artifact-pane[\s\S]*renderGuidedArtifact/);
-  assert.match(runner, /guided-summary-pane[\s\S]*renderLearningContext\(activeView\)[\s\S]*renderLearningGuidance\(activeView\)[\s\S]*renderGuidedCompletion[\s\S]*renderGuidedActions/);
+  assert.match(runner, /guided-summary-pane[\s\S]*renderLearningContext\(activeView\)[\s\S]*renderLearningGuidance\(activeView, validation\)[\s\S]*renderGuidedCompletion[\s\S]*renderGuidedActions/);
   assert.match(runner, /guided-task-heading[\s\S]*>Aufgabe</);
   assert.ok(runner.indexOf("renderGuidedCodeAssistant(project, activeView)") > runner.indexOf("</div>"));
   assert.doesNotMatch(runner.match(/<aside class="guided-summary-pane">[\s\S]*?<\/aside>/)?.[0] || "", /renderCodeExplorerChat/);
@@ -373,6 +443,7 @@ test("catalog scaffolds the proximity-sensor project with FMCW radar as its firs
 });
 
 test("catalog includes a software-only programming fundamentals course", () => {
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
   const course = require("../src/dev/project-models/programming-fundamentals-course.json");
   const model = require("../src/dev/project-models/programming-fundamentals-course");
 
@@ -385,13 +456,13 @@ test("catalog includes a software-only programming fundamentals course", () => {
   assert.ok(course.project.tags.includes("runtime:browser"));
   assert.ok(course.project.tags.includes("topic:programming"));
   assert.ok(course.project.tags.includes("level:beginner"));
-  assert.equal(course.lessons.length, 43);
+  assert.equal(course.lessons.length, 44);
   assert.equal(course.development_lessons.length, 8);
   assert.deepEqual(
     course.project.project_lesson_assignments.map((assignment) => assignment.lesson_id),
     course.development_lessons.map((lesson) => lesson.id),
   );
-  assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [7, 6, 9, 8, 3, 4, 4, 2]);
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [8, 6, 9, 8, 3, 4, 4, 2]);
   assert.ok(course.development_lessons.every((lesson) => lesson.step_ids.length > 1));
   assert.ok(course.development_lessons.every((lesson) => lesson.order_index === undefined));
   assert.ok(course.development_lessons.every((lesson) => lesson.prerequisite_lesson_ids === undefined));
@@ -399,9 +470,10 @@ test("catalog includes a software-only programming fundamentals course", () => {
     course.development_lessons.flatMap((lesson) => lesson.step_ids),
     course.lessons.map((lesson) => lesson.id),
   );
-  assert.equal(course.view_manifest.schema_version, 4);
+  assert.equal(course.view_manifest.schema_version, 19);
   assert.deepEqual(course.lessons.slice(0, 10).map((lesson) => lesson.id), [
     "01-what-is-a-program",
+    "02-uml-activity",
     "02-statements-and-order",
     "03-input-processing-output",
     "04-values",
@@ -410,7 +482,6 @@ test("catalog includes a software-only programming fundamentals course", () => {
     "07-trace-a-program",
     "08-variables",
     "09-declaration-initial-value",
-    "10-variable-value-type",
   ]);
   assert.deepEqual(course.lessons.slice(-6).map((lesson) => lesson.id), [
     "38-error-types",
@@ -420,12 +491,61 @@ test("catalog includes a software-only programming fundamentals course", () => {
     "42-guided-final",
     "43-transfer-project",
   ]);
-  assert.ok(course.lessons.every((lesson) => ["choice", "code"].includes(lesson.completion?.type)));
+  assert.deepEqual(course.lessons.map((lesson) => lesson.completion.type).slice(0, 2), ["sequence", "information"]);
+  assert.ok(course.lessons.slice(2).every((lesson) => lesson.completion.type === "code_run"));
+  assert.ok(course.lessons.slice(2).every((lesson) => lesson.payload.artifact.type === "code_run_lab"));
+  assert.ok(course.lessons.slice(2).every((lesson) => Object.hasOwn(lesson.completion, "target_output")));
   assert.ok(course.lessons.every((lesson) => lesson.payload?.task && lesson.payload?.expected_result));
   assert.match(JSON.stringify(course.lessons), /initiale Belegung[\s\S]*Rechenoperatoren[\s\S]*Logisches UND/);
   assert.match(JSON.stringify(course.lessons), /Funktionen[\s\S]*return[\s\S]*Bedingungen[\s\S]*for\.\.\.of/);
-  const firstViewCode = course.lessons[0].payload.artifact.content;
-  assert.doesNotMatch(firstViewCode, /\bfunction\b|\breturn\b|\bif\b|\bfor\b/);
+  assert.equal(course.lessons[0].payload.artifact.type, "instruction_cards");
+  assert.equal(course.lessons[0].payload.artifact.cards.length, 3);
+  assert.equal(course.lessons[0].completion.type, "sequence");
+  assert.deepEqual(course.lessons[0].completion.correct_order, ["read-tag", "find-product", "show-product"]);
+  assert.equal(course.lessons[0].payload.artifact.content, undefined);
+  assert.doesNotMatch(JSON.stringify(course.lessons[0].payload.artifact), /Zeige das Ergebnis 12/);
+  assert.match(JSON.stringify(course.lessons[0].payload.artifact), /RFID-Etiketts[\s\S]*Produktbezeichnung/);
+  assert.match(course.lessons[0].payload.expected_result, /Weiter wird automatisch freigeschaltet/);
+  assert.equal(course.lessons[1].completion.type, "information");
+  assert.equal(course.lessons[1].payload.artifact.type, "uml_activity");
+  assert.match(course.lessons[1].title, /UML-Aktivitätsdiagramm/);
+  assert.equal(course.lessons[1].payload.artifact.decision, undefined);
+  assert.doesNotMatch(JSON.stringify(course.lessons.slice(0, 3)), /Freigabe|Türöffner|Entscheidungsknoten|\[ja\]|\[nein\]/i);
+  assert.equal(course.lessons[2].completion.type, "code_run");
+  assert.equal(course.lessons[2].payload.artifact.type, "code_run_lab");
+  assert.deepEqual(course.lessons[2].payload.artifact.help_items.map((item) => item.term), ["console.log", "Anführungszeichen", "Semikolon"]);
+  assert.match(course.lessons[2].payload.artifact.help_items[2].text, /JavaScript ergänzt es in vielen Fällen automatisch/);
+  assert.equal(course.lessons[3].completion.type, "code_run");
+  assert.equal(course.lessons[3].completion.target_output, "RFID-Produkt gefunden");
+  assert.equal(course.lessons[3].payload.artifact.type, "code_run_lab");
+  assert.equal(course.lessons[3].payload.artifact.content, 'console.log("Produkt gefunden");');
+  assert.match(course.lessons[3].payload.task, /Ändere nur den Text[\s\S]*Führe den Code/);
+  assert.equal(course.lessons[4].completion.target_output, "42\nMia\ntrue");
+  assert.equal(course.lessons[4].completion.required_changed_output_lines, 1);
+  assert.match(course.lessons[4].payload.task, /Ändere genau einen[\s\S]*darf anschließend bestehen bleiben/);
+  assert.doesNotMatch(course.lessons[4].payload.task, /wieder|zurück|herstellen/i);
+  assert.equal(course.lessons[5].completion.target_output, "number\nstring\nboolean");
+  assert.match(course.lessons[5].payload.task, /Fachbegriffe werden hier erstmals eingeführt/);
+  assert.doesNotMatch(JSON.stringify(course.lessons.slice(0, 5)), /Integer/);
+  assert.equal(course.lessons[42].payload.artifact.test_code.includes("berechneSumme"), true);
+  assert.equal(course.lessons[43].payload.artifact.test_code.includes("zaehleWarmeTage"), true);
+  const executableLines = course.lessons.slice(2).flatMap((lesson) => {
+    const artifact = lesson.payload.artifact;
+    return [artifact.content, artifact.test_code]
+      .filter(Boolean)
+      .flatMap((code) => code.split("\n"))
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("//") && !line.endsWith("{") && line !== "}")
+      .filter((line) => /^(?:const|let)\s|^return\b|^throw\b|^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\s*=|\s*\()/.test(line));
+  });
+  assert.ok(executableLines.length > 0);
+  assert.deepEqual(executableLines.filter((line) => !line.endsWith(";")), []);
+  assert.match(course.sources.find((source) => source.path === "README.md").content, /Code lesen, eine kleine Änderung ausprobieren, das Programm direkt ausführen/);
+  assert.match(guidedView, /function runGuidedJavaScript/);
+  assert.match(guidedView, /new Worker\(workerUrl\)/);
+  assert.match(guidedView, /Das Programm wurde nach 1,5 Sekunden beendet/);
+  assert.match(guidedView, /self\.fetch = undefined/);
+  assert.match(guidedView, /Code geändert – erneut ausführen/);
   const starterSource = course.sources.find((source) => source.path === "src/grundlagen.js").content;
   assert.match(starterSource, /console\.log\("Start"\);[\s\S]*console\.log\("Ende"\);/);
   assert.doesNotMatch(starterSource, /\bfunction\b|\breturn\b|\bif\b|\bfor\b|\bswitch\b/);
@@ -443,10 +563,10 @@ test("catalog includes a software-only programming fundamentals course", () => {
   );
   assert.equal(projectOptions.development_lessons, undefined);
   const manifest = courseModel.createViewManifest({}, { primarySourcePath: () => "src/grundlagen.js" });
-  assert.equal(manifest.views.length, 43);
+  assert.equal(manifest.views.length, 44);
   assert.equal(manifest.views[0].lesson_id, "development_lesson.programming.flow_values");
-  assert.equal(manifest.views[6].lesson_id, "development_lesson.programming.flow_values");
-  assert.equal(manifest.views[7].lesson_id, "development_lesson.programming.variables");
+  assert.equal(manifest.views[7].lesson_id, "development_lesson.programming.flow_values");
+  assert.equal(manifest.views[8].lesson_id, "development_lesson.programming.variables");
   assert.deepEqual(
     manifest.views.map((view) => view.id),
     course.lessons.map((lesson) => lesson.id),

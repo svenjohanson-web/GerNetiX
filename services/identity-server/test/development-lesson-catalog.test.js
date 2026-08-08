@@ -67,8 +67,8 @@ test("existing learning projects resolve lessons through references without copy
   const lessons = developmentLessonCatalog.resolveProjectLessons(references);
   const views = developmentLessonCatalog.viewsForProject(references);
 
-  assert.deepEqual(lessons.map((lesson) => lesson.step_ids.length), [7, 2]);
-  assert.equal(views.length, 9);
+  assert.deepEqual(lessons.map((lesson) => lesson.step_ids.length), [8, 2]);
+  assert.equal(views.length, 10);
   assert.equal(views[0].lesson_id, lessons[0].id);
   assert.equal(views.at(-1).lesson_id, lessons[1].id);
 });

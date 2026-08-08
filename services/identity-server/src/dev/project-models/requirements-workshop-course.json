@@ -1,0 +1,261 @@
+{
+  "slug": "ai-requirements-workshop",
+  "project": {
+    "slug": "ai-requirements-workshop",
+    "title": "Anforderungswerkstatt – Wenn die KI nichts erraten muss",
+    "area": "Requirements Engineering",
+    "summary": "Formuliere eine erste Idee, prüfe die Interpretation der KI und entwickle daraus eindeutige, fachlich begründete und testbare Anforderungen.",
+    "learning_category": "software_engineering",
+    "tags": ["runtime:browser", "topic:ai", "topic:requirements-engineering", "level:beginner"],
+    "hardware_profile_id": "runtime.browser_text",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "anforderungswerkstatt.md", "role": "learning_guide" }
+    ],
+    "steps": [
+      { "title": "Absicht formulieren", "text": "Beginne bewusst mit einem noch unvollständigen Satz.", "insight": "Ein guter Lernweg beginnt bei der tatsächlichen Absicht, nicht bei einer perfekten Formulierung." },
+      { "title": "KI-Verständnis spiegeln", "text": "Trenne sicher Verstandenes, Annahmen und Wissenslücken.", "insight": "Verstanden bedeutet nicht automatisch gemeint." },
+      { "title": "Identität und Berechtigung trennen", "text": "Unterscheide Identifikation, Authentifizierung, Autorisierung und Sitzung.", "insight": "Eine erkannte Person ist noch nicht automatisch berechtigt." },
+      { "title": "Verfahren im Kontext bewerten", "text": "Vergleiche Karte, Passkey, Zertifikat, Token, PIN und mehrere Faktoren.", "insight": "Eine Technik ist erst mit Einsatzkontext, Betrieb und Lebenszyklus bewertbar." },
+      { "title": "Anforderungsarten einordnen", "text": "Trenne Funktion, Qualität, Randbedingung und fachliche Regel.", "insight": "Das Schutzziel Sicherheit macht eine konkrete Systemreaktion nicht automatisch zur NFR." },
+      { "title": "Dehnbare Begriffe messbar machen", "text": "Übersetze schnell, sicher und einfach in beobachtbare Kriterien.", "insight": "Unprüfbare Qualitätswörter verlagern Entscheidungen unbemerkt in die Umsetzung." },
+      { "title": "Technikvorgaben hinterfragen", "text": "Kläre das Ziel, bevor du eine Lösung festschreibst.", "insight": "PKI, RFID oder Passkey sind Mittel und noch keine vollständige Anforderung." },
+      { "title": "Akzeptanzkriterien ableiten", "text": "Formuliere positive, negative und gestörte Fälle beobachtbar.", "insight": "Eine Anforderung wird belastbar, wenn ihre Erfüllung eindeutig nachweisbar ist." },
+      { "title": "Anforderungspaket prüfen", "text": "Halte Entscheidungen und offene Fragen getrennt fest.", "insight": "Offene Fragen sind wertvoller als still erfundene Antworten." }
+    ]
+  },
+  "development_lessons": [
+    { "id": "requirements-workshop.intent", "title": "Absicht und KI-Interpretation", "summary": "Vom ersten Satz zum sichtbaren Verständnis-Spiegel." },
+    { "id": "requirements-workshop.identity", "title": "Fachwissen vor Technik", "summary": "Identität, Berechtigung und Nachweisverfahren fachlich trennen." },
+    { "id": "requirements-workshop.classification", "title": "Anforderungen präzisieren", "summary": "Anforderungsarten und typische Denkfallen praktisch unterscheiden." },
+    { "id": "requirements-workshop.specification", "title": "Prüfbares Anforderungspaket", "summary": "Akzeptanzkriterien und offene Fragen zu einer belastbaren Spezifikation verbinden." }
+  ],
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Anforderungswerkstatt",
+    "summary": "Ein geführter Requirements-Engineering-Lernweg mit einem KI-gestützten Verständnis-Spiegel.",
+    "primary_source_path": "anforderungswerkstatt.md",
+    "hide_source_editor": true,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "first-intent",
+        "lesson_id": "requirements-workshop.intent",
+        "type": "story_slide",
+        "title": "Beginne mit deiner wirklichen Absicht",
+        "summary": "Du musst noch keinen perfekten Prompt schreiben. Ein absichtlich unvollständiger erster Satz macht sichtbar, was Menschen und KI ergänzen würden.",
+        "completion": { "type": "acknowledge", "label": "Praxisfall verstanden" },
+        "payload": {
+          "why": "Nur wenn die Ausgangslücken sichtbar bleiben, kannst du zwischen Formulierungsproblem und fehlendem Fachwissen unterscheiden.",
+          "model_lines": [
+            { "label": "Praxisfall", "text": "Ein Mitarbeiter soll sich an einer Maschine anmelden können." },
+            { "label": "Noch offen", "text": "Wer wird identifiziert, wie wird der Nachweis geprüft, was wird freigegeben und wann endet der Zugang?" },
+            { "label": "Leitfrage", "text": "Wie viel müsste eine umsetzende KI noch selbst annehmen?" }
+          ]
+        }
+      },
+      {
+        "id": "ai-understanding-mirror",
+        "lesson_id": "requirements-workshop.intent",
+        "type": "requirements_workshop",
+        "title": "Lass deine Formulierung spiegeln",
+        "summary": "Die KI trennt Interpretation, Annahmen, Wissenslücken, Anforderungsarten und erste Akzeptanzkriterien.",
+        "completion": { "type": "requirements_feedback" },
+        "payload": {
+          "artifact": { "type": "requirements_mirror" },
+          "task": "Beschreibe eine Anforderung in deinen eigenen Worten und prüfe anschließend jede ausgegebene Annahme.",
+          "expected_result": "Ein Verständnis-Spiegel ist sichtbar. Dein Text und das Ergebnis bleiben nur in dieser Browseransicht und werden nicht als Lernstand gespeichert.",
+          "why": "Die KI soll Unsicherheit sichtbar machen, nicht fachliche Entscheidungen für dich erfinden."
+        }
+      },
+      {
+        "id": "identity-boundaries",
+        "lesson_id": "requirements-workshop.identity",
+        "type": "explanation",
+        "title": "Vier verschiedene Fragen hinter „anmelden“",
+        "summary": "Identifikation, Authentifizierung, Autorisierung und Sitzung lösen unterschiedliche Probleme.",
+        "completion": {
+          "type": "choice",
+          "prompt": "Welche Frage gehört zur Autorisierung?",
+          "options": [
+            { "id": "who", "label": "Wer behauptet die Person zu sein?" },
+            { "id": "proof", "label": "Wie wird der Nachweis geprüft?" },
+            { "id": "allowed", "label": "Welche Maschinenfunktion darf die Person verwenden?" }
+          ],
+          "correct_option": "allowed",
+          "success": "Richtig: Autorisierung entscheidet nach der Identitätsprüfung über erlaubte Handlungen.",
+          "failure": "Prüfe noch einmal, welche Frage eine Berechtigung statt eine Identität beschreibt."
+        },
+        "payload": {
+          "cards": [
+            { "title": "Identifikation", "text": "Welche Identität wird behauptet oder erkannt?" },
+            { "title": "Authentifizierung", "text": "Wie wird diese Behauptung nachgewiesen?" },
+            { "title": "Autorisierung", "text": "Welche Handlung ist für diese Identität erlaubt?" },
+            { "title": "Sitzung", "text": "Wie lange gilt der gewährte Zugang und wie endet er?" }
+          ]
+        }
+      },
+      {
+        "id": "authentication-methods",
+        "lesson_id": "requirements-workshop.identity",
+        "type": "explanation",
+        "title": "Kein Verfahren ist ohne Kontext das beste",
+        "summary": "Nachweisverfahren unterscheiden sich bei Verlust, Weitergabe, Offlinebetrieb, Widerruf, Bedienbarkeit und Lebenszyklus.",
+        "completion": {
+          "type": "choice",
+          "prompt": "Welche Entscheidung ist fachlich zuerst nötig?",
+          "options": [
+            { "id": "library", "label": "Welche Programmbibliothek wird installiert?" },
+            { "id": "context", "label": "Welches Risiko, welcher Arbeitsablauf und welcher Offlinebedarf bestehen?" },
+            { "id": "password", "label": "Welches Standardpasswort wird vergeben?" }
+          ],
+          "correct_option": "context",
+          "success": "Richtig: Erst der Einsatzkontext macht die Verfahren sinnvoll vergleichbar.",
+          "failure": "Eine technische Komponente beantwortet noch nicht, welches Problem gelöst werden soll."
+        },
+        "payload": {
+          "cards": [
+            { "title": "RFID- oder Chipkarte", "text": "Praktischer Besitznachweis; Verlust, Weitergabe, Sperrung und Offlineprüfung müssen geklärt werden." },
+            { "title": "Passkey oder Hardware-Schlüssel", "text": "Kryptografischer Besitznachweis; Registrierung, Ersatz und Bedienung an der Maschine gehören zum Konzept." },
+            { "title": "PKI und Zertifikat", "text": "Vertrauenskette mit Ausstellung, Ablauf und Widerruf; nicht automatisch das fachliche Ziel." },
+            { "title": "PIN oder Passwort", "text": "Wissensfaktor mit Beobachtungs-, Teilungs- und Rücksetzrisiken." },
+            { "title": "Mehrere Faktoren", "text": "Erhöht Schutz und Aufwand; Rückfall- und Ersatzwege bleiben erforderlich." }
+          ]
+        }
+      },
+      {
+        "id": "requirement-types",
+        "lesson_id": "requirements-workshop.classification",
+        "type": "explanation",
+        "title": "Funktion, Qualität, Vorgabe oder Regel?",
+        "summary": "Die Rolle einer Aussage entscheidet, wie sie geprüft und später verändert werden kann.",
+        "completion": {
+          "type": "choice",
+          "prompt": "Wie ist „Nach drei ungültigen PIN-Eingaben muss der Zugang fünf Minuten gesperrt werden“ einzuordnen?",
+          "options": [
+            { "id": "functional", "label": "Funktionale Anforderung" },
+            { "id": "nfr", "label": "Nichtfunktionale Anforderung" },
+            { "id": "constraint", "label": "Randbedingung" }
+          ],
+          "correct_option": "functional",
+          "success": "Richtig: Der Satz beschreibt beobachtbares Systemverhalten, auch wenn sein Ziel Sicherheit ist.",
+          "failure": "Unterscheide das Schutzziel von der konkret verlangten Systemreaktion."
+        },
+        "payload": {
+          "cards": [
+            { "title": "Funktional", "text": "Was muss das System konkret tun?" },
+            { "title": "Nichtfunktional", "text": "Wie gut oder unter welcher messbaren Betriebsbedingung?" },
+            { "title": "Randbedingung", "text": "Welche vorhandene Vorgabe begrenzt die Lösung?" },
+            { "title": "Fachliche Regel", "text": "Welche Regel des Anwendungsbereichs gilt unabhängig von der Technik?" }
+          ]
+        }
+      },
+      {
+        "id": "vague-quality",
+        "lesson_id": "requirements-workshop.classification",
+        "type": "story_slide",
+        "title": "„Schnell und sicher“ ist noch nicht prüfbar",
+        "summary": "Dehnbare Qualitätswörter müssen in beobachtbare Kriterien übersetzt werden.",
+        "completion": {
+          "type": "choice",
+          "prompt": "Welche Rückfrage bringt „Die Anmeldung soll schnell funktionieren“ am weitesten?",
+          "options": [
+            { "id": "reader", "label": "Welcher schnellere Kartenleser soll gekauft werden?" },
+            { "id": "metric", "label": "Sind Antwortzeit, Bedienaufwand oder beide gemeint und welcher Grenzwert gilt?" },
+            { "id": "none", "label": "Keine – schnell ist im Arbeitsalltag eindeutig." }
+          ],
+          "correct_option": "metric",
+          "success": "Richtig: Erst Messgröße, Situation und Grenzwert machen die Qualität prüfbar.",
+          "failure": "Eine Lösungsauswahl ersetzt noch kein beobachtbares Qualitätskriterium."
+        },
+        "payload": {
+          "model_lines": [
+            { "label": "Unprüfbar", "text": "Die Anmeldung muss schnell sein." },
+            { "label": "Prüfbar", "text": "Nach dem Vorhalten eines gültigen Nachweises muss die Entscheidung innerhalb von 500 Millisekunden angezeigt werden." },
+            { "label": "Weiter offen", "text": "Ob zusätzlich wenige Bedienhandlungen verlangt werden, ist eine eigene Frage." }
+          ]
+        }
+      },
+      {
+        "id": "technology-trap",
+        "lesson_id": "requirements-workshop.classification",
+        "type": "story_slide",
+        "title": "Eine Technikvorgabe ersetzt nicht das Ziel",
+        "summary": "„Die Maschine muss PKI verwenden“ legt ein Mittel fest, ohne Schutzbedarf und Betrieb zu erklären.",
+        "completion": {
+          "type": "choice",
+          "prompt": "Welche Rückfrage sollte zuerst beantwortet werden?",
+          "options": [
+            { "id": "goal", "label": "Welches Schutzziel soll PKI in welchem Einsatzkontext erfüllen?" },
+            { "id": "library", "label": "Welche PKI-Bibliothek ist am beliebtesten?" },
+            { "id": "none", "label": "Keine – PKI beschreibt die Anforderung vollständig." }
+          ],
+          "correct_option": "goal",
+          "success": "Richtig: Erst Ziel und Kontext erlauben eine begründete Technikentscheidung.",
+          "failure": "Die Beliebtheit einer Implementierung erklärt den fachlichen Bedarf nicht."
+        },
+        "payload": {
+          "model_lines": [
+            { "label": "Ziel", "text": "Nur aktive Wartungsmitarbeitende dürfen den Servicemodus öffnen." },
+            { "label": "Risiko", "text": "Weitergegebene oder widerrufene Nachweise dürfen keine Freigabe ermöglichen." },
+            { "label": "Mögliche Lösung", "text": "PKI kann Teil der Lösung sein, wenn Ausstellung, Prüfung, Ablauf und Widerruf zum Betrieb passen." }
+          ]
+        }
+      },
+      {
+        "id": "acceptance-criteria",
+        "lesson_id": "requirements-workshop.specification",
+        "type": "explanation",
+        "title": "Akzeptanzkriterien zeigen den Nachweis",
+        "summary": "Prüfe mindestens erlaubten, abgewiesenen und gestörten Betrieb.",
+        "completion": {
+          "type": "choice",
+          "prompt": "Welches Kriterium ist beobachtbar und testbar?",
+          "options": [
+            { "id": "good", "label": "Ein gesperrter Nachweis gibt keine geschützte Funktion frei und zeigt den abgewiesenen Zugang an." },
+            { "id": "nice", "label": "Die Anmeldung fühlt sich zuverlässig an." },
+            { "id": "modern", "label": "Das System verwendet moderne Sicherheit." }
+          ],
+          "correct_option": "good",
+          "success": "Richtig: Ausgangslage, Aktion und beobachtbares Ergebnis sind erkennbar.",
+          "failure": "Das Kriterium muss ein eindeutiges beobachtbares Ergebnis benennen."
+        },
+        "payload": {
+          "cards": [
+            { "title": "Positiver Fall", "text": "Ein aktiver und berechtigter Nachweis gibt genau die erlaubte Funktion frei." },
+            { "title": "Negativer Fall", "text": "Ein unbekannter, abgelaufener oder gesperrter Nachweis gibt keine geschützte Funktion frei." },
+            { "title": "Störfall", "text": "Netzwerkausfall und verzögerter Widerruf werden entsprechend der festgelegten Offline-Regel behandelt." }
+          ]
+        }
+      },
+      {
+        "id": "requirements-package",
+        "lesson_id": "requirements-workshop.specification",
+        "type": "story_slide",
+        "title": "Dein prüfbares Anforderungspaket",
+        "summary": "Eine belastbare Spezifikation trennt Ziel, Systemverhalten, Qualität, Randbedingungen, Regeln, Akzeptanzkriterien und offene Fragen.",
+        "completion": { "type": "acknowledge", "label": "Lernprojekt abschließen" },
+        "payload": {
+          "why": "Offene Fragen bleiben ausdrücklich offen. So kann weder ein Mensch noch eine KI sie unbemerkt als Entscheidung behandeln.",
+          "model_lines": [
+            { "label": "Ziel", "text": "Welcher fachliche Nutzen oder Schutz soll erreicht werden?" },
+            { "label": "Funktion", "text": "Was muss das System in Normal- und Fehlerfällen tun?" },
+            { "label": "Qualität", "text": "Welche messbaren Zeiten, Verfügbarkeiten oder Schutzstärken gelten?" },
+            { "label": "Vorgaben und Regeln", "text": "Was ist bereits gesetzt und welche fachlichen Berechtigungsregeln gelten?" },
+            { "label": "Nachweis", "text": "Welche Akzeptanzkriterien zeigen eindeutig, dass die Anforderung erfüllt ist?" },
+            { "label": "Offen", "text": "Welche Entscheidung braucht noch Kontext, Fachwissen oder eine verantwortliche Person?" }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "anforderungswerkstatt.md",
+      "role": "learning_guide",
+      "content": "# Anforderungswerkstatt\n\nLeitfrage: Wie viel muss eine umsetzende KI noch selbst annehmen?\n\nEine gute Anforderung trennt Absicht, fachliche Entscheidung, Systemverhalten, messbare Qualität, Randbedingungen, Regeln, Akzeptanzkriterien und offene Fragen. Der KI-Verständnisspiegel unterstützt diese Trennung, entscheidet aber nicht anstelle des Lernenden.\n"
+    }
+  ]
+}

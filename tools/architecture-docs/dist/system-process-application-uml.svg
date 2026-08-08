@@ -78,7 +78,7 @@
 
     <rect class="node edge" x="635" y="150" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="176" text-anchor="middle">Identity Server</text>
-    <text class="smallText" x="745" y="196" text-anchor="middle">Plattform + KI-Anforderungswerkstatt · :4300</text>
+    <text class="smallText" x="745" y="196" text-anchor="middle">Plattform + Lernprojektkatalog · :4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="256" text-anchor="middle">Admin Access Server</text>
@@ -168,8 +168,6 @@
     <text class="smallText" x="464" y="627" text-anchor="middle">Importer</text>
     <rect class="node tool" x="265" y="648" width="260" height="24" rx="10"/>
     <text class="smallText" x="395" y="665" text-anchor="middle">Prozess-Monitor · VPN · Linkstatus</text>
-    <rect class="node tool" x="265" y="678" width="260" height="20" rx="10"/>
-    <text class="smallText" x="395" y="692" text-anchor="middle">Anforderungswerkstatt · Offline-Modus</text>
     <rect class="node tool" x="265" y="704" width="260" height="18" rx="10"/>
     <text class="smallText" x="395" y="717" text-anchor="middle">Architektur-Dokumentation · offline</text>
   </g>

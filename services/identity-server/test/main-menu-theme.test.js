@@ -36,8 +36,8 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
 });
 
-test("invalidates cached route assets when the hardware lab route is introduced", () => {
-  assert.match(html, /app-shell-controller\.js\?v=20260807-microcontroller-fundamentals-1/);
+test("invalidates cached route assets when guided learning changes", () => {
+  assert.match(html, /app-shell-controller\.js\?v=20260808-guided-sequence-17/);
   assert.match(html, /app\.js\?v=20260807-flat-guided-learning-2/);
 });
 

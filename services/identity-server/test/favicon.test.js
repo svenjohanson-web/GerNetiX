@@ -11,6 +11,7 @@ const pages = [
   "app/auth/index.html",
   "community/index.html",
   "flashbox-einrichten/index.html",
+  "leistungen/index.html",
   "nachbauprojekte/index.html",
   "nachbauprojekte/nexi-sprachassistent/index.html",
   "shop/index.html",

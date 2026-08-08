@@ -165,7 +165,7 @@ const lazyAssetVersions = {
   flashDialog: "20260807-helper-progress-1",
   flashExecutor: "20260804-unified-flash-2",
   flashProgress: "20260802-flash-progress",
-  guidedProject: "20260807-microcontroller-fundamentals-1",
+  guidedProject: "20260808-guided-sequence-17",
   onboarding: "20260719-04",
   onboardingModel: "20260803-performance-1",
   usbDisconnect: "20260801-shared-1",
@@ -237,9 +237,9 @@ function routeAssetsMissing(route) {
   if (route === "hardware-lab") return !document.querySelector("#hardwareLabView")
     || !document.querySelector('link[data-lazy-href*="/hardware-lab-route.css"][data-loaded="true"]')
     || typeof GerNetiXHardwareLab === "undefined";
-  if (route === "requirements-workshop") return !document.querySelector("#requirementsWorkshopView")
-    || !document.querySelector('link[data-lazy-href*="/requirements-workshop-route.css"][data-loaded="true"]')
-    || typeof GerNetiXRequirementsWorkshop === "undefined";
+  if (route === "nachschlagewerke") return !document.querySelector("#referenceLibraryView")
+    || !document.querySelector('link[data-lazy-href*="/reference-library-route.css"][data-loaded="true"]')
+    || typeof GerNetiXReferenceLibrary === "undefined";
   if (route === "community") return !document.querySelector('link[data-lazy-href*="/community-routes.css"][data-loaded="true"]')
     || typeof loadCommunityPortal === "undefined";
   if (route === "messages") return !document.querySelector("#messagesView")
@@ -302,13 +302,13 @@ async function loadRouteAssets(route) {
     GerNetiXHardwareLab.bind();
     return;
   }
-  if (route === "requirements-workshop") {
+  if (route === "nachschlagewerke") {
     await Promise.all([
-      loadRouteFragment("requirementsWorkshopView", `/app/fragments/requirements-workshop.html?v=${version}`),
-      loadPlatformStyle(`/app/requirements-workshop-route.css?v=${version}`),
-      loadPlatformScript(`/app/requirements-workshop-controller.js?v=${version}`),
+      loadRouteFragment("referenceLibraryView", `/app/fragments/reference-library.html?v=${version}`),
+      loadPlatformStyle(`/app/reference-library-route.css?v=${version}`),
+      loadPlatformScript(`/app/reference-library-controller.js?v=${version}`),
     ]);
-    GerNetiXRequirementsWorkshop.bind();
+    GerNetiXReferenceLibrary.bind();
     return;
   }
   if (route === "community") {
@@ -584,7 +584,7 @@ function renderAll() {
   if (route === "shop") renderShopConfiguration();
   if (route === "billing") renderBilling();
   if (route === "hardware-lab") GerNetiXHardwareLab.render();
-  if (route === "requirements-workshop") GerNetiXRequirementsWorkshop.render();
+  if (route === "nachschlagewerke") GerNetiXReferenceLibrary.render();
 }
 
 function renderRoute({ contentRendered = false } = {}) {
@@ -599,6 +599,7 @@ function renderRoute({ contentRendered = false } = {}) {
   document.body.classList.toggle("development-workspace-active", route === "development-platform");
   document.body.classList.toggle("development-hardware-active", route === "development-hardware");
   document.body.classList.toggle("hardware-lab-active", route === "hardware-lab");
+  document.body.classList.toggle("reference-library-active", route === "nachschlagewerke");
   renderBreadcrumb(route);
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
@@ -645,7 +646,7 @@ function renderRoute({ contentRendered = false } = {}) {
     if (!contentRendered) GerNetiXHardwareLab.render();
     GerNetiXHardwareLab.enter();
   }
-  if (route === "requirements-workshop") GerNetiXRequirementsWorkshop.enter();
+  if (route === "nachschlagewerke") GerNetiXReferenceLibrary.enter();
   if (route === "downloads") renderDownloads();
   if (route === "shop") loadCommunityMarketplace();
   if (route === "community") loadCommunityPortal();
@@ -763,11 +764,6 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "KI-Hardware-Assistent", route: "" },
     ],
-    "requirements-workshop": [
-      { label: "Plattform", route: "/app/dashboard/" },
-      { label: "Lernplattform", route: "/app/learn/" },
-      { label: "KI-Anforderungswerkstatt", route: "" },
-    ],
     learn: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Lernplattform", route: "/app/learn/" },
@@ -856,6 +852,10 @@ function currentLocationTrail(route) {
     ],
     knowledge: [
       { label: "Wissensportal", route: "/wissen/" },
+    ],
+    nachschlagewerke: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Nachschlagewerke", route: "" },
     ],
     "account-setup": [
       { label: "Plattform", route: "/app/dashboard/" },

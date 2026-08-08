@@ -711,6 +711,59 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
 .plan-final-cta { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .plan-final-cta > div:first-child { display: grid; gap: 8px; }
 .plan-final-cta p { max-width: 780px; margin: 0; color: var(--muted); line-height: 1.55; }
+.services-page { display: grid; gap: 18px; }
+.services-hero { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .72fr); gap: clamp(24px, 4vw, 52px); align-items: center; border-color: #155e75; background: radial-gradient(circle at 92% 8%, rgba(34, 211, 238, .18), transparent 22rem), linear-gradient(135deg, #0c2130, #111827 58%); }
+.services-hero > div, .services-section, .services-section-head, .services-card-head { display: grid; gap: 12px; }
+.services-hero h1 { max-width: 800px; font-size: clamp(28px, 4vw, 44px); font-weight: 740; }
+.services-hero .lead { color: #dbeafe; }
+.services-jump-links { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.services-jump-links .primary-action, .services-jump-links .secondary-action { margin: 0; }
+.services-honesty-note { display: grid; gap: 8px; padding: 18px; border: 1px solid #d97706; border-radius: 12px; background: rgba(217, 119, 6, .09); }
+.services-honesty-note strong { color: #fbbf24; }
+.services-honesty-note p { margin: 0; color: #cbd5e1; line-height: 1.58; }
+.services-section { gap: 22px; scroll-margin-top: 94px; }
+.services-section.development { border-color: #3730a3; background: radial-gradient(circle at 96% 0%, rgba(124, 58, 237, .12), transparent 28rem), var(--panel); }
+.services-section-head { max-width: 960px; gap: 9px; }
+.services-section-head h2, .services-section-head p { margin: 0; }
+.services-section-head > p:last-child { color: var(--muted); line-height: 1.65; }
+.services-learning-grid, .services-account-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+.services-offer-card, .services-account-card { display: grid; align-content: start; gap: 16px; min-width: 0; padding: clamp(18px, 2.5vw, 26px); border: 1px solid #334155; border-radius: 12px; background: rgba(15, 23, 42, .68); }
+.services-offer-card.available, .services-account-card.free { border-color: rgba(21, 128, 61, .7); }
+.services-offer-card.planned, .services-account-card.basic { border-color: rgba(8, 145, 178, .72); }
+.services-offer-card.bundle, .services-account-card.premium { border-color: rgba(124, 58, 237, .72); }
+.services-card-head { gap: 7px; }
+.services-card-head h3, .services-card-head p { margin: 0; }
+.services-card-head h3 { color: #f8fafc; font-size: clamp(20px, 2vw, 25px); line-height: 1.22; }
+.services-offer-card ul, .services-account-card ul { display: grid; gap: 8px; margin: 0; padding-left: 20px; color: #dbeafe; line-height: 1.5; }
+.services-offer-card li::marker, .services-account-card li::marker { color: #67e8f9; }
+.services-access { margin: auto 0 0; padding-top: 13px; border-top: 1px solid #334155; color: var(--muted); line-height: 1.52; }
+.services-access strong { color: var(--text); }
+.services-text-link { width: fit-content; color: #a5f3fc; font-weight: 820; text-decoration: underline; text-decoration-color: rgba(165, 243, 252, .38); text-underline-offset: 4px; }
+.services-text-link:hover, .services-text-link:focus-visible { color: #ecfeff; text-decoration-color: #67e8f9; }
+.services-bundle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.services-bundle-grid article { display: grid; align-content: start; gap: 10px; padding: clamp(18px, 2.5vw, 26px); border: 1px solid #475569; border-radius: 12px; background: linear-gradient(145deg, rgba(14, 116, 144, .12), rgba(30, 41, 59, .72)); }
+.services-bundle-grid article:last-child { background: linear-gradient(145deg, rgba(91, 33, 182, .13), rgba(30, 41, 59, .72)); }
+.services-bundle-grid h3, .services-bundle-grid p { margin: 0; }
+.services-bundle-grid h3 { font-size: clamp(21px, 2.2vw, 27px); }
+.services-bundle-grid > article > p:not(.eyebrow) { color: var(--muted); line-height: 1.62; }
+.services-topic-list { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 4px; }
+.services-topic-list span { padding: 5px 9px; border: 1px solid #475569; border-radius: 999px; color: #cbd5e1; font-size: 11px; font-weight: 760; }
+.services-ai-box { display: grid; gap: 6px; margin-top: auto; padding: 14px; border: 1px solid #334155; border-radius: 9px; background: #0b1018; }
+.services-ai-box span { color: #67e8f9; font-size: 10px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.services-ai-box strong { color: #f8fafc; line-height: 1.4; }
+.services-ai-box p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.services-credit-note { display: grid; grid-template-columns: minmax(240px, .7fr) minmax(0, 1.3fr); gap: 20px; align-items: center; padding: 19px; border: 1px solid #475569; border-radius: 12px; background: rgba(15, 23, 42, .64); }
+.services-credit-note div { display: grid; gap: 6px; }
+.services-credit-note h3, .services-credit-note p { margin: 0; }
+.services-credit-note > p { color: var(--muted); line-height: 1.62; }
+.services-extra-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.services-extra-grid article { display: grid; align-content: start; gap: 10px; }
+.services-extra-grid h2, .services-extra-grid p { margin: 0; }
+.services-extra-grid > article > p:not(.eyebrow) { color: var(--muted); line-height: 1.62; }
+.services-final-cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.services-final-cta > div:first-child { display: grid; gap: 8px; max-width: 760px; }
+.services-final-cta h2, .services-final-cta p { margin: 0; }
+.services-final-cta > div:first-child > p:last-child { color: var(--muted); line-height: 1.58; }
 footer {
   display: flex;
   justify-content: space-between;
@@ -757,6 +810,8 @@ footer {
   .learning-path-grid { grid-template-columns: 1fr; }
   .about-grid { grid-template-columns: 1fr; }
   .plan-hero, .plan-use-path, .plan-tier-grid, .plan-detail-grid, .rebuild-account-grid { grid-template-columns: 1fr; }
+  .services-hero, .services-learning-grid, .services-account-grid, .services-bundle-grid, .services-extra-grid, .services-credit-note { grid-template-columns: 1fr; }
+  .services-final-cta { display: grid; }
   .plan-concept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .plan-final-cta { display: grid; }
   .shop-public-hero { display: grid; }

@@ -51,10 +51,15 @@ Das verbindliche, domaenenuebergreifende Bedien- und Markup-Modell fuer
 Architektur-, Code-, Help- und Hardware-KI steht im
 [Standard-KI-Chat-Pattern](standard-ai-chat-pattern.md).
 
-Die integrierte KI-Anforderungswerkstatt und ihr reproduzierbarer Offline-Modus
-fuer eindeutige, pruefbare und KI-verstaendliche Anforderungen sind im
+Das integrierte Katalog-Lernprojekt KI-Anforderungswerkstatt und seine
+deterministische Entwicklungsreferenz fuer eindeutige, pruefbare und
+KI-verstaendliche Anforderungen sind im
 [Lernprojekt fuer KI-verstaendliche Anforderungen](requirements-engineering-learning-project.md)
 beschrieben.
+
+Die ersten dauerhaft kaufbaren thematischen Lernpakete, ihre enthaltenen
+kostenlosen und kostenpflichtigen Courses sowie faire Kauf- und Upgrade-Regeln
+sind unter [Lernkurs-Pakete](learning-course-bundles.md) beschrieben.
 
 Die verbindliche Trennung des Plattform-Startpfads in kritischen Bootstrap,
 routenbezogene Summary-Abschnitte, eigene Domaenenendpunkte und lazy geladene

@@ -84,7 +84,7 @@ const LearningProjectView = (() => {
       <summary title="${escapeHtml(learningText("showProgressDetails", "Lessons und Schritte anzeigen"))}">
         <header>
           <div><p class="eyebrow">${escapeHtml(learningText("progress", "Fortschritt"))}</p><strong>${structure.lessons.length} ${escapeHtml(lessonLabel)} · ${structure.totalSteps} ${escapeHtml(stepLabel)}</strong></div>
-          <span>${structure.completedSteps}/${structure.totalSteps}</span>
+          <span title="${structure.completedSteps} von ${structure.totalSteps} Schritten erledigt">${structure.completedSteps}/${structure.totalSteps} ${escapeHtml(completedLabel)}</span>
         </header>
         <div class="learning-project-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="${structure.totalSteps}" aria-valuenow="${structure.completedSteps}" aria-label="${structure.completedSteps} von ${structure.totalSteps} ${escapeHtml(completedLabel)}"><span style="width:${percent}%"></span></div>
       </summary>

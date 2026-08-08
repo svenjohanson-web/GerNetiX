@@ -123,6 +123,11 @@ einem internen Routenwechsel parallel hydriert und loesen gemeinsam hoechstens
 einen weiteren Inhaltsrender aus. Antworten einer inzwischen verlassenen
 Route duerfen nicht mehr rendern.
 
+Die kompakte Nachschlagewerke-Ansicht unter `/app/nachschlagewerke/` lädt ihr
+passives HTML-Fragment, ihr routeneigenes Stylesheet und den statischen
+Such-/Filtercontroller ebenfalls erst beim Eintritt. Die Kurzreferenzen sind
+versionierter UI-Inhalt und erzeugen keine eigene Browser- oder Serverpersistenz.
+
 IDE, Build/Flash, Debug, gefuehrte Projektansicht und Provisioning bilden
 ebenfalls keine globale Startvoraussetzung. Der zentrale Loader setzt sie aus
 deduplizierten Teilpaketen zusammen:

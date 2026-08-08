@@ -320,7 +320,9 @@ GerNetiX School wird als **jährliche Education-Server-Lizenz** angeboten – wa
 
 Cloud ist hier kein Zwangsspeicher für ein Zuhause, sondern die kontoübergreifende Entwicklungs- und Komfortschicht. Die bereits vorhandene Trennung von Webshop, Account und Aktivierungscode bleibt verbindlich.
 
-Die öffentliche, kundenverständliche Vergleichssicht liegt unter **`/tarife/`**. Sie beginnt nicht mit Tarifnamen oder Sperrstatus, sondern mit einem konkreten Funktionsweg: Was funktioniert bereits als Nachbau, was ergänzt ein kostenloses Konto, was benötigt einen Tarif oder KI-Verbrauch und was muss der Nutzer als Nächstes tun? Erst danach folgt der Tarifvergleich als Nachschlagewerk. Dabei muss die Sicht immer zwischen Zugang/Konto, Cloud-Tarif, KI-Credits, Recovery-Verfahren und separater Home-Lizenz unterscheiden. Noch nicht kaufbare Stufen, Preise oder Kontingente werden ausdrücklich als geplant markiert; zusätzlich nennt die Seite den fachlichen Grund und einen heute möglichen nächsten Schritt. Sie darf aus strategischen Zielwerten keine bereits verfügbare Leistung ableiten.
+Die öffentliche Leistungsübersicht liegt unter **`/leistungen/`** und trennt zuerst den Lernbereich mit kostenlosen Grundlagen, dauerhaften Einzelkäufen und Paketen vom Entwicklungsbereich mit Kostenlos, Basic+, Premium und den jeweiligen KI-Kontingenten. Sie nennt keine Preise oder Tokenmengen, solange diese nicht belastbar festgelegt sind. Die detaillierte Vergleichssicht unter **`/tarife/`** beginnt nicht mit Tarifnamen oder Sperrstatus, sondern mit einem konkreten Funktionsweg: Was funktioniert bereits als Nachbau, was ergänzt ein kostenloses Konto, was benötigt einen Tarif oder KI-Verbrauch und was muss der Nutzer als Nächstes tun? Erst danach folgt der Tarifvergleich als Nachschlagewerk. Beide Seiten müssen zwischen Zugang/Konto, dauerhaft gekauftem Lerninhalt, Cloud-Tarif, KI-Credits, Recovery-Verfahren und separater Home-Lizenz unterscheiden. Noch nicht kaufbare Stufen, Preise oder Kontingente werden ausdrücklich als geplant markiert; zusätzlich wird der fachliche Grund und ein heute möglicher nächster Schritt genannt. Keine Seite darf aus strategischen Zielwerten eine bereits verfügbare Leistung ableiten.
+
+Lerninhalte werden zusätzlich als dauerhaft kaufbare Einzel-Courses und thematische Pakete modelliert. Der erste Paketstand umfasst **Messtechnik und Fehlersuche** sowie **Embedded- und Mikrocontroller-Grundlagen**; Zuschnitt, Ausbauzustand und Kaufversprechen stehen in [Lernkurs-Pakete](learning-course-bundles.md). Kostenlose Grundlagen bleiben kostenlos und werden nicht zur Berechnung einer künstlichen Paketersparnis verwendet. Bereits gekaufte enthaltene Courses sollen bei einem späteren Paketkauf angerechnet werden. Ein Cloud-Abo verkauft laufende Dienste und kann künftig einen zeitlich begrenzten Bibliothekszugang enthalten, ersetzt aber nicht den dauerhaften Zugriff aus einem Course- oder Paketkauf.
 
 Für Nexi gilt zusätzlich: Der öffentliche Einstieg führt zum Nachbau, der
 zweite echte Einstieg führt nach der Anmeldung zur eigenständigen
@@ -341,7 +343,7 @@ für den öffentlichen Nachbau noch ein eigener Startweg auf der Homepage.
 | USB-Flash und Community-Hardware | Ja, soweit technisch kompatibel | Ja | Ja |
 | Geräteinventar und lokales Pairing | Ja | Ja | Ja |
 | Geführte Grundlagen und Projektvorschau | Ja | Ja | Ja |
-| Zusätzliche geführte Lernprojekte, geprüfte Templates und Projekt-Assets | Vorschau bzw. einzelne kostenlose Inhalte | Enthalten: praxisnahe Standardbibliothek | Enthalten: vollständige Premium-Bibliothek und verbundene Erweiterungen |
+| Lerninhalte | Kostenlose Grundlagen sowie dauerhaft gekaufte Einzel-Courses und Pakete | Wie Kostenlos; ein zeitlich begrenzter Bibliothekszugang ist erst nach eigener Produktentscheidung möglich | Wie Basic+; kein stillschweigender Ersatz für dauerhafte Course- und Paketkäufe |
 | Entwicklungs- und Community-KI | Kein enthaltenes Kontingent für kostenpflichtige externe KI; ein registriertes Konto kann bei Bedarf Prepaid-Credits kaufen | Kleines, klar veröffentlichtes Monatskontingent; zusätzlich Prepaid-Credits kaufbar | Höheres, klar veröffentlichtes Monatskontingent; zusätzlich Prepaid-Credits kaufbar |
 | GerNetiX Help KI | Kostenoptimiertes OpenAI-Modell mit begrenztem Hilfe-Kontext und KI-Credit-Limit | Im enthaltenen KI-Credit-Rahmen | Im enthaltenen KI-Credit-Rahmen |
 | Projekt-Push, Cloud-/OTA-Komfort und längere Retention | Kleine, transparent dokumentierte Basisquote | Praxis-Kontingent | Erweitertes Kontingent mit Limits und Kostenkontrolle |
@@ -350,8 +352,8 @@ für den öffentlichen Nachbau noch ein eigener Startweg auf der Homepage.
 Die Stufen verkaufen **schrittweise mehr Zeitgewinn und fortlaufende Hilfe**, nicht das Recht, eigene Geräte grundsätzlich weiter zu benutzen:
 
 - **Kostenlos** beweist den Nutzen: eigene Hardware, erste Projekte, lokales Pairing und offene Community.
-- **Basic+** ist die alltägliche Praxisstufe: mehr Projekte, eine breite getestete Projektbibliothek, ein kleines KI-Budget und ausreichend Cloud-Komfort für regelmäßige Maker.
-- **Premium** ist die Vertiefungsstufe: vollständige Lern- und Erweiterungsbibliothek, höhere KI-/Cloud-Kontingente und anspruchsvollere vernetzte Projekte.
+- **Basic+** ist die alltägliche Praxisstufe: mehr Projekte, ein kleines KI-Budget und ausreichend Cloud-, Build- und OTA-Komfort für regelmäßige Maker.
+- **Premium** ist die Vertiefungsstufe: höhere KI-/Cloud-Kontingente, mehr verbundene Erweiterungen und Komfort für anspruchsvollere vernetzte Projekte. Dauerhaft gekaufte Courses und Pakete bleiben davon unabhängig.
 
 Damit wird Premium nicht zur bloßen Paywall, und Basic+ ist kein künstlich verstümmeltes Premium. Jede Stufe muss allein einen klaren Zweck erfüllen.
 
@@ -383,6 +385,8 @@ Auf der öffentlichen Produktseite darf hierfür nur „nach Absprache“ geworb
 | Angebot | Abrechnung | Enthält | Nach Ablauf |
 | --- | --- | --- | --- |
 | Hardware (Flashbox, Home) | Einmalig | Das physische Gerät, gesetzliche Gewährleistung, Grundfunktion | Hardware bleibt nutzbar |
+| Einzel-Course | Einmalig | Dauerhafter Zugriff auf den benannten Course und seinen Lernfortschritt | Kein Ablauf; laufende Cloud-, Build- und KI-Dienste bleiben getrennt |
+| Lernkurs-Paket | Einmalig | Dauerhafter Zugriff auf die beim Kauf benannten Courses; vorhandene enthaltene Einzelkäufe werden beim Upgrade angerechnet | Kein Ablauf; später neu erscheinende Courses nur bei ausdrücklicher Zusage enthalten |
 | Basic+ monatlich | Monatlich, jederzeit kündbar | Basic+-Cloud für die Laufzeit | Fällt auf Kostenlos zurück |
 | Premium monatlich | Monatlich, jederzeit kündbar | Premium-Cloud für die Laufzeit | Fällt auf Kostenlos zurück |
 | Basic+ jährlich | Jährlich zum Preis von zehn Monaten | Zwölf Monate Basic+; **eine** Home-Server-Softwarelizenz für den privaten Betrieb | Fällt auf Kostenlos zurück; Home bleibt lokal funktionsfähig |

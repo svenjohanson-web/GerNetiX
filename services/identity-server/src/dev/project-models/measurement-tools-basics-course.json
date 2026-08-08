@@ -1,0 +1,159 @@
+{
+  "slug": "measurement-tools-basics",
+  "project": {
+    "slug": "measurement-tools-basics",
+    "title": "Umgang mit Messmitteln",
+    "area": "Elektronik und Messtechnik",
+    "summary": "Lerne mit Multimeter, Logikanalysator und Oszilloskop, sichere Kleinspannungsschaltungen systematisch zu prüfen und Messwerte verständlich zu erklären.",
+    "learning_category": "embedded",
+    "tags": ["topic:measurement", "topic:sensors", "level:beginner"],
+    "steps": [
+      { "title": "Messgerät, Buchsen und Messleitungen", "text": "Ordne COM-, Spannungs- und Strombuchse der beabsichtigten Messart zu und benenne vor dem Anschluss die erwartete Größenordnung.", "insight": "Eine sichere Messung beginnt mit einer Vorhersage und der richtigen Buchse." },
+      { "title": "Spannung parallel messen", "text": "Miss Gleichspannung an Batterie, Versorgung und LED-Schaltung parallel zwischen zwei Messpunkten.", "insight": "Spannung ist ein Unterschied zwischen zwei Punkten und braucht immer einen Bezug." },
+      { "title": "Strom in Reihe messen", "text": "Schalte die Schaltung aus, öffne den Stromkreis und setze das Multimeter mit passender Buchse in Reihe ein.", "insight": "Ein Strommessgerät parallel zur Quelle kann einen Kurzschluss verursachen." },
+      { "title": "Widerstand und Durchgang prüfen", "text": "Trenne die Versorgung und vergleiche gemessene Einzel-, Reihen- und Parallelwiderstände mit der Rechnung.", "insight": "Widerstand und Durchgang werden nur an einer spannungsfreien Schaltung geprüft." },
+      { "title": "Messbereiche und Messfehler", "text": "Vergleiche Überlauf, passenden Bereich und unnötig großen Bereich und dokumentiere Wert, Einheit und Randbedingungen.", "insight": "Mehr angezeigte Stellen bedeuten nicht automatisch eine genauere Messung." },
+      { "title": "Logikanalysator sicher anschließen", "text": "Prüfe Signalpegel, gemeinsame Masse, Kanalzuordnung und eine ausreichend hohe Abtastrate.", "insight": "Ein sauber gezeichneter Digitalverlauf kann bei falscher Abtastrate trotzdem falsch sein." },
+      { "title": "Flanken, Pulsbreite und Timing", "text": "Bestimme an einem PWM-Signal Frequenz, Periodendauer, HIGH-Zeit, LOW-Zeit und Tastverhältnis.", "insight": "Ein Digitalsignal besteht nicht nur aus HIGH und LOW, sondern auch aus Zeit." },
+      { "title": "Einfaches UART-Signal dekodieren", "text": "Vergleiche das sichtbare Rohsignal mit Baudrate, Startbit, Datenbits, Stopbit und dem Dekodergebnis.", "insight": "Ein Protokolldekoder ist nur so verlässlich wie Pegel, Masse und seine Einstellungen." },
+      { "title": "Oszilloskop, Skalen und Tastkopf", "text": "Stelle Tastkopf, Volt pro Kästchen, Zeit pro Kästchen und Trigger so ein, dass ein Rechtecksignal stabil sichtbar wird.", "insight": "Trigger und Skalen verändern die Darstellung, nicht das gemessene Signal." },
+      { "title": "Amplitude, Frequenz und Offset", "text": "Beschreibe Rechteck und PWM mit Spitze-Spitze-Wert, Periodendauer, Frequenz, Tastverhältnis und Gleichanteil.", "insight": "Das Oszilloskop zeigt die wirkliche Signalform einschließlich Flanken und Störungen." },
+      { "title": "Messmittel sinnvoll kombinieren", "text": "Untersuche dasselbe PWM-Signal mit allen drei Geräten und halte fest, welche Information jedes zeigt oder verbirgt.", "insight": "Multimeter, Logikanalysator und Oszilloskop beantworten unterschiedliche Fragen." }
+    ],
+    "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "docs/messprotokoll.md", "role": "learning_guide" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Umgang mit Messmitteln",
+    "summary": "Vorhersagen, sicher aufbauen, messen, gezielt verändern und das Ergebnis erklären.",
+    "primary_source_path": "docs/messprotokoll.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "multimeter-orientation", "type": "story_slide", "title": "Messung zuerst planen", "summary": "Messgröße, erwarteter Wert, Buchse und Anschlussart stehen fest, bevor eine Prüfspitze die Schaltung berührt.",
+        "completion": { "type": "acknowledge", "label": "Messvorbereitung verstanden" },
+        "payload": { "note": "Der Kurs arbeitet ausschließlich mit Batterie, USB und berührsicherer Kleinspannung – niemals an Netzspannung.", "model_lines": [
+          { "label": "Vorhersagen", "text": "Welche Größe soll gemessen werden und welcher Wert oder Verlauf ist plausibel?" },
+          { "label": "Auswählen", "text": "Messart, COM- und Messbuchse sowie einen zunächst ausreichend großen Bereich wählen." },
+          { "label": "Anschließen", "text": "Spannung parallel, Strom in Reihe, Widerstand ausschließlich spannungsfrei messen." },
+          { "label": "Erklären", "text": "Messwert, Einheit, Bereich, Messpunkte und erkennbare Unsicherheit notieren." }
+        ] }
+      },
+      {
+        "id": "multimeter-voltage", "type": "explanation", "title": "Spannung parallel messen", "summary": "Zwei Prüfspitzen vergleichen das elektrische Potential an zwei Punkten.",
+        "completion": { "type": "acknowledge", "label": "Spannungsmessung verstanden" },
+        "payload": { "cards": [
+          { "title": "Anschluss", "text": "Schwarze Leitung an COM, rote Leitung an die Spannungsbuchse; das Gerät wird parallel angeschlossen." },
+          { "title": "Bezug", "text": "Der angezeigte Wert hängt von den beiden Messpunkten und ihrer Plus-/Minus-Richtung ab." },
+          { "title": "Versuch", "text": "Vergleiche Batterie, Versorgung und Spannung an einer LED-Schaltung an mehreren Messpunkten." },
+          { "title": "Nachweis", "text": "Notiere Messpunkte, Bereich, Wert, Einheit und ob das Ergebnis zur Vorhersage passt." }
+        ] }
+      },
+      {
+        "id": "multimeter-current", "type": "story_slide", "title": "Strom nur in Reihe messen", "summary": "Für die Strommessung wird der ausgeschaltete Stromkreis geöffnet und das Messgerät in die Lücke eingesetzt.",
+        "completion": { "type": "acknowledge", "label": "Strommessung verstanden" },
+        "payload": { "note": "Ein Multimeter im Strombereich darf nie parallel an eine Quelle angeschlossen werden.", "model_lines": [
+          { "label": "Abschalten", "text": "Vor dem Umbau die Versorgung trennen." },
+          { "label": "Abschätzen", "text": "Den erwarteten Strom aus Versorgung, Last und Schaltung grob bestimmen." },
+          { "label": "Einsetzen", "text": "Passende Strombuchse wählen und das Gerät in Reihe in den geöffneten Pfad setzen." },
+          { "label": "Zurückbauen", "text": "Nach der Messung die rote Leitung wieder in die Spannungsbuchse stecken." }
+        ] }
+      },
+      {
+        "id": "multimeter-resistance", "type": "explanation", "title": "Widerstand und Durchgang spannungsfrei prüfen", "summary": "Das Messgerät speist selbst einen kleinen Prüfstrom ein.",
+        "completion": { "type": "acknowledge", "label": "Widerstandsmessung verstanden" },
+        "payload": { "cards": [
+          { "title": "Spannungsfrei", "text": "Batterie oder USB sichtbar trennen und gespeicherte Energie berücksichtigen." },
+          { "title": "Vergleichen", "text": "Aufdruck, Toleranz, Rechnung und Messwert voneinander unterscheiden." },
+          { "title": "Schaltungseinfluss", "text": "Parallelpfade können den eingebauten Widerstand kleiner erscheinen lassen." },
+          { "title": "Durchgang", "text": "Der Signalton ist eine schnelle qualitative Prüfung, kein exakter Widerstandsnachweis." }
+        ] }
+      },
+      {
+        "id": "multimeter-ranges", "type": "implementation_plan", "title": "Messbereich und PWM-Versuch", "summary": "Ein 500-Hz-PWM-Signal verbindet Vorhersage, Bereichswahl und plausible Mittelwertmessung.",
+        "payload": { "tasks": [
+          "LOW- und HIGH-Spannung als Referenz messen",
+          "Bei 50 Prozent Tastverhältnis die Frequenz von 0,5 Hz bis 1 kHz verändern und die Anzeige beobachten",
+          "Bei stabiler Frequenz 0, 25, 50, 75 und 100 Prozent Tastverhältnis einstellen",
+          "U_erwartet = U_LOW + D × (U_HIGH − U_LOW) für jeden Punkt berechnen",
+          "Vorhersage, Minimum, Maximum, typischen Wert und Stabilität protokollieren"
+        ] }
+      },
+      {
+        "id": "logic-analyzer-basics", "type": "explanation", "title": "Logikanalysator anschließen", "summary": "Digitale Eingänge beobachten Zustände relativ zu einer gemeinsamen Masse.",
+        "completion": { "type": "acknowledge", "label": "Anschluss verstanden" },
+        "payload": { "cards": [
+          { "title": "Pegel", "text": "Zulässige Eingangsspannung und Schaltschwelle müssen zum Signal passen." },
+          { "title": "Masse", "text": "Schaltung und Logikanalysator benötigen einen gemeinsamen Bezugspunkt." },
+          { "title": "Kanal", "text": "Jede Leitung eindeutig benennen und am richtigen Eingang anschließen." },
+          { "title": "Abtastrate", "text": "Mehrere Messpunkte pro kürzestem interessierenden Puls einplanen." }
+        ] }
+      },
+      {
+        "id": "logic-analyzer-timing", "type": "story_slide", "title": "Flanken und Timing sichtbar machen", "summary": "Frequenz, Periodendauer, Pulsbreite und Tastverhältnis beschreiben denselben Verlauf aus verschiedenen Blickwinkeln.",
+        "completion": { "type": "acknowledge", "label": "Timing verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Periode", "text": "Eine vollständige Wiederholung aus HIGH- und LOW-Zeit." },
+          { "label": "Frequenz", "text": "Anzahl der Perioden pro Sekunde; f = 1 / T." },
+          { "label": "Tastverhältnis", "text": "Anteil der Periode, den das Signal HIGH ist." },
+          { "label": "Aliasing", "text": "Zu langsame Abtastung kann Pulse auslassen und eine glaubwürdige falsche Frequenz zeigen." }
+        ] }
+      },
+      {
+        "id": "logic-analyzer-uart", "type": "implementation_plan", "title": "UART-Rohsignal und Dekoder vergleichen", "summary": "Ein Dekodergebnis wird gegen die sichtbaren Bits und die eingestellten Parameter geprüft.",
+        "payload": { "tasks": [
+          "Gemeinsame Masse und zulässigen Signalpegel prüfen",
+          "Baudrate, Datenbits, Parität und Stopbits notieren",
+          "Ein bekanntes Zeichen übertragen und Startbit sowie Bitzeiten im Rohsignal messen",
+          "Automatisch dekodiertes Zeichen mit dem erwarteten Zeichen vergleichen",
+          "Baudrate absichtlich falsch einstellen und das Fehlerbild erklären"
+        ] }
+      },
+      {
+        "id": "oscilloscope-orientation", "type": "explanation", "title": "Tastkopf, Skalen und Trigger", "summary": "Ein stabil dargestelltes Signal braucht eine passende vertikale, horizontale und zeitliche Einstellung.",
+        "completion": { "type": "acknowledge", "label": "Oszilloskop eingestellt" },
+        "payload": { "cards": [
+          { "title": "Tastkopf", "text": "1x/10x-Einstellung an Tastkopf und Oszilloskop abgleichen und den Tastkopf am Testsignal kompensieren." },
+          { "title": "Masse", "text": "Vorher klären, womit die Masseklemme elektrisch verbunden ist; kurz und sicher anschließen." },
+          { "title": "Skalen", "text": "Volt und Zeit pro Kästchen so wählen, dass Höhe und mehrere Perioden sichtbar sind." },
+          { "title": "Trigger", "text": "Quelle, steigende Flanke und Pegel zwischen LOW und HIGH wählen, bis das Bild stabil steht." }
+        ] }
+      },
+      {
+        "id": "oscilloscope-waveforms", "type": "story_slide", "title": "Signalform beschreiben", "summary": "Das Oszilloskop macht neben Zahlenwerten auch Flanken, Überschwingen, Rauschen und Offset sichtbar.",
+        "completion": { "type": "acknowledge", "label": "Signalform beschrieben" },
+        "payload": { "model_lines": [
+          { "label": "Höhe", "text": "LOW, HIGH, Spitze-Spitze-Wert und gegebenenfalls Offset bestimmen." },
+          { "label": "Zeit", "text": "Periodendauer messen und daraus die Frequenz berechnen." },
+          { "label": "PWM", "text": "HIGH-Zeit und Periode messen und daraus das Tastverhältnis bestimmen." },
+          { "label": "Flanke", "text": "In eine Flanke hineinzoomen und Anstiegszeit, Überschwingen oder Störungen suchen." }
+        ] }
+      },
+      {
+        "id": "measurement-tools-comparison", "type": "implementation_plan", "title": "Dasselbe PWM-Signal mit drei Messmitteln", "summary": "Der Abschlussversuch trennt Zahlenwert, digitale Zustände und wirkliche Signalform.",
+        "payload": { "tasks": [
+          "PWM mit 500 Hz und 25, 50 und 75 Prozent Tastverhältnis einstellen",
+          "Mit dem Multimeter den angezeigten Gleichspannungsmittelwert protokollieren",
+          "Mit dem Logikanalysator Frequenz, HIGH-Zeit, LOW-Zeit und Tastverhältnis bestimmen",
+          "Mit dem Oszilloskop LOW, HIGH, Periodendauer und Flankenform untersuchen",
+          "Für jedes Gerät festhalten: Das sehe ich – das sehe ich nicht",
+          "Einen absichtlich eingebauten ungefährlichen Fehler mit mindestens zwei Messmitteln eingrenzen"
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/messprotokoll.md",
+      "role": "learning_guide",
+      "content": "# Messprotokoll\n\n## Sicherheitsgrenze\n\nDieses Lernprojekt arbeitet ausschließlich mit Batterie, USB und berührsicherer Kleinspannung. Netzspannung und Messungen in Netzgeräten sind ausgeschlossen. Vor einer Strommessung wird die Schaltung ausgeschaltet. Widerstand und Durchgang werden nur spannungsfrei gemessen. Beim Oszilloskop muss vor dem Anschluss geklärt sein, womit die Masseklemme elektrisch verbunden ist.\n\n## Protokoll je Versuch\n\n- Fragestellung und erwarteter Wert oder Verlauf\n- Schaltung, Messpunkte und verwendetes Messmittel\n- Messart, Buchse, Bereich und Einstellungen\n- Messwert mit Einheit und beobachteter Schwankung\n- gezielt veränderter Parameter\n- Vergleich von Vorhersage und Beobachtung\n- Grenze oder Unsicherheit des Messaufbaus\n\n## Abschluss\n\nUntersuche dasselbe PWM-Signal mit Multimeter, Logikanalysator und Oszilloskop. Beschreibe für jedes Gerät, welche Information sichtbar wird und welche verborgen bleibt."
+    }
+  ]
+}

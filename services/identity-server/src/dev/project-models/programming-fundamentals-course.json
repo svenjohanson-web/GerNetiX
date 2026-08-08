@@ -4,7 +4,7 @@
     "slug": "programming-fundamentals",
     "title": "Grundlagen der Programmierung",
     "area": "Programmierung",
-    "summary": "Lerne in acht Lessons mit 43 verpflichtend geprüften Schritten, wie Werte, Variablen, Operationen, Logik, Funktionen, Bedingungen und Schleifen zusammenwirken.",
+    "summary": "Lerne in acht Lessons mit 44 aufeinander aufbauenden Schritten, wie Werte, Variablen, Operationen, Logik, Funktionen, Bedingungen und Schleifen zusammenwirken.",
     "learning_category": "software_engineering",
     "tags": ["runtime:browser", "topic:programming", "level:beginner"],
     "hardware_profile_id": "runtime.browser_javascript",
@@ -30,7 +30,7 @@
       "id": "development_lesson.programming.flow_values",
       "title": "Programmablauf und Werte",
       "summary": "Verstehe Anweisungen, Reihenfolge, Eingabe, Verarbeitung, Ausgabe, Werte und Datentypen.",
-      "step_ids": ["01-what-is-a-program", "02-statements-and-order", "03-input-processing-output", "04-values", "05-basic-data-types", "06-typeof", "07-trace-a-program"],
+      "step_ids": ["01-what-is-a-program", "02-uml-activity", "02-statements-and-order", "03-input-processing-output", "04-values", "05-basic-data-types", "06-typeof", "07-trace-a-program"],
       "standalone_start": {
         "snapshot_id": "snapshot.programming.flow_values.empty",
         "runtime": "browser_javascript",
@@ -132,9 +132,9 @@
     }
   ],
   "view_manifest": {
-    "schema_version": 4,
+    "schema_version": 19,
     "title": "Grundlagen der Programmierung",
-    "summary": "Acht Lessons mit 43 Schritten führen vom ersten Programmablauf bis zu einer selbstständigen JavaScript-Aufgabe.",
+    "summary": "Acht Lessons mit 44 Schritten führen vom ersten Programmablauf bis zu einer selbstständigen JavaScript-Aufgabe.",
     "primary_source_path": "src/grundlagen.js",
     "hide_source_editor": false,
     "mode": "guided_ide"
@@ -143,78 +143,109 @@
     {
       "id": "01-what-is-a-program",
       "title": "Was ist ein Programm?",
-      "summary": "Ein Programm ist eine eindeutige Folge von Anweisungen, die ein Computer in einer festgelegten Reihenfolge ausführt.",
+      "summary": "Ein Programm beschreibt einzelne Anweisungen und ihre Reihenfolge so eindeutig, dass ein Computer sie ohne Raten ausführen kann.",
       "insight": "Ein Computer ergänzt keine Absicht, sondern verarbeitet die tatsächlich formulierten Anweisungen.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Reihenfolge berechnet aus 7 das Ergebnis 12?",
-        "options": [
-          { "id": "a", "label": "7 ausgeben, danach 5 addieren" },
-          { "id": "b", "label": "7 nehmen, 5 addieren, Ergebnis ausgeben" },
-          { "id": "c", "label": "5 ausgeben, danach 7 nehmen" }
-        ],
-        "correct_option": "b"
+        "type": "sequence",
+        "correct_order": ["read-tag", "find-product", "show-product"],
+        "success": "Richtig: Zuerst wird die RFID-Kennung gelesen. Mit dieser Kennung kann die Produktbezeichnung nachgeschlagen und anschließend angezeigt werden.",
+        "failure": "Die Reihenfolge passt noch nicht. Überlege: Welche Information wird benötigt, um ein Produkt im Bestand zu finden, und was muss bekannt sein, bevor etwas angezeigt werden kann?"
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Ein einfacher Ablauf", "content": "// Nimm die Zahl 7.\n// Addiere 5.\n// Zeige das Ergebnis 12." },
-        "task": "Bringe Eingabe, Verarbeitung und Ausgabe gedanklich in die richtige Reihenfolge.",
-        "expected_result": "Du erkennst, dass jeder Schritt eindeutig beschrieben und geordnet sein muss.",
-        "why": "Diese Genauigkeit ist die Grundlage jedes späteren Programms.",
-        "model_lines": [
-          { "label": "Anweisung", "text": "Ein einzelner, ausführbarer Schritt." },
-          { "label": "Programm", "text": "Mehrere geordnete Anweisungen, die gemeinsam eine Aufgabe lösen." }
-        ]
+        "artifact": {
+          "type": "instruction_cards",
+          "title": "Drei ungeordnete Anweisungen einer Produkterfassung",
+          "goal": "Ziel: Ein Gerät soll die Bezeichnung eines Produkts anhand seines RFID-Etiketts anzeigen.",
+          "cards": [
+            { "id": "show-product", "text": "Die gefundene Produktbezeichnung auf dem Bildschirm anzeigen" },
+            { "id": "read-tag", "text": "Die Kennung des RFID-Etiketts einlesen" },
+            { "id": "find-product", "text": "Die passende Produktbezeichnung im Bestand nachschlagen" }
+          ],
+          "note": "Ziehe die Kacheln an die richtige Position. Mit den Pfeilen geht es auch per Tastatur oder Touch."
+        },
+        "task": "Überlege, welche Information jeder Schritt benötigt und welcher vorherige Schritt diese Information liefert. Bringe die Kacheln danach in eine ausführbare Reihenfolge.",
+        "expected_result": "Weiter wird automatisch freigeschaltet, sobald die Reihenfolge stimmt.",
+        "why": "Programmschritte bauen aufeinander auf. Ohne gelesene RFID-Kennung ist kein Nachschlagen möglich; ohne gefundene Produktbezeichnung gibt es noch nichts Sinnvolles anzuzeigen."
+      }
+    },
+    {
+      "id": "02-uml-activity",
+      "title": "Dein linearer Ablauf als UML-Aktivitätsdiagramm",
+      "summary": "Entwickler beschreiben Abläufe mit einer einheitlichen Bildsprache. Das UML-Aktivitätsdiagramm zeigt Aktionen, ihre Reihenfolge und Entscheidungen.",
+      "insight": "Du hast diesen Ablauf im vorherigen Schritt bereits selbst aufgebaut. UML stellt dieselbe Logik standardisiert dar.",
+      "completion": {
+        "type": "information"
+      },
+      "payload": {
+        "artifact": {
+          "type": "uml_activity",
+          "title": "UML-Aktivitätsdiagramm der Produkterfassung",
+          "intro": "So sieht dein richtig geordneter Ablauf in einer professionellen, standardisierten Darstellung aus.",
+          "accessible_label": "Lineares UML-Aktivitätsdiagramm: RFID-Kennung einlesen, Produktbezeichnung im Bestand nachschlagen und Produktbezeichnung anzeigen.",
+          "steps": ["RFID-Kennung einlesen", "Produktbezeichnung nachschlagen", "Produktbezeichnung anzeigen"]
+        },
+        "task": "Lies das Diagramm vom Initialknoten entlang der Kontrollflüsse bis zum Aktivitätsendknoten. Vergleiche die drei Aktionen mit deiner zuvor geordneten Kachelfolge.",
+        "expected_result": "Du erkennst Initialknoten, Aktionen, Kontrollflüsse und Aktivitätsendknoten als Bestandteile desselben linearen Programmablaufs.",
+        "model_lines": []
       }
     },
     {
       "id": "02-statements-and-order",
-      "title": "Anweisungen und Reihenfolge",
-      "summary": "JavaScript führt die Anweisungen dieses Beispiels von oben nach unten aus.",
-      "insight": "Eine geänderte Reihenfolge kann ein anderes Ergebnis erzeugen.",
+      "title": "Den ersten Code ausführen",
+      "summary": "Eine Programmiersprache formuliert die Aktionen eines Ablaufs als genaue Anweisungen. Der Browser führt diese JavaScript-Zeilen von oben nach unten aus.",
+      "insight": "Du musst die Schreibweise noch nicht auswendig kennen. Die Fragezeichen erklären einzelne Zeichen nur dann, wenn du sie brauchst.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Ausgabe erscheint?",
-        "options": [
-          { "id": "a", "label": "Start, Verarbeitung, Ende" },
-          { "id": "b", "label": "Ende, Verarbeitung, Start" },
-          { "id": "c", "label": "Nur Ende" }
-        ],
-        "correct_option": "a"
+        "type": "code_run",
+        "target_output": "RFID-Kennung einlesen\nProduktbezeichnung nachschlagen\nProduktbezeichnung anzeigen",
+        "success": "Ausgeführt: Die drei Ausgaben erscheinen in derselben Reihenfolge wie der zuvor modellierte Ablauf."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Drei Anweisungen", "content": "console.log(\"Start\");\nconsole.log(\"Verarbeitung\");\nconsole.log(\"Ende\");" },
-        "task": "Lies den Code von oben nach unten und sage die Ausgabe voraus.",
-        "expected_result": "Die drei Texte erscheinen in derselben Reihenfolge wie die Anweisungen.",
-        "model_lines": [
-          { "label": "console.log", "text": "Diese bereits vorhandene JavaScript-Funktion zeigt einen Wert an." },
-          { "label": "Semikolon", "text": "Das Semikolon kennzeichnet hier das Ende einer Anweisung." }
-        ]
+        "artifact": {
+          "type": "code_run_lab",
+          "title": "Drei Anweisungen ausführen",
+          "content": "console.log(\"RFID-Kennung einlesen\");\nconsole.log(\"Produktbezeichnung nachschlagen\");\nconsole.log(\"Produktbezeichnung anzeigen\");",
+          "help_items": [
+            {
+              "term": "console.log",
+              "text": "Diese JavaScript-Anweisung zeigt den Inhalt der Klammern an. Hier verwenden wir sie, damit die einzelnen Programmschritte sichtbar werden."
+            },
+            {
+              "term": "Anführungszeichen",
+              "text": "Alles zwischen den Anführungszeichen ist Text. Die Anführungszeichen gehören zur Schreibweise und werden selbst nicht angezeigt."
+            },
+            {
+              "term": "Semikolon",
+              "text": "Das Semikolon beendet hier eine Anweisung. JavaScript ergänzt es in vielen Fällen automatisch; in diesem Kurs schreiben wir es zur besseren Lesbarkeit einheitlich mit."
+            }
+          ]
+        },
+        "task": "Führe den unveränderten Code aus. Vergleiche anschließend jede Zeile der Konsolenausgabe mit den Aktionen im UML-Diagramm.",
+        "expected_result": "Die drei Texte erscheinen von oben nach unten in der programmierten Reihenfolge.",
+        "model_lines": []
       }
     },
     {
       "id": "03-input-processing-output",
-      "title": "Eingabe, Verarbeitung und Ausgabe",
-      "summary": "Viele Programme lassen sich zunächst als Eingabe, Verarbeitung und Ausgabe beschreiben.",
-      "insight": "Wer Ein- und Ausgabe kennt, kann die benötigte Verarbeitung dazwischen gezielter formulieren.",
+      "title": "Deine erste Codeänderung",
+      "summary": "Im vorherigen Schritt hast du vorhandenen Code ausgeführt. Jetzt änderst du selbst eine Anweisung und prüfst das Ergebnis direkt.",
+      "insight": "Alles zwischen den Anführungszeichen wird von console.log als Text ausgegeben.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was ist in diesem Beispiel die Verarbeitung?",
-        "options": [
-          { "id": "a", "label": "Die Zahl 7" },
-          { "id": "b", "label": "Das Addieren von 5" },
-          { "id": "c", "label": "Das Ergebnis 12" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "RFID-Produkt gefunden",
+        "success": "Richtig: Du hast eine Codezeile geändert, ausgeführt und die neue Ausgabe erzeugt.",
+        "failure": "Die Ausgabe stimmt noch nicht mit dem geforderten Text überein. Ändere den Text zwischen den Anführungszeichen und führe erneut aus."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "EVA-Prinzip", "content": "// Eingabe:       7\n// Verarbeitung:  + 5\n// Ausgabe:       12" },
-        "task": "Ordne die Zahl, die Rechenoperation und das Ergebnis dem EVA-Prinzip zu.",
-        "expected_result": "7 ist die Eingabe, +5 die Verarbeitung und 12 die Ausgabe.",
-        "model_lines": [
-          { "label": "Eingabe", "text": "Daten, mit denen ein Programm beginnt." },
-          { "label": "Verarbeitung", "text": "Regeln oder Operationen, die aus Eingaben neue Werte erzeugen." },
-          { "label": "Ausgabe", "text": "Das sichtbare oder weitergegebene Ergebnis." }
-        ]
+        "artifact": {
+          "type": "code_run_lab",
+          "title": "Code ändern und ausführen",
+          "content": "console.log(\"Produkt gefunden\");",
+          "output_label": "Konsolenausgabe"
+        },
+        "task": "Ändere nur den Text Produkt gefunden in RFID-Produkt gefunden. Führe den Code danach aus.",
+        "expected_result": "Die Konsolenausgabe zeigt RFID-Produkt gefunden.",
+        "why": "Der kleinste Programmierzyklus lautet: Code ändern, ausführen und das tatsächliche Ergebnis prüfen.",
+        "model_lines": []
       }
     },
     {
@@ -223,19 +254,16 @@
       "summary": "Ein Wert ist eine konkrete Information, mit der ein Programm arbeitet.",
       "insight": "Programme speichern, vergleichen und verändern Werte.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welcher Eintrag ist ein konkreter Wert?",
-        "options": [
-          { "id": "a", "label": "Addiere" },
-          { "id": "b", "label": "42" },
-          { "id": "c", "label": "Wiederhole" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "42\nMia\ntrue",
+        "required_changed_output_lines": 1,
+        "success": "Richtig: Du hast genau einen Wert verändert und seine Wirkung in der Ausgabe geprüft.",
+        "failure": "Ändere genau einen der drei Werte und führe den geänderten Code erneut aus."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Drei Werte", "content": "42\n\"Mia\"\ntrue" },
-        "task": "Unterscheide konkrete Informationen von Anweisungen und Operatoren.",
-        "expected_result": "42, \"Mia\" und true sind Werte.",
+        "artifact": { "type": "code_run_lab", "title": "Drei Werte ausgeben", "content": "console.log(42);\nconsole.log(\"Mia\");\nconsole.log(true);" },
+        "task": "Ändere genau einen der drei Werte und führe den Code aus. Deine Änderung darf anschließend bestehen bleiben.",
+        "expected_result": "Die Konsole zeigt weiterhin drei Zeilen untereinander; genau eine Ausgabe unterscheidet sich von 42, Mia und true.",
         "model_lines": [
           { "label": "Wert", "text": "Eine konkrete Zahl, ein Text oder ein Wahrheitszustand." },
           { "label": "Literal", "text": "Ein Wert, der direkt im Quellcode notiert wird." }
@@ -248,19 +276,14 @@
       "summary": "Der Datentyp beschreibt, welche Art von Wert vorliegt und welche Operationen dazu passen.",
       "insight": "7 und \"7\" sehen ähnlich aus, sind aber eine Zahl und ein Text.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Zuordnung ist korrekt?",
-        "options": [
-          { "id": "a", "label": "7 = String, \"Mia\" = Boolean, true = Number" },
-          { "id": "b", "label": "7 = Number, \"Mia\" = String, true = Boolean" },
-          { "id": "c", "label": "Alle drei Werte sind Number" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "number\nstring\nboolean",
+        "success": "Ausgeführt: JavaScript bezeichnet die drei Datentypen als number, string und boolean."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Number, String und Boolean", "content": "const alter = 14;       // Number\nconst name = \"Mia\";   // String\nconst aktiv = true;     // Boolean" },
-        "task": "Ordne jeden Wert seinem Datentyp zu.",
-        "expected_result": "Zahl, Text und Wahrheitswert werden sicher unterschieden.",
+        "artifact": { "type": "code_run_lab", "title": "JavaScript benennt die Wertarten", "content": "console.log(typeof 14);\nconsole.log(typeof \"Mia\");\nconsole.log(typeof true);" },
+        "task": "Führe den Code aus. Lies die drei Bezeichnungen in der Ausgabe; diese Fachbegriffe werden hier erstmals eingeführt.",
+        "expected_result": "Die Ausgabe zeigt number, string und boolean in dieser Reihenfolge.",
         "why": "Der Datentyp beeinflusst, wie JavaScript einen Wert verarbeitet.",
         "model_lines": [
           { "label": "Number", "text": "Zahlen mit oder ohne Nachkommastellen." },
@@ -275,19 +298,14 @@
       "summary": "Der Operator typeof liefert den Datentyp eines JavaScript-Wertes als Text.",
       "insight": "Mit typeof kann eine Vermutung über einen Wert überprüft werden.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was liefert typeof true?",
-        "options": [
-          { "id": "a", "label": "\"string\"" },
-          { "id": "b", "label": "\"number\"" },
-          { "id": "c", "label": "\"boolean\"" }
-        ],
-        "correct_option": "c"
+        "type": "code_run",
+        "target_output": "string\nnumber\nboolean",
+        "success": "Richtig: Du hast typeof auf drei Werte angewendet und die erwarteten Typen erzeugt."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Typen prüfen", "content": "console.log(typeof 7);\nconsole.log(typeof \"Mia\");\nconsole.log(typeof true);" },
-        "task": "Sage alle drei Ausgaben voraus.",
-        "expected_result": "number, string und boolean erscheinen in dieser Reihenfolge.",
+        "artifact": { "type": "code_run_lab", "title": "Typen selbst prüfen", "content": "console.log(typeof 7);\nconsole.log(typeof \"Mia\");\nconsole.log(typeof true);" },
+        "task": "Ändere die ersten beiden Werte so, dass die Ausgabe string, number, boolean lautet. Führe danach aus.",
+        "expected_result": "Die Ausgabe zeigt string, number und boolean in dieser Reihenfolge.",
         "model_lines": [
           { "label": "typeof", "text": "Ein Operator, der die Art eines Wertes untersucht." },
           { "label": "Ergebnis", "text": "Das Ergebnis von typeof ist selbst ein String." }
@@ -300,18 +318,13 @@
       "summary": "Beim Tracing wird nach jeder Anweisung festgehalten, was das Programm ausgegeben oder verändert hat.",
       "insight": "Schrittweises Verfolgen macht unsichtbaren Programmablauf sichtbar.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Ausgabe steht in der zweiten Zeile?",
-        "options": [
-          { "id": "a", "label": "Start" },
-          { "id": "b", "label": "7" },
-          { "id": "c", "label": "Ende" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "Start\n7\nEnde",
+        "success": "Ausgeführt: Die Konsolenausgabe macht die Reihenfolge der drei Anweisungen sichtbar."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Ausgaben verfolgen", "content": "console.log(\"Start\");\nconsole.log(7);\nconsole.log(\"Ende\");" },
-        "task": "Führe die drei Zeilen gedanklich einzeln aus und notiere die Ausgabe.",
+        "artifact": { "type": "code_run_lab", "title": "Ausgaben verfolgen", "content": "console.log(\"Start\");\nconsole.log(7);\nconsole.log(\"Ende\");" },
+        "task": "Lies den Code zuerst von oben nach unten und sage die drei Ausgaben voraus. Führe ihn dann aus und vergleiche deine Vorhersage mit der Konsole.",
         "expected_result": "Start, 7 und Ende erscheinen in genau dieser Reihenfolge.",
         "model_lines": [
           { "label": "Aktuelle Zeile", "text": "Immer nur die gerade ausgeführte Anweisung betrachten." },
@@ -325,19 +338,14 @@
       "summary": "Eine Variable ist ein verständlicher Name, über den ein gespeicherter Wert erreicht wird.",
       "insight": "Variable, Variablenname und gespeicherter Wert sind unterschiedliche Begriffe.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was ist in let punkte = 7 der Variablenname?",
-        "options": [
-          { "id": "a", "label": "let" },
-          { "id": "b", "label": "punkte" },
-          { "id": "c", "label": "7" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "7",
+        "success": "Ausgeführt: Über den Namen punkte liest console.log den gespeicherten Wert 7."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Name und Wert", "content": "let punkte = 7;" },
-        "task": "Zeige auf Schlüsselwort, Variablenname und gespeicherten Wert.",
-        "expected_result": "punkte ist der Name; 7 ist der aktuell zugeordnete Wert.",
+        "artifact": { "type": "code_run_lab", "title": "Einen Wert unter einem Namen speichern", "content": "let punkte = 7;\nconsole.log(punkte);" },
+        "task": "Führe den Code aus. Ändere danach den gespeicherten Wert versuchsweise und beobachte die Ausgabe; stelle für den Abschluss wieder 7 her.",
+        "expected_result": "Die Ausgabe ist 7. punkte ist der Name, über den der Wert gelesen wird.",
         "model_lines": [
           { "label": "Name", "text": "punkte bezeichnet die gespeicherte Information verständlich." },
           { "label": "Wert", "text": "7 ist die konkrete Information, die momentan unter diesem Namen erreichbar ist." }
@@ -350,14 +358,15 @@
       "summary": "Beim Anlegen erhält eine Variable häufig sofort ihren ersten Wert – die initiale Belegung.",
       "insight": "Die Deklaration führt den Namen ein; die initiale Belegung weist den ersten Wert zu.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "14",
         "must_contain": ["let alter = 14;"],
-        "success": "Die Variable alter besitzt jetzt die initiale Belegung 14."
+        "success": "Ausgeführt: Die Variable alter besitzt die initiale Belegung 14."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Eine Variable anlegen", "content": "// Lege hier die Variable alter mit dem Wert 14 an.\n" },
+        "artifact": { "type": "code_run_lab", "title": "Eine Variable anlegen", "content": "// Lege hier die Variable alter mit dem Wert 14 an.\n", "test_code": "console.log(alter);" },
         "task": "Schreibe eine vollständige let-Deklaration für alter mit dem Anfangswert 14.",
-        "expected_result": "Im Code steht exakt: let alter = 14;",
+        "expected_result": "Die automatische Prüfung kann alter lesen und gibt 14 aus.",
         "model_lines": [
           { "label": "Deklaration", "text": "let alter führt den Variablennamen ein." },
           { "label": "Initiale Belegung", "text": "= 14 weist beim Anlegen den ersten Wert zu." }
@@ -370,18 +379,13 @@
       "summary": "In JavaScript besitzt der gespeicherte Wert einen Typ; eine mit let angelegte Variable kann später einen anderen Wert aufnehmen.",
       "insight": "JavaScript ist dynamisch typisiert: Der aktuelle Wert bestimmt den beobachtbaren Typ.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Aussage ist für JavaScript korrekt?",
-        "options": [
-          { "id": "a", "label": "Die Variable punkte ist für immer eine Number." },
-          { "id": "b", "label": "Der aktuelle Wert 7 hat den Typ Number." },
-          { "id": "c", "label": "let ist ein Datentyp." }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "number\nstring",
+        "success": "Ausgeführt: Der Typ folgt dem jeweils gespeicherten Wert – zuerst number, danach string."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Der Typ gehört zum Wert", "content": "let punkte = 7;\nconsole.log(typeof punkte);\n\npunkte = \"sieben\";\nconsole.log(typeof punkte);" },
-        "task": "Unterscheide Variablenname, aktuellen Wert und Datentyp bei beiden Belegungen.",
+        "artifact": { "type": "code_run_lab", "title": "Der Typ gehört zum Wert", "content": "let punkte = 7;\nconsole.log(typeof punkte);\n\npunkte = \"sieben\";\nconsole.log(typeof punkte);" },
+        "task": "Führe den Code aus und verfolge, welcher Wert gerade unter punkte gespeichert ist. Vergleiche die beiden Typausgaben.",
         "expected_result": "Zuerst erscheint number, danach string.",
         "why": "Obwohl JavaScript den Wechsel erlaubt, sollten Variablen fachlich möglichst gleichartige Werte behalten.",
         "model_lines": [
@@ -396,18 +400,13 @@
       "summary": "Wird ein Variablenname in einem Ausdruck verwendet, liest JavaScript den momentan zugeordneten Wert.",
       "insight": "Der Name verweist beim Lesen immer auf die aktuelle Belegung.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was wird ausgegeben?",
-        "options": [
-          { "id": "a", "label": "punkte" },
-          { "id": "b", "label": "7" },
-          { "id": "c", "label": "let" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "7",
+        "success": "Ausgeführt: console.log liest über punkte den aktuell gespeicherten Wert 7."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Aktuellen Wert lesen", "content": "let punkte = 7;\nconsole.log(punkte);" },
-        "task": "Sage voraus, welchen Wert console.log erhält.",
+        "artifact": { "type": "code_run_lab", "title": "Aktuellen Wert lesen", "content": "let punkte = 7;\nconsole.log(punkte);" },
+        "task": "Sage die Ausgabe voraus und führe den Code anschließend aus.",
         "expected_result": "Die Ausgabe ist 7.",
         "model_lines": [
           { "label": "Links von =", "text": "Dort wird ein Speicherziel festgelegt." },
@@ -421,12 +420,13 @@
       "summary": "Eine mit let deklarierte Variable kann durch eine weitere Zuweisung einen neuen Wert erhalten.",
       "insight": "Das Gleichheitszeichen beschreibt eine Zuweisung, keine dauerhaft gültige mathematische Gleichung.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "10",
         "must_contain": ["punkte = 10;"],
-        "success": "punkte wird nach der initialen Belegung neu mit 10 belegt."
+        "success": "Ausgeführt: punkte wird neu belegt und die Ausgabe verwendet den aktuellen Wert 10."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Den Wert ändern", "content": "let punkte = 7;\n\n// Belege punkte hier neu mit 10.\n\nconsole.log(punkte);" },
+        "artifact": { "type": "code_run_lab", "title": "Den Wert ändern", "content": "let punkte = 7;\n\n// Belege punkte hier neu mit 10.\n\nconsole.log(punkte);" },
         "task": "Ergänze zwischen Deklaration und Ausgabe die neue Belegung 10.",
         "expected_result": "Die letzte Ausgabe verwendet den neuen Wert 10.",
         "model_lines": [
@@ -441,19 +441,16 @@
       "summary": "const verhindert eine spätere Neuzuweisung; let erlaubt sie.",
       "insight": "Die Wahl macht sichtbar, ob eine Bindung im weiteren Ablauf verändert werden soll.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Variable sollte mit let angelegt werden?",
-        "options": [
-          { "id": "a", "label": "Ein unveränderlicher Name des Spiels" },
-          { "id": "b", "label": "Ein Punktestand, der wächst" },
-          { "id": "c", "label": "Eine feste Mindestpunktzahl" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "",
+        "target_error": "Assignment to constant variable",
+        "must_contain": ["const punkte = 0;"],
+        "success": "Beobachtet: const verhindert die spätere Neuzuweisung und JavaScript meldet den Versuch als Fehler."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Feste und veränderliche Bindung", "content": "const spielName = \"Punktejagd\";\nlet punkte = 0;\n\npunkte = 5;" },
-        "task": "Entscheide anhand der fachlichen Bedeutung, welcher Name später neu belegt werden darf.",
-        "expected_result": "spielName bleibt konstant; punkte darf sich verändern.",
+        "artifact": { "type": "code_run_lab", "title": "let und const praktisch vergleichen", "content": "let punkte = 0;\npunkte = 5;" },
+        "task": "Führe den Code zuerst mit let aus. Ersetze danach let durch const und führe erneut aus. Beobachte die Fehlermeldung.",
+        "expected_result": "Mit const meldet JavaScript, dass eine konstante Bindung nicht neu zugewiesen werden darf.",
         "model_lines": [
           { "label": "const", "text": "Für eine Bindung ohne spätere Neuzuweisung." },
           { "label": "let", "text": "Für eine Bindung, deren aktueller Wert später ersetzt werden soll." }
@@ -466,12 +463,13 @@
       "summary": "Rechenoperatoren verarbeiten Zahlen und liefern einen neuen Number-Wert.",
       "insight": "Eine Berechnung verändert vorhandene Variablen nicht automatisch; ihr Ergebnis muss bewusst verwendet werden.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "12",
         "must_contain": ["const gesamt = grundwert + bonus;"],
-        "success": "gesamt speichert das Ergebnis der Addition."
+        "success": "Ausgeführt: gesamt speichert das berechnete Ergebnis 12."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Grundwert und Bonus addieren", "content": "const grundwert = 7;\nconst bonus = 5;\n\n// Berechne hier gesamt.\n\nconsole.log(gesamt);" },
+        "artifact": { "type": "code_run_lab", "title": "Grundwert und Bonus addieren", "content": "const grundwert = 7;\nconst bonus = 5;\n\n// Berechne hier gesamt.\n\nconsole.log(gesamt);" },
         "task": "Lege gesamt als Summe aus grundwert und bonus an.",
         "expected_result": "gesamt erhält den Wert 12.",
         "model_lines": [
@@ -487,18 +485,13 @@
       "summary": "Ein Ausdruck wird nach festen Regeln ausgewertet und liefert genau einen Wert.",
       "insight": "Klammern machen die beabsichtigte Auswertungsreihenfolge sichtbar.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welchen Wert erhält b?",
-        "options": [
-          { "id": "a", "label": "14" },
-          { "id": "b", "label": "20" },
-          { "id": "c", "label": "24" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "14\n20",
+        "success": "Ausgeführt: Ohne Klammern entsteht 14, mit Klammern 20."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Reihenfolge der Auswertung", "content": "const a = 2 + 3 * 4;\nconst b = (2 + 3) * 4;" },
-        "task": "Berechne beide Ausdrücke schrittweise.",
+        "artifact": { "type": "code_run_lab", "title": "Reihenfolge der Auswertung", "content": "const a = 2 + 3 * 4;\nconst b = (2 + 3) * 4;\n\nconsole.log(a);\nconsole.log(b);" },
+        "task": "Sage beide Ergebnisse voraus. Führe den Code aus und verändere anschließend testweise die Klammern.",
         "expected_result": "a ist 14 und b ist 20.",
         "model_lines": [
           { "label": "Ohne Klammern", "text": "Multiplikation wird vor Addition ausgewertet." },
@@ -512,12 +505,13 @@
       "summary": "Der Operator + kann Strings zu einem neuen Text verbinden.",
       "insight": "Die Wirkung eines Operators hängt von den beteiligten Datentypen ab.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "Hallo Mia",
         "must_contain": ["const meldung = \"Hallo \" + name;"],
-        "success": "Die Begrüßung wird aus festem Text und dem Variablenwert zusammengesetzt."
+        "success": "Ausgeführt: Die Begrüßung wird aus festem Text und dem Variablenwert zusammengesetzt."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Eine Begrüßung bilden", "content": "const name = \"Mia\";\n\n// Lege hier meldung an.\n\nconsole.log(meldung);" },
+        "artifact": { "type": "code_run_lab", "title": "Eine Begrüßung bilden", "content": "const name = \"Mia\";\n\n// Lege hier meldung an.\n\nconsole.log(meldung);" },
         "task": "Lege meldung als Verbindung aus \"Hallo \" und name an.",
         "expected_result": "Die Ausgabe lautet Hallo Mia.",
         "model_lines": [
@@ -532,18 +526,13 @@
       "summary": "Ein Boolean besitzt genau einen der beiden Werte true oder false.",
       "insight": "Wahrheitswerte bilden klare Ja-Nein-Zustände ab.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Belegung verwendet wirklich einen Boolean?",
-        "options": [
-          { "id": "a", "label": "const aktiv = \"true\";" },
-          { "id": "b", "label": "const aktiv = true;" },
-          { "id": "c", "label": "const aktiv = 1;" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "true\nfalse",
+        "success": "Ausgeführt: true und false bilden die beiden Boolean-Werte."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Klare Zustände", "content": "const angemeldet = true;\nconst gesperrt = false;" },
-        "task": "Unterscheide Boolean-Werte von ähnlich aussehendem Text und Zahlen.",
+        "artifact": { "type": "code_run_lab", "title": "Klare Zustände", "content": "const angemeldet = true;\nconst gesperrt = false;\n\nconsole.log(angemeldet);\nconsole.log(gesperrt);" },
+        "task": "Führe den Code aus. Vertausche danach true und false und beobachte, wie sich die Ausgabe ändert; stelle sie anschließend wieder her.",
         "expected_result": "Nur true und false ohne Anführungszeichen sind Boolean-Werte.",
         "model_lines": [
           { "label": "true", "text": "Die Aussage trifft zu." },
@@ -557,18 +546,13 @@
       "summary": "Vergleichsoperatoren prüfen das Verhältnis zweier Werte und liefern true oder false.",
       "insight": "Ein Vergleich berechnet einen Boolean, der später eine Entscheidung steuern kann.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welchen Wert erhält genugPunkte?",
-        "options": [
-          { "id": "a", "label": "true" },
-          { "id": "b", "label": "false" },
-          { "id": "c", "label": "12" }
-        ],
-        "correct_option": "a"
+        "type": "code_run",
+        "target_output": "true\nfalse",
+        "success": "Ausgeführt: Der erste Vergleich ist erfüllt, der zweite nicht."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Punkte vergleichen", "content": "const punkte = 12;\nconst genugPunkte = punkte >= 10;\nconst neuerRekord = punkte > 20;" },
-        "task": "Werte beide Vergleiche aus.",
+        "artifact": { "type": "code_run_lab", "title": "Punkte vergleichen", "content": "const punkte = 12;\nconst genugPunkte = punkte >= 10;\nconst neuerRekord = punkte > 20;\n\nconsole.log(genugPunkte);\nconsole.log(neuerRekord);" },
+        "task": "Sage beide Ergebnisse voraus und führe den Code aus. Verändere danach punkte und beobachte beide Vergleiche erneut.",
         "expected_result": "genugPunkte ist true; neuerRekord ist false.",
         "model_lines": [
           { "label": "> und <", "text": "Größer als und kleiner als." },
@@ -582,18 +566,13 @@
       "summary": "=== vergleicht Wert und Datentyp; !== prüft, ob sich Wert oder Typ unterscheiden.",
       "insight": "Im Einsteigerkurs wird das automatisch umwandelnde == bewusst vermieden.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was ergibt 7 === \"7\"?",
-        "options": [
-          { "id": "a", "label": "true, weil beide wie 7 aussehen" },
-          { "id": "b", "label": "false, weil Number und String verschieden sind" },
-          { "id": "c", "label": "den Wert 7" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "true\nfalse\ntrue",
+        "success": "Ausgeführt: Gleiche Darstellung genügt nicht – 7 und \"7\" besitzen unterschiedliche Typen."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Streng vergleichen", "content": "const a = 7 === 7;\nconst b = 7 === \"7\";\nconst c = 7 !== 5;" },
-        "task": "Bestimme a, b und c, ohne automatische Typumwandlung anzunehmen.",
+        "artifact": { "type": "code_run_lab", "title": "Streng vergleichen", "content": "const a = 7 === 7;\nconst b = 7 === \"7\";\nconst c = 7 !== 5;\n\nconsole.log(a);\nconsole.log(b);\nconsole.log(c);" },
+        "task": "Sage die drei Ergebnisse voraus und führe den Code aus. Entferne danach testweise die Anführungszeichen beim zweiten Vergleich.",
         "expected_result": "a ist true, b ist false und c ist true.",
         "model_lines": [
           { "label": "===", "text": "Gleicher Wert und gleicher Datentyp." },
@@ -607,18 +586,13 @@
       "summary": "&& liefert nur dann true, wenn beide verknüpften Aussagen true sind.",
       "insight": "UND beschreibt mehrere Voraussetzungen, die gleichzeitig erfüllt sein müssen.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was ergibt true && false?",
-        "options": [
-          { "id": "a", "label": "true" },
-          { "id": "b", "label": "false" },
-          { "id": "c", "label": "undefined" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "false",
+        "success": "Ausgeführt: UND ergibt nur dann true, wenn beide Voraussetzungen true sind."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Zwei Voraussetzungen", "content": "const angemeldet = true;\nconst genugPunkte = false;\nconst darfStarten = angemeldet && genugPunkte;" },
-        "task": "Prüfe beide Voraussetzungen einzeln und dann ihre UND-Verknüpfung.",
+        "artifact": { "type": "code_run_lab", "title": "Zwei Voraussetzungen", "content": "const angemeldet = true;\nconst genugPunkte = false;\nconst darfStarten = angemeldet && genugPunkte;\n\nconsole.log(darfStarten);" },
+        "task": "Führe den Code aus. Setze danach genugPunkte auf true und beobachte, wann das Gesamtergebnis wechselt.",
         "expected_result": "darfStarten ist false, weil genugPunkte false ist.",
         "model_lines": [
           { "label": "Beide true", "text": "Das Gesamtergebnis ist true." },
@@ -632,18 +606,13 @@
       "summary": "|| liefert true, sobald mindestens eine der verknüpften Aussagen true ist.",
       "insight": "ODER beschreibt alternative Möglichkeiten, von denen eine genügen kann.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was ergibt false || true?",
-        "options": [
-          { "id": "a", "label": "true" },
-          { "id": "b", "label": "false" },
-          { "id": "c", "label": "0" }
-        ],
-        "correct_option": "a"
+        "type": "code_run",
+        "target_output": "true",
+        "success": "Ausgeführt: Für ODER genügt eine der beiden Berechtigungen."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Alternative Berechtigungen", "content": "const istAdmin = false;\nconst istBesitzer = true;\nconst darfBearbeiten = istAdmin || istBesitzer;" },
-        "task": "Prüfe, ob mindestens eine Berechtigung vorliegt.",
+        "artifact": { "type": "code_run_lab", "title": "Alternative Berechtigungen", "content": "const istAdmin = false;\nconst istBesitzer = true;\nconst darfBearbeiten = istAdmin || istBesitzer;\n\nconsole.log(darfBearbeiten);" },
+        "task": "Führe den Code aus. Probiere anschließend alle vier Kombinationen aus true und false aus.",
         "expected_result": "darfBearbeiten ist true, weil istBesitzer true ist.",
         "model_lines": [
           { "label": "Mindestens eine true", "text": "Das Gesamtergebnis ist true." },
@@ -657,18 +626,13 @@
       "summary": "! kehrt einen Wahrheitswert um.",
       "insight": "Eine Negation beantwortet die entgegengesetzte Aussage.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welchen Wert erhält istGast?",
-        "options": [
-          { "id": "a", "label": "true" },
-          { "id": "b", "label": "false" },
-          { "id": "c", "label": "angemeldet" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "false",
+        "success": "Ausgeführt: Das Ausrufezeichen kehrt true zu false um."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Eine Aussage umkehren", "content": "const angemeldet = true;\nconst istGast = !angemeldet;" },
-        "task": "Kehre den Wert von angemeldet gedanklich um.",
+        "artifact": { "type": "code_run_lab", "title": "Eine Aussage umkehren", "content": "const angemeldet = true;\nconst istGast = !angemeldet;\n\nconsole.log(istGast);" },
+        "task": "Sage die Ausgabe voraus und führe den Code aus. Setze angemeldet danach auf false und prüfe erneut.",
         "expected_result": "istGast ist false.",
         "model_lines": [
           { "label": "!true", "text": "Ergibt false." },
@@ -682,18 +646,13 @@
       "summary": "Funktionen fassen eine wiederkehrende, klar benannte Aufgabe zusammen.",
       "insight": "Der gemeinsame Ablauf wird einmal beschrieben; veränderliche Eingaben werden später übergeben.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welcher Teil wiederholt sich in allen drei Zeilen?",
-        "options": [
-          { "id": "a", "label": "Nur die Namen" },
-          { "id": "b", "label": "Die Begrüßungslogik Hallo + Name" },
-          { "id": "c", "label": "Nichts" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "Hallo Mia\nHallo Noah\nHallo Lea",
+        "success": "Ausgeführt: Die drei fast gleichen Zeilen machen die wiederkehrende Aufgabe sichtbar."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Wiederholter Code", "content": "console.log(\"Hallo Mia\");\nconsole.log(\"Hallo Noah\");\nconsole.log(\"Hallo Lea\");" },
-        "task": "Markiere den gleichbleibenden und den veränderlichen Teil.",
+        "artifact": { "type": "code_run_lab", "title": "Wiederholten Code ausführen", "content": "console.log(\"Hallo Mia\");\nconsole.log(\"Hallo Noah\");\nconsole.log(\"Hallo Lea\");" },
+        "task": "Führe den Code aus. Vergleiche die drei Zeilen: Was bleibt gleich und welcher Teil ändert sich?",
         "expected_result": "Hallo bleibt gleich; der Name verändert sich.",
         "model_lines": [
           { "label": "Wiederholung", "text": "Mehrfach fast identischer Code deutet auf eine gemeinsame Aufgabe hin." },
@@ -707,18 +666,13 @@
       "summary": "Eine Funktionsdefinition legt einen benannten Block von Anweisungen an.",
       "insight": "Die Definition beschreibt, was bei einem späteren Aufruf geschehen soll.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was wird durch diesen Code sofort ausgegeben?",
-        "options": [
-          { "id": "a", "label": "Hallo" },
-          { "id": "b", "label": "Nichts, weil die Funktion nur definiert wird" },
-          { "id": "c", "label": "sageHallo" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "",
+        "success": "Ausgeführt: Eine Funktionsdefinition allein erzeugt noch keine Konsolenausgabe."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Eine Funktion anlegen", "content": "function sageHallo() {\n  console.log(\"Hallo\");\n}" },
-        "task": "Unterscheide das Definieren einer Funktion von ihrem Ausführen.",
+        "artifact": { "type": "code_run_lab", "title": "Eine Funktion anlegen", "content": "function sageHallo() {\n  console.log(\"Hallo\");\n}" },
+        "task": "Führe nur die Definition aus und beobachte die leere Konsole. Im nächsten Schritt rufst du die Funktion auf.",
         "expected_result": "Ohne Aufruf erscheint noch keine Ausgabe.",
         "model_lines": [
           { "label": "function", "text": "Leitet eine klassische Funktionsdefinition ein." },
@@ -732,12 +686,13 @@
       "summary": "Erst ein Funktionsaufruf führt die Anweisungen im Funktionsblock aus.",
       "insight": "Definition und Aufruf erfüllen zwei verschiedene Aufgaben.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "Hallo",
         "must_contain": ["sageHallo();"],
-        "success": "Der Aufruf führt die zuvor definierte Funktion aus."
+        "success": "Ausgeführt: Der Aufruf startet die zuvor definierte Funktion."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Die Funktion ausführen", "content": "function sageHallo() {\n  console.log(\"Hallo\");\n}\n\n// Rufe die Funktion hier auf.\n" },
+        "artifact": { "type": "code_run_lab", "title": "Die Funktion ausführen", "content": "function sageHallo() {\n  console.log(\"Hallo\");\n}\n\n// Rufe die Funktion hier auf.\n" },
         "task": "Ergänze unter der Definition einen Aufruf von sageHallo.",
         "expected_result": "Hallo wird einmal ausgegeben.",
         "model_lines": [
@@ -752,18 +707,13 @@
       "summary": "Ein Parameter ist ein Platzhalter in der Definition; ein Argument ist der konkrete Wert beim Aufruf.",
       "insight": "Parameter machen denselben Funktionsablauf für unterschiedliche Eingaben nutzbar.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was ist beim Aufruf begruesse(\"Mia\") das Argument?",
-        "options": [
-          { "id": "a", "label": "begruesse" },
-          { "id": "b", "label": "name" },
-          { "id": "c", "label": "\"Mia\"" }
-        ],
-        "correct_option": "c"
+        "type": "code_run",
+        "target_output": "Hallo Mia\nHallo Noah",
+        "success": "Ausgeführt: Derselbe Funktionscode verarbeitet nacheinander die Argumente Mia und Noah."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Eingaben übergeben", "content": "function begruesse(name) {\n  console.log(\"Hallo \" + name);\n}\n\nbegruesse(\"Mia\");\nbegruesse(\"Noah\");" },
-        "task": "Ordne name dem Parameter und Mia beziehungsweise Noah den Argumenten zu.",
+        "artifact": { "type": "code_run_lab", "title": "Eingaben übergeben", "content": "function begruesse(name) {\n  console.log(\"Hallo \" + name);\n}\n\nbegruesse(\"Mia\");\nbegruesse(\"Noah\");" },
+        "task": "Führe beide Aufrufe aus. Ändere anschließend ein Argument und beobachte, welcher Teil der Ausgabe davon beeinflusst wird.",
         "expected_result": "Die Funktion erzeugt zwei Begrüßungen mit unterschiedlichen Namen.",
         "model_lines": [
           { "label": "Parameter", "text": "name ist der lokale Platzhalter in der Definition." },
@@ -777,19 +727,15 @@
       "summary": "Eine innerhalb einer Funktion angelegte Variable ist grundsätzlich nur dort verfügbar.",
       "insight": "Ein begrenzter Gültigkeitsbereich verhindert unbeabsichtigte Abhängigkeiten.",
       "completion": {
-        "type": "choice",
-        "prompt": "Wo kann meldung in diesem Beispiel verwendet werden?",
-        "options": [
-          { "id": "a", "label": "Nur innerhalb von begruesse" },
-          { "id": "b", "label": "Überall im Projekt" },
-          { "id": "c", "label": "Nirgendwo" }
-        ],
-        "correct_option": "a"
+        "type": "code_run",
+        "target_output": "Hallo Mia",
+        "target_error": "meldung is not defined",
+        "success": "Beobachtet: Innerhalb der Funktion ist meldung verfügbar; außerhalb meldet JavaScript den unbekannten Namen."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Lokaler Gültigkeitsbereich", "content": "function begruesse(name) {\n  const meldung = \"Hallo \" + name;\n  console.log(meldung);\n}" },
-        "task": "Bestimme, innerhalb welcher geschweiften Klammern meldung gültig ist.",
-        "expected_result": "meldung gehört zum Funktionsblock von begruesse.",
+        "artifact": { "type": "code_run_lab", "title": "Lokalen Gültigkeitsbereich ausprobieren", "content": "function begruesse(name) {\n  const meldung = \"Hallo \" + name;\n  console.log(meldung);\n}\n\nbegruesse(\"Mia\");\nconsole.log(meldung);" },
+        "task": "Führe den Code aus. Die Funktion kann meldung ausgeben; die letzte Zeile versucht denselben Namen außerhalb der Funktion zu lesen.",
+        "expected_result": "Zuerst erscheint Hallo Mia, danach meldet JavaScript, dass meldung außerhalb nicht definiert ist.",
         "model_lines": [
           { "label": "Lokal", "text": "Die Variable ist nur im Block der Funktion erreichbar." },
           { "label": "Außerhalb", "text": "Nach dem Funktionsblock ist dieser lokale Name nicht verfügbar." }
@@ -802,18 +748,13 @@
       "summary": "return beendet den aktuellen Funktionsaufruf und liefert einen Wert zurück.",
       "insight": "Eine Rückgabe ist nicht dasselbe wie eine sichtbare Ausgabe mit console.log.",
       "completion": {
-        "type": "choice",
-        "prompt": "Was liefert addiere(7, 5) zurück?",
-        "options": [
-          { "id": "a", "label": "12" },
-          { "id": "b", "label": "a + b als Text" },
-          { "id": "c", "label": "Keine Rückgabe" }
-        ],
-        "correct_option": "a"
+        "type": "code_run",
+        "target_output": "12",
+        "success": "Ausgeführt: return liefert 12 an den Aufruf zurück; console.log macht diesen Wert sichtbar."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Ein Ergebnis zurückgeben", "content": "function addiere(a, b) {\n  return a + b;\n}\n\naddiere(7, 5);" },
-        "task": "Verfolge die beiden Argumente bis zum return-Ausdruck.",
+        "artifact": { "type": "code_run_lab", "title": "Ein Ergebnis zurückgeben", "content": "function addiere(a, b) {\n  return a + b;\n}\n\nconsole.log(addiere(7, 5));" },
+        "task": "Führe den Code aus. Ändere danach eines der beiden Argumente und beobachte den zurückgegebenen Wert.",
         "expected_result": "Der Funktionsaufruf liefert den Number-Wert 12 zurück.",
         "model_lines": [
           { "label": "Rückgabewert", "text": "Der Wert rechts von return wird an die aufrufende Stelle geliefert." },
@@ -827,12 +768,13 @@
       "summary": "Der Wert eines Funktionsaufrufs kann gespeichert, ausgegeben oder in einem weiteren Ausdruck verwendet werden.",
       "insight": "Eine Funktion mit Rückgabe kann als Baustein einer größeren Berechnung dienen.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "12",
         "must_contain": ["const gesamt = addiere(7, 5);", "console.log(gesamt);"],
-        "success": "Der Rückgabewert wird gespeichert und anschließend ausgegeben."
+        "success": "Ausgeführt: Der Rückgabewert wird gespeichert und anschließend ausgegeben."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Die Rückgabe speichern", "content": "function addiere(a, b) {\n  return a + b;\n}\n\n// Speichere addiere(7, 5) in gesamt.\n// Gib danach gesamt aus.\n" },
+        "artifact": { "type": "code_run_lab", "title": "Die Rückgabe speichern", "content": "function addiere(a, b) {\n  return a + b;\n}\n\n// Speichere addiere(7, 5) in gesamt.\n// Gib danach gesamt aus.\n" },
         "task": "Lege gesamt mit dem Rückgabewert von addiere(7, 5) an und gib gesamt aus.",
         "expected_result": "Die Ausgabe ist 12.",
         "model_lines": [
@@ -847,18 +789,13 @@
       "summary": "Der Rückgabewert einer Funktion kann unmittelbar als Argument einer anderen Funktion dienen.",
       "insight": "Kleine Funktionen lassen sich zu einem größeren Ablauf zusammensetzen.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welchen Wert erhält ergebnis?",
-        "options": [
-          { "id": "a", "label": "7" },
-          { "id": "b", "label": "10" },
-          { "id": "c", "label": "14" }
-        ],
-        "correct_option": "c"
+        "type": "code_run",
+        "target_output": "14",
+        "success": "Ausgeführt: addiere liefert 7; verdopple verarbeitet diesen Rückgabewert zu 14."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Von innen nach außen", "content": "function addiere(a, b) {\n  return a + b;\n}\n\nfunction verdopple(wert) {\n  return wert * 2;\n}\n\nconst ergebnis = verdopple(addiere(3, 4));" },
-        "task": "Werte zuerst addiere und danach verdopple aus.",
+        "artifact": { "type": "code_run_lab", "title": "Von innen nach außen", "content": "function addiere(a, b) {\n  return a + b;\n}\n\nfunction verdopple(wert) {\n  return wert * 2;\n}\n\nconst ergebnis = verdopple(addiere(3, 4));\nconsole.log(ergebnis);" },
+        "task": "Sage das Ergebnis voraus. Führe dann aus und verändere testweise die Argumente des inneren Aufrufs.",
         "expected_result": "addiere liefert 7; verdopple liefert daraus 14.",
         "model_lines": [
           { "label": "Innerer Aufruf", "text": "addiere(3, 4) wird zuerst ausgewertet." },
@@ -872,18 +809,13 @@
       "summary": "if führt einen Anweisungsblock nur dann aus, wenn seine Bedingung true ergibt.",
       "insight": "Die Bedingung berechnet den Wahrheitswert; if wählt damit den Programmweg.",
       "completion": {
-        "type": "choice",
-        "prompt": "Wird Bestanden ausgegeben?",
-        "options": [
-          { "id": "a", "label": "Ja, weil 12 >= 10 true ist" },
-          { "id": "b", "label": "Nein, weil if immer übersprungen wird" },
-          { "id": "c", "label": "Nur bei genau 10 Punkten" }
-        ],
-        "correct_option": "a"
+        "type": "code_run",
+        "target_output": "Bestanden",
+        "success": "Ausgeführt: 12 >= 10 ist true, deshalb läuft der if-Block."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Einen Block auswählen", "content": "const punkte = 12;\n\nif (punkte >= 10) {\n  console.log(\"Bestanden\");\n}" },
-        "task": "Werte zuerst den Vergleich in den runden Klammern aus.",
+        "artifact": { "type": "code_run_lab", "title": "Einen Block auswählen", "content": "const punkte = 12;\n\nif (punkte >= 10) {\n  console.log(\"Bestanden\");\n}" },
+        "task": "Führe den Code mit 12 Punkten aus. Setze punkte danach auf 7 und beobachte die nun leere Ausgabe; stelle für den Abschluss wieder 12 her.",
         "expected_result": "Die Bedingung ist true und der Block wird ausgeführt.",
         "model_lines": [
           { "label": "Bedingung", "text": "Der Ausdruck in den runden Klammern liefert true oder false." },
@@ -897,12 +829,13 @@
       "summary": "else beschreibt den alternativen Programmweg für eine falsche if-Bedingung.",
       "insight": "Von if und else wird bei einem Durchlauf genau einer der beiden Blöcke ausgeführt.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "Weiter üben",
         "must_contain": ["else", "console.log(\"Weiter üben\");"],
-        "success": "Der alternative Programmweg ist ergänzt."
+        "success": "Ausgeführt: Bei 7 Punkten wählt das Programm den ergänzten else-Zweig."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Einen else-Zweig ergänzen", "content": "const punkte = 7;\n\nif (punkte >= 10) {\n  console.log(\"Bestanden\");\n}\n\n// Ergänze else mit der Ausgabe \"Weiter üben\".\n" },
+        "artifact": { "type": "code_run_lab", "title": "Einen else-Zweig ergänzen", "content": "const punkte = 7;\n\nif (punkte >= 10) {\n  console.log(\"Bestanden\");\n}\n\n// Ergänze else mit der Ausgabe \"Weiter üben\".\n" },
         "task": "Ergänze einen else-Block, der Weiter üben ausgibt.",
         "expected_result": "Bei 7 Punkten wird ausschließlich Weiter üben ausgegeben.",
         "model_lines": [
@@ -917,18 +850,13 @@
       "summary": "else if prüft weitere Bedingungen, wenn vorherige Bedingungen nicht erfüllt waren.",
       "insight": "Die Bedingungen werden von oben nach unten geprüft; der erste passende Zweig wird ausgeführt.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Ausgabe entsteht bei 10 Punkten?",
-        "options": [
-          { "id": "a", "label": "Sehr gut" },
-          { "id": "b", "label": "Bestanden" },
-          { "id": "c", "label": "Weiter üben" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "Bestanden",
+        "success": "Ausgeführt: Die erste Bedingung ist false, die zweite true; deshalb erscheint Bestanden."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Drei Bereiche", "content": "const punkte = 10;\n\nif (punkte >= 20) {\n  console.log(\"Sehr gut\");\n} else if (punkte >= 10) {\n  console.log(\"Bestanden\");\n} else {\n  console.log(\"Weiter üben\");\n}" },
-        "task": "Prüfe die Bedingungen nacheinander und stoppe beim ersten passenden Zweig.",
+        "artifact": { "type": "code_run_lab", "title": "Drei Bereiche", "content": "const punkte = 10;\n\nif (punkte >= 20) {\n  console.log(\"Sehr gut\");\n} else if (punkte >= 10) {\n  console.log(\"Bestanden\");\n} else {\n  console.log(\"Weiter üben\");\n}" },
+        "task": "Führe mit 10 Punkten aus. Probiere danach 7 und 25, um jeden Programmweg einmal zu sehen; stelle anschließend wieder 10 ein.",
         "expected_result": "Die Ausgabe ist Bestanden.",
         "model_lines": [
           { "label": "Erste Prüfung", "text": "10 >= 20 ist false." },
@@ -942,14 +870,15 @@
       "summary": "Ein Array speichert mehrere Werte in einer festgelegten Reihenfolge.",
       "insight": "Eine Sammlung macht es möglich, dieselbe Verarbeitung später auf mehrere Werte anzuwenden.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "[4,10,12,7]\n4",
         "must_contain": ["const ergebnisse = [4, 10, 12, 7];"],
-        "success": "Das Array enthält vier geordnete Number-Werte."
+        "success": "Ausgeführt: Das Array enthält vier Werte in der festgelegten Reihenfolge."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Eine Werteliste anlegen", "content": "// Lege das Array ergebnisse mit 4, 10, 12 und 7 an.\n" },
+        "artifact": { "type": "code_run_lab", "title": "Eine Werteliste anlegen", "content": "// Lege das Array ergebnisse mit 4, 10, 12 und 7 an.\n", "test_code": "console.log(ergebnisse);\nconsole.log(ergebnisse.length);" },
         "task": "Lege ergebnisse als Array mit den vier Werten in der angegebenen Reihenfolge an.",
-        "expected_result": "ergebnisse.length wäre anschließend 4.",
+        "expected_result": "Die automatische Prüfung zeigt das Array und anschließend seine Länge 4.",
         "model_lines": [
           { "label": "Eckige Klammern", "text": "Sie begrenzen die Werte des Arrays." },
           { "label": "Reihenfolge", "text": "Die Position der Werte bleibt erhalten." },
@@ -963,18 +892,13 @@
       "summary": "for...of führt denselben Block einmal für jeden Wert eines Arrays aus.",
       "insight": "Die Schleife beschreibt eine wiederholte Regel, statt Anweisungen zu kopieren.",
       "completion": {
-        "type": "choice",
-        "prompt": "Wie oft wird console.log ausgeführt?",
-        "options": [
-          { "id": "a", "label": "Einmal" },
-          { "id": "b", "label": "Dreimal" },
-          { "id": "c", "label": "Unendlich oft" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "4\n10\n12",
+        "success": "Ausgeführt: Der Schleifenblock läuft einmal für jeden der drei Array-Werte."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Jeden Wert ausgeben", "content": "const ergebnisse = [4, 10, 12];\n\nfor (const ergebnis of ergebnisse) {\n  console.log(ergebnis);\n}" },
-        "task": "Verfolge, welchen Wert ergebnis bei jedem Durchlauf besitzt.",
+        "artifact": { "type": "code_run_lab", "title": "Jeden Wert ausgeben", "content": "const ergebnisse = [4, 10, 12];\n\nfor (const ergebnis of ergebnisse) {\n  console.log(ergebnis);\n}" },
+        "task": "Sage die Ausgaben voraus und führe den Code aus. Ergänze danach testweise einen vierten Array-Wert.",
         "expected_result": "Die Ausgaben sind 4, 10 und 12.",
         "model_lines": [
           { "label": "Array", "text": "ergebnisse ist die zu verarbeitende Sammlung." },
@@ -989,12 +913,13 @@
       "summary": "Ein Akkumulator bewahrt ein wachsendes Zwischenergebnis über mehrere Schleifendurchläufe hinweg auf.",
       "insight": "Die initiale Belegung bestimmt den neutralen Startwert der Berechnung.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "26",
         "must_contain": ["summe = summe + ergebnis;"],
-        "success": "Jeder aktuelle Wert wird zur bisherigen Summe addiert."
+        "success": "Ausgeführt: Jeder aktuelle Wert wird zur bisherigen Summe addiert; das Ergebnis ist 26."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Eine Summe bilden", "content": "const ergebnisse = [4, 10, 12];\nlet summe = 0;\n\nfor (const ergebnis of ergebnisse) {\n  // Addiere ergebnis zu summe.\n}\n\nconsole.log(summe);" },
+        "artifact": { "type": "code_run_lab", "title": "Eine Summe bilden", "content": "const ergebnisse = [4, 10, 12];\nlet summe = 0;\n\nfor (const ergebnis of ergebnisse) {\n  // Addiere ergebnis zu summe.\n}\n\nconsole.log(summe);" },
         "task": "Ergänze im Schleifenblock die neue Belegung von summe.",
         "expected_result": "Nach den Durchläufen besitzt summe den Wert 26.",
         "model_lines": [
@@ -1009,12 +934,13 @@
       "summary": "Bekannte Bausteine können kombiniert werden: Die Schleife betrachtet jeden Wert, die Bedingung wählt passende Werte aus.",
       "insight": "Komplexere Programme entstehen durch das kontrollierte Zusammensetzen bereits verstandener Bausteine.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "2",
         "must_contain": ["if (ergebnis >= 10)", "bestanden = bestanden + 1;"],
-        "success": "Die Schleife zählt nur Ergebnisse ab 10 Punkten."
+        "success": "Ausgeführt: Die Schleife zählt genau die beiden Ergebnisse ab 10 Punkten."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Bestandene Ergebnisse zählen", "content": "const ergebnisse = [4, 10, 12, 7];\nlet bestanden = 0;\n\nfor (const ergebnis of ergebnisse) {\n  // Prüfe ergebnis und erhöhe bestanden.\n}\n\nconsole.log(bestanden);" },
+        "artifact": { "type": "code_run_lab", "title": "Bestandene Ergebnisse zählen", "content": "const ergebnisse = [4, 10, 12, 7];\nlet bestanden = 0;\n\nfor (const ergebnis of ergebnisse) {\n  // Prüfe ergebnis und erhöhe bestanden.\n}\n\nconsole.log(bestanden);" },
         "task": "Ergänze im Schleifenblock ein if für mindestens 10 Punkte und erhöhe dann bestanden um 1.",
         "expected_result": "bestanden erhält den Wert 2.",
         "model_lines": [
@@ -1030,19 +956,14 @@
       "summary": "Syntaxfehler, Laufzeitfehler und Logikfehler haben unterschiedliche Ursachen und benötigen unterschiedliche Untersuchungen.",
       "insight": "Eine genaue Fehlerbeschreibung ist der erste Schritt zur Lösung.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Fehlerart liegt vor, wenn ein Programm läuft, aber 15 statt 12 berechnet?",
-        "options": [
-          { "id": "a", "label": "Syntaxfehler" },
-          { "id": "b", "label": "Logikfehler" },
-          { "id": "c", "label": "Kein Fehler" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "Erwartet: 12\nTatsächlich: 35",
+        "success": "Ausgeführt: Das Programm läuft, liefert aber fachlich das falsche Ergebnis – das ist ein Logikfehler."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Drei verschiedene Probleme", "content": "// Syntaxfehler:   const wert = ;\n// Laufzeitfehler:  unbekannt();\n// Logikfehler:     const summe = 7 * 5; // erwartet war 7 + 5" },
-        "task": "Ordne jedem Beispiel seine Fehlerart zu.",
-        "expected_result": "Du unterscheidest ungültige Syntax, Fehler während der Ausführung und ein fachlich falsches Ergebnis.",
+        "artifact": { "type": "code_run_lab", "title": "Einen Logikfehler beobachten", "content": "// Syntaxfehler verhindern den Start:\n// const wert = ;\n\n// Laufzeitfehler entstehen während der Ausführung:\n// unbekannt();\n\n// Dieser Code läuft, rechnet aber falsch:\nconst erwartet = 12;\nconst tatsaechlich = 7 * 5;\nconsole.log(\"Erwartet: \" + erwartet);\nconsole.log(\"Tatsächlich: \" + tatsaechlich);" },
+        "task": "Führe zuerst den Logikfehler aus. Aktiviere danach versuchsweise jeweils genau eine der beiden auskommentierten Fehlerzeilen und lies die Meldung; stelle den Ausgangscode anschließend wieder her.",
+        "expected_result": "Der aktive Code läuft, zeigt aber 35 statt der erwarteten 12.",
         "model_lines": [
           { "label": "Syntax", "text": "Der Code entspricht nicht den grammatischen Regeln der Sprache." },
           { "label": "Laufzeit", "text": "Das Problem tritt während der Ausführung auf." },
@@ -1056,18 +977,13 @@
       "summary": "Ein Testfall verbindet eine konkrete Eingabe mit einem erwarteten Ergebnis.",
       "insight": "Mehrere bewusst gewählte Fälle zeigen zuverlässiger, ob eine Lösung wirklich stimmt.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welcher zusätzliche Fall prüft eine sinnvolle Grenze?",
-        "options": [
-          { "id": "a", "label": "addiere(2, 3) soll erneut 5 ergeben" },
-          { "id": "b", "label": "addiere(0, 4) soll 4 ergeben" },
-          { "id": "c", "label": "Die Funktion gar nicht aufrufen" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "5\n4\n0",
+        "success": "Ausgeführt: Normalfall, Nullwert und negative Zahl liefern jeweils das erwartete Ergebnis."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Eingabe und erwartete Ausgabe", "content": "// addiere(2, 3)  -> 5\n// addiere(0, 4)  -> 4\n// addiere(-2, 2) -> 0" },
-        "task": "Unterscheide Normalfall, Nullwert und negative Zahl.",
+        "artifact": { "type": "code_run_lab", "title": "Drei Testfälle ausführen", "content": "function addiere(a, b) {\n  return a + b;\n}\n\nconsole.log(addiere(2, 3));\nconsole.log(addiere(0, 4));\nconsole.log(addiere(-2, 2));" },
+        "task": "Lies für jeden Aufruf zuerst die erwartete Ausgabe ab. Führe dann alle drei Testfälle gemeinsam aus.",
         "expected_result": "Die Funktion muss alle drei erwarteten Ergebnisse liefern.",
         "model_lines": [
           { "label": "Normalfall", "text": "Ein typischer Wert aus der vorgesehenen Nutzung." },
@@ -1082,18 +998,13 @@
       "summary": "Eine größere Aufgabe wird verständlicher, wenn sie in kleine Schritte mit klaren Ergebnissen zerlegt wird.",
       "insight": "Die Zerlegung erfolgt vor dem Schreiben des vollständigen Codes.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welche Zerlegung ist für eine Punkteauswertung sinnvoll?",
-        "options": [
-          { "id": "a", "label": "Alles gleichzeitig irgendwie auswerten" },
-          { "id": "b", "label": "Werte lesen, Summe bilden, bestandene Werte zählen, Ergebnisse ausgeben" },
-          { "id": "c", "label": "Zuerst eine Benutzeroberfläche bauen" }
-        ],
-        "correct_option": "b"
+        "type": "code_run",
+        "target_output": "Summe: 33\nBestanden: 2",
+        "success": "Ausgeführt: Die Kommentare gliedern die vollständige Auswertung in vier nachvollziehbare Teilaufgaben."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Teilaufgaben als Kommentare", "content": "// 1. Werte nacheinander lesen.\n// 2. Summe berechnen.\n// 3. Bestandene Ergebnisse zählen.\n// 4. Ergebnisse ausgeben." },
-        "task": "Prüfe, ob jeder Schritt eine kleine und klar beschreibbare Aufgabe besitzt.",
+        "artifact": { "type": "code_run_lab", "title": "Teilaufgaben im ausführbaren Code", "content": "// 1. Werte bereitstellen\nconst werte = [4, 10, 12, 7];\n\n// 2. Summe bilden und 3. bestandene Werte zählen\nlet summe = 0;\nlet bestanden = 0;\nfor (const wert of werte) {\n  summe = summe + wert;\n  if (wert >= 10) {\n    bestanden = bestanden + 1;\n  }\n}\n\n// 4. Ergebnisse ausgeben\nconsole.log(\"Summe: \" + summe);\nconsole.log(\"Bestanden: \" + bestanden);" },
+        "task": "Führe den Code aus. Ordne anschließend jeden markierten Abschnitt einer kleinen fachlichen Teilaufgabe zu.",
         "expected_result": "Aus der großen Auswertung entstehen vier nachvollziehbare Teilaufgaben.",
         "model_lines": [
           { "label": "Eingabe", "text": "Eine Liste von Punkteständen." },
@@ -1108,18 +1019,13 @@
       "summary": "Pseudocode beschreibt den geplanten Ablauf verständlich, ohne eine zweite, streng geprüfte Programmiersprache zu sein.",
       "insight": "Jeder Pseudocode-Schritt muss später in einen bekannten, ausführbaren Baustein übersetzbar sein.",
       "completion": {
-        "type": "choice",
-        "prompt": "Welcher Pseudocode-Schritt ist noch zu ungenau?",
-        "options": [
-          { "id": "a", "label": "Setze summe auf 0" },
-          { "id": "b", "label": "Für jedes Ergebnis: Addiere es zu summe" },
-          { "id": "c", "label": "Werte alles richtig aus" }
-        ],
-        "correct_option": "c"
+        "type": "code_run",
+        "target_output": "26",
+        "success": "Ausgeführt: Jeder Pseudocode-Schritt besitzt eine eindeutige Entsprechung im JavaScript-Code."
       },
       "payload": {
-        "artifact": { "type": "code", "title": "Plan vor dem Code", "content": "// Setze summe auf 0.\n// Für jedes Ergebnis:\n//   Addiere das Ergebnis zu summe.\n// Gib summe zurück." },
-        "task": "Ordne initiale Belegung, Schleife, Operation und return den vier Zeilen zu.",
+        "artifact": { "type": "code_run_lab", "title": "Pseudocode in JavaScript übersetzen", "content": "// Setze summe auf 0.\nlet summe = 0;\n\n// Für jedes Ergebnis: Addiere es zu summe.\nfor (const ergebnis of [4, 10, 12]) {\n  summe = summe + ergebnis;\n}\n\n// Gib summe aus.\nconsole.log(summe);" },
+        "task": "Vergleiche jeden Kommentar mit der direkt folgenden JavaScript-Anweisung. Führe den übersetzten Plan danach aus.",
         "expected_result": "Jede Zeile lässt sich eindeutig in einen bekannten JavaScript-Baustein übertragen.",
         "model_lines": [
           { "label": "Planung", "text": "Zuerst wird die fachliche Reihenfolge geklärt." },
@@ -1133,12 +1039,13 @@
       "summary": "Setze Variable, initiale Belegung, Schleife, Operation, Funktion und return zu einer vollständigen Lösung zusammen.",
       "insight": "Die Aufgabe verwendet nur Bausteine, die zuvor einzeln erklärt und geprüft wurden.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "33\n0",
         "must_contain": ["function berechneSumme(ergebnisse)", "let summe = 0;", "for (const ergebnis of ergebnisse)", "summe = summe + ergebnis;", "return summe;"],
-        "success": "Die Funktion enthält alle benötigten Bausteine für die Summenbildung."
+        "success": "Ausgeführt: Die Funktion besteht beide sichtbaren Testfälle."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "berechneSumme entwickeln", "content": "// Schreibe die Funktion berechneSumme.\n// Sie erhält das Array ergebnisse und gibt die Summe zurück.\n\n" },
+        "artifact": { "type": "code_run_lab", "title": "berechneSumme entwickeln", "content": "// Schreibe die Funktion berechneSumme.\n// Sie erhält das Array ergebnisse und gibt die Summe zurück.\n\n", "test_code": "console.log(berechneSumme([4, 10, 12, 7]));\nconsole.log(berechneSumme([]));" },
         "task": "Implementiere berechneSumme für beliebige Arrays von Zahlen.",
         "expected_result": "berechneSumme([4, 10, 12, 7]) liefert 33 und berechneSumme([]) liefert 0.",
         "why": "Hier wird erstmals eine vollständige Funktion aus den zuvor einzeln geübten Bausteinen erstellt.",
@@ -1155,12 +1062,13 @@
       "summary": "Übertrage die gelernten Bausteine auf eine ähnliche, aber nicht identische Aufgabe.",
       "insight": "Erst die Übertragung auf ein neues Beispiel zeigt, dass das Prinzip verstanden wurde.",
       "completion": {
-        "type": "code",
+        "type": "code_run",
+        "target_output": "2\n0",
         "must_contain": ["function zaehleWarmeTage(temperaturen)", "let anzahl = 0;", "for (const temperatur of temperaturen)", "if (temperatur >= 20)", "anzahl = anzahl + 1;", "return anzahl;"],
-        "success": "Das Transferprojekt verbindet Funktion, Schleife, Bedingung, Zähler und return."
+        "success": "Ausgeführt: Das Transferprojekt besteht beide sichtbaren Testfälle."
       },
       "payload": {
-        "artifact": { "type": "code_task", "title": "Temperaturen auswerten", "content": "// Schreibe zaehleWarmeTage.\n// Die Funktion zählt Temperaturen ab einschließlich 20 Grad.\n\n" },
+        "artifact": { "type": "code_run_lab", "title": "Temperaturen auswerten", "content": "// Schreibe zaehleWarmeTage.\n// Die Funktion zählt Temperaturen ab einschließlich 20 Grad.\n\n", "test_code": "console.log(zaehleWarmeTage([18, 20, 25, 17]));\nconsole.log(zaehleWarmeTage([]));" },
         "task": "Implementiere zaehleWarmeTage für ein Array von Temperaturen.",
         "expected_result": "zaehleWarmeTage([18, 20, 25, 17]) liefert 2 und zaehleWarmeTage([]) liefert 0.",
         "why": "Du löst jetzt selbstständig eine neue Aufgabe mit den bekannten Konzepten.",
@@ -1181,7 +1089,7 @@
     {
       "path": "README.md",
       "role": "learning_guide",
-      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Lernprinzip\n\nAcht Lessons gliedern den Lernweg in 43 aufeinander aufbauende Schritte. Jeder Schritt führt höchstens einen neuen Denkbaustein ein. Du liest und untersuchst zunächst ein kleines Beispiel, sagst sein Verhalten voraus und bearbeitest anschließend eine verpflichtende Frage oder Code-Aufgabe. Ein bloßes Bestätigen ohne fachliche Aufgabe schließt keinen Schritt ab.\n\n## Lessons\n\n1. Programmablauf und Werte\n2. Variablen verstehen und verändern\n3. Operationen, Vergleiche und Logik\n4. Funktionen, Parameter und Rückgabewerte\n5. Entscheidungen mit Bedingungen\n6. Arrays und Schleifen\n7. Fehler finden, testen und planen\n8. Abschluss und Transfer\n\nMikrocontroller-spezifische Themen wie Bitbreiten, uint8_t, int32_t, float, double, GPIO und Speicherarchitektur gehören bewusst in das separate Lernprojekt Grundlagen der Mikrocontrollertechnik.\n"
+      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Lernprinzip\n\nAcht Lessons gliedern den Lernweg in 44 aufeinander aufbauende Schritte. Jeder Schritt führt höchstens einen neuen Denkbaustein ein. Nach dem Einstieg arbeitest du immer im selben Rhythmus: Code lesen, eine kleine Änderung ausprobieren, das Programm direkt ausführen und die Konsolenausgabe prüfen. Neue Fachbegriffe erscheinen erst, nachdem du das zugehörige Verhalten am laufenden Code gesehen hast.\n\n## Lessons\n\n1. Programmablauf und Werte\n2. Variablen verstehen und verändern\n3. Operationen, Vergleiche und Logik\n4. Funktionen, Parameter und Rückgabewerte\n5. Entscheidungen mit Bedingungen\n6. Arrays und Schleifen\n7. Fehler finden, testen und planen\n8. Abschluss und Transfer\n\nMikrocontroller-spezifische Themen wie Bitbreiten, uint8_t, int32_t, float, double, GPIO und Speicherarchitektur gehören bewusst in das separate Lernprojekt Grundlagen der Mikrocontrollertechnik.\n"
     }
   ]
 }

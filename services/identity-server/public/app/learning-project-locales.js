@@ -13,6 +13,7 @@ const LearningProjectLocales = (() => {
     "uml-fundamentals": ["UML fundamentals – diagrams people and machines understand", "Learn UML as a shared visual language and describe simple systems so that people can discuss them and tools can process them."],
     "yaml-fundamentals": ["YAML fundamentals – describe structured data clearly", "Learn YAML without prior knowledge and create a small project configuration with values, lists and nested structures."],
     "storage-learning-story": ["From a stored value to a data platform", "Build the data storage for an intelligent plant station step by step: first without persistent storage, then on the ESP32 and finally on a local server."],
+    "measurement-tools-basics": ["Using measurement tools", "Use a multimeter, logic analyzer and oscilloscope to test safe low-voltage circuits systematically."],
     "plant-watering-control": ["Plant watering control", "Measure moisture and switch a pump in a controlled way."],
     },
     nl: {
@@ -28,6 +29,7 @@ const LearningProjectLocales = (() => {
       "uml-fundamentals": ["UML-basis – diagrammen die mens en machine begrijpen", "Leer UML als gemeenschappelijke visuele taal en beschrijf eenvoudige systemen zodat mensen ze kunnen bespreken en hulpmiddelen ze kunnen verwerken."],
       "yaml-fundamentals": ["YAML-basis – gestructureerde gegevens duidelijk beschrijven", "Leer YAML zonder voorkennis en maak een kleine projectconfiguratie met waarden, lijsten en geneste structuren."],
       "storage-learning-story": ["Van opgeslagen waarde naar dataplatform", "Bouw de gegevensopslag voor een intelligent plantenstation stap voor stap: eerst zonder permanente opslag, daarna op de ESP32 en ten slotte op een lokale server."],
+      "measurement-tools-basics": ["Werken met meetinstrumenten", "Onderzoek veilige laagspanningsschakelingen systematisch met multimeter, logic analyzer en oscilloscoop."],
       "plant-watering-control": ["Besturing van plantenbewatering", "Meet vocht en schakel een pomp gecontroleerd in."],
     },
   };

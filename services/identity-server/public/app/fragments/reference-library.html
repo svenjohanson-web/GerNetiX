@@ -1,0 +1,31 @@
+<section id="referenceLibraryView" class="view hidden reference-library-view" aria-labelledby="referenceLibraryTitle">
+  <header class="reference-library-hero">
+    <div>
+      <p class="eyebrow">Schnell nachschlagen</p>
+      <h1 id="referenceLibraryTitle">Nachschlagewerke</h1>
+      <p>Formeln, Befehle und Muster für Entwicklung und Technik – kompakt, geprüft und direkt kopierbar.</p>
+    </div>
+    <label class="reference-library-search">
+      <span>Nach Begriff, Befehl oder Thema suchen</span>
+      <input id="referenceLibrarySearch" type="search" placeholder="Zum Beispiel: git, HTTP 404, Leistung …" autocomplete="off">
+    </label>
+  </header>
+
+  <nav id="referenceLibraryCategories" class="reference-library-categories" aria-label="Nachschlagewerke auswählen"></nav>
+
+  <section class="reference-library-results" aria-labelledby="referenceLibraryResultsTitle">
+    <header>
+      <div>
+        <p class="eyebrow">Kurzreferenzen</p>
+        <h2 id="referenceLibraryResultsTitle">Alle Themen</h2>
+      </div>
+      <p id="referenceLibraryResultCount" class="reference-library-count" aria-live="polite"></p>
+    </header>
+    <div id="referenceLibraryEntries" class="reference-library-entry-grid"></div>
+    <div id="referenceLibraryEmpty" class="panel reference-library-empty" hidden>
+      <h3>Keine passende Kurzreferenz gefunden</h3>
+      <p>Versuche einen allgemeineren Begriff oder wähle wieder „Alle“.</p>
+      <button type="button" data-reference-reset>Filter zurücksetzen</button>
+    </div>
+  </section>
+</section>

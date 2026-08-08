@@ -291,6 +291,7 @@ function learningTagLabel(tag) {
     "topic:privacy": "Datenschutz",
     "topic:programming": "Programmierung",
     "topic:microcontroller": "Mikrocontroller",
+    "topic:measurement": "Messtechnik",
     "topic:radar": "Radar",
     "topic:radio": "Funk",
     "topic:camera": "Kamera",
@@ -305,13 +306,13 @@ function learningTagLabel(tag) {
     en: {
       "client:mobile": "Mobile", "level:beginner": "Beginner", "topic:actuators": "Actuators", "topic:ai": "AI",
       "topic:automation": "Automation", "topic:home-automation": "Home automation", "topic:modeling": "Modelling",
-      "topic:privacy": "Privacy", "topic:programming": "Programming", "topic:microcontroller": "Microcontrollers", "topic:radio": "Radio", "topic:camera": "Camera", "topic:networking": "Networking", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
+      "topic:privacy": "Privacy", "topic:programming": "Programming", "topic:microcontroller": "Microcontrollers", "topic:measurement": "Measurement", "topic:radio": "Radio", "topic:camera": "Camera", "topic:networking": "Networking", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
       "topic:storage": "Storage", "topic:video": "Video",
     },
     nl: {
       "client:mobile": "Mobiel", "level:beginner": "Beginner", "topic:actuators": "Actuatoren", "topic:ai": "AI",
       "topic:automation": "Automatisering", "topic:home-automation": "Domotica", "topic:modeling": "Modellering",
-      "topic:privacy": "Privacy", "topic:programming": "Programmeren", "topic:microcontroller": "Microcontrollers", "topic:radio": "Radio", "topic:camera": "Camera", "topic:networking": "Netwerken", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
+      "topic:privacy": "Privacy", "topic:programming": "Programmeren", "topic:microcontroller": "Microcontrollers", "topic:measurement": "Meettechniek", "topic:radio": "Radio", "topic:camera": "Camera", "topic:networking": "Netwerken", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
       "topic:storage": "Opslag", "topic:video": "Video",
     },
   };
@@ -332,6 +333,7 @@ function learningHeadlineLabel(project) {
     "topic:modeling": "Modellierung",
     "topic:programming": "Programmierung",
     "topic:microcontroller": "Mikrocontrollertechnik",
+    "topic:measurement": "Messtechnik",
     "topic:radar": "Radartechnik",
     "topic:sensors": "Sensorik",
     "topic:data": "Daten",
@@ -341,13 +343,13 @@ function learningHeadlineLabel(project) {
     },
     en: {
       "topic:actuators": "Actuators", "topic:motor-control": "Motor control", "topic:ai": "Artificial intelligence", "topic:automation": "Automation",
-      "topic:home-automation": "Home automation", "topic:modeling": "Modelling", "topic:programming": "Programming", "topic:microcontroller": "Microcontroller technology",
+      "topic:home-automation": "Home automation", "topic:modeling": "Modelling", "topic:programming": "Programming", "topic:microcontroller": "Microcontroller technology", "topic:measurement": "Measurement technology",
       "topic:radar": "Radar technology", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
       "topic:storage": "Storage",
     },
     nl: {
       "topic:actuators": "Actuatoren", "topic:motor-control": "Motorbesturing", "topic:ai": "Kunstmatige intelligentie", "topic:automation": "Automatisering",
-      "topic:home-automation": "Domotica", "topic:modeling": "Modellering", "topic:programming": "Programmeren", "topic:microcontroller": "Microcontrollertechniek",
+      "topic:home-automation": "Domotica", "topic:modeling": "Modellering", "topic:programming": "Programmeren", "topic:microcontroller": "Microcontrollertechniek", "topic:measurement": "Meettechniek",
       "topic:radar": "Radartechniek", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
       "topic:storage": "Opslag",
     },

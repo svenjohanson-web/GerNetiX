@@ -25,7 +25,7 @@ const GuidedProjectView = (() => {
       const activeView = views[state.activeIdeStep];
       const validation = validateGuidedView(project, activeView);
       target.innerHTML = `
-        <div class="guided-runner">
+        <div class="guided-runner ${activeView.payload?.artifact?.type === "uml_activity" ? "is-uml-step" : ""}">
           <section class="guided-artifact-pane">
             ${renderGuidedArtifact(project, activeView)}
           </section>
@@ -36,7 +36,7 @@ const GuidedProjectView = (() => {
               <h3>${escapeHtml(activeView.title || "Aktueller Lernschritt")}</h3>
             </div>
             ${renderLearningContext(activeView)}
-            ${renderLearningGuidance(activeView)}
+            ${renderLearningGuidance(activeView, validation)}
             ${renderManifestPayload(activeView)}
             ${renderGuidedCompletion(project, activeView, validation)}
             ${renderRequiredFunctions(activeView)}
@@ -47,6 +47,10 @@ const GuidedProjectView = (() => {
         </div>
         ${renderGuidedCodeAssistant(project, activeView)}
       `;
+      bindGuidedSequence(target, project, activeView, targetSelector);
+      bindGuidedEvaCalculator(target, project, activeView);
+      bindGuidedCodeRunLab(target, project, activeView, targetSelector);
+      bindRequirementsMirror(target, project, activeView, targetSelector);
       target.querySelector("[data-guided-back]")?.addEventListener("click", () => setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1), targetSelector));
       target.querySelector("[data-guided-next]")?.addEventListener("click", () => completeIdeGuidedStep(project, targetSelector));
       target.querySelector("[data-guided-preview]")?.addEventListener("click", () => openGuidedRuntimePreview(activeView));
@@ -69,7 +73,17 @@ const GuidedProjectView = (() => {
         });
       });
       target.querySelector("[data-guided-code-task]")?.addEventListener("input", (event) => {
-        setGuidedLessonResponse(project, activeView, { code: event.target.value });
+        setGuidedLessonResponse(project, activeView, {
+          code: event.target.value,
+          lastRunCode: "",
+          runCompleted: false,
+          runPending: false,
+          runOutput: "",
+          runError: "",
+        });
+        const output = target.querySelector("[data-guided-code-output]");
+        if (output) output.textContent = "Code geändert – erneut ausführen";
+        target.querySelector(".guided-code-output")?.classList.remove("is-error");
         updateGuidedCompletionState(target, project, activeView);
       });
       target.querySelectorAll("[data-guided-lab-action]").forEach((button) => {
@@ -423,6 +437,11 @@ const GuidedProjectView = (() => {
       const artifactRenderers = {
         code: renderGuidedCodeArtifact,
         code_task: () => renderGuidedCodeTask(project, view, artifact),
+        code_run_lab: () => renderGuidedCodeRunLab(project, view, artifact),
+        instruction_cards: () => renderGuidedInstructionCards(project, view, artifact),
+        eva_calculator: () => renderGuidedEvaCalculator(project, view, artifact),
+        requirements_mirror: () => renderRequirementsMirror(project, view),
+        uml_activity: renderGuidedUmlActivityArtifact,
         state_rows: renderGuidedStateRows,
         cycle: renderGuidedCycle,
         plantuml: () => renderGuidedPlantUmlArtifact(view),
@@ -448,6 +467,90 @@ const GuidedProjectView = (() => {
       `;
     }
 
+    function renderRequirementsMirror(project, view) {
+      const response = guidedLessonResponse(project, view) || {};
+      const feedback = response.feedback || null;
+      const proposal = response.proposal || "Ein Mitarbeiter soll sich an einer Maschine anmelden können.";
+      return `
+        <section class="guided-requirements-mirror ai-chat ai-chat--large" aria-label="KI-Verständnisspiegel">
+          <header>
+            <div><p class="eyebrow">KI-Verständnisspiegel</p><h3>Was versteht die KI – und was nimmt sie nur an?</h3></div>
+            <span class="guided-requirements-score">${feedback ? `${Number(feedback.quality_score || 0)} %` : "–"}</span>
+          </header>
+          <form class="guided-requirements-form ai-chat__composer" data-guided-requirements-form data-ai-chat-form>
+            <label for="guidedRequirementsProposal">Dein erster Anforderungsvorschlag</label>
+            <span class="ai-chat__input-box">
+              <textarea id="guidedRequirementsProposal" class="ai-chat__input" data-ai-chat-input rows="5" maxlength="12000" ${response.pending ? "disabled" : ""}>${escapeHtml(proposal)}</textarea>
+              <button class="ai-chat__send" data-ai-chat-send type="submit" aria-label="Vorschlag prüfen" title="Vorschlag prüfen" ${response.pending ? "disabled" : ""}>&uarr;</button>
+            </span>
+            <small>Enter prüft · Shift+Enter fügt eine neue Zeile ein. Text und Ergebnis werden nicht als Projektinhalt gespeichert.</small>
+          </form>
+          ${response.pending ? '<p class="guided-requirements-status is-pending" role="status">Die KI trennt Verstandenes, Annahmen und offene Entscheidungen …</p>' : ""}
+          ${response.error ? `<p class="guided-requirements-status is-error" role="alert">${escapeHtml(response.error)}</p>` : ""}
+          ${feedback ? renderRequirementsFeedback(feedback) : `
+            <div class="guided-requirements-empty">
+              <strong>Noch keine Auswertung</strong>
+              <p>Formuliere bewusst noch nicht perfekt. Der Spiegel soll fehlende Entscheidungen sichtbar machen, nicht verdecken.</p>
+            </div>
+          `}
+        </section>
+      `;
+    }
+
+    function renderRequirementsFeedback(feedback) {
+      return `
+        <div class="guided-requirements-feedback">
+          <p class="guided-requirements-summary">${escapeHtml(feedback.summary || "")}</p>
+          ${requirementsList("Sicher verstanden", feedback.understood, "understood")}
+          ${requirementsObjectList("Annahmen, die die KI sonst treffen müsste", feedback.assumptions, "assumptions", (item) => [item.title, item.text, item.impact ? `Auswirkung: ${item.impact}` : ""])}
+          ${requirementsList("Unklar oder mehrdeutig", feedback.unclear, "unclear")}
+          ${requirementsObjectList("Fachwissen, das noch gebraucht wird", feedback.knowledge_gaps, "knowledge", (item) => [item.topic, item.explanation, item.options?.length ? `Mögliche Richtungen: ${item.options.join(" · ")}` : ""])}
+          ${requirementsList("Funktionale Anforderungen", feedback.functional_requirements, "functional")}
+          ${requirementsList("Nichtfunktionale Anforderungen", feedback.non_functional_requirements, "quality")}
+          ${requirementsList("Randbedingungen", feedback.constraints, "constraints")}
+          ${requirementsList("Fachliche Regeln", feedback.business_rules, "rules")}
+          ${requirementsList("Testbare Akzeptanzkriterien", feedback.acceptance_criteria, "criteria")}
+          ${requirementsList("Priorisierte Rückfragen", feedback.follow_up_questions, "questions")}
+        </div>
+      `;
+    }
+
+    function requirementsList(title, items, tone) {
+      const values = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!values.length) return "";
+      return `<section class="guided-requirements-result is-${tone}"><h4>${escapeHtml(title)}</h4><ul>${values.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`;
+    }
+
+    function requirementsObjectList(title, items, tone, fields) {
+      const values = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!values.length) return "";
+      return `<section class="guided-requirements-result is-${tone}"><h4>${escapeHtml(title)}</h4>${values.map((item) => {
+        const [heading, text, note] = fields(item);
+        return `<article><strong>${escapeHtml(heading || "")}</strong><p>${escapeHtml(text || "")}</p>${note ? `<small>${escapeHtml(note)}</small>` : ""}</article>`;
+      }).join("")}</section>`;
+    }
+
+    function bindRequirementsMirror(target, project, view, targetSelector) {
+      if (view?.payload?.artifact?.type !== "requirements_mirror") return;
+      target.querySelector("[data-guided-requirements-form]")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const proposal = event.currentTarget.querySelector("textarea")?.value.trim() || "";
+        if (!proposal) return;
+        setGuidedLessonResponse(project, view, { proposal, pending: true, error: "", feedback: null });
+        renderProjectViewManifest(project, targetSelector);
+        try {
+          const result = await postJson("/api/platform/requirements-workshop/feedback", { proposal });
+          setGuidedLessonResponse(project, view, { pending: false, error: "", feedback: result.feedback });
+        } catch (error) {
+          setGuidedLessonResponse(project, view, {
+            pending: false,
+            error: `${error.message || "Der KI-Verständnisspiegel ist gerade nicht erreichbar."} Dein Vorschlag bleibt in dieser Browseransicht erhalten.`,
+          });
+        }
+        renderProjectViewManifest(project, targetSelector);
+      });
+    }
+
     function renderEntitlementGate(view) {
       const payload = view.payload || {};
       const required = Array.isArray(view.required_entitlements) ? view.required_entitlements : [];
@@ -466,15 +569,161 @@ const GuidedProjectView = (() => {
 
     function renderGuidedCodeArtifact(artifact) {
       const lines = String(artifact.content || "").replace(/\r\n/g, "\n").split("\n");
+      const helpItems = Array.isArray(artifact.help_items) ? artifact.help_items : [];
       return `
-        <div class="guided-code-viewer">
+        <div class="guided-code-viewer ${lines.length <= 8 ? "is-compact" : ""}">
           <div class="guided-artifact-head">
             <p class="eyebrow">Code Viewer</p>
             <h3>${escapeHtml(artifact.title || "Quellcode")}</h3>
+            ${helpItems.length ? `<div class="guided-code-help-list" aria-label="Hilfe zur Schreibweise">
+              ${helpItems.map((item, index) => {
+                const tooltipId = `guidedCodeHelp${state.activeIdeStep || 0}_${index}`;
+                return `<span class="guided-code-help">
+                  <button type="button" aria-describedby="${tooltipId}" aria-label="${escapeAttribute(`${item.term || "Schreibweise"} erklären`)}"><span>?</span><code>${escapeHtml(item.term || "Erklärung")}</code></button>
+                  <span id="${tooltipId}" class="guided-code-help-tooltip" role="tooltip">${escapeHtml(item.text || "")}</span>
+                </span>`;
+              }).join("")}
+            </div>` : ""}
           </div>
           <pre>${lines.map((line, index) => `<span><b>${String(index + 1).padStart(3, " ")}</b>${escapeHtml(line)}</span>`).join("")}</pre>
         </div>
       `;
+    }
+
+    function renderGuidedInstructionCards(project, view, artifact) {
+      const cards = sequenceCardOrder(project, view, artifact);
+      return `
+        <section class="guided-instruction-board" data-guided-sequence>
+          <div class="guided-artifact-head">
+            <p class="eyebrow">Denkaufgabe</p>
+            <h3>${escapeHtml(artifact.title || "Anweisungen ordnen")}</h3>
+          </div>
+          <div class="guided-instruction-board-body">
+            ${artifact.goal ? `<strong class="guided-instruction-goal">${escapeHtml(artifact.goal)}</strong>` : ""}
+            <div class="guided-instruction-cards">
+              ${cards.map((card, index) => `<article draggable="true" data-guided-sequence-card="${escapeAttribute(card.id || "")}">
+                <div class="guided-instruction-card-head"><span>${index + 1}</span><small>⋮⋮ Verschieben</small></div>
+                <strong>${escapeHtml(card.text || "")}</strong>
+                <div class="guided-instruction-card-actions">
+                  <button type="button" data-guided-sequence-move="-1" aria-label="${escapeAttribute(`${card.text || "Anweisung"} nach links verschieben`)}" ${index === 0 ? "disabled" : ""}>←</button>
+                  <button type="button" data-guided-sequence-move="1" aria-label="${escapeAttribute(`${card.text || "Anweisung"} nach rechts verschieben`)}" ${index === cards.length - 1 ? "disabled" : ""}>→</button>
+                </div>
+              </article>`).join("")}
+            </div>
+            ${artifact.note ? `<p>${escapeHtml(artifact.note)}</p>` : ""}
+          </div>
+        </section>
+      `;
+    }
+
+    function sequenceCardOrder(project, view, artifact = view?.payload?.artifact || {}) {
+      const cards = Array.isArray(artifact.cards) ? artifact.cards.filter((card) => card?.id) : [];
+      const byId = new Map(cards.map((card) => [String(card.id), card]));
+      const requested = guidedLessonResponse(project, view)?.sequenceOrder || [];
+      const requestedIds = Array.isArray(requested) ? requested.map(String).filter((id) => byId.has(id)) : [];
+      const orderedIds = [...new Set([...requestedIds, ...cards.map((card) => String(card.id))])];
+      return orderedIds.map((id) => byId.get(id)).filter(Boolean);
+    }
+
+    function bindGuidedSequence(target, project, view, targetSelector) {
+      const board = target.querySelector("[data-guided-sequence]");
+      if (!board) return;
+      const artifact = view?.payload?.artifact || {};
+      board.querySelectorAll("[data-guided-sequence-card]").forEach((card) => {
+        card.addEventListener("dragstart", (event) => {
+          event.dataTransfer?.setData("text/plain", card.dataset.guidedSequenceCard || "");
+          if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+          card.classList.add("is-dragging");
+        });
+        card.addEventListener("dragend", () => card.classList.remove("is-dragging"));
+        card.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        });
+        card.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const sourceId = event.dataTransfer?.getData("text/plain") || "";
+          const targetId = card.dataset.guidedSequenceCard || "";
+          moveSequenceCard(project, view, artifact, sourceId, targetId, targetSelector);
+        });
+      });
+      board.querySelectorAll("[data-guided-sequence-move]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const card = button.closest("[data-guided-sequence-card]");
+          moveSequenceCardByOffset(project, view, artifact, card?.dataset.guidedSequenceCard || "", Number(button.dataset.guidedSequenceMove || 0), targetSelector);
+        });
+      });
+    }
+
+    function moveSequenceCard(project, view, artifact, sourceId, targetId, targetSelector) {
+      if (!sourceId || !targetId || sourceId === targetId) return;
+      const order = sequenceCardOrder(project, view, artifact).map((card) => String(card.id));
+      const sourceIndex = order.indexOf(sourceId);
+      const targetIndex = order.indexOf(targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return;
+      order.splice(sourceIndex, 1);
+      order.splice(targetIndex, 0, sourceId);
+      setGuidedLessonResponse(project, view, { sequenceOrder: order });
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    function moveSequenceCardByOffset(project, view, artifact, cardId, offset, targetSelector) {
+      const order = sequenceCardOrder(project, view, artifact).map((card) => String(card.id));
+      const currentIndex = order.indexOf(cardId);
+      const targetIndex = Math.max(0, Math.min(currentIndex + offset, order.length - 1));
+      if (currentIndex < 0 || currentIndex === targetIndex) return;
+      const targetId = order[targetIndex];
+      moveSequenceCard(project, view, artifact, cardId, targetId, targetSelector);
+    }
+
+    function evaCalculatorValues(project, view, artifact = view?.payload?.artifact || {}) {
+      const response = guidedLessonResponse(project, view) || {};
+      const firstRaw = response.firstInput ?? artifact.initial_values?.[0] ?? 2;
+      const secondRaw = response.secondInput ?? artifact.initial_values?.[1] ?? 3;
+      const first = Number(firstRaw);
+      const second = Number(secondRaw);
+      const valid = String(firstRaw).trim() !== "" && String(secondRaw).trim() !== "" && Number.isFinite(first) && Number.isFinite(second);
+      return { firstRaw, secondRaw, first, second, valid, result: valid ? first + second : null };
+    }
+
+    function renderGuidedEvaCalculator(project, view, artifact) {
+      const values = evaCalculatorValues(project, view, artifact);
+      const result = values.valid ? String(values.result) : "–";
+      return `
+        <section class="guided-eva-board" data-guided-eva-board>
+          <div class="guided-artifact-head">
+            <p class="eyebrow">Interaktive EVA-Kette</p>
+            <h3>${escapeHtml(artifact.title || "Eingabe · Verarbeitung · Ausgabe")}</h3>
+          </div>
+          <div class="guided-eva-board-body">
+            <strong class="guided-instruction-goal">${escapeHtml(artifact.goal || "Verändere die Eingaben und beobachte die Ausgabe.")}</strong>
+            <div class="guided-eva-inputs">
+              <label class="guided-eva-card input"><span>Eingabe 1</span><strong>Zahl 1</strong><input type="number" step="1" value="${escapeAttribute(values.firstRaw)}" data-guided-eva-input="firstInput" aria-label="Erste Zahl"></label>
+              <label class="guided-eva-card input"><span>Eingabe 2</span><strong>Zahl 2</strong><input type="number" step="1" value="${escapeAttribute(values.secondRaw)}" data-guided-eva-input="secondInput" aria-label="Zweite Zahl"></label>
+            </div>
+            <div class="guided-eva-flow" aria-hidden="true">↓</div>
+            <article class="guided-eva-card processing"><span>Verarbeitung</span><strong>Addiere beide Zahlen</strong><output data-guided-eva-expression>${values.valid ? `${values.first} + ${values.second}` : "Zwei Zahlen eingeben"}</output></article>
+            <div class="guided-eva-flow" aria-hidden="true">↓</div>
+            <article class="guided-eva-card output"><span>Ausgabe</span><strong>Ergebnis</strong><output data-guided-eva-result>${escapeHtml(result)}</output></article>
+          </div>
+        </section>
+      `;
+    }
+
+    function bindGuidedEvaCalculator(target, project, view) {
+      const board = target.querySelector("[data-guided-eva-board]");
+      if (!board) return;
+      board.querySelectorAll("[data-guided-eva-input]").forEach((input) => {
+        input.addEventListener("input", () => {
+          setGuidedLessonResponse(project, view, { [input.dataset.guidedEvaInput]: input.value });
+          const values = evaCalculatorValues(project, view);
+          const expression = board.querySelector("[data-guided-eva-expression]");
+          const result = board.querySelector("[data-guided-eva-result]");
+          if (expression) expression.textContent = values.valid ? `${values.first} + ${values.second}` : "Zwei Zahlen eingeben";
+          if (result) result.textContent = values.valid ? String(values.result) : "–";
+          updateGuidedCompletionState(target, project, view);
+        });
+      });
     }
 
     function renderGuidedCodeTask(project, view, artifact) {
@@ -489,6 +738,125 @@ const GuidedProjectView = (() => {
           <textarea data-guided-code-task spellcheck="false" aria-label="${escapeAttribute(artifact.title || "Code ergänzen")}">${escapeHtml(content)}</textarea>
         </div>
       `;
+    }
+
+    function renderGuidedCodeRunLab(project, view, artifact) {
+      const response = guidedLessonResponse(project, view) || {};
+      const content = response.code ?? artifact.content ?? "";
+      const helpItems = Array.isArray(artifact.help_items) ? artifact.help_items : [];
+      const hasRun = response.lastRunCode === content && response.runCompleted === true;
+      const output = response.runPending
+        ? "Programm wird ausgeführt …"
+        : hasRun
+          ? (response.runError || response.runOutput || "Keine Konsolenausgabe")
+          : "Noch nicht ausgeführt";
+      return `
+        <section class="guided-code-run-lab" data-guided-code-run-lab>
+          <div class="guided-artifact-head">
+            <p class="eyebrow">Mini-Programmierlabor</p>
+            <h3>${escapeHtml(artifact.title || "Code ändern und ausführen")}</h3>
+            ${helpItems.length ? `<div class="guided-code-help-list" aria-label="Hilfe zur Schreibweise">
+              ${helpItems.map((item, index) => {
+                const tooltipId = `guidedCodeRunHelp${state.activeIdeStep || 0}_${index}`;
+                return `<span class="guided-code-help">
+                  <button type="button" aria-describedby="${tooltipId}" aria-label="${escapeAttribute(`${item.term || "Schreibweise"} erklären`)}"><span>?</span><code>${escapeHtml(item.term || "Erklärung")}</code></button>
+                  <span id="${tooltipId}" class="guided-code-help-tooltip" role="tooltip">${escapeHtml(item.text || "")}</span>
+                </span>`;
+              }).join("")}
+            </div>` : ""}
+          </div>
+          <div class="guided-code-viewer guided-code-task">
+            <textarea data-guided-code-task spellcheck="false" aria-label="${escapeAttribute(artifact.title || "Code ändern und ausführen")}">${escapeHtml(content)}</textarea>
+          </div>
+          <div class="guided-code-run-toolbar">
+            <button class="primary" type="button" data-guided-code-run ${response.runPending ? "disabled" : ""}>${response.runPending ? "Wird ausgeführt …" : "Programm ausführen"}</button>
+            <span>Ändern · ausführen · Ausgabe prüfen</span>
+          </div>
+          <section class="guided-code-output ${response.runError ? "is-error" : ""}" aria-live="polite">
+            <strong>${escapeHtml(artifact.output_label || "Konsolenausgabe")}</strong>
+            <output data-guided-code-output>${escapeHtml(output)}</output>
+          </section>
+          ${artifact.test_code ? `<section class="guided-code-test">
+            <strong>Beim Ausführen wird zusätzlich geprüft</strong>
+            <pre>${escapeHtml(artifact.test_code)}</pre>
+          </section>` : ""}
+        </section>
+      `;
+    }
+
+    function runGuidedJavaScript(code, testCode = "") {
+      if (typeof Worker === "undefined" || typeof Blob === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+        return Promise.resolve({ output: "", error: "Die Codeausführung wird von diesem Browser nicht unterstützt." });
+      }
+      const workerSource = `
+        const output = [];
+        const format = (value) => {
+          if (typeof value === "string") return value;
+          if (typeof value === "undefined") return "undefined";
+          if (typeof value === "function") return "[Function]";
+          try { return JSON.stringify(value); } catch { return String(value); }
+        };
+        console.log = (...values) => output.push(values.map(format).join(" "));
+        console.info = console.log;
+        console.warn = console.log;
+        self.fetch = undefined;
+        self.XMLHttpRequest = undefined;
+        self.WebSocket = undefined;
+        self.EventSource = undefined;
+        self.onmessage = (event) => {
+          try {
+            const source = String(event.data.code || "") + "\\n" + String(event.data.testCode || "");
+            Function(source)();
+            self.postMessage({ output: output.join("\\n"), error: "" });
+          } catch (error) {
+            self.postMessage({ output: output.join("\\n"), error: error?.message || String(error) });
+          }
+        };
+      `;
+      const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+      return new Promise((resolve) => {
+        const worker = new Worker(workerUrl);
+        let settled = false;
+        const finish = (result) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          worker.terminate();
+          URL.revokeObjectURL(workerUrl);
+          resolve(result);
+        };
+        const timeout = setTimeout(() => finish({ output: "", error: "Das Programm wurde nach 1,5 Sekunden beendet." }), 1500);
+        worker.addEventListener("message", (event) => finish(event.data || { output: "", error: "Unbekannter Ausführungsfehler." }), { once: true });
+        worker.addEventListener("error", (event) => finish({ output: "", error: event.message || "Das Programm konnte nicht ausgeführt werden." }), { once: true });
+        worker.postMessage({ code, testCode });
+      });
+    }
+
+    function bindGuidedCodeRunLab(target, project, view, targetSelector) {
+      const lab = target.querySelector("[data-guided-code-run-lab]");
+      if (!lab) return;
+      lab.querySelector("[data-guided-code-run]")?.addEventListener("click", async () => {
+        const code = lab.querySelector("[data-guided-code-task]")?.value || "";
+        setGuidedLessonResponse(project, view, {
+          code,
+          lastRunCode: code,
+          runCompleted: false,
+          runPending: true,
+          runOutput: "",
+          runError: "",
+        });
+        renderProjectViewManifest(project, targetSelector);
+        const result = await runGuidedJavaScript(code, view?.payload?.artifact?.test_code || "");
+        setGuidedLessonResponse(project, view, {
+          code,
+          lastRunCode: code,
+          runCompleted: true,
+          runPending: false,
+          runOutput: result.output,
+          runError: result.error,
+        });
+        renderProjectViewManifest(project, targetSelector);
+      });
     }
 
     function renderGuidedStateRows(artifact) {
@@ -820,7 +1188,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
             <span>${escapeHtml(typeLabel)}</span>
             <strong>${escapeHtml(view.title || view.id)}</strong>
           </div>
-          ${renderLearningGuidance(view)}
+          ${renderLearningGuidance(view, validation)}
           ${renderRequiredFunctions(view)}
           ${renderManifestPayload(view)}
           ${validation?.focus ? `<pre class="source-focus-box">${escapeHtml(validation.focus)}</pre>` : ""}
@@ -891,6 +1259,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
         const required = Array.isArray(view.required_entitlements) ? view.required_entitlements : [];
         return `<dl class="meta-list compact">${meta("Benötigte Ressource", required.join(", ") || "noch festzulegen")}</dl>`;
       }
+      if (view.type === "requirements_workshop") return "";
       return Object.keys(payload).length ? `<pre class="plantuml-box">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>` : "";
     }
 
@@ -917,11 +1286,16 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       `;
     }
 
-    function renderLearningGuidance(view) {
+    function renderLearningGuidance(view, validation = { canContinue: true }) {
       const payload = view.payload || {};
+      const completionType = String(view?.completion?.type || "");
+      const targetText = completionType === "code_run" && !view?.completion?.required_changed_output_lines
+        ? String(view?.completion?.target_output || "").trim()
+        : "";
+      const expectedResultVisible = !["choice", "sequence", "eva_calculation"].includes(completionType) || validation.canContinue;
       const sections = [
         ["Deine Aufgabe", payload.task],
-        ["Das solltest du danach sehen", payload.expected_result],
+        ["Das solltest du danach sehen", expectedResultVisible ? payload.expected_result : ""],
       ].filter(([, text]) => text);
       if (!sections.length) return "";
       return `
@@ -929,11 +1303,21 @@ if (digitalRead(BUTTON_PIN) == LOW) {
           ${sections.map(([title, text]) => `
             <section>
               <strong>${escapeHtml(title)}</strong>
-              <p>${escapeHtml(text)}</p>
+              <p>${renderGuidedTargetText(text, targetText)}</p>
             </section>
           `).join("")}
         </div>
       `;
+    }
+
+    function renderGuidedTargetText(text, targetText) {
+      const source = String(text || "");
+      const target = String(targetText || "");
+      if (!target || !source.includes(target)) return escapeHtml(source);
+      return source
+        .split(target)
+        .map(escapeHtml)
+        .join(`<mark class="guided-target-text"><code>${escapeHtml(target)}</code></mark>`);
     }
 
     function renderRequiredFunctions(view) {
@@ -1036,7 +1420,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       const status = target.querySelector("[data-guided-validation]");
       if (!status) return;
       status.className = `validation ${validation.canContinue ? "ok" : "blocked"}`;
-      status.textContent = validation.message || (validation.canContinue ? "Aufgabe erfüllt." : "Dieser Schritt ist noch nicht bereit.");
+      status.innerHTML = renderGuidedValidationContent(validation);
     }
 
     function guidedViews(project) {
@@ -1061,10 +1445,21 @@ if (digitalRead(BUTTON_PIN) == LOW) {
         };
       }
 
+      if (completion.type === "requirements_feedback") {
+        const response = guidedLessonResponse(project, view) || {};
+        const completed = guidedStepIsCompleted(project, view);
+        const canContinue = Boolean(response.feedback) || completed;
+        return {
+          canContinue,
+          showStatus: true,
+          message: canContinue
+            ? response.feedback ? "Verständnis-Spiegel erstellt. Prüfe die Annahmen, bevor du weitergehst." : "Dieser Schritt wurde bereits abgeschlossen; der flüchtige KI-Inhalt wird nicht erneut angezeigt."
+            : response.pending ? "Die Auswertung läuft …" : "Erstelle zuerst einen Verständnis-Spiegel.",
+          focus,
+        };
+      }
+
       if (completion.type === "choice") {
-        if (guidedStepIsCompleted(project, view)) {
-          return { canContinue: true, message: completion.success || "Aufgabe erfüllt.", showStatus: true, focus };
-        }
         const selected = guidedLessonResponse(project, view)?.choice || "";
         const correct = String(completion.correct_option ?? completion.correct ?? "");
         const canContinue = Boolean(selected) && selected === correct;
@@ -1076,6 +1471,100 @@ if (digitalRead(BUTTON_PIN) == LOW) {
               ? completion.failure || "Das passt noch nicht. Prüfe den Code noch einmal."
               : "Beantworte die Aufgabe, bevor du fortfährst.",
           showStatus: true,
+          focus,
+        };
+      }
+
+      if (completion.type === "sequence") {
+        const order = sequenceCardOrder(project, view).map((card) => String(card.id));
+        const correct = Array.isArray(completion.correct_order) ? completion.correct_order.map(String) : [];
+        const canContinue = order.length === correct.length && order.every((id, index) => id === correct[index]);
+        const hasMoved = Array.isArray(guidedLessonResponse(project, view)?.sequenceOrder);
+        return {
+          canContinue,
+          message: canContinue
+            ? completion.success || "Die Reihenfolge stimmt. Du kannst fortfahren."
+            : hasMoved
+              ? completion.failure || "Die Reihenfolge passt noch nicht."
+              : "Verschiebe die Kacheln in eine sinnvolle Reihenfolge.",
+          showStatus: true,
+          focus,
+        };
+      }
+
+      if (completion.type === "eva_calculation") {
+        const values = evaCalculatorValues(project, view);
+        const targetResult = Number(completion.target_result);
+        const canContinue = values.valid && Number.isFinite(targetResult) && values.result === targetResult;
+        return {
+          canContinue,
+          message: canContinue
+            ? completion.success || `Richtig: Die Ausgabe zeigt ${targetResult}.`
+            : values.valid
+              ? completion.failure || `Die Ausgabe zeigt noch ${values.result}. Verändere eine oder beide Eingaben.`
+              : "Gib in beiden Eingabe-Kacheln eine Zahl ein.",
+          showStatus: true,
+          focus,
+        };
+      }
+
+      if (completion.type === "code_run") {
+        const response = guidedLessonResponse(project, view) || {};
+        const code = response.code ?? view?.payload?.artifact?.content ?? "";
+        const hasCurrentRun = response.lastRunCode === code && response.runCompleted === true;
+        const targetOutput = String(completion.target_output ?? "");
+        const required = Array.isArray(completion.must_contain) ? completion.must_contain : [];
+        const forbidden = Array.isArray(completion.must_not_contain) ? completion.must_not_contain : [];
+        const comparableCode = String(code).replaceAll(";", "").replace(/\s+/g, " ").trim();
+        const comparablePattern = (item) => String(item).replaceAll(";", "").replace(/\s+/g, " ").trim();
+        const requiredChangedOutputLines = Number(completion.required_changed_output_lines || 0);
+        const initialCode = comparablePattern(view?.payload?.artifact?.content || "");
+        const codeWasChanged = comparableCode !== initialCode;
+        const targetLines = targetOutput.trim().split(/\r?\n/).map((line) => line.trim());
+        const actualLines = String(response.runOutput || "").trim().split(/\r?\n/).map((line) => line.trim());
+        const outputLineCountMatches = targetLines.length === actualLines.length;
+        const changedOutputLines = outputLineCountMatches
+          ? targetLines.reduce((count, line, index) => count + (line === actualLines[index] ? 0 : 1), 0)
+          : -1;
+        const codeMatches = required.every((item) => comparableCode.includes(comparablePattern(item)))
+          && forbidden.every((item) => !comparableCode.includes(comparablePattern(item)));
+        const outputMatches = requiredChangedOutputLines > 0
+          ? codeWasChanged && outputLineCountMatches && changedOutputLines === requiredChangedOutputLines
+          : String(response.runOutput || "").trim() === targetOutput.trim();
+        const errorMatches = completion.target_error
+          ? String(response.runError || "").includes(String(completion.target_error))
+          : !response.runError;
+        const canContinue = hasCurrentRun && codeMatches && outputMatches && errorMatches;
+        const actualOutput = response.runError
+          ? `Fehler: ${response.runError}`
+          : String(response.runOutput || "Keine Konsolenausgabe");
+        const changedOutputFailure = !codeWasChanged
+          ? "Ändere genau einen Wert im Code und führe ihn danach erneut aus."
+          : !outputLineCountMatches
+            ? `Die Ausgabe soll weiterhin aus ${targetLines.length} Zeilen bestehen. Aktuell sind es ${actualLines.length}.`
+            : `Aktuell ${changedOutputLines === 1 ? "unterscheidet sich eine Zeile" : `unterscheiden sich ${changedOutputLines} Zeilen`}. Ändere genau eine Ausgabe.`;
+        return {
+          canContinue,
+          message: canContinue
+            ? completion.success || (targetOutput
+              ? `Richtig: Das Programm gibt ${targetOutput} aus.`
+              : "Richtig: Das Programm wurde ausgeführt und erzeugt keine Konsolenausgabe.")
+            : response.runPending
+              ? "Das Programm wird ausgeführt."
+            : !hasCurrentRun
+              ? "Führe den aktuellen Code aus und prüfe die Ausgabe."
+              : response.runError || (requiredChangedOutputLines > 0
+                ? changedOutputFailure
+                : completion.failure || `Die Ausgabe ist noch nicht ${targetOutput}.`),
+          showStatus: true,
+          comparison: !canContinue && hasCurrentRun && !response.runPending && targetOutput
+            ? {
+                expectedLabel: requiredChangedOutputLines > 0 ? "Ausgangsausgabe" : "Erwartet",
+                actualLabel: requiredChangedOutputLines > 0 ? "Aktuelle Ausgabe" : "Tatsächlich",
+                expected: targetOutput,
+                actual: actualOutput,
+              }
+            : null,
           focus,
         };
       }
@@ -1163,22 +1652,111 @@ if (digitalRead(BUTTON_PIN) == LOW) {
     }
 
     function renderGuidedValidation(view, validation) {
-      if (validation.canContinue && !validation.showStatus) return "";
-      return `<div id="guidedCompletionStatus" data-guided-validation class="validation ${validation.canContinue ? "ok" : "blocked"}">${escapeHtml(validation.message || (validation.canContinue ? "Aufgabe erfüllt." : "Dieser Schritt ist noch nicht bereit."))}</div>`;
+      return validation.canContinue && !validation.showStatus
+        ? ""
+        : `<div id="guidedCompletionStatus" data-guided-validation class="validation ${validation.canContinue ? "ok" : "blocked"}">${renderGuidedValidationContent(validation)}</div>`;
+    }
+
+    function renderGuidedValidationContent(validation) {
+      const message = validation.message || (validation.canContinue ? "Aufgabe erfüllt." : "Dieser Schritt ist noch nicht bereit.");
+      const comparison = validation.comparison;
+      return `
+        <p class="guided-validation-message">${escapeHtml(message)}</p>
+        ${comparison ? `<dl class="guided-validation-comparison">
+          <div><dt>${escapeHtml(comparison.expectedLabel || "Erwartet")}</dt><dd><code>${escapeHtml(comparison.expected)}</code></dd></div>
+          <div><dt>${escapeHtml(comparison.actualLabel || "Tatsächlich")}</dt><dd><code>${escapeHtml(comparison.actual)}</code></dd></div>
+        </dl>` : ""}
+      `;
+    }
+
+    function renderGuidedUmlActivityArtifact(artifact) {
+      const steps = Array.isArray(artifact.steps) ? artifact.steps.slice(0, 3) : [];
+      const firstStep = steps[0] || "Ersten Schritt ausführen";
+      const secondStep = steps[1] || "Ergebnis prüfen";
+      const thirdStep = steps[2] || "Ergebnis anzeigen";
+      const decision = artifact.decision || {};
+      const hasDecision = Boolean(decision.label);
+      return `
+        <section class="guided-uml-artifact" data-guided-uml-artifact="uml_activity">
+          <header>
+            <p class="eyebrow">Professionelle Notation</p>
+            <h4>${escapeHtml(artifact.title || "UML-Aktivitätsdiagramm")}</h4>
+            <p>${escapeHtml(artifact.intro || "Ein UML-Aktivitätsdiagramm beschreibt denselben Ablauf mit festgelegten Symbolen.")}</p>
+          </header>
+          <div class="guided-uml-layout">
+            <div class="guided-uml-activity" role="img" aria-label="${escapeAttribute(artifact.accessible_label || "UML-Aktivitätsdiagramm des gelösten Programmablaufs")}">
+            <svg viewBox="0 0 620 ${hasDecision ? "445" : "470"}" aria-hidden="true" focusable="false">
+              <defs>
+                <marker id="guidedUmlArrow" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto"><path d="M0,0 L14,7 L0,14 Z"></path></marker>
+              </defs>
+              ${hasDecision ? `
+                <circle class="uml-start" cx="270" cy="22" r="11"></circle>
+                <path class="uml-flow" d="M270 34 V52"></path>
+                <rect class="uml-action" x="100" y="52" width="340" height="52" rx="12"></rect>
+                <text x="270" y="79">${escapeHtml(firstStep)}</text>
+                <path class="uml-flow" d="M270 104 V132"></path>
+                <rect class="uml-action" x="100" y="132" width="340" height="52" rx="12"></rect>
+                <text x="270" y="159">${escapeHtml(secondStep)}</text>
+                <path class="uml-flow" d="M270 184 V210"></path>
+                <polygon class="uml-decision" points="270,210 430,260 270,310 110,260"></polygon>
+                <text x="270" y="261">${escapeHtml(decision.label)}</text>
+                <path class="uml-flow" d="M270 310 V340"></path>
+                <text class="uml-branch-label" x="286" y="326">[ja]</text>
+                <rect class="uml-action" x="100" y="340" width="340" height="52" rx="12"></rect>
+                <text x="270" y="367">${escapeHtml(decision.yes || "Aktion ausführen")}</text>
+                <path class="uml-flow" d="M270 392 V406"></path>
+                <circle class="uml-end-outer" cx="270" cy="423" r="13"></circle>
+                <circle class="uml-end-inner" cx="270" cy="423" r="8"></circle>
+                <path class="uml-flow" d="M430 260 H546"></path>
+                <text class="uml-branch-label" x="448" y="244">[nein]</text>
+                <circle class="uml-end-outer" cx="564" cy="260" r="13"></circle>
+                <circle class="uml-end-inner" cx="564" cy="260" r="8"></circle>
+              ` : `
+                <circle class="uml-start" cx="310" cy="28" r="11"></circle>
+                <path class="uml-flow" d="M310 40 V70"></path>
+                <rect class="uml-action" x="100" y="70" width="420" height="64" rx="12"></rect>
+                <text x="310" y="103">${escapeHtml(firstStep)}</text>
+                <path class="uml-flow" d="M310 134 V180"></path>
+                <rect class="uml-action" x="100" y="180" width="420" height="64" rx="12"></rect>
+                <text x="310" y="213">${escapeHtml(secondStep)}</text>
+                <path class="uml-flow" d="M310 244 V290"></path>
+                <rect class="uml-action" x="100" y="290" width="420" height="64" rx="12"></rect>
+                <text x="310" y="323">${escapeHtml(thirdStep)}</text>
+                <path class="uml-flow" d="M310 354 V405"></path>
+                <circle class="uml-end-outer" cx="310" cy="434" r="15"></circle>
+                <circle class="uml-end-inner" cx="310" cy="434" r="9"></circle>
+              `}
+            </svg>
+            </div>
+            <aside class="guided-uml-legend" aria-label="UML-Aktivitätselemente">
+              <h5>UML-Aktivitätselemente</h5>
+              <div><svg viewBox="0 0 38 28" aria-hidden="true"><circle class="uml-start" cx="19" cy="14" r="8"></circle></svg><p><strong>Initialknoten</strong><span>Start der Aktivität</span></p></div>
+              <div><svg viewBox="0 0 38 28" aria-hidden="true"><rect class="uml-action" x="3" y="5" width="32" height="18" rx="5"></rect></svg><p><strong>Aktion</strong><span>Ausführbarer Schritt</span></p></div>
+              ${hasDecision ? `<div><svg viewBox="0 0 38 28" aria-hidden="true"><polygon class="uml-decision" points="19,3 35,14 19,25 3,14"></polygon></svg><p><strong>Entscheidungsknoten</strong><span>Verzweigung anhand einer Bedingung</span></p></div>` : ""}
+              <div><svg viewBox="0 0 38 28" aria-hidden="true"><defs><marker id="guidedUmlLegendArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z"></path></marker></defs><path class="uml-flow" d="M4 14 H32" style="marker-end:url(#guidedUmlLegendArrow)"></path></svg><p><strong>Kontrollfluss</strong><span>Reihenfolge der Ausführung</span></p></div>
+              <div><svg viewBox="0 0 38 28" aria-hidden="true"><circle class="uml-end-outer" cx="19" cy="14" r="10"></circle><circle class="uml-end-inner" cx="19" cy="14" r="6"></circle></svg><p><strong>Aktivitätsendknoten</strong><span>Ende der gesamten Aktivität</span></p></div>
+            </aside>
+          </div>
+          <p class="guided-uml-transfer"><strong>Die Verbindung zu deiner Aufgabe:</strong> Du hast zuvor denselben Programmablauf aus einzelnen Aktionen zusammengesetzt. Entwickler können solche Abläufe mit UML-Aktivitätsdiagrammen eindeutig beschreiben.</p>
+        </section>
+      `;
     }
 
     function renderGuidedActions(project, view, validation) {
       const controls = guidedControls(project, view, validation);
+      const views = guidedViews(project);
+      const position = `<span class="guided-step-position" aria-label="Aktueller Schritt ${state.activeIdeStep + 1} von ${views.length}">Schritt <strong>${state.activeIdeStep + 1}</strong> von ${views.length}</span>`;
+      const nextIndex = controls.actions.findIndex((action) => action.fn === "next_step");
       return `
         <div class="guided-actions">
-          ${controls.actions.map((action) => `
-            <button
+          ${controls.actions.map((action, index) => `
+            ${index === nextIndex ? position : ""}<button
               class="${action.primary ? "primary" : ""}"
               type="button"
               data-guided-control="${escapeAttribute(action.fn)}"
               ${action.disabled ? "disabled" : ""}
             >${escapeHtml(action.label)}</button>
-          `).join("")}
+          `).join("")}${nextIndex === -1 ? position : ""}
         </div>
       `;
     }
@@ -1431,6 +2009,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       focusIdeStepSource(project);
       try {
         await saveIdeGuidedProgress(project, state.activeIdeStep, progressFor(project.id).completedSteps);
+        window.dispatchEvent(new CustomEvent("learning-progress-updated", { detail: { projectId: project.id } }));
       } catch (error) {
         console.warn("Lernfortschritt konnte nicht gespeichert werden.", error);
       }

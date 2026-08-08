@@ -41,6 +41,17 @@ function registerWebRoutes({
   for (const routePath of ["/hilfe", "/hilfe/", "/wissen", "/wissen/"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, appDir, "/index.html") });
   }
+  for (const routePath of ["/app/requirements-workshop", "/app/requirements-workshop/"]) {
+    registry.register({
+      method: "*",
+      path: routePath,
+      async handler({ req, res }) {
+        const target = "/app/learning-project-overview/?project=catalog_ai-requirements-workshop";
+        if (!await requireSession(req, null)) { redirect(res, authRoute(target)); return; }
+        redirect(res, target);
+      },
+    });
+  }
   for (const routePath of ["/ueber-uns", "/ueber-uns/"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, path.join(publicDir, "ueber-uns"), "/index.html") });
   }
@@ -82,6 +93,7 @@ function registerWebRoutes({
     },
   });
   for (const routePath of ["/shop", "/shop/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/shop/index.html") });
+  for (const routePath of ["/leistungen", "/leistungen/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/leistungen/index.html") });
   for (const routePath of ["/tarife", "/tarife/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/tarife/index.html") });
   for (const routePath of ["/entdecken", "/entdecken/", "/downloads", "/downloads/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => redirect(res, "/nachbauprojekte/") });
   for (const routePath of ["/nachbauprojekte", "/nachbauprojekte/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/index.html") });

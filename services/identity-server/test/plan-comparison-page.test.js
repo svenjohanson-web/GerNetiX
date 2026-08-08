@@ -31,8 +31,8 @@ test("separates account access, cloud plans, AI credits, recovery and Home licen
 
 test("compares free, Basic Plus and Premium without pretending proposed offers are purchasable", () => {
   assert.match(page, /Cloud Kostenlos[\s\S]*Cloud Basic\+[\s\S]*Cloud Premium/);
-  assert.match(page, /Basic\+ soll zusätzliche Lernwege/);
-  assert.match(page, /Solange diese Angebote noch nicht buchbar sind, musst du nichts freischalten/);
+  assert.match(page, /Basic\+ soll mehr Projekt-, Build-, OTA- und Cloud-Komfort/);
+  assert.match(page, /Einzel-Courses und Lernpakete bleiben dauerhafte Käufe/);
   assert.match(page, /Grundlage vorhanden/);
   assert.match(page, /Geplant/);
   assert.match(page, /Teilweise vorbereitet/);

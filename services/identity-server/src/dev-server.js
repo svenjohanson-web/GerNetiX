@@ -111,9 +111,11 @@ const { filterSoftwareUnitsForArchitecture, softwareArchitectureComponents } = r
 const { createProgrammingFundamentalsCourseModel } = require("./dev/project-models/programming-fundamentals-course");
 const { createMicrocontrollerFundamentalsCourseModel } = require("./dev/project-models/microcontroller-fundamentals-course");
 const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
+const { createRequirementsWorkshopCourseModel } = require("./dev/project-models/requirements-workshop-course");
 const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml-fundamentals-course");
 const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
 const { createRadioTechnologiesCourseModel } = require("./dev/project-models/radio-technologies-course");
+const { createMeasurementToolsBasicsCourseModel } = require("./dev/project-models/measurement-tools-basics-course");
 const { createEsp32CameraStreamingCourseModel } = require("./dev/project-models/esp32-camera-streaming-course");
 const { developmentLessonCatalog } = require("./dev/project-models/development-lesson-catalog");
 const {
@@ -316,9 +318,11 @@ const proximitySensorRadarCourseModel = createProximitySensorRadarCourseModel();
 const programmingFundamentalsCourseModel = createProgrammingFundamentalsCourseModel();
 const microcontrollerFundamentalsCourseModel = createMicrocontrollerFundamentalsCourseModel();
 const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
+const requirementsWorkshopCourseModel = createRequirementsWorkshopCourseModel();
 const yamlFundamentalsCourseModel = createYamlFundamentalsCourseModel();
 const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
 const radioTechnologiesCourseModel = createRadioTechnologiesCourseModel();
+const measurementToolsBasicsCourseModel = createMeasurementToolsBasicsCourseModel();
 const esp32CameraStreamingCourseModel = createEsp32CameraStreamingCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
@@ -4362,9 +4366,11 @@ function createUserIdeState() {
     programmingFundamentalsCourseModel.createProject(project, step),
     microcontrollerFundamentalsCourseModel.createProject(project, step),
     umlFundamentalsCourseModel.createProject(project, step),
+    requirementsWorkshopCourseModel.createProject(project, step),
     yamlFundamentalsCourseModel.createProject(project, step),
     storageLearningStoryCourseModel.createProject(project, step),
     radioTechnologiesCourseModel.createProject(project, step),
+    measurementToolsBasicsCourseModel.createProject(project, step),
     esp32CameraStreamingCourseModel.createProject(project, step),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
@@ -4486,7 +4492,9 @@ function normalizeLearningProjectTags(value) {
     "topic:motor-control",
     "topic:privacy",
     "topic:programming",
+    "topic:requirements-engineering",
     "topic:microcontroller",
+    "topic:measurement",
     "topic:radar",
     "topic:radio",
     "topic:camera",
@@ -4602,6 +4610,12 @@ function projectViewManifest(project, options = {}) {
       primarySourcePath,
     });
   }
+  if (project.slug === requirementsWorkshopCourseModel.slug) {
+    return requirementsWorkshopCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
   if (project.slug === yamlFundamentalsCourseModel.slug) {
     return yamlFundamentalsCourseModel.createViewManifest(project, {
       override,
@@ -4617,6 +4631,12 @@ function projectViewManifest(project, options = {}) {
   }
   if (project.slug === radioTechnologiesCourseModel.slug) {
     return radioTechnologiesCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === measurementToolsBasicsCourseModel.slug) {
+    return measurementToolsBasicsCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -5661,6 +5681,9 @@ function demoProjectSources(project, options = {}) {
   if (project.slug === umlFundamentalsCourseModel.slug) {
     return umlFundamentalsCourseModel.createSources();
   }
+  if (project.slug === requirementsWorkshopCourseModel.slug) {
+    return requirementsWorkshopCourseModel.createSources();
+  }
   if (project.slug === yamlFundamentalsCourseModel.slug) {
     return yamlFundamentalsCourseModel.createSources();
   }
@@ -5669,6 +5692,9 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === radioTechnologiesCourseModel.slug) {
     return radioTechnologiesCourseModel.createSources();
+  }
+  if (project.slug === measurementToolsBasicsCourseModel.slug) {
+    return measurementToolsBasicsCourseModel.createSources();
   }
   if (project.slug === esp32CameraStreamingCourseModel.slug) {
     return esp32CameraStreamingCourseModel.createSources({ lessonId: options.lessonId || "" });
