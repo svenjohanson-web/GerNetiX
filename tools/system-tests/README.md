@@ -13,6 +13,8 @@ Unit-, Contract- und E2E-Tests getrennt.
 - Die Compose-Infrastruktur publiziert keine Host-Ports und verwendet nur
   eindeutig als `system-test` markierte Netze und Volumes.
 - Staging-, VPS- und Produktionszugangsdaten gehoeren nicht in diese Suite.
+- Laufzeitberichte, lokale Fixture-Daten und Zertifikats-/Schluesseldateien
+  sind durch die lokale `.gitignore` vom Repository ausgeschlossen.
 - Das Loeschen von Volumes ist kein Chaos-Szenario. Persistenz- und
   Restore-Tests bleiben eigene, kontrollierte Nachweise.
 
@@ -23,6 +25,9 @@ Unit-, Contract- und E2E-Tests getrennt.
 | `config/` | Versionierte Smoke-, Load- und Chaos-Profile |
 | `k6/` | Authentifizierter API-Lasttest ueber die Identity-Routen |
 | `devices/` | MQTT-Geraetesimulator mit begrenztem Reconnect |
+| `fixtures/` | Synthetische, idempotent anlegbare Testkonten, Projekte und Geraete |
+| `browser/` | Kleine Playwright-Ablaufe aus Sicht eines echten Browsers |
+| `chaos/` | Allowlist-basierte Toxiproxy-Steuerung mit garantiertem Recovery |
 | `integrity/` | Fachliche Nachpruefung eines Test-Snapshots |
 | `lib/` | Profilvalidierung und gemeinsame Ergebnis-Gates |
 | `test/` | Hardware- und serverfreie Contract-Tests |
@@ -36,6 +41,9 @@ Die Tests installieren nichts und starten keine Dienste:
 node --test tools/system-tests/test/*.test.js \
   tools/system-tests/k6/test/*.test.js \
   tools/system-tests/devices/test/*.test.js \
+  tools/system-tests/fixtures/test/*.test.js \
+  tools/system-tests/chaos/test/*.test.js \
+  tools/system-tests/browser/test/*.test.js \
   infra/system-test/compose.contract.test.js
 ```
 
@@ -66,10 +74,9 @@ nach reproduzierbaren Messlaeufen als belastbare SLO-Baseline eingestuft.
 
 ## Noch nicht Teil dieses Durchstichs
 
-- automatisches Anlegen synthetischer Konten, Projekte und mTLS-Zertifikate,
+- automatische Erzeugung individueller mTLS-Zertifikate fuer jedes Geraet,
 - der ausfuehrende gemeinsame Prozess-Orchestrator; der aktuelle CLI-Befehl
   plant und bewertet nur,
-- Playwright-Browserablaeufe,
 - produktionsnahes MQTT-mTLS mit einem Zertifikat pro simuliertem Geraet,
 - ein realer verteilter Dauerlauf,
 - Staging- oder VPS-Ausfuehrung.

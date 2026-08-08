@@ -1,0 +1,7 @@
+.env
+reports/
+fixtures/runtime/
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx

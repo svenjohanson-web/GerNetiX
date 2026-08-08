@@ -5,7 +5,8 @@
   "type": "commonjs",
   "scripts": {
     "plan": "node cli.js --profile smoke",
-    "test": "node --test"
+    "fixtures:plan": "node fixtures/cli.js --plan",
+    "test": "node --test test/*.test.js k6/test/*.test.js devices/test/*.test.js fixtures/test/*.test.js chaos/test/*.test.js browser/test/*.test.js ../../infra/system-test/compose.contract.test.js"
   },
   "engines": {
     "node": ">=22"

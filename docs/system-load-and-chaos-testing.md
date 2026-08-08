@@ -4,9 +4,11 @@
 
 GerNetiX ergaenzt die vorhandenen Unit-, Contract- und E2E-Nachweise um eine
 getrennte Testsuite fuer parallele Nutzer, simulierte MQTT-Geraete und
-kontrollierte Abhaengigkeitsausfaelle. Der erste lokale Durchstich stellt
+kontrollierte Abhaengigkeitsausfaelle. Der lokale Durchstich stellt
 versionierte Lastprofile, einen k6-API-Ablauf, einen MQTT-Geraetesimulator,
-fachliche Integritaetsregeln und eine isolierte Infrastrukturgrundlage bereit.
+synthetische Fixtures, kleine Playwright-Ablaufe, allowlist-basierte
+Toxiproxy-Steuerung, fachliche Integritaetsregeln und eine isolierte
+Infrastrukturgrundlage bereit.
 
 Die Suite ist noch kein Nachweis einer produktiven Kapazitaet. Verbindliche
 Grenzwerte entstehen erst aus wiederholbaren Baselines auf einer benannten,
@@ -67,13 +69,16 @@ ausgewertet.
 
 ## Ausbaureihenfolge
 
-1. Lokale Contract-Tests und isolierte Infrastrukturgrundlage.
-2. Deterministische Fixtures fuer Accounts, Projekte, Geraete und Zertifikate.
-3. Gemeinsamer Smoke-Lauf aus k6 und MQTT-Simulator.
-4. Einzelne Forgejo-, PostgreSQL- und MQTT-Ausfaelle mit Wiederanlaufpruefung.
-5. Kleine authentifizierte Playwright-Ablaufe unter paralleler Last.
-6. Wiederholbare Load-, Stress- und Soak-Baselines.
-7. Erst nach eigener Freigabe ein nicht destruktiver Staging-Nachweis.
+1. Lokale Contract-Tests und isolierte Infrastrukturgrundlage: umgesetzt.
+2. Deterministische Fixtures fuer Accounts, Projekte und Geraete: umgesetzt;
+   individuelle mTLS-Testzertifikate sind noch offen.
+3. Gemeinsamer Smoke-Lauf aus k6 und MQTT-Simulator: Orchestrierung offen.
+4. Einzelne Forgejo-, PostgreSQL- und MQTT-Ausfaelle mit Wiederanlaufpruefung:
+   sichere Steuerung umgesetzt, realer Lauf offen.
+5. Kleine authentifizierte Playwright-Ablaufe: Vertrag umgesetzt, realer
+   Browserlauf unter Last offen.
+6. Wiederholbare Load-, Stress- und Soak-Baselines: offen.
+7. Erst nach eigener Freigabe ein nicht destruktiver Staging-Nachweis: offen.
 
 Der vorhandene Compute-Last- und Chaos-Harness fuer Queue, Fairness,
 Backpressure und Worker-Ausfall bleibt bestehen und wird als spezialisierter

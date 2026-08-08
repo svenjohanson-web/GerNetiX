@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "fixture_set": "gernetix-system-test-v1",
+  "environment": "isolated-local",
+  "password_env": "GERNETIX_SYSTEM_TEST_FIXTURE_PASSWORD",
+  "accounts": [
+    {
+      "fixture_id": "account-alpha",
+      "username": "systemtest_alpha",
+      "email": "systemtest.alpha@example.invalid",
+      "locale": "de"
+    },
+    {
+      "fixture_id": "account-beta",
+      "username": "systemtest_beta",
+      "email": "systemtest.beta@example.invalid",
+      "locale": "de"
+    },
+    {
+      "fixture_id": "account-gamma",
+      "username": "systemtest_gamma",
+      "email": "systemtest.gamma@example.invalid",
+      "locale": "en"
+    }
+  ],
+  "projects": [
+    {
+      "project_id": "systemtest-project-alpha-01",
+      "account_fixture_id": "account-alpha",
+      "title": "Systemtest Alpha 01",
+      "description": "Synthetisches Projekt fuer reproduzierbare Systemtests.",
+      "plan_id": "free",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32"
+    },
+    {
+      "project_id": "systemtest-project-alpha-02",
+      "account_fixture_id": "account-alpha",
+      "title": "Systemtest Alpha 02",
+      "description": "Synthetisches Projekt fuer parallele Zugriffe.",
+      "plan_id": "free",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32"
+    },
+    {
+      "project_id": "systemtest-project-beta-01",
+      "account_fixture_id": "account-beta",
+      "title": "Systemtest Beta 01",
+      "description": "Synthetisches Projekt zur Isolationspruefung.",
+      "plan_id": "free",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32"
+    },
+    {
+      "project_id": "systemtest-project-gamma-01",
+      "account_fixture_id": "account-gamma",
+      "title": "Systemtest Gamma 01",
+      "description": "Synthetisches Projekt zur Isolationspruefung.",
+      "plan_id": "free",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32"
+    }
+  ],
+  "devices": [
+    {
+      "device_id": "systemtest-device-alpha-01",
+      "account_fixture_id": "account-alpha",
+      "serial_number": "ST-ALPHA-0001",
+      "display_name": "Alpha Board 1",
+      "board_short_name": "alpha-01",
+      "node_name": "gernetix-alpha-01",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+      "connectivity_status": "online",
+      "ota_status": "ready"
+    },
+    {
+      "device_id": "systemtest-device-alpha-02",
+      "account_fixture_id": "account-alpha",
+      "serial_number": "ST-ALPHA-0002",
+      "display_name": "Alpha Board 2",
+      "board_short_name": "alpha-02",
+      "node_name": "gernetix-alpha-02",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+      "connectivity_status": "offline",
+      "ota_status": "unknown"
+    },
+    {
+      "device_id": "systemtest-device-beta-01",
+      "account_fixture_id": "account-beta",
+      "serial_number": "ST-BETA-0001",
+      "display_name": "Beta Board 1",
+      "board_short_name": "beta-01",
+      "node_name": "gernetix-beta-01",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+      "connectivity_status": "online",
+      "ota_status": "ready"
+    },
+    {
+      "device_id": "systemtest-device-gamma-01",
+      "account_fixture_id": "account-gamma",
+      "serial_number": "ST-GAMMA-0001",
+      "display_name": "Gamma Board 1",
+      "board_short_name": "gamma-01",
+      "node_name": "gernetix-gamma-01",
+      "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+      "connectivity_status": "online",
+      "ota_status": "ready"
+    }
+  ]
+}

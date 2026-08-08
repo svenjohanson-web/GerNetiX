@@ -1,0 +1,16 @@
+{
+  "name": "@gernetix/system-tests-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:browser": "node run-browser-flow.js"
+  },
+  "dependencies": {
+    "playwright": "1.62.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

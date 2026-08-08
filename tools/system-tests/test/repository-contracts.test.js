@@ -30,3 +30,26 @@ test("device simulator topics remain covered by broker ACL and telemetry adapter
   assert.match(acl, /pattern write gernetix\/devices\/%u\/status\/#/);
   assert.match(adapter, /topicFilter: "gernetix\/devices\/\+\/telemetry"/);
 });
+
+test("browser selectors remain present in the productive Identity UI", () => {
+  const auth = read("services/identity-server/public/app/auth/index.html");
+  const app = read("services/identity-server/public/app/index.html");
+  const projectController = read("services/identity-server/public/app/app-project-controller.js");
+  for (const id of ["login-title", "login-form", "show-identifier-login", "login-identifier", "status"]) {
+    assert.match(auth, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /id="projectList"/);
+  assert.match(app, /id="learningProjectOverview"/);
+  assert.match(projectController, /data-open-learning-project-overview/);
+  assert.match(projectController, /learning-project-overview-head/);
+});
+
+test("fixture seed routes remain available on their owning services", () => {
+  const authRoutes = read("services/identity-server/src/dev/server/auth-routes.js");
+  const project = read("services/project-server/src/http-app.js");
+  const device = read("services/device-management-server/src/http-app.js");
+  assert.match(authRoutes, /\["\/api\/register", handleRegister\]/);
+  assert.match(project, /req\.method === "POST" && path === prefix/);
+  assert.match(device, /path === `\$\{prefix\}\/devices\/register`/);
+  assert.match(device, /\^\$\{prefix\}\/accounts\/\(\[\^\/\]\+\)\/devices\$/);
+});
