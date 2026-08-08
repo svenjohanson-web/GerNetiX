@@ -237,6 +237,9 @@ function routeAssetsMissing(route) {
   if (route === "hardware-lab") return !document.querySelector("#hardwareLabView")
     || !document.querySelector('link[data-lazy-href*="/hardware-lab-route.css"][data-loaded="true"]')
     || typeof GerNetiXHardwareLab === "undefined";
+  if (route === "requirements-workshop") return !document.querySelector("#requirementsWorkshopView")
+    || !document.querySelector('link[data-lazy-href*="/requirements-workshop-route.css"][data-loaded="true"]')
+    || typeof GerNetiXRequirementsWorkshop === "undefined";
   if (route === "community") return !document.querySelector('link[data-lazy-href*="/community-routes.css"][data-loaded="true"]')
     || typeof loadCommunityPortal === "undefined";
   if (route === "messages") return !document.querySelector("#messagesView")
@@ -297,6 +300,15 @@ async function loadRouteAssets(route) {
       loadPlatformScript(`/app/hardware-lab-controller.js?v=${version}`),
     ]);
     GerNetiXHardwareLab.bind();
+    return;
+  }
+  if (route === "requirements-workshop") {
+    await Promise.all([
+      loadRouteFragment("requirementsWorkshopView", `/app/fragments/requirements-workshop.html?v=${version}`),
+      loadPlatformStyle(`/app/requirements-workshop-route.css?v=${version}`),
+      loadPlatformScript(`/app/requirements-workshop-controller.js?v=${version}`),
+    ]);
+    GerNetiXRequirementsWorkshop.bind();
     return;
   }
   if (route === "community") {
@@ -572,6 +584,7 @@ function renderAll() {
   if (route === "shop") renderShopConfiguration();
   if (route === "billing") renderBilling();
   if (route === "hardware-lab") GerNetiXHardwareLab.render();
+  if (route === "requirements-workshop") GerNetiXRequirementsWorkshop.render();
 }
 
 function renderRoute({ contentRendered = false } = {}) {
@@ -632,6 +645,7 @@ function renderRoute({ contentRendered = false } = {}) {
     if (!contentRendered) GerNetiXHardwareLab.render();
     GerNetiXHardwareLab.enter();
   }
+  if (route === "requirements-workshop") GerNetiXRequirementsWorkshop.enter();
   if (route === "downloads") renderDownloads();
   if (route === "shop") loadCommunityMarketplace();
   if (route === "community") loadCommunityPortal();
@@ -748,6 +762,11 @@ function currentLocationTrail(route) {
     "hardware-lab": [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "KI-Hardware-Assistent", route: "" },
+    ],
+    "requirements-workshop": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Lernplattform", route: "/app/learn/" },
+      { label: "KI-Anforderungswerkstatt", route: "" },
     ],
     learn: [
       { label: "Plattform", route: "/app/dashboard/" },

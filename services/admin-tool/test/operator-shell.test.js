@@ -7,6 +7,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"),
 const client = fs.readFileSync(path.join(__dirname, "..", "public", "admin-config.js"), "utf8");
 const httpApp = fs.readFileSync(path.join(__dirname, "..", "src", "http-app.js"), "utf8");
 const shell = fs.readFileSync(path.join(__dirname, "..", "..", "shared", "public", "operator-shell.css"), "utf8");
+const appStyles = fs.readFileSync(path.join(__dirname, "..", "public", "app.css"), "utf8");
 
 test("admin uses the shared private operator shell without changing server authorization", () => {
   assert.match(html, /operator-shell\.css/);
@@ -25,4 +26,15 @@ test("admin uses the shared private operator shell without changing server autho
   assert.match(httpApp, /\/admin\/operator-shell\.css/);
   assert.match(shell, /Gemeinsame visuelle Sprache/);
   assert.match(shell, /operator-surface-badge/);
+});
+
+test("admin cards, forms, status boxes and diagrams use the dark operator palette", () => {
+  assert.match(appStyles, /color-scheme:\s*dark/);
+  assert.match(appStyles, /--panel:\s*#111827/);
+  assert.match(appStyles, /--panel-soft:\s*#1b2430/);
+  assert.match(appStyles, /\.action-incident-card[^}]+background:\s*var\(--panel-soft\)/s);
+  assert.match(appStyles, /\.action-alert-card[^}]+background:\s*var\(--panel-soft\)/s);
+  assert.match(appStyles, /\.action-timeline li[^}]+background:\s*var\(--panel-soft\)/s);
+  assert.match(appStyles, /\.uml-class rect[^}]+fill:\s*#111827/s);
+  assert.doesNotMatch(appStyles, /background:\s*(?:#fff(?:fff)?|#f8fafc|#fef2f2|#fffbeb|#eff6ff|#ecfdf5|#e2e8f0)\b/i);
 });

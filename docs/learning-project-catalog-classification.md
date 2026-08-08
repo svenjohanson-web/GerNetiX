@@ -29,4 +29,4 @@ Der Katalog bietet dann zwei Einstiege:
 - `Projektstory starten`: erzeugt ein accountgebundenes Entwicklungsprojekt und fuehrt die zugeordneten DevelopmentLessons in ihrer Projekt-Reihenfolge fort.
 - `Lesson einzeln starten`: erzeugt ein separates accountgebundenes Uebungsprojekt aus dem `LessonStartSnapshot` und zeigt nur die Schritte dieser DevelopmentLesson.
 
-Die DevelopmentLesson wird dabei nicht dupliziert. Projektmodus und Einzelmodus referenzieren dieselbe Lesson und dieselben Schritte. Nur der Ausgangszustand und der gespeicherte Arbeitskontext unterscheiden sich.
+Die DevelopmentLesson wird dabei nicht dupliziert. Ein zentraler Lesson-Katalog besitzt Lesson, Schritte und Einzelstart-Snapshot; Lernprojekte enthalten nur `ProjectLessonAssignment`-Zuordnungen. Deshalb kann dieselbe Lesson auch mehreren Lernprojekten zugeordnet werden. Reihenfolge, Pflichtstatus, Freischaltbedingung und narrative Einbettung gehören zur jeweiligen Projektzuordnung, nicht zur Lesson-Kopie. Projektmodus und Einzelmodus referenzieren dieselbe Lesson und dieselben Schritte. Nur der Ausgangszustand und der gespeicherte Arbeitskontext unterscheiden sich.

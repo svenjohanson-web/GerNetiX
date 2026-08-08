@@ -1,5 +1,5 @@
 const LearningProjectView = (() => {
-  function render({ target, project, showRating = false, escapeHtml, learningText = (_key, fallback) => fallback }) {
+  function render({ target, project, progress = {}, activeStep = 0, showRating = false, escapeHtml, learningText = (_key, fallback) => fallback }) {
     if (!target) return false;
     target.classList.toggle("hidden", !project);
     if (!project) {
@@ -9,19 +9,23 @@ const LearningProjectView = (() => {
     const standaloneLesson = project.entryMode === "standalone_lesson";
     const eyebrow = standaloneLesson
       ? learningText("standalone", "Entwicklungslesson · einzeln gestartet")
-      : project.developmentLessons?.length
+      : project.projectStory && project.developmentLessons?.length
         ? learningText("story", "Entwicklungsprojekt · Projektstory")
         : learningText("guided", "Geführtes Lernprojekt");
     const lesson = standaloneLesson
       ? project.developmentLessons?.find((item) => item.id === project.currentLessonId)
       : null;
+    const structure = lessonStructure(project, progress, activeStep);
     target.innerHTML = `
       <div class="section-head">
         <div><p class="eyebrow">${escapeHtml(eyebrow)}</p><h2>${escapeHtml(project.name)}</h2>${lesson ? `<p class="learning-entry-context">${escapeHtml(learningText("prepared", "Vorbereiteter Einzelstart"))} · Snapshot ${escapeHtml(lesson.standalone_start?.snapshot_id || "")}</p>` : ""}</div>
         <a class="back-to-dashboard" href="/app/learn/">← ${escapeHtml(learningText("allProjects", "Alle Lernprojekte"))}</a>
       </div>
       <p class="flash-status hidden" data-learning-project-status aria-live="polite"></p>
-      <section id="learningProjectArtifact" class="learning-project-artifact" aria-live="polite"></section>
+      <div class="learning-project-body">
+        ${renderProgressMap(structure, escapeHtml, learningText)}
+        <section id="learningProjectArtifact" class="learning-project-artifact" aria-live="polite"></section>
+      </div>
       ${showRating ? `<section class="learning-rating" data-learning-rating-section aria-labelledby="learningRatingTitle">
         <div>
           <p class="eyebrow">Deine Rückmeldung</p>
@@ -43,9 +47,80 @@ const LearningProjectView = (() => {
     return true;
   }
 
+  function renderProgressMap(structure, escapeHtml, learningText) {
+    const lessonLabel = learningText("lessons", "Lessons");
+    const stepLabel = learningText("steps", "Schritte");
+    const completedLabel = learningText("completed", "erledigt");
+    const percent = structure.totalSteps ? Math.round((structure.completedSteps / structure.totalSteps) * 100) : 0;
+    return `<details class="learning-project-progress-map" aria-label="${escapeHtml(learningText("projectProgress", "Projektfortschritt"))}">
+      <summary title="${escapeHtml(learningText("showProgressDetails", "Lessons und Schritte anzeigen"))}">
+        <header>
+          <div><p class="eyebrow">${escapeHtml(learningText("progress", "Fortschritt"))}</p><strong>${structure.lessons.length} ${escapeHtml(lessonLabel)} · ${structure.totalSteps} ${escapeHtml(stepLabel)}</strong></div>
+          <span>${structure.completedSteps}/${structure.totalSteps}</span>
+        </header>
+        <div class="learning-project-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="${structure.totalSteps}" aria-valuenow="${structure.completedSteps}" aria-label="${structure.completedSteps} von ${structure.totalSteps} ${escapeHtml(completedLabel)}"><span style="width:${percent}%"></span></div>
+      </summary>
+      <ol class="learning-project-progress-lessons">
+        ${structure.lessons.map((lesson, lessonIndex) => `<li class="is-${lesson.status}">
+          <div class="learning-project-progress-lesson-head">
+            <span>${lesson.status === "completed" ? "✓" : lessonIndex + 1}</span>
+            <div><strong>${escapeHtml(lesson.title)}</strong><small>${lesson.completedSteps}/${lesson.stepCount} ${escapeHtml(completedLabel)}</small></div>
+          </div>
+          <ol>${lesson.steps.map((step, stepIndex) => `<li class="${step.done ? "is-done" : step.active ? "is-active" : "is-upcoming"}" ${step.active ? 'aria-current="step"' : ""}><span>${step.done ? "✓" : stepIndex + 1}</span><p>${escapeHtml(step.title)}</p></li>`).join("")}</ol>
+        </li>`).join("")}
+      </ol>
+    </details>`;
+  }
+
+  function lessonStructure(project, progress = {}, activeStep = 0) {
+    const views = Array.isArray(project?.viewManifest?.views) ? project.viewManifest.views : [];
+    const allDeclaredLessons = Array.isArray(project?.developmentLessons) ? project.developmentLessons : [];
+    const declaredLessons = project?.entryMode === "standalone_lesson" && project?.currentLessonId
+      ? allDeclaredLessons.filter((lesson) => String(lesson.id || lesson.lesson_id || "") === String(project.currentLessonId))
+      : allDeclaredLessons;
+    const completedIndexes = new Set((progress.completedSteps || []).map(Number));
+    const completedIds = new Set(progress.completedStepIds || []);
+    const lessonById = new Map(declaredLessons.map((lesson) => [String(lesson.id || lesson.lesson_id || ""), lesson]));
+    const orderedLessonIds = declaredLessons.map((lesson) => String(lesson.id || lesson.lesson_id || "")).filter(Boolean);
+    views.forEach((view) => {
+      const lessonId = String(view.lesson_id || project?.lessonId || "project");
+      if (!orderedLessonIds.includes(lessonId)) orderedLessonIds.push(lessonId);
+    });
+    if (!orderedLessonIds.length && views.length) orderedLessonIds.push("project");
+    const lessons = orderedLessonIds.map((lessonId, lessonIndex) => {
+      const definition = lessonById.get(lessonId) || {};
+      const steps = views.map((view, globalIndex) => ({ view, globalIndex }))
+        .filter(({ view }) => String(view.lesson_id || project?.lessonId || "project") === lessonId)
+        .map(({ view, globalIndex }) => ({
+          id: String(view.id || ""),
+          title: String(view.title || `Schritt ${globalIndex + 1}`),
+          globalIndex,
+          done: completedIndexes.has(globalIndex) || completedIds.has(view.id),
+          active: globalIndex === Number(activeStep || 0),
+        }));
+      const completedSteps = steps.filter((step) => step.done).length;
+      const active = steps.some((step) => step.active);
+      return {
+        id: lessonId,
+        title: String(definition.title || (orderedLessonIds.length === 1 ? project?.name || "Lernweg" : `Lesson ${lessonIndex + 1}`)),
+        summary: String(definition.summary || ""),
+        hardwareRequired: definition.standalone_start?.hardware_required === true,
+        steps,
+        stepCount: steps.length,
+        completedSteps,
+        status: steps.length && completedSteps === steps.length ? "completed" : active || completedSteps ? "active" : "not-started",
+      };
+    }).filter((lesson) => lesson.stepCount || declaredLessons.length);
+    return {
+      lessons,
+      totalSteps: views.length,
+      completedSteps: views.filter((view, index) => completedIndexes.has(index) || completedIds.has(view.id)).length,
+    };
+  }
+
   function ratingScale(name, label, lowLabel, highLabel) {
     return `<fieldset class="learning-rating-scale"><legend>${label}</legend><div class="learning-rating-options">${[1, 2, 3, 4, 5].map((value) => `<label><input type="radio" name="${name}" value="${value}" required><span>${value}</span></label>`).join("")}</div><div class="learning-rating-range"><small>${lowLabel}</small><small>${highLabel}</small></div></fieldset>`;
   }
 
-  return { render };
+  return { lessonStructure, render };
 })();

@@ -10,6 +10,9 @@ class InMemoryAdminRepository {
     this.adminActions = (seed.adminActions || []).map(clone);
     this.systemEvents = (seed.systemEvents || []).map(clone);
     this.userActionEvents = (seed.userActionEvents || []).map(clone);
+    this.userActionIncidents = (seed.userActionIncidents || []).map(clone);
+    this.userActionAlerts = (seed.userActionAlerts || []).map(clone);
+    this.syntheticCheckResults = (seed.syntheticCheckResults || []).map(clone);
     this.interfaceCalls = (seed.interfaceCalls || []).map(clone);
     this.linkTargets = new Map((seed.linkTargets || []).map((item) => [item.reference_id, clone(item)]));
     this.linkOccurrences = new Map((seed.linkOccurrences || []).map((item) => [item.occurrence_id, clone(item)]));
@@ -152,9 +155,70 @@ class InMemoryAdminRepository {
       .map(clone);
   }
 
-  addInterfaceCall(input) {
-    this.interfaceCalls.push(clone(input));
+  createUserActionIncident(input) {
+    this.userActionIncidents.push(clone(input));
     return clone(input);
+  }
+
+  findUserActionIncident(incidentId) {
+    return clone(this.userActionIncidents.find((item) => item.incident_id === incidentId));
+  }
+
+  updateUserActionIncident(incidentId, input) {
+    const index = this.userActionIncidents.findIndex((item) => item.incident_id === incidentId);
+    if (index === -1) return null;
+    this.userActionIncidents[index] = clone(input);
+    return clone(input);
+  }
+
+  listUserActionIncidents(filter = {}) {
+    return this.userActionIncidents
+      .filter((item) => !filter.status || item.status === filter.status)
+      .sort((left, right) => String(right.updated_at).localeCompare(String(left.updated_at)))
+      .map(clone);
+  }
+
+  upsertUserActionAlert(input) {
+    const index = this.userActionAlerts.findIndex((item) => item.alert_key === input.alert_key);
+    if (index === -1) this.userActionAlerts.push(clone(input));
+    else this.userActionAlerts[index] = clone({ ...input, first_seen_at: this.userActionAlerts[index].first_seen_at });
+    return clone(this.userActionAlerts.find((item) => item.alert_key === input.alert_key));
+  }
+
+  listUserActionAlerts() {
+    return this.userActionAlerts.sort((left, right) => String(right.last_seen_at).localeCompare(String(left.last_seen_at))).map(clone);
+  }
+
+  addSyntheticCheckResults(results) {
+    const known = new Set(this.syntheticCheckResults.map((item) => item.result_id));
+    for (const result of results || []) {
+      if (!known.has(result.result_id)) this.syntheticCheckResults.push(clone(result));
+    }
+    return { accepted: (results || []).length };
+  }
+
+  listSyntheticCheckResults(filter = {}) {
+    const limit = Math.max(1, Math.min(1000, Number(filter.limit) || 200));
+    return this.syntheticCheckResults
+      .filter((item) => !filter.run_id || item.run_id === filter.run_id)
+      .sort((left, right) => String(right.checked_at).localeCompare(String(left.checked_at)))
+      .slice(0, limit)
+      .map(clone);
+  }
+
+  addInterfaceCall(input) {
+    const value = { call_id: input.call_id || createId("interface_call"), ...input };
+    this.interfaceCalls.push(clone(value));
+    return clone(value);
+  }
+
+  listInterfaceCalls(filter = {}) {
+    const limit = Math.max(1, Math.min(1000, Number(filter.limit) || 200));
+    return this.interfaceCalls
+      .filter((item) => !filter.action_id || item.action_id === filter.action_id)
+      .sort((left, right) => String(right.occurred_at).localeCompare(String(left.occurred_at)))
+      .slice(0, limit)
+      .map(clone);
   }
 
   replaceLinkInventory(sourceService, inventory) {
@@ -323,6 +387,7 @@ function defaultSeed() {
     auditEvents: [],
     systemEvents: [],
     userActionEvents: [],
+    syntheticCheckResults: [],
     linkTargets: [],
     linkOccurrences: [],
     linkChecks: [],

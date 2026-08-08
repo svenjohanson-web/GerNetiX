@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Interaktives GerNetiX-Lernprojekt fuer eindeutige, pruefbare und KI-verstaendliche Anforderungen.">
+    <title>Anforderungswerkstatt · GerNetiX</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#lessonContent">Zum Lerninhalt</a>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Anforderungswerkstatt neu starten">
+          <span class="brand-mark" aria-hidden="true">Gx</span>
+          <span>
+            <strong>Anforderungswerkstatt</strong>
+            <small>GerNetiX Lernprojekt</small>
+          </span>
+        </a>
+        <div class="topbar-meta">
+          <span class="privacy-badge"><span aria-hidden="true">●</span> Lokal im Browser</span>
+          <button class="quiet-button" id="restartButton" type="button">Neu starten</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="lesson-nav" aria-label="Lernschritte">
+          <div class="course-meta">
+            <span class="eyebrow">Praxisprojekt · 30–45 Min.</span>
+            <h1>Wenn die KI nichts erraten muss</h1>
+            <p>Vom ersten Wunsch zur fachlich belastbaren Anforderung.</p>
+          </div>
+          <div class="progress-copy">
+            <span id="progressLabel">Schritt 1 von 7</span>
+            <strong id="progressPercent">14 %</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+          <ol class="step-list" id="stepList"></ol>
+          <div class="nav-note">
+            <strong>Dein Ziel</strong>
+            <p>Eine Anforderung, deren Annahmen, Regeln und Qualitätsmerkmale sichtbar sind.</p>
+          </div>
+        </aside>
+
+        <main class="lesson-main" id="lessonContent" tabindex="-1">
+          <div id="liveRegion" class="sr-only" aria-live="polite"></div>
+          <section id="screen" class="screen" aria-live="off"></section>
+          <footer class="lesson-actions">
+            <button class="secondary-button" id="backButton" type="button">Zurück</button>
+            <div class="action-hint" id="actionHint"></div>
+            <button class="primary-button" id="nextButton" type="button">Weiter</button>
+          </footer>
+        </main>
+      </div>
+    </div>
+
+    <script src="lesson-engine.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

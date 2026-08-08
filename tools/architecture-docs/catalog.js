@@ -49,7 +49,8 @@ const curatedDocuments = {
   "tools/sqlite-graph-explorer/README.md": { category: "model", status: "maintained", order: 8 },
 
   "docs/development-path-architecture-first.md": { category: "development", status: "maintained", order: 1 },
-  "docs/project-idea-data-model.md": { category: "development", status: "maintained", order: 2 },
+  "docs/requirements-engineering-learning-project.md": { category: "development", status: "maintained", order: 2 },
+  "docs/project-idea-data-model.md": { category: "development", status: "maintained", order: 3 },
   "docs/firmware-project-structure.md": { category: "development", status: "maintained", order: 3 },
   "docs/incremental-build-strategy.md": { category: "development", status: "maintained", order: 4 },
   "docs/fast-embedded-firmware-feedback.md": { category: "development", status: "maintained", order: 5 },

@@ -134,7 +134,7 @@ function renderLearningProjectOverview() {
       </div>
     `;
   } else {
-    const lessons = project.developmentLessons || [];
+    const structure = LearningProjectView.lessonStructure(project);
     target.innerHTML = `
       <header class="learning-project-overview-head">
         <p class="eyebrow">${escapeHtml(learningHeadlineLabel(project))}</p>
@@ -167,21 +167,25 @@ function renderLearningProjectOverview() {
           <p class="eyebrow">${escapeHtml(learningText("structureEyebrow", "Projektaufbau"))}</p>
           <h3>${escapeHtml(learningText("structureTitle", "So ist das Projekt aufgebaut"))}</h3>
           <p>${escapeHtml(learningText("structureText", "Die Etappen führen dich vom Einstieg bis zum praktisch geprüften Projektergebnis."))}</p>
+          <strong class="learning-project-structure-count">${structure.lessons.length} ${escapeHtml(learningText("lessons", "Lessons"))} · ${structure.totalSteps} ${escapeHtml(learningText("steps", "Schritte"))}</strong>
         </header>
-        ${lessons.length ? `
+        ${structure.lessons.length ? `
           <ol>
-            ${lessons.map((lesson) => `
+            ${structure.lessons.map((lesson) => {
+              const stepCount = lesson.stepCount || 0;
+              return `
               <li>
                 <span>${escapeHtml(String(lesson.order_index || ""))}</span>
                 <div>
                   <strong>${escapeHtml(lesson.title)}</strong>
                   <p>${escapeHtml(lesson.summary)}</p>
-                  <small>${escapeHtml(lesson.standalone_start?.hardware_required
+                  <b>${stepCount} ${escapeHtml(stepCount === 1 ? learningText("step", "Schritt") : learningText("steps", "Schritte"))}</b>
+                  <small>${escapeHtml(lesson.hardwareRequired
                     ? learningText("hardware", "Praxisabschnitt mit ESP32")
                     : learningText("noHardware", "Ohne zusätzliche Hardware"))}</small>
                 </div>
               </li>
-            `).join("")}
+            `; }).join("")}
           </ol>
         ` : `<p class="empty">${escapeHtml(learningText("noLessons", "Die Lessons für dieses Lernprojekt werden noch zugeordnet."))}</p>`}
       </section>

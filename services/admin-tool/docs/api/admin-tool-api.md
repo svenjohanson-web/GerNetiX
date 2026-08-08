@@ -32,6 +32,27 @@ Liefert den Betriebsstatus der konfigurierten lokalen Dienste fuer das Admin Too
 
 Der Endpunkt ist rein lesend und persistiert keine Monitoring-Daten.
 
+## Synthetische Kernablauf-Vorpruefungen
+
+```text
+GET  /api/admin/synthetic-checks?limit={n}
+POST /api/admin/synthetic-checks/run
+POST /api/internal/synthetic-checks/run
+```
+
+Ein Lauf prueft ausschliesslich vier fest konfigurierte GET-Vertraege:
+
+- Identity-Login-HTML unter `/app/auth/`,
+- Project-Server-Health fuer den Persistenzpfad,
+- Build-&-Deploy-Health einschliesslich Koordinationsstatus,
+- Liste der oeffentlichen Flash-Releases.
+
+Beliebige Ziel-URLs, Credentials, Sessions, Projekte, Builds und Geraete werden
+nicht angenommen. Persistiert werden nur Lauf-ID, Pruef-ID, Zeitpunkt,
+Zieldienst, feste Route, Status, HTTP-Status, Antwortzeit und normalisierter
+Reason-Code. Der interne Start verlangt `X-GerNetiX-System-Event-Token`; der
+Admin-Start laeuft ueber den geschuetzten Admin-Access-Proxy.
+
 ## Link-Integrität
 
 ```text
@@ -74,7 +95,12 @@ Die Ereignisse werden im Admin Tool persistiert. Bei SQLite-Persistenz liegen si
 ## Nutzeraktions-Wirkketten
 
 ```text
-GET  /api/admin/user-action-events?action_id={uuid}&action_type={type}&phase={phase}&limit={n}
+GET  /api/admin/user-action-events?action_id={uuid}&action_type={type}&phase={phase}&hours={n}&limit={n}
+GET  /api/admin/user-action-incidents
+POST /api/admin/user-action-incidents
+PUT  /api/admin/user-action-incidents/{incident_id}
+GET  /api/admin/user-action-alerts
+POST /api/admin/user-action-alerts/evaluate
 POST /api/internal/user-action-events
 ```
 
@@ -94,6 +120,14 @@ vier initial implementierten Aktionstypen sind `nexi.flash.usb.start`,
 `identity.login.passkey`, `project.settings.save` und `project.build.start`;
 die Admin-Oberflaeche zeigt diesen Instrumentierungsstand unabhaengig davon,
 ob bereits Ereignisse fuer alle vier Typen vorliegen.
+
+Ohne Action-ID verwendet der Endpunkt PostgreSQL-Zeitfensteraggregate für
+Fehlerquote, Hänger, Releasevergleich und Top-Reason-Codes. Mit Action-ID
+liefert er zusätzlich die korrelierten, payloadfreien Schnittstellenaufrufe.
+Incidents speichern Status, Owner, Runbook, Notiz und Fix-Version; jede
+Änderung verlangt einen Grund und wird auditiert. Die Alarmauswertung
+persistiert deduplizierte Kandidaten im Modus `observe_only` und versendet vor
+Baseline- und Schwellwertabnahme keine Benachrichtigung.
 
 ## Device Management
 

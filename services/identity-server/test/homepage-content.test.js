@@ -6,6 +6,7 @@ const test = require("node:test");
 const publicRoot = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(publicRoot, "landing.css"), "utf8");
+const headerCss = fs.readFileSync(path.join(publicRoot, "public-header.css"), "utf8");
 const client = fs.readFileSync(path.join(publicRoot, "landing.js"), "utf8");
 const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
   .map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8"))
@@ -42,7 +43,7 @@ test("integrates motivation and the complete system scope into one closing story
 test("uses the GerNetiX corporate design and responsive homepage grids", () => {
   assert.match(css, /--accent: #22d3ee/);
   assert.match(css, /body \{[\s\S]*padding-top: 78px;/);
-  assert.match(css, /\.site-header \{[\s\S]*position: fixed;[\s\S]*top: 0;[\s\S]*left: 16px;[\s\S]*right: 16px;/);
+  assert.match(headerCss, /\.site-header \{[\s\S]*position: fixed;[\s\S]*top: 0;[\s\S]*left: 16px;[\s\S]*right: 16px;/);
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);
   assert.match(css, /\.hero h1 \{ font-size: clamp\(26px, 3vw, 34px\); \}/);
   assert.match(css, /\.home-area-grid \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
@@ -110,7 +111,7 @@ test("offers a hamburger menu with the public webshop entry only", () => {
   assert.match(menu, /href="\/shop\/">Webshop/);
   assert.match(menu, /href="\/app\/auth\/">Anmelden/);
   assert.doesNotMatch(menu, /Dashboard|Geräte|Billing|Entwicklungsplattform/);
-  assert.match(css, /\.site-menu \{[\s\S]*position: absolute/);
+  assert.match(headerCss, /\.site-menu \{[\s\S]*position: absolute/);
   assert.match(client, /aria-expanded/);
   assert.match(client, /event\.key === "Escape"/);
   assert.match(html, /class="site-footer-links"[\s\S]*Warum GerNetiX\?[\s\S]*Wissensportal[\s\S]*Hilfe/);

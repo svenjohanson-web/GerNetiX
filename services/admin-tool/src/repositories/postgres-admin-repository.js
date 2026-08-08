@@ -52,14 +52,47 @@ class PostgresAdminRepository {
         ON operations_user_action_events (action_type, occurred_at DESC);
       CREATE INDEX IF NOT EXISTS idx_operations_user_actions_action
         ON operations_user_action_events (action_id, occurred_at);
+      CREATE TABLE IF NOT EXISTS operations_user_action_incidents (
+        incident_id uuid PRIMARY KEY, created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL,
+        action_id uuid NOT NULL, action_type text NOT NULL, reason_code text NOT NULL,
+        release_id text NOT NULL, status text NOT NULL, owner text NOT NULL,
+        runbook_url text NOT NULL, fix_release_id text NOT NULL, note text NOT NULL,
+        raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_user_action_incidents_status
+        ON operations_user_action_incidents (status, updated_at DESC);
+      CREATE TABLE IF NOT EXISTS operations_user_action_alerts (
+        alert_key text PRIMARY KEY, first_seen_at timestamptz NOT NULL, last_seen_at timestamptz NOT NULL,
+        action_type text NOT NULL, release_id text NOT NULL, reason_code text NOT NULL,
+        alert_kind text NOT NULL, severity text NOT NULL, status text NOT NULL,
+        notification_state text NOT NULL, attempts integer NOT NULL, failures integer NOT NULL,
+        failure_rate_percent numeric NOT NULL, hanging integer NOT NULL, window_hours integer NOT NULL,
+        raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_user_action_alerts_status
+        ON operations_user_action_alerts (status, last_seen_at DESC);
+      CREATE TABLE IF NOT EXISTS operations_synthetic_check_results (
+        result_id uuid PRIMARY KEY, run_id uuid NOT NULL, checked_at timestamptz NOT NULL,
+        check_id text NOT NULL, target_service text NOT NULL, route text NOT NULL,
+        status text NOT NULL, http_status integer, response_ms integer NOT NULL,
+        reason_code text NOT NULL, raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_synthetic_checks_run
+        ON operations_synthetic_check_results (run_id, checked_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_operations_synthetic_checks_latest
+        ON operations_synthetic_check_results (check_id, checked_at DESC);
       CREATE TABLE IF NOT EXISTS operations_interface_calls (
         call_id bigserial PRIMARY KEY, occurred_at timestamptz NOT NULL,
         source_service text NOT NULL, target_service text NOT NULL, method text NOT NULL,
         route text NOT NULL, status_code integer NOT NULL, duration_ms integer NOT NULL,
-        succeeded boolean NOT NULL
+        succeeded boolean NOT NULL, action_id uuid, action_type text
       );
+      ALTER TABLE operations_interface_calls ADD COLUMN IF NOT EXISTS action_id uuid;
+      ALTER TABLE operations_interface_calls ADD COLUMN IF NOT EXISTS action_type text;
       CREATE INDEX IF NOT EXISTS idx_operations_interface_calls_time
         ON operations_interface_calls (occurred_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_operations_interface_calls_action
+        ON operations_interface_calls (action_id, occurred_at DESC);
       CREATE TABLE IF NOT EXISTS operations_link_targets (
         reference_id text PRIMARY KEY, target_url text NOT NULL, link_type text NOT NULL,
         owner_domain text NOT NULL, access_scope text NOT NULL, source_service text NOT NULL,
@@ -258,15 +291,194 @@ class PostgresAdminRepository {
     ));
   }
 
+  async userActionOperationAggregates(filter = {}) {
+    const hours = Math.max(1, Math.min(24 * 90, Number(filter.hours) || 24));
+    const limit = Math.max(1, Math.min(100, Number(filter.limit) || 50));
+    const result = await this.pool.query(`
+      WITH filtered AS (
+        SELECT * FROM operations_user_action_events
+        WHERE occurred_at >= now() - make_interval(hours => $1::int)
+      ), attempts AS (
+        SELECT action_id,
+          (array_agg(action_type ORDER BY occurred_at DESC))[1] AS action_type,
+          (array_agg(release_id ORDER BY occurred_at DESC))[1] AS release_id,
+          (array_agg(route_id ORDER BY occurred_at DESC))[1] AS route_id,
+          min(occurred_at) AS started_at, max(occurred_at) AS last_seen_at,
+          (array_agg(phase ORDER BY occurred_at DESC))[1] AS phase,
+          coalesce((array_agg(reason_code ORDER BY occurred_at DESC)
+            FILTER (WHERE phase IN ('failed','timed_out','unhandled')))[1], '') AS reason_code,
+          coalesce((array_agg(span_type ORDER BY occurred_at DESC)
+            FILTER (WHERE phase IN ('failed','timed_out','unhandled')))[1], '') AS failed_span,
+          count(*)::int AS event_count, count(DISTINCT span_id)::int AS span_count
+        FROM filtered GROUP BY action_id
+      ), release_rows AS (
+        SELECT action_type, release_id, count(*)::int AS attempts,
+          count(*) FILTER (WHERE phase='succeeded')::int AS succeeded,
+          count(*) FILTER (WHERE phase IN ('failed','timed_out','unhandled'))::int AS failed,
+          count(*) FILTER (WHERE phase NOT IN ('succeeded','failed','timed_out','unhandled'))::int AS open,
+          count(*) FILTER (WHERE phase IN ('triggered','started') AND last_seen_at < now() - CASE action_type
+            WHEN 'identity.login.passkey' THEN interval '2 minutes'
+            WHEN 'project.settings.save' THEN interval '30 seconds'
+            WHEN 'project.build.start' THEN interval '15 minutes'
+            WHEN 'nexi.flash.usb.start' THEN interval '10 minutes'
+            ELSE interval '10 minutes' END)::int AS hanging,
+          min(started_at) AS first_seen_at, max(last_seen_at) AS last_seen_at
+        FROM attempts GROUP BY action_type, release_id
+      ), reason_rows AS (
+        SELECT action_type, release_id, reason_code, count(*)::int AS failures
+        FROM attempts WHERE phase IN ('failed','timed_out','unhandled')
+        GROUP BY action_type, release_id, reason_code
+      )
+      SELECT
+        coalesce((SELECT jsonb_agg(to_jsonb(row) ORDER BY row.last_seen_at DESC) FROM release_rows row), '[]'::jsonb) AS by_release,
+        coalesce((SELECT jsonb_agg(to_jsonb(row) ORDER BY row.failures DESC) FROM reason_rows row), '[]'::jsonb) AS top_reason_codes,
+        coalesce((SELECT jsonb_agg(to_jsonb(row) ORDER BY row.last_seen_at DESC) FROM
+          (SELECT * FROM attempts ORDER BY last_seen_at DESC LIMIT $2) row), '[]'::jsonb) AS recent_actions
+    `, [hours, limit]);
+    const row = result.rows[0] || {};
+    return {
+      hours,
+      by_release: row.by_release || [],
+      top_reason_codes: row.top_reason_codes || [],
+      recent_actions: row.recent_actions || [],
+    };
+  }
+
+  async createUserActionIncident(value) {
+    await this.pool.query(`
+      INSERT INTO operations_user_action_incidents
+        (incident_id, created_at, updated_at, action_id, action_type, reason_code,
+         release_id, status, owner, runbook_url, fix_release_id, note, raw_json)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    `, [value.incident_id, value.created_at, value.updated_at, value.action_id,
+      value.action_type, value.reason_code, value.release_id, value.status, value.owner,
+      value.runbook_url, value.fix_release_id, value.note, value]);
+    return clone(value);
+  }
+
+  async findUserActionIncident(incidentId) {
+    const result = await this.pool.query(
+      "SELECT raw_json FROM operations_user_action_incidents WHERE incident_id=$1",
+      [incidentId],
+    );
+    return result.rows[0]?.raw_json ? clone(result.rows[0].raw_json) : null;
+  }
+
+  async updateUserActionIncident(incidentId, value) {
+    const result = await this.pool.query(`
+      UPDATE operations_user_action_incidents SET
+        updated_at=$2, status=$3, owner=$4, runbook_url=$5, fix_release_id=$6,
+        note=$7, raw_json=$8
+      WHERE incident_id=$1
+    `, [incidentId, value.updated_at, value.status, value.owner, value.runbook_url,
+      value.fix_release_id, value.note, value]);
+    return result.rowCount ? clone(value) : null;
+  }
+
+  async listUserActionIncidents(filter = {}) {
+    const values = [];
+    const conditions = [];
+    if (filter.status) { values.push(filter.status); conditions.push(`status=$${values.length}`); }
+    const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+    return rows(await this.pool.query(
+      `SELECT raw_json FROM operations_user_action_incidents${where} ORDER BY updated_at DESC`, values,
+    ));
+  }
+
+  async upsertUserActionAlert(value) {
+    await this.pool.query(`
+      INSERT INTO operations_user_action_alerts
+        (alert_key, first_seen_at, last_seen_at, action_type, release_id, reason_code,
+         alert_kind, severity, status, notification_state, attempts, failures,
+         failure_rate_percent, hanging, window_hours, raw_json)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      ON CONFLICT (alert_key) DO UPDATE SET
+        last_seen_at=EXCLUDED.last_seen_at, severity=EXCLUDED.severity,
+        attempts=EXCLUDED.attempts, failures=EXCLUDED.failures,
+        failure_rate_percent=EXCLUDED.failure_rate_percent, hanging=EXCLUDED.hanging,
+        window_hours=EXCLUDED.window_hours, raw_json=EXCLUDED.raw_json
+    `, [value.alert_key, value.first_seen_at, value.last_seen_at, value.action_type,
+      value.release_id, value.reason_code, value.alert_kind, value.severity, value.status,
+      value.notification_state, value.attempts, value.failures, value.failure_rate_percent,
+      value.hanging, value.window_hours, value]);
+    return clone(value);
+  }
+
+  async listUserActionAlerts() {
+    const result = await this.pool.query(`
+      SELECT alert_key, first_seen_at, last_seen_at, action_type, release_id,
+        reason_code, alert_kind, severity, status, notification_state, attempts,
+        failures, failure_rate_percent, hanging, window_hours
+      FROM operations_user_action_alerts ORDER BY last_seen_at DESC
+    `);
+    return result.rows.map(normalizePostgresNumbers);
+  }
+
+  async addSyntheticCheckResults(results) {
+    const client = typeof this.pool.connect === "function" ? await this.pool.connect() : this.pool;
+    try {
+      await client.query("BEGIN");
+      for (const value of results || []) {
+        await client.query(`
+          INSERT INTO operations_synthetic_check_results
+            (result_id, run_id, checked_at, check_id, target_service, route,
+             status, http_status, response_ms, reason_code, raw_json)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+          ON CONFLICT (result_id) DO NOTHING
+        `, [value.result_id, value.run_id, value.checked_at, value.check_id,
+          value.target_service, value.route, value.status, value.http_status || null,
+          value.response_ms, value.reason_code, value]);
+      }
+      await client.query("COMMIT");
+      return { accepted: (results || []).length };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      if (client !== this.pool) client.release();
+    }
+  }
+
+  async listSyntheticCheckResults(filter = {}) {
+    const values = [];
+    const conditions = [];
+    if (filter.run_id) { values.push(filter.run_id); conditions.push(`run_id=$${values.length}`); }
+    const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+    values.push(Math.max(1, Math.min(1000, Number(filter.limit) || 200)));
+    return rows(await this.pool.query(
+      `SELECT raw_json FROM operations_synthetic_check_results${where} ORDER BY checked_at DESC LIMIT $${values.length}`,
+      values,
+    ));
+  }
+
   async addInterfaceCall(input) {
     await this.pool.query(`
       INSERT INTO operations_interface_calls
         (occurred_at, source_service, target_service, method, route,
-         status_code, duration_ms, succeeded)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         status_code, duration_ms, succeeded, action_id, action_type)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     `, [input.occurred_at || new Date().toISOString(), input.source_service,
       input.target_service, input.method, input.route, Number(input.status_code || 0),
-      Number(input.duration_ms || 0), Boolean(input.succeeded)]);
+      Number(input.duration_ms || 0), Boolean(input.succeeded), input.action_id || null,
+      input.action_type || null]);
+  }
+
+  async listInterfaceCalls(filter = {}) {
+    const conditions = [];
+    const values = [];
+    if (filter.action_id) {
+      values.push(filter.action_id);
+      conditions.push(`action_id=$${values.length}`);
+    }
+    const where = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+    values.push(Math.max(1, Math.min(1000, Number(filter.limit) || 200)));
+    const result = await this.pool.query(`
+      SELECT occurred_at, source_service, target_service, method, route,
+        status_code, duration_ms, succeeded, action_id::text, action_type
+      FROM operations_interface_calls${where}
+      ORDER BY occurred_at DESC LIMIT $${values.length}
+    `, values);
+    return result.rows.map((item) => ({ ...item, succeeded: Boolean(item.succeeded) }));
   }
 
   async replaceLinkInventory(sourceService, inventory) {
@@ -398,6 +610,7 @@ class PostgresAdminRepository {
           + (SELECT count(*) FROM operations_admin_actions)
           + (SELECT count(*) FROM operations_system_events)
           + (SELECT count(*) FROM operations_user_action_events)
+          + (SELECT count(*) FROM operations_synthetic_check_results)
           + (SELECT count(*) FROM operations_interface_calls)
           + (SELECT count(*) FROM operations_link_targets)
           + (SELECT count(*) FROM operations_link_occurrences)
@@ -429,6 +642,11 @@ class PostgresAdminRepository {
 }
 
 function createId(prefix) { return `${prefix}_${crypto.randomUUID()}`; }
+function normalizePostgresNumbers(value) {
+  const result = { ...value };
+  for (const field of ["attempts", "failures", "failure_rate_percent", "hanging", "window_hours"]) result[field] = Number(result[field] || 0);
+  return result;
+}
 function clone(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
 function rows(result) { return result.rows.map((row) => clone(row.raw_json)); }
 function first(result) { return result.rows[0] ? clone(result.rows[0].raw_json) : null; }

@@ -8,15 +8,16 @@ const read = (...segments) => fs.readFileSync(path.join(repositoryRoot, ...segme
 
 test("public page shells use the visible width while readable content keeps its own limits", () => {
   const landingCss = read("services", "identity-server", "public", "landing.css");
+  const publicHeaderCss = read("services", "identity-server", "public", "public-header.css");
   const flashboxCss = read("services", "identity-server", "public", "flashbox-einrichten", "styles.css");
   const authCss = read("services", "identity-server", "public", "app", "auth", "auth.css");
   const platformCss = read("services", "identity-server", "public", "app", "app.css");
 
-  assert.match(landingCss, /\.site-header \{[\s\S]*width: calc\(100% - 32px\)/);
+  assert.match(publicHeaderCss, /\.site-header \{[\s\S]*left: 16px;[\s\S]*right: 16px;[\s\S]*width: auto/);
   assert.match(landingCss, /main \{[^}]*width: calc\(100% - 32px\)/);
   assert.match(landingCss, /footer \{[\s\S]*width: calc\(100% - 32px\)/);
   assert.match(flashboxCss, /main \{ width: calc\(100% - 32px\)/);
-  assert.match(authCss, /\.auth-site-header \{[\s\S]*width: calc\(100% - 32px\)/);
+  assert.match(authCss, /body \{[\s\S]*padding-top: 78px/);
   assert.match(platformCss, /body\.public-help-page \.app-shell \{ width: calc\(100% - 32px\)/);
   assert.match(platformCss, /@media \(max-width: 520px\)[\s\S]*\.knowledge-book-navigation,[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(platformCss, /\.knowledge-chapter-title-link,[\s\S]*overflow-wrap: anywhere/);

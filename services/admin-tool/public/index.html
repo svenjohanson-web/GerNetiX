@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Admin Tool</title>
-    <link rel="stylesheet" href="/admin/app.css?v=20260806-learning-feedback-summary" />
+    <link rel="stylesheet" href="/admin/app.css?v=20260808-dark-operator-panels" />
     <link rel="stylesheet" href="/admin/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -184,6 +184,21 @@
           </div>
           <div id="monitoringServiceList" class="monitoring-grid"></div>
         </section>
+        <section class="panel" aria-labelledby="syntheticChecksTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Read-only Vorpruefung</p>
+              <h2 id="syntheticChecksTitle">Synthetische Kernablaeufe</h2>
+              <p class="helper-text">Prueft Login-HTML, Projekt-Persistenz, Build-Koordination und Flash-Katalog, ohne Konten, Projekte, Builds oder Geraete zu veraendern.</p>
+            </div>
+            <div class="button-row">
+              <button id="refreshSyntheticChecksButton" type="button">Historie laden</button>
+              <button id="runSyntheticChecksButton" class="primary" type="button">Jetzt pruefen</button>
+            </div>
+          </div>
+          <p id="syntheticChecksStatus" class="helper-text" aria-live="polite"></p>
+          <div id="syntheticCheckList" class="monitoring-grid"></div>
+        </section>
       </section>
 
       <section id="linkIntegrityView" class="admin-view hidden">
@@ -267,6 +282,8 @@
           <form id="userActionSearchForm" class="action-explorer-search">
             <label for="userActionIdSearch">Action-ID</label>
             <input id="userActionIdSearch" name="action_id" type="search" inputmode="text" autocomplete="off" spellcheck="false" placeholder="UUID eines Nutzerauftrags" />
+            <label for="userActionHours">Zeitraum</label>
+            <select id="userActionHours"><option value="1">1 Stunde</option><option value="24" selected>24 Stunden</option><option value="168">7 Tage</option><option value="720">30 Tage</option></select>
             <button class="primary" type="submit">Wirkkette suchen</button>
             <button id="clearUserActionSearchButton" type="button">Alle Versuche</button>
           </form>
@@ -276,6 +293,10 @@
               <thead><tr><th>Aktion</th><th>Versuche</th><th>Erfolgreich</th><th>Fehler</th><th>Fehlerquote</th></tr></thead>
               <tbody id="userActionTypeRows"></tbody>
             </table>
+          </div>
+          <div class="action-operations-grid">
+            <section><h3>Release-Vergleich</h3><div id="userActionReleaseComparison"></div></section>
+            <section><h3>Top-Fehlergründe</h3><div id="userActionReasonCodes"></div></section>
           </div>
           <h3>Letzte Versuche</h3>
           <div class="table-wrap">
@@ -288,10 +309,35 @@
         <section id="userActionTracePanel" class="panel hidden" aria-labelledby="userActionTraceTitle">
           <div class="section-head">
             <div><p class="eyebrow">Action Explorer</p><h2 id="userActionTraceTitle">Wirkkette</h2></div>
-            <button id="copyUserActionIdButton" type="button">Action-ID kopieren</button>
+            <div class="button-row"><button id="createUserActionIncidentButton" type="button">Incident anlegen</button><button id="copyUserActionIdButton" type="button">Action-ID kopieren</button></div>
           </div>
           <dl id="userActionTraceMeta" class="action-trace-meta"></dl>
           <ol id="userActionTimeline" class="action-timeline"></ol>
+        </section>
+        <section class="panel" aria-labelledby="userActionAlertsTitle">
+          <div class="section-head">
+            <div><p class="eyebrow">Beobachtungsmodus</p><h2 id="userActionAlertsTitle">Alarmkandidaten</h2></div>
+            <div class="button-row"><button id="evaluateUserActionAlertsButton" type="button">Jetzt auswerten</button><button id="refreshUserActionAlertsButton" type="button">Neu laden</button></div>
+          </div>
+          <p class="helper-text">Kandidaten werden persistent dedupliziert, aber bis zur Baseline-Abnahme nicht per E-Mail oder Push versendet.</p>
+          <p id="userActionAlertMessage" class="helper-text" aria-live="polite"></p>
+          <div id="userActionAlertRows" class="action-alert-grid"></div>
+        </section>
+        <section class="panel" aria-labelledby="userActionIncidentsTitle">
+          <div class="section-head">
+            <div><p class="eyebrow">Bearbeitung</p><h2 id="userActionIncidentsTitle">Operations-Incidents</h2></div>
+            <button id="refreshUserActionIncidentsButton" type="button">Neu laden</button>
+          </div>
+          <form id="userActionIncidentCreateForm" class="action-incident-form hidden">
+            <input name="action_id" type="hidden" /><input name="action_type" type="hidden" /><input name="reason_code" type="hidden" /><input name="release_id" type="hidden" />
+            <p id="userActionIncidentCreateContext" class="helper-text"></p>
+            <label>Verantwortlich<input name="owner" maxlength="100" placeholder="Team oder Person" /></label>
+            <label>Runbook<input name="runbook_url" maxlength="500" placeholder="/docs/runbook oder https://…" /></label>
+            <label>Notiz<textarea name="note" maxlength="500" rows="3" placeholder="Auswirkung und erster Untersuchungsstand"></textarea></label>
+            <div class="button-row"><button class="primary" type="submit">Incident speichern</button><button id="cancelUserActionIncidentButton" type="button">Abbrechen</button></div>
+          </form>
+          <p id="userActionIncidentMessage" class="helper-text" aria-live="polite"></p>
+          <div id="userActionIncidentRows" class="action-incident-grid"></div>
         </section>
       </section>
 

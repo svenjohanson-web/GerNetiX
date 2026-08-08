@@ -2,7 +2,121 @@ const menuButton = document.querySelector("#publicMenuButton");
 const menu = document.querySelector("#publicMenu");
 let publicI18n = null;
 
+normalizePublicNavigation();
 const publicI18nReady = initializePublicI18n();
+initializePublicSession();
+
+function normalizePublicNavigation() {
+  if (!menu) return;
+  const links = [
+    ["/", "Startseite"],
+    ["/ueber-uns/", "Über uns"],
+    ["/nachbauprojekte/nexi-sprachassistent/", "Nexi"],
+    ["/nachbauprojekte/", "Projekte zum Nachbauen"],
+    ["/flashbox-einrichten/", "FlashBox einrichten"],
+    ["/wissen/", "Wissensportal"],
+    ["/community/", "Community"],
+    ["/hilfe/", "Hilfe"],
+    ["/support/", "Support"],
+    ["/tarife/", "Konten & Tarife"],
+    ["/shop/", "Webshop"],
+    ["/app/auth/", "Anmelden"],
+  ];
+  menu.setAttribute("aria-label", "Öffentliche Bereiche");
+  menu.dataset.i18nAriaLabel = "nav.public";
+  menu.replaceChildren(...links.map(([href, label]) => createNavigationLink(href, label)));
+  document.body.classList.remove("public-session-authenticated");
+}
+
+async function initializePublicSession() {
+  try {
+    const response = await fetch("/api/session", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    if (!response.ok) return;
+    const session = await response.json();
+    if (!session.authenticated) return;
+    showAuthenticatedPublicNavigation(session.account);
+  } catch {
+    // Public pages remain usable when the optional session check is unavailable.
+  }
+}
+
+function showAuthenticatedPublicNavigation(account) {
+  if (!menu) return;
+  const username = String(account?.username || "").trim();
+  const dashboardLink = createNavigationLink("/app/dashboard/", "Übersicht", "platform.nav.dashboard");
+  if (username) dashboardLink.prepend(document.createTextNode(`${username} · `));
+  const logoutLink = createNavigationLink("/app/auth/", "Abmelden", "platform.nav.logout");
+  logoutLink.dataset.publicLogout = "true";
+
+  menu.setAttribute("aria-label", "Plattformbereiche");
+  menu.removeAttribute("data-i18n-aria-label");
+  menu.replaceChildren(
+    dashboardLink,
+    createNavigationLink("/app/applications/", "Meine Anwendungen", "platform.nav.applications"),
+    createNavigationGroup("Lernen & Entwickeln", "platform.menu.learn_develop", [
+      ["/app/learn/", "Lernplattform", "platform.nav.learning"],
+      ["/app/requirements-workshop/", "KI-Anforderungswerkstatt"],
+      ["/app/development-platform/", "Entwicklungsplattform", "platform.nav.development"],
+      ["/app/quiz/", "Quiz", "platform.nav.quiz"],
+      ["/wissen/", "Wissensspeicher", "platform.nav.knowledge_store"],
+      ["/app/community/", "Community", "platform.nav.community"],
+      ["/nachbauprojekte/", "Nachbauprojekte", "nav.rebuild_projects"],
+    ]),
+    createNavigationGroup("Boards & Werkzeuge", "platform.menu.boards_tools", [
+      ["/app/device-management/", "Geräte", "platform.nav.devices"],
+      ["/app/hardware-lab/", "KI-Hardware-Assistent", "platform.nav.hardware_lab"],
+      ["/app/downloads/", "Downloads", "platform.nav.downloads"],
+      ["/flashbox-einrichten/", "FlashBox einrichten", "nav.usb_helper"],
+    ]),
+    createNavigationGroup("Service & Shop", "platform.menu.service_shop", [
+      ["/app/about/", "Über uns", "footer.about"],
+      ["/support/", "Support", "nav.support"],
+      ["/shop/", "Webshop", "nav.shop"],
+    ]),
+    createNavigationGroup("Konto", "platform.menu.account", [
+      ["/app/account-setup/", "Profil", "profile.menu"],
+      ["/app/billing/", "Billing", "platform.nav.billing"],
+    ]),
+    createNavigationLink("/hilfe/", "Hilfe", "nav.help"),
+    createNavigationLink("/app/messages/", "Nachrichten"),
+    logoutLink,
+  );
+  publicI18n?.translateDocument();
+  document.body.classList.add("public-session-authenticated");
+}
+
+function createNavigationGroup(label, i18nKey, links) {
+  const group = document.createElement("details");
+  group.className = "site-menu-group";
+  const summary = document.createElement("summary");
+  summary.textContent = label;
+  if (i18nKey) summary.dataset.i18n = i18nKey;
+  const content = document.createElement("div");
+  content.append(...links.map(([href, linkLabel, linkI18nKey]) => createNavigationLink(href, linkLabel, linkI18nKey)));
+  group.append(summary, content);
+  group.open = links.some(([href]) => navigationPathIsActive(href));
+  return group;
+}
+
+function createNavigationLink(href, label, i18nKey = "") {
+  const link = document.createElement("a");
+  link.href = href;
+  const copy = document.createElement("span");
+  copy.textContent = label;
+  if (i18nKey) copy.dataset.i18n = i18nKey;
+  link.append(copy);
+  if (navigationPathIsActive(href)) link.setAttribute("aria-current", "page");
+  return link;
+}
+
+function navigationPathIsActive(href) {
+  const currentPath = window.location.pathname;
+  if (href === "/") return currentPath === href;
+  return currentPath === href || currentPath.startsWith(href);
+}
 
 async function initializePublicI18n() {
   try {
@@ -15,6 +129,7 @@ async function initializePublicI18n() {
     const languageSelect = document.querySelector("#publicLanguage");
     languageSelect.value = publicI18n.locale;
     languageSelect.disabled = false;
+    document.dispatchEvent(new CustomEvent("gernetix:public-i18n-ready", { detail: publicI18n }));
   } catch (error) {
     console.warn("Public translations could not be initialized.", error);
   }
@@ -68,10 +183,14 @@ function decoratePublicNavigation() {
   };
   document.querySelectorAll(".site-menu a").forEach((link) => {
     const pathname = new URL(link.href, window.location.origin).pathname;
-    if (keysByPath[pathname]) link.dataset.i18n = keysByPath[pathname];
+    if (keysByPath[pathname] && !link.dataset.publicLogout && !link.querySelector("[data-i18n]")) {
+      link.dataset.i18n = keysByPath[pathname];
+    }
   });
-  menuButton.dataset.i18nAriaLabel = "menu.open";
-  menu.dataset.i18nAriaLabel = "nav.public";
+  if (menuButton) menuButton.dataset.i18nAriaLabel = "menu.open";
+  if (!document.body.classList.contains("public-session-authenticated")) {
+    menu.dataset.i18nAriaLabel = "nav.public";
+  }
 }
 
 function tr(key, fallback) {
@@ -90,14 +209,26 @@ function openMenu() {
   menuButton.setAttribute("aria-label", tr("menu.close", "Menü schließen"));
 }
 
-menuButton.addEventListener("click", (event) => {
+menuButton?.addEventListener("click", (event) => {
   event.stopPropagation();
   if (menu.hidden) openMenu();
   else closeMenu();
 });
 
-menu.addEventListener("click", (event) => {
+menu?.addEventListener("click", async (event) => {
   event.stopPropagation();
+  const logoutLink = event.target.closest("[data-public-logout]");
+  if (logoutLink) {
+    event.preventDefault();
+    closeMenu();
+    try {
+      const response = await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
+      if (response.ok) window.location.assign("/");
+    } catch {
+      // Keep the authenticated menu visible when logout could not be confirmed.
+    }
+    return;
+  }
   if (event.target.closest("a")) closeMenu();
 });
 

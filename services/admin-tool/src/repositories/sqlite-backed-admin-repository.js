@@ -19,6 +19,10 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         adminActions: [],
         systemEvents: [],
         userActionEvents: [],
+        userActionIncidents: [],
+        userActionAlerts: [],
+        syntheticCheckResults: [],
+        interfaceCalls: [],
         linkTargets: [],
         linkOccurrences: [],
         linkChecks: [],
@@ -32,6 +36,10 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         adminActions: "admin_actions",
         systemEvents: "system_events",
         userActionEvents: "user_action_events",
+        userActionIncidents: "user_action_incidents",
+        userActionAlerts: "user_action_alerts",
+        syntheticCheckResults: "synthetic_check_results",
+        interfaceCalls: "interface_calls",
         linkTargets: "link_targets",
         linkOccurrences: "link_occurrences",
         linkChecks: "link_checks",
@@ -75,6 +83,36 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     return result;
   }
 
+  addInterfaceCall(input) {
+    const result = super.addInterfaceCall(input);
+    this.persist();
+    return result;
+  }
+
+  createUserActionIncident(input) {
+    const result = super.createUserActionIncident(input);
+    this.persist();
+    return result;
+  }
+
+  updateUserActionIncident(incidentId, input) {
+    const result = super.updateUserActionIncident(incidentId, input);
+    this.persist();
+    return result;
+  }
+
+  upsertUserActionAlert(input) {
+    const result = super.upsertUserActionAlert(input);
+    this.persist();
+    return result;
+  }
+
+  addSyntheticCheckResults(results) {
+    const result = super.addSyntheticCheckResults(results);
+    this.persist();
+    return result;
+  }
+
   replaceLinkInventory(sourceService, inventory) {
     const result = super.replaceLinkInventory(sourceService, inventory);
     this.persist();
@@ -97,6 +135,10 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       adminActions: this.adminActions,
       systemEvents: this.systemEvents,
       userActionEvents: this.userActionEvents,
+      userActionIncidents: this.userActionIncidents,
+      userActionAlerts: this.userActionAlerts,
+      syntheticCheckResults: this.syntheticCheckResults,
+      interfaceCalls: this.interfaceCalls,
       linkTargets: Array.from(this.linkTargets.values()),
       linkOccurrences: Array.from(this.linkOccurrences.values()),
       linkChecks: this.linkChecks,
@@ -110,6 +152,10 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     this.store.replaceCollection?.("admin_actions", state.adminActions, "action_id");
     this.store.replaceCollection?.("system_events", state.systemEvents, "event_id");
     this.store.replaceCollection?.("user_action_events", state.userActionEvents, "event_id");
+    this.store.replaceCollection?.("user_action_incidents", state.userActionIncidents, "incident_id");
+    this.store.replaceCollection?.("user_action_alerts", state.userActionAlerts, "alert_key");
+    this.store.replaceCollection?.("synthetic_check_results", state.syntheticCheckResults, "result_id");
+    this.store.replaceCollection?.("interface_calls", state.interfaceCalls, "call_id");
     this.store.replaceCollection?.("link_targets", state.linkTargets, "reference_id");
     this.store.replaceCollection?.("link_occurrences", state.linkOccurrences, "occurrence_id");
     this.store.replaceCollection?.("link_checks", state.linkChecks, "check_id");
@@ -122,6 +168,10 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       this.store.replaceTable("admin_tool_admin_actions", state.adminActions, actionColumns());
       this.store.replaceTable("admin_tool_system_events", state.systemEvents, systemEventColumns());
       this.store.replaceTable("admin_tool_user_action_events", state.userActionEvents, userActionEventColumns());
+      this.store.replaceTable("admin_tool_user_action_incidents", state.userActionIncidents, userActionIncidentColumns());
+      this.store.replaceTable("admin_tool_user_action_alerts", state.userActionAlerts, userActionAlertColumns());
+      this.store.replaceTable("admin_tool_synthetic_check_results", state.syntheticCheckResults, syntheticCheckResultColumns());
+      this.store.replaceTable("admin_tool_interface_calls", state.interfaceCalls, interfaceCallColumns());
       this.store.replaceTable("admin_tool_link_targets", state.linkTargets, linkTargetColumns());
       this.store.replaceTable("admin_tool_link_occurrences", state.linkOccurrences, linkOccurrenceColumns());
       this.store.replaceTable("admin_tool_link_checks", state.linkChecks, linkCheckColumns());
@@ -139,6 +189,10 @@ function adminSchema() {
     `CREATE TABLE IF NOT EXISTS admin_tool_admin_actions (action_id TEXT PRIMARY KEY, occurred_at TEXT, actor_id TEXT, actor_role TEXT, action_type TEXT, account_id TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_system_events (event_id TEXT PRIMARY KEY, occurred_at TEXT, severity TEXT, source_service TEXT, target_service TEXT, category TEXT, event_type TEXT, message TEXT, impact TEXT, account_id TEXT, route TEXT, correlation_id TEXT, details_json TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_user_action_events (event_id TEXT PRIMARY KEY, occurred_at TEXT, action_type TEXT, action_id TEXT, span_type TEXT, span_id TEXT, parent_span_id TEXT, parent_action_id TEXT, phase TEXT, reason_code TEXT, route_id TEXT, release_id TEXT, duration_bucket TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_user_action_incidents (incident_id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, action_id TEXT, action_type TEXT, reason_code TEXT, release_id TEXT, status TEXT, owner TEXT, runbook_url TEXT, fix_release_id TEXT, note TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_user_action_alerts (alert_key TEXT PRIMARY KEY, first_seen_at TEXT, last_seen_at TEXT, action_type TEXT, release_id TEXT, reason_code TEXT, alert_kind TEXT, severity TEXT, status TEXT, notification_state TEXT, attempts INTEGER, failures INTEGER, failure_rate_percent REAL, hanging INTEGER, window_hours INTEGER, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_synthetic_check_results (result_id TEXT PRIMARY KEY, run_id TEXT, checked_at TEXT, check_id TEXT, target_service TEXT, route TEXT, status TEXT, http_status INTEGER, response_ms INTEGER, reason_code TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_interface_calls (call_id TEXT PRIMARY KEY, occurred_at TEXT, source_service TEXT, target_service TEXT, method TEXT, route TEXT, status_code INTEGER, duration_ms INTEGER, succeeded INTEGER, action_id TEXT, action_type TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_link_targets (reference_id TEXT PRIMARY KEY, target_url TEXT, link_type TEXT, owner_domain TEXT, access_scope TEXT, source_service TEXT, active INTEGER, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_link_occurrences (occurrence_id TEXT PRIMARY KEY, reference_id TEXT, source_service TEXT, source_location TEXT, source_route TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_link_checks (check_id TEXT PRIMARY KEY, reference_id TEXT, checked_at TEXT, status TEXT, http_status INTEGER, access_profile TEXT, final_url TEXT, error_code TEXT, raw_json TEXT NOT NULL);`,
@@ -175,6 +229,22 @@ function systemEventColumns() {
 
 function userActionEventColumns() {
   return { ...columns(["event_id", "occurred_at", "action_type", "action_id", "span_type", "span_id", "parent_span_id", "parent_action_id", "phase", "reason_code", "route_id", "release_id", "duration_bucket"]), raw_json: jsonColumn((row) => row) };
+}
+
+function interfaceCallColumns() {
+  return { ...columns(["call_id", "occurred_at", "source_service", "target_service", "method", "route", "status_code", "duration_ms", "succeeded", "action_id", "action_type"]), raw_json: jsonColumn((row) => row) };
+}
+
+function userActionIncidentColumns() {
+  return { ...columns(["incident_id", "created_at", "updated_at", "action_id", "action_type", "reason_code", "release_id", "status", "owner", "runbook_url", "fix_release_id", "note"]), raw_json: jsonColumn((row) => row) };
+}
+
+function userActionAlertColumns() {
+  return { ...columns(["alert_key", "first_seen_at", "last_seen_at", "action_type", "release_id", "reason_code", "alert_kind", "severity", "status", "notification_state", "attempts", "failures", "failure_rate_percent", "hanging", "window_hours"]), raw_json: jsonColumn((row) => row) };
+}
+
+function syntheticCheckResultColumns() {
+  return { ...columns(["result_id", "run_id", "checked_at", "check_id", "target_service", "route", "status", "http_status", "response_ms", "reason_code"]), raw_json: jsonColumn((row) => row) };
 }
 
 function linkTargetColumns() {

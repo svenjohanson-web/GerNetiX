@@ -4,6 +4,7 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
   return async function requestJson(pathname, options = {}) {
     let response;
     const startedAt = Date.now();
+    const action = actionContext(options.headers);
     try {
       response = await fetch(`${baseUrl}${pathname}`, {
         method: options.method || "GET",
@@ -11,7 +12,7 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
     } catch (cause) {
-      clientOptions.telemetry?.record({ targetService: clientOptions.targetService, method: options.method || "GET", route: pathname, statusCode: 0, durationMs: Date.now() - startedAt, succeeded: false });
+      clientOptions.telemetry?.record({ targetService: clientOptions.targetService, method: options.method || "GET", route: pathname, statusCode: 0, durationMs: Date.now() - startedAt, succeeded: false, ...action });
       const error = new Error(`${fallbackMessage} Der lokale Dienst hat die Verbindung beendet.`);
       error.code = "upstream_connection_failed";
       error.status = 502;
@@ -19,7 +20,7 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
       throw error;
     }
     const payload = await response.json().catch(() => ({}));
-    clientOptions.telemetry?.record({ targetService: clientOptions.targetService, method: options.method || "GET", route: pathname, statusCode: response.status, durationMs: Date.now() - startedAt, succeeded: response.ok });
+    clientOptions.telemetry?.record({ targetService: clientOptions.targetService, method: options.method || "GET", route: pathname, statusCode: response.status, durationMs: Date.now() - startedAt, succeeded: response.ok, ...action });
     const allowedStatus = clientOptions.allowPaymentRequired && options.allowPaymentRequired && response.status === 402;
     if (!response.ok && !allowedStatus) {
       const error = new Error(payload.message || payload.error || fallbackMessage);
@@ -28,6 +29,14 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
       throw error;
     }
     return payload;
+  };
+}
+
+function actionContext(headers = {}) {
+  const normalized = Object.fromEntries(Object.entries(headers || {}).map(([key, value]) => [String(key).toLowerCase(), value]));
+  return {
+    actionId: normalized["x-gernetix-action-id"] || "",
+    actionType: normalized["x-gernetix-action-type"] || "",
   };
 }
 
@@ -62,5 +71,6 @@ function createDevServiceClients({
 }
 
 module.exports = {
+  actionContext,
   createDevServiceClients,
 };

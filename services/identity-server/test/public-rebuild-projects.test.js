@@ -11,6 +11,8 @@ const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte",
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
+const publicNavigation = fs.readFileSync(path.join(root, "public", "landing.js"), "utf8");
+const publicHeaderCss = fs.readFileSync(path.join(root, "public", "public-header.css"), "utf8");
 const motorFieldIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-magnetic-field.svg"), "utf8");
 const motorForceIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-force.svg"), "utf8");
 const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-simple-coil-force-pair-v2.png"));
@@ -40,6 +42,18 @@ test("serves the public project catalog and links directly to the available proj
   assert.match(page, /href="\/flashbox-einrichten\/">FlashBox einrichten/);
   assert.match(page, /installiere die Spielesammlung per WebSerial/);
   assert.doesNotMatch(page, /Ver&ouml;ffentlichung folgt/);
+});
+
+test("keeps the authenticated session visible in the public rebuild-project navigation", () => {
+  assert.match(publicNavigation, /fetch\("\/api\/session", \{[\s\S]*credentials: "same-origin"/);
+  assert.match(publicNavigation, /if \(!session\.authenticated\) return;[\s\S]*showAuthenticatedPublicNavigation\(session\.account\)/);
+  assert.match(publicNavigation, /createNavigationLink\("\/app\/dashboard\/", "Übersicht", "platform\.nav\.dashboard"\)/);
+  assert.match(publicNavigation, /createNavigationGroup\("Lernen & Entwickeln"[\s\S]*createNavigationGroup\("Boards & Werkzeuge"[\s\S]*createNavigationGroup\("Service & Shop"[\s\S]*createNavigationGroup\("Konto"/);
+  assert.match(publicNavigation, /createNavigationLink\("\/app\/messages\/", "Nachrichten"\)/);
+  assert.match(publicNavigation, /fetch\("\/api\/logout", \{ method: "POST", credentials: "same-origin" \}\)/);
+  assert.match(publicNavigation, /if \(response\.ok\) window\.location\.assign\("\/"\)/);
+  assert.match(publicHeaderCss, /\.site-menu-group > summary/);
+  assert.match(publicHeaderCss, /\.site-menu a\[data-public-logout\]/);
 });
 
 test("publishes a stepwise motor rebuild project in the public catalog", () => {

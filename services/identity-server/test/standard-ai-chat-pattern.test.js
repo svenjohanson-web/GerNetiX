@@ -10,12 +10,14 @@ const appRoot = path.resolve(__dirname, "../public/app");
 const read = (file) => fs.readFileSync(path.join(appRoot, file), "utf8");
 const html = read("index.html");
 const hardwareFragment = read("fragments/hardware-lab.html");
+const requirementsFragment = read("fragments/requirements-workshop.html");
 const css = read("app.css");
 const pattern = read("ai-chat-pattern.js");
 const guided = read("guided-project-view.js");
 const information = read("information-view.js");
 const development = read("development-platform.js");
 const hardwareLab = read("hardware-lab-controller.js");
+const requirementsWorkshop = read("requirements-workshop-controller.js");
 const shell = read("app-shell-controller.js");
 
 test("loads one shared AI-chat behavior before domain controllers", () => {
@@ -24,6 +26,7 @@ test("loads one shared AI-chat behavior before domain controllers", () => {
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
   assert.match(shell, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
+  assert.match(shell, /loadPlatformScript\(`\/app\/requirements-workshop-controller\.js\?v=\$\{version\}`\)/);
   assert.ok(html.indexOf("ai-chat-pattern.js") < html.indexOf("app-shell-controller.js"));
   assert.equal((html.match(/ai-chat-pattern\.js/g) || []).length, 1);
 });
@@ -33,7 +36,8 @@ test("applies the standard pattern to every current platform AI chat", () => {
   assert.match(hardwareFragment, /hardware-lab-chat ai-chat ai-chat--large/);
   assert.match(guided, /code-explorer-chat ai-chat ai-chat--compact/);
   assert.match(information, /help-chat ai-chat ai-chat--regular/);
-  [html, hardwareFragment, guided, information].forEach((source) => {
+  assert.match(requirementsFragment, /requirements-workshop-chat ai-chat ai-chat--large/);
+  [html, hardwareFragment, requirementsFragment, guided, information].forEach((source) => {
     assert.match(source, /data-ai-chat-form/);
     assert.match(source, /data-ai-chat-input/);
     assert.match(source, /data-ai-chat-send/);
@@ -52,6 +56,7 @@ test("standardizes scale, composer, messages and accessible arrow controls", () 
   assert.match(css, /\.ai-chat \.ai-chat__send:focus-visible/);
   assert.match(html, /ai-chat__send[^>]*aria-label="Nachricht senden"/);
   assert.match(hardwareFragment, /ai-chat__send[^>]*aria-label="Nachricht senden"/);
+  assert.match(requirementsFragment, /ai-chat__send[^>]*aria-label="Vorschlag prüfen"/);
   assert.match(guided, /ai-chat__send[^>]*aria-label="Frage senden"/);
   assert.match(information, /ai-chat__send[^>]*aria-label="Frage senden"/);
 });
@@ -67,6 +72,8 @@ test("keeps pending and error feedback visible in every AI-chat domain", () => {
   assert.match(information, /error: true/);
   assert.match(hardwareLab, /state: "pending"/);
   assert.match(hardwareLab, /state = "error"/);
+  assert.match(requirementsWorkshop, /pending: true/);
+  assert.match(requirementsWorkshop, /error = true/);
   assert.match(css, /\.ai-chat \.ai-chat__message\.is-error/);
   assert.match(css, /\.ai-chat \.ai-chat__status/);
 });

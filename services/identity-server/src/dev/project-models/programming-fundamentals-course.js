@@ -1,7 +1,10 @@
 const modelData = require("./programming-fundamentals-course.json");
+const { developmentLessonCatalog } = require("./development-lesson-catalog");
 
 function createProgrammingFundamentalsCourseModel() {
   const lessons = modelData.lessons || [];
+  const lessonAssignments = modelData.project.project_lesson_assignments || [];
+  const developmentLessons = developmentLessonCatalog.resolveProjectLessons(lessonAssignments);
 
   function createProject(project, step) {
     const definition = modelData.project;
@@ -18,36 +21,43 @@ function createProgrammingFundamentalsCourseModel() {
         access_model: definition.access_model,
         source_files: definition.source_files,
         tags: definition.tags,
+        project_lesson_assignments: clone(lessonAssignments),
       },
     );
   }
 
-  function createViewManifest(project, { primarySourcePath, override } = {}) {
-    if (override) return override;
-    return {
+  function createViewManifest(project, { lessonId = "", primarySourcePath, override } = {}) {
+    if (override && !lessonId) return override;
+    const manifest = {
       ...clone(modelData.view_manifest),
       primary_source_path: primarySourcePath(project),
-      views: lessons.map(createLessonView),
+      views: developmentLessonCatalog.viewsForProject(lessonAssignments),
+    };
+    const lesson = lessonById(lessonId);
+    if (!lesson) return manifest;
+    return {
+      ...manifest,
+      title: `${lesson.title} · Einzelübung`,
+      summary: lesson.summary,
+      primary_source_path: lesson.standalone_start.primary_source_path,
+      entry_mode: "standalone_lesson",
+      lesson_focus_id: lesson.id,
+      parent_learning_project_id: project.learning_project_id,
+      views: manifest.views.filter((view) => view.lesson_id === lesson.id),
     };
   }
 
-  function createSources() {
-    return clone(modelData.sources);
+  function createSources({ lessonId = "" } = {}) {
+    const lesson = lessonById(lessonId);
+    if (!lesson) return clone(modelData.sources);
+    return developmentLessonCatalog.sourcesForLesson(lesson.id);
   }
 
-  return { createProject, createSources, createViewManifest, slug: modelData.slug };
-}
+  function lessonById(lessonId) {
+    return developmentLessons.find((lesson) => lesson.id === lessonId) || null;
+  }
 
-function createLessonView(lesson, index) {
-  return {
-    id: lesson.id,
-    lesson_id: lesson.lesson_id || `programming-fundamentals.lesson-${String(index + 1).padStart(2, "0")}`,
-    type: lesson.type || "story_slide",
-    title: lesson.title,
-    summary: lesson.summary,
-    completion: clone(lesson.completion),
-    payload: clone(lesson.payload),
-  };
+  return { createProject, createSources, createViewManifest, lessonById, slug: modelData.slug };
 }
 
 function clone(value) {

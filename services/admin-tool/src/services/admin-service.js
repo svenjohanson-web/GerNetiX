@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const { AdminToolError } = require("../errors");
 
 class AdminService {
@@ -6,6 +7,7 @@ class AdminService {
     this.accessPolicy = options.accessPolicy;
     this.llmConfigStore = options.llmConfigStore;
     this.serviceClients = options.serviceClients || null;
+    this.fetchImpl = options.fetchImpl || globalThis.fetch;
   }
 
   async overview() {
@@ -71,6 +73,32 @@ class AdminService {
       },
       services,
     };
+  }
+
+  async syntheticChecks(filter = {}) {
+    const items = await this.repository.listSyntheticCheckResults({ limit: filter.limit || 200 });
+    return summarizeSyntheticCheckResults(items);
+  }
+
+  async runSyntheticChecks(input = {}, context = {}) {
+    const runId = crypto.randomUUID();
+    const targets = syntheticCheckTargets(this.serviceClients);
+    const results = await Promise.all(targets.map((target) => checkSyntheticTarget(target, {
+      fetchImpl: this.fetchImpl,
+      runId,
+      timeoutMs: Math.max(250, Math.min(5000, Number(input.timeout_ms) || 1500)),
+    })));
+    await this.repository.addSyntheticCheckResults(results);
+    const summary = summarizeSyntheticCheckResults(results);
+    await this.repository.addAdminAction({
+      actor_id: context?.actor?.actor_id || "synthetic-monitor",
+      actor_role: context?.actor?.role || "system",
+      action_type: "synthetic_checks.run",
+      account_id: null,
+      reason: `Read-only Vorpruefung: ${summary.summary.passed}/${summary.summary.total} bestanden`,
+      payload: { run_id: runId, ...summary.summary },
+    });
+    return summary;
   }
 
   async recordSystemEvent(input) {
@@ -159,10 +187,79 @@ class AdminService {
       throw new AdminToolError("invalid_action_id", "Die Action-ID muss eine gueltige UUID sein.", 400);
     }
     const items = await this.repository.listUserActionEvents({ ...filter, action_id: actionId });
+    const interfaceCalls = actionId && this.repository.listInterfaceCalls
+      ? await this.repository.listInterfaceCalls({ action_id: actionId, limit: filter.limit || 1000 })
+      : [];
     return {
-      summary: summarizeUserActionEvents(items),
+      summary: !actionId && this.repository.userActionOperationAggregates
+        ? summarizeUserActionOperationAggregates(await this.repository.userActionOperationAggregates(filter))
+        : summarizeUserActionEvents(items),
       items: items.slice(0, Number(filter.limit || 200)),
+      interface_calls: interfaceCalls,
     };
+  }
+
+  async userActionIncidents(filter = {}) {
+    return { items: await this.repository.listUserActionIncidents({ status: validIncidentStatus(filter.status, true) }) };
+  }
+
+  async createUserActionIncident(input, context) {
+    validateRequired(input || {}, ["action_id", "action_type"]);
+    const now = new Date().toISOString();
+    const incident = {
+      incident_id: crypto.randomUUID(), created_at: now, updated_at: now,
+      action_id: requiredActionId(input.action_id),
+      action_type: requiredActionType(input.action_type),
+      reason_code: safeOpsToken(input.reason_code || "unknown_client_failure"),
+      release_id: safeRelease(input.release_id), status: "new",
+      owner: safeIncidentText(input.owner, 100), runbook_url: safeRunbookUrl(input.runbook_url),
+      fix_release_id: "", note: safeIncidentText(input.note, 500),
+    };
+    await this.repository.createUserActionIncident(incident);
+    await this.auditUserActionIncident("create", incident, context, input.note || "Incident aus Action Explorer angelegt");
+    return incident;
+  }
+
+  async updateUserActionIncident(incidentId, input, context) {
+    const current = await this.repository.findUserActionIncident(String(incidentId));
+    if (!current) throw new AdminToolError("incident_not_found", "Der Incident wurde nicht gefunden.", 404);
+    validateRequired(input || {}, ["status", "change_reason"]);
+    const updated = {
+      ...current, updated_at: new Date().toISOString(), status: validIncidentStatus(input.status),
+      owner: safeIncidentText(input.owner, 100), runbook_url: safeRunbookUrl(input.runbook_url),
+      fix_release_id: safeRelease(input.fix_release_id), note: safeIncidentText(input.note, 500),
+    };
+    await this.repository.updateUserActionIncident(current.incident_id, updated);
+    await this.auditUserActionIncident("update", updated, context, input.change_reason);
+    return updated;
+  }
+
+  async auditUserActionIncident(operation, incident, context, reason) {
+    return this.repository.addAdminAction({
+      actor_id: context?.actor?.actor_id || "admin-1", actor_role: context?.actor?.role || "administrator",
+      action_type: `user_action_incident.${operation}`, account_id: null,
+      reason: safeIncidentText(reason, 300) || `Incident ${operation}`,
+      payload: { incident_id: incident.incident_id, action_id: incident.action_id, status: incident.status },
+    });
+  }
+
+  async userActionAlerts() {
+    return { mode: "observe_only", items: await this.repository.listUserActionAlerts() };
+  }
+
+  async evaluateUserActionAlerts(input = {}, context) {
+    const hours = Math.max(1, Math.min(24 * 30, Number(input.hours) || 24));
+    const operations = await this.userActionEvents({ hours, limit: 500 });
+    const candidates = buildUserActionAlertCandidates(operations.summary, hours);
+    const persisted = [];
+    for (const candidate of candidates) persisted.push(await this.repository.upsertUserActionAlert(candidate));
+    await this.repository.addAdminAction({
+      actor_id: context?.actor?.actor_id || "admin-1", actor_role: context?.actor?.role || "administrator",
+      action_type: "user_action_alerts.evaluate", account_id: null,
+      reason: `Beobachtungsmodus ${hours}h: ${candidates.length} Kandidaten`,
+      payload: { mode: "observe_only", hours, candidates: candidates.length },
+    });
+    return { mode: "observe_only", evaluated_at: new Date().toISOString(), candidates: persisted };
   }
 
   async synchronizeIdentityLinkInventory(context) {
@@ -259,6 +356,8 @@ class AdminService {
       status_code: Number(input.status_code || 0),
       duration_ms: Math.max(0, Math.round(Number(input.duration_ms || 0))),
       succeeded: Boolean(input.succeeded),
+      action_id: validOptionalActionId(input.action_id),
+      action_type: validOptionalActionType(input.action_type),
     });
     return { accepted: true };
   }
@@ -1075,6 +1174,103 @@ function summarizeDevices(devices) {
     gernetix_verified: devices.filter((device) => device.authenticity_status === "gernetix_verified").length,
     community_unverified: devices.filter((device) => device.authenticity_status === "community_unverified").length,
     online: devices.filter((device) => device.connectivity_status === "online").length,
+  };
+}
+
+function syntheticCheckTargets(serviceClients = {}) {
+  const clients = serviceClients || {};
+  return [
+    syntheticCheckTarget("login_ui", "Login-Oberflaeche", "identity_server", clients.identityBaseUrl, "/app/auth/", {
+      expectedContentType: "text/html",
+    }),
+    syntheticCheckTarget("project_storage", "Projekt-Persistenz", "project_server", clients.projectServerBaseUrl, "/health", {
+      expectedService: "project-server",
+    }),
+    syntheticCheckTarget("build_coordination", "Build-Koordination", "build_deploy", clients.buildDeployBaseUrl, "/health", {
+      expectedService: "build-deploy-server",
+    }),
+    syntheticCheckTarget("flash_catalog", "Flash-Katalog", "public_demo_server", clients.publicDemoBaseUrl, "/api/public/demos", {
+      expectedItems: true,
+    }),
+  ];
+}
+
+function syntheticCheckTarget(checkId, title, targetService, baseUrl, route, expectations = {}) {
+  return {
+    check_id: checkId,
+    title,
+    target_service: targetService,
+    base_url: String(baseUrl || "").replace(/\/$/, ""),
+    route,
+    ...expectations,
+  };
+}
+
+async function checkSyntheticTarget(target, options) {
+  const checkedAt = new Date().toISOString();
+  const base = {
+    result_id: crypto.randomUUID(), run_id: options.runId, checked_at: checkedAt,
+    check_id: target.check_id, title: target.title, target_service: target.target_service,
+    route: target.route, status: "failed", http_status: null, response_ms: 0,
+    reason_code: "network_unreachable",
+  };
+  if (!target.base_url) return { ...base, status: "skipped", reason_code: "not_configured" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+  const startedAt = Date.now();
+  try {
+    const response = await options.fetchImpl(`${target.base_url}${target.route}`, {
+      method: "GET", redirect: "manual", signal: controller.signal,
+      headers: { Accept: target.expectedContentType || "application/json" },
+    });
+    const responseMs = Date.now() - startedAt;
+    if (!response.ok) return { ...base, http_status: response.status, response_ms: responseMs, reason_code: "unexpected_status" };
+    if (target.expectedContentType) {
+      const contentType = String(response.headers?.get?.("content-type") || "").toLowerCase();
+      if (!contentType.includes(target.expectedContentType)) {
+        return { ...base, http_status: response.status, response_ms: responseMs, reason_code: "unexpected_content_type" };
+      }
+    }
+    if (target.expectedService || target.expectedItems) {
+      const payload = await response.json().catch(() => null);
+      if (!payload || (target.expectedService && payload.service !== target.expectedService)
+          || (target.expectedItems && !Array.isArray(payload.items))) {
+        return { ...base, http_status: response.status, response_ms: responseMs, reason_code: "invalid_response" };
+      }
+    }
+    return { ...base, status: "passed", http_status: response.status, response_ms: responseMs, reason_code: "ok" };
+  } catch (error) {
+    return {
+      ...base, response_ms: Date.now() - startedAt,
+      reason_code: error?.name === "AbortError" ? "timeout" : "network_unreachable",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function summarizeSyntheticCheckResults(items) {
+  const ordered = (items || []).slice().sort((left, right) => String(right.checked_at).localeCompare(String(left.checked_at)));
+  const latestRunId = ordered[0]?.run_id || "";
+  const latest = latestRunId ? ordered.filter((item) => item.run_id === latestRunId) : [];
+  const runs = new Map();
+  for (const item of ordered) {
+    const run = runs.get(item.run_id) || { run_id: item.run_id, checked_at: item.checked_at, total: 0, passed: 0, failed: 0, skipped: 0 };
+    run.total += 1;
+    run[item.status] = Number(run[item.status] || 0) + 1;
+    if (String(item.checked_at) > String(run.checked_at)) run.checked_at = item.checked_at;
+    runs.set(item.run_id, run);
+  }
+  return {
+    latest_run_id: latestRunId,
+    summary: {
+      total: latest.length,
+      passed: latest.filter((item) => item.status === "passed").length,
+      failed: latest.filter((item) => item.status === "failed").length,
+      skipped: latest.filter((item) => item.status === "skipped").length,
+    },
+    items: latest,
+    recent_runs: [...runs.values()].slice(0, 10),
   };
 }
 
@@ -1928,6 +2124,59 @@ function providerStatusUrl(event = {}, providerType = "", providerName = "") {
 
 const ACTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function validOptionalActionId(value) {
+  const result = String(value || "").trim().toLowerCase();
+  return ACTION_ID_PATTERN.test(result) ? result : "";
+}
+
+function validOptionalActionType(value) {
+  const result = String(value || "").trim();
+  return /^[a-z0-9][a-z0-9._-]{0,99}$/.test(result) ? result : "";
+}
+
+function requiredActionId(value) {
+  const result = validOptionalActionId(value);
+  if (!result) throw new AdminToolError("invalid_action_id", "Die Action-ID muss eine gueltige UUID sein.", 400);
+  return result;
+}
+
+function requiredActionType(value) {
+  const result = validOptionalActionType(value);
+  if (!result) throw new AdminToolError("invalid_action_type", "Der Aktionstyp ist ungueltig.", 400);
+  return result;
+}
+
+function validIncidentStatus(value, allowEmpty = false) {
+  const result = String(value || "").trim();
+  if (allowEmpty && !result) return "";
+  if (!["new", "investigating", "resolved", "ignored"].includes(result)) throw new AdminToolError("invalid_incident_status", "Der Incident-Status ist ungueltig.", 400);
+  return result;
+}
+
+function safeIncidentText(value, limit) {
+  return String(value || "").replace(/[\r\n]+/g, " ").trim().slice(0, limit);
+}
+
+function safeOpsToken(value) {
+  const result = String(value || "").trim();
+  return /^[a-z0-9][a-z0-9._-]{0,99}$/.test(result) ? result : "unknown_client_failure";
+}
+
+function safeRelease(value) {
+  const result = String(value || "").trim();
+  return /^[A-Za-z0-9._-]{0,80}$/.test(result) ? result : "";
+}
+
+function safeRunbookUrl(value) {
+  const result = String(value || "").trim();
+  if (!result) return "";
+  const repositoryRelative = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(result)
+    && !result.includes("//")
+    && !result.split("/").includes("..");
+  if (repositoryRelative || (result.startsWith("/") && !result.startsWith("//")) || /^https:\/\/[^\s]+$/i.test(result)) return result.slice(0, 500);
+  throw new AdminToolError("invalid_runbook_url", "Der Runbook-Link muss relativ oder eine HTTPS-Adresse sein.", 400);
+}
+
 function summarizeUserActionEvents(events) {
   const actions = new Map();
   for (const event of events) {
@@ -1954,6 +2203,7 @@ function summarizeUserActionEvents(events) {
     const { span_ids: spanIds, ...value } = action;
     return { ...value, span_count: spanIds.size };
   });
+  attempts.forEach((item) => { item.hanging = isHangingAction(item); });
   const failed = attempts.filter((item) => ["failed", "timed_out", "unhandled"].includes(item.phase));
   const succeeded = attempts.filter((item) => item.phase === "succeeded");
   const open = attempts.length - failed.length - succeeded.length;
@@ -1967,12 +2217,148 @@ function summarizeUserActionEvents(events) {
     item.failure_rate_percent = item.attempts ? Number((item.failed / item.attempts * 100).toFixed(1)) : 0;
     byType.set(action.action_type, item);
   }
+  const byRelease = summarizeAttemptsByRelease(attempts);
   return {
     attempts: attempts.length, succeeded: succeeded.length, failed: failed.length, open,
+    hanging: attempts.filter((item) => item.hanging).length,
     failure_rate_percent: attempts.length ? Number((failed.length / attempts.length * 100).toFixed(1)) : 0,
     by_action_type: [...byType.values()].sort((left, right) => right.failed - left.failed || right.attempts - left.attempts),
     recent_actions: [...attempts].sort((left, right) => String(right.last_seen_at).localeCompare(String(left.last_seen_at))).slice(0, 50),
     recent_failures: failed.sort((left, right) => String(right.last_seen_at).localeCompare(String(left.last_seen_at))).slice(0, 20),
+    by_release: byRelease,
+    top_reason_codes: summarizeReasonCodes(attempts),
+    release_regressions: releaseRegressions(byRelease),
+  };
+}
+
+function summarizeUserActionOperationAggregates(input = {}) {
+  const byRelease = (input.by_release || []).map((item) => normalizeAggregateNumbers(item));
+  const byType = new Map();
+  for (const row of byRelease) {
+    const item = byType.get(row.action_type) || { action_type: row.action_type, attempts: 0, succeeded: 0, failed: 0, open: 0, hanging: 0 };
+    for (const field of ["attempts", "succeeded", "failed", "open", "hanging"]) item[field] += row[field] || 0;
+    item.failure_rate_percent = item.attempts ? Number((item.failed / item.attempts * 100).toFixed(1)) : 0;
+    byType.set(row.action_type, item);
+  }
+  const totals = [...byType.values()].reduce((value, item) => {
+    for (const field of ["attempts", "succeeded", "failed", "open", "hanging"]) value[field] += item[field] || 0;
+    return value;
+  }, { attempts: 0, succeeded: 0, failed: 0, open: 0, hanging: 0 });
+  const recentActions = (input.recent_actions || []).map((item) => ({
+    ...normalizeAggregateNumbers(item), action_id: String(item.action_id || ""),
+    hanging: isHangingAction(item),
+  }));
+  return {
+    ...totals,
+    hours: Number(input.hours || 24),
+    failure_rate_percent: totals.attempts ? Number((totals.failed / totals.attempts * 100).toFixed(1)) : 0,
+    by_action_type: [...byType.values()].sort((left, right) => right.failed - left.failed || right.attempts - left.attempts),
+    by_release: byRelease,
+    top_reason_codes: (input.top_reason_codes || []).map(normalizeAggregateNumbers),
+    release_regressions: releaseRegressions(byRelease),
+    recent_actions: recentActions,
+    recent_failures: recentActions.filter((item) => ["failed", "timed_out", "unhandled"].includes(item.phase)).slice(0, 20),
+  };
+}
+
+function normalizeAggregateNumbers(item) {
+  const value = { ...item };
+  for (const field of ["attempts", "succeeded", "failed", "open", "hanging", "failures", "event_count", "span_count"]) {
+    if (field in value) value[field] = Number(value[field] || 0);
+  }
+  if (value.attempts !== undefined) value.failure_rate_percent = value.attempts ? Number((value.failed / value.attempts * 100).toFixed(1)) : 0;
+  return value;
+}
+
+function summarizeAttemptsByRelease(attempts) {
+  const rows = new Map();
+  for (const action of attempts) {
+    const key = `${action.action_type}\u0000${action.release_id || ""}`;
+    const item = rows.get(key) || { action_type: action.action_type, release_id: action.release_id || "", attempts: 0, succeeded: 0, failed: 0, open: 0, hanging: 0, first_seen_at: action.started_at, last_seen_at: action.last_seen_at };
+    item.attempts += 1;
+    if (action.phase === "succeeded") item.succeeded += 1;
+    else if (["failed", "timed_out", "unhandled"].includes(action.phase)) item.failed += 1;
+    else item.open += 1;
+    if (action.hanging) item.hanging += 1;
+    if (String(action.started_at) < String(item.first_seen_at)) item.first_seen_at = action.started_at;
+    if (String(action.last_seen_at) > String(item.last_seen_at)) item.last_seen_at = action.last_seen_at;
+    item.failure_rate_percent = Number((item.failed / item.attempts * 100).toFixed(1));
+    rows.set(key, item);
+  }
+  return [...rows.values()].sort((left, right) => String(right.last_seen_at).localeCompare(String(left.last_seen_at)));
+}
+
+function summarizeReasonCodes(attempts) {
+  const rows = new Map();
+  for (const action of attempts.filter((item) => ["failed", "timed_out", "unhandled"].includes(item.phase))) {
+    const key = `${action.action_type}\u0000${action.release_id || ""}\u0000${action.reason_code || "unknown_client_failure"}`;
+    const item = rows.get(key) || { action_type: action.action_type, release_id: action.release_id || "", reason_code: action.reason_code || "unknown_client_failure", failures: 0 };
+    item.failures += 1;
+    rows.set(key, item);
+  }
+  return [...rows.values()].sort((left, right) => right.failures - left.failures);
+}
+
+function releaseRegressions(byRelease) {
+  const byType = new Map();
+  for (const row of byRelease.filter((item) => item.release_id)) {
+    const items = byType.get(row.action_type) || [];
+    items.push(row);
+    byType.set(row.action_type, items);
+  }
+  const results = [];
+  for (const [actionType, rows] of byType) {
+    rows.sort((left, right) => String(right.first_seen_at).localeCompare(String(left.first_seen_at)));
+    if (rows.length < 2) continue;
+    const [current, previous] = rows;
+    const currentRate = Number(current.failure_rate_percent || 0);
+    const previousRate = Number(previous.failure_rate_percent || 0);
+    results.push({
+      action_type: actionType, release_id: current.release_id, previous_release_id: previous.release_id,
+      failure_rate_percent: currentRate, previous_failure_rate_percent: previousRate,
+      delta_percentage_points: Number((currentRate - previousRate).toFixed(1)),
+      regression: currentRate > 2 && currentRate >= Math.max(previousRate * 2, previousRate + 2),
+    });
+  }
+  return results.sort((left, right) => right.delta_percentage_points - left.delta_percentage_points);
+}
+
+function isHangingAction(action, now = Date.now()) {
+  if (!["triggered", "started"].includes(action.phase)) return false;
+  const budgets = { "identity.login.passkey": 120000, "project.settings.save": 30000, "project.build.start": 900000, "nexi.flash.usb.start": 600000 };
+  return now - new Date(action.last_seen_at || action.started_at || 0).getTime() > (budgets[action.action_type] || 600000);
+}
+
+function buildUserActionAlertCandidates(summary, hours, now = new Date().toISOString()) {
+  const reasons = summary.top_reason_codes || [];
+  const candidates = [];
+  for (const row of summary.by_release || []) {
+    const rate = Number(row.failure_rate_percent || 0);
+    let severity = "";
+    if (row.attempts >= 5 && rate > 20) severity = "critical";
+    else if (row.attempts >= 10 && rate > 5) severity = "warning";
+    if (severity) {
+      const reason = reasons.find((item) => item.action_type === row.action_type && item.release_id === row.release_id)?.reason_code || "mixed_failures";
+      candidates.push(alertCandidate("failure_rate", row, reason, severity, hours, now));
+    }
+    if (Number(row.hanging || 0) >= 3) candidates.push(alertCandidate("hanging", row, "action_timed_out", "warning", hours, now));
+  }
+  for (const regression of (summary.release_regressions || []).filter((item) => item.regression)) {
+    const row = (summary.by_release || []).find((item) => item.action_type === regression.action_type && item.release_id === regression.release_id);
+    if (row) candidates.push(alertCandidate("release_regression", row, "release_regression", "warning", hours, now));
+  }
+  return candidates;
+}
+
+function alertCandidate(kind, row, reasonCode, severity, hours, now) {
+  return {
+    alert_key: `${kind}:${row.action_type}:${row.release_id || "unknown"}:${reasonCode}`,
+    first_seen_at: now, last_seen_at: now, action_type: row.action_type,
+    release_id: row.release_id || "", reason_code: reasonCode, alert_kind: kind,
+    severity, status: "observed", notification_state: "observe_only",
+    attempts: Number(row.attempts || 0), failures: Number(row.failed || 0),
+    failure_rate_percent: Number(row.failure_rate_percent || 0), hanging: Number(row.hanging || 0),
+    window_hours: hours,
   };
 }
 

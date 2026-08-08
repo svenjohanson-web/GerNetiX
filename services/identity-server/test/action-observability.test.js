@@ -29,6 +29,7 @@ test("carries one action id through trigger, spans and completion", async () => 
 
   window.GerNetiXActionOps.observeActivation({ dataset: { actionType: "nexi.flash.usb.start", actionRelease: "0.1.0-test" } });
   const action = window.GerNetiXActionOps.begin("nexi.flash.usb.start", { releaseId: "0.1.0-test" });
+  assert.equal(action.failureMessage("Flash fehlgeschlagen."), "Flash fehlgeschlagen. Vorgangs-ID: 00000001-0000-4000-8000-000000000000");
   await action.step("helper.status", async () => true);
   action.succeed();
   await Promise.resolve();

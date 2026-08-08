@@ -260,17 +260,137 @@ test("user action explorer returns one exact validated action timeline", async (
   await service.recordUserActionEvent({ ...base, event_id: "event-first-started", action_id: firstActionId, phase: "started" });
   await service.recordUserActionEvent({ ...base, occurred_at: "2026-08-07T12:00:01.000Z", event_id: "event-first-succeeded", action_id: firstActionId, phase: "succeeded" });
   await service.recordUserActionEvent({ ...base, event_id: "event-second-failed", action_id: secondActionId, phase: "failed", reason_code: "build_execution_failed" });
+  await service.recordInterfaceCall({
+    occurred_at: "2026-08-07T12:00:00.500Z", source_service: "identity-server",
+    target_service: "project-server", method: "POST", route: "/projects/project-1/builds?secret=no",
+    status_code: 202, duration_ms: 42, succeeded: true, action_id: firstActionId,
+    action_type: "project.build.start",
+  });
 
   const result = await service.userActionEvents({ action_id: firstActionId.toUpperCase(), limit: 1000 });
   assert.equal(result.summary.attempts, 1);
   assert.equal(result.summary.succeeded, 1);
   assert.equal(result.summary.recent_actions[0].action_id, firstActionId);
   assert.deepEqual(result.items.map((item) => item.event_id), ["event-first-succeeded", "event-first-started"]);
+  assert.equal(result.interface_calls.length, 1);
+  assert.equal(result.interface_calls[0].action_id, firstActionId);
+  assert.equal(result.interface_calls[0].route, "/projects/project-1/builds");
 
   await assert.rejects(
     service.userActionEvents({ action_id: "not-an-action-id" }),
     (error) => error.code === "invalid_action_id" && error.status === 400,
   );
+});
+
+test("user action operations compare releases and rank normalized reasons", async () => {
+  const service = createDefaultAdminTool();
+  const now = new Date();
+  const base = {
+    occurred_at: now.toISOString(), action_type: "project.build.start", span_type: "action",
+    route_id: "/app/ide/", reason_code: "", phase: "succeeded",
+  };
+  const events = [
+    { action_id: "11111111-1111-4111-8111-111111111111", release_id: "1.0.0", phase: "succeeded" },
+    { action_id: "22222222-2222-4222-8222-222222222222", release_id: "1.0.0", phase: "succeeded" },
+    { action_id: "33333333-3333-4333-8333-333333333333", release_id: "2.0.0", phase: "failed", reason_code: "build_execution_failed" },
+    { action_id: "44444444-4444-4444-8444-444444444444", release_id: "2.0.0", phase: "succeeded" },
+  ];
+  for (const [index, event] of events.entries()) {
+    await service.recordUserActionEvent({
+      ...base, ...event, event_id: `aggregate-${index}`,
+      occurred_at: new Date(now.getTime() + index * 1000).toISOString(),
+      span_id: `0000000${index + 1}-0000-4000-8000-000000000000`,
+    });
+  }
+  const result = await service.userActionEvents({ hours: 24, limit: 500 });
+  assert.equal(result.summary.by_release.length, 2);
+  assert.equal(result.summary.top_reason_codes[0].reason_code, "build_execution_failed");
+  assert.equal(result.summary.release_regressions[0].release_id, "2.0.0");
+  assert.equal(result.summary.release_regressions[0].regression, true);
+});
+
+test("user action incidents persist status, runbook and fix release with admin audit", async () => {
+  const service = createDefaultAdminTool();
+  const context = { actor: { actor_id: "ops-1", role: "administrator", capabilities: [] } };
+  const incident = await service.createUserActionIncident({
+    action_id: "11111111-1111-4111-8111-111111111111",
+    action_type: "project.build.start", reason_code: "build_execution_failed",
+    release_id: "2.0.0", owner: "Platform Ops", runbook_url: "docs/operations.md",
+    note: "Builds schlagen nach dem Release fehl.",
+  }, context);
+  assert.equal(incident.status, "new");
+  assert.equal((await service.userActionIncidents()).items.length, 1);
+
+  const updated = await service.updateUserActionIncident(incident.incident_id, {
+    status: "resolved", owner: "Platform Ops", runbook_url: "https://ops.example.test/build",
+    fix_release_id: "2.0.1", note: "Korrektur ausgeliefert.", change_reason: "Fix 2.0.1 verifiziert",
+  }, context);
+  assert.equal(updated.status, "resolved");
+  assert.equal(updated.fix_release_id, "2.0.1");
+  assert.deepEqual(service.repository.adminActions.map((item) => item.action_type), [
+    "user_action_incident.create", "user_action_incident.update",
+  ]);
+  await assert.rejects(
+    service.updateUserActionIncident(incident.incident_id, { ...updated, change_reason: "test", runbook_url: "javascript:alert(1)" }, context),
+    (error) => error.code === "invalid_runbook_url",
+  );
+  await assert.rejects(
+    service.updateUserActionIncident(incident.incident_id, { ...updated, change_reason: "test", runbook_url: "../secrets.txt" }, context),
+    (error) => error.code === "invalid_runbook_url",
+  );
+});
+
+test("user action alert evaluation persists deduplicated candidates in observe-only mode", async () => {
+  const service = createDefaultAdminTool();
+  const now = new Date().toISOString();
+  for (let index = 0; index < 10; index += 1) {
+    await service.recordUserActionEvent({
+      event_id: `alert-event-${index}`, occurred_at: now,
+      action_type: "project.build.start",
+      action_id: `${String(index + 1).padStart(8, "0")}-0000-4000-8000-000000000000`,
+      span_type: "action", span_id: `${String(index + 20).padStart(8, "0")}-0000-4000-8000-000000000000`,
+      phase: index < 2 ? "failed" : "succeeded",
+      reason_code: index < 2 ? "build_execution_failed" : "",
+      route_id: "/app/ide/", release_id: "3.0.0", duration_bucket: "lt_30s",
+    });
+  }
+  const context = { actor: { actor_id: "ops-1", role: "administrator" } };
+  const first = await service.evaluateUserActionAlerts({ hours: 24 }, context);
+  assert.equal(first.mode, "observe_only");
+  assert.equal(first.candidates.length, 1);
+  assert.equal(first.candidates[0].alert_kind, "failure_rate");
+  assert.equal(first.candidates[0].notification_state, "observe_only");
+
+  await service.evaluateUserActionAlerts({ hours: 24 }, context);
+  const listed = await service.userActionAlerts();
+  assert.equal(listed.items.length, 1);
+  assert.equal(service.repository.adminActions.at(-1).action_type, "user_action_alerts.evaluate");
+});
+
+test("synthetic core preflights are read-only, persisted and summarized per run", async () => {
+  const service = createDefaultAdminTool();
+  service.serviceClients = {
+    identityBaseUrl: "http://identity.test",
+    projectServerBaseUrl: "http://project.test",
+    buildDeployBaseUrl: "http://build.test",
+    publicDemoBaseUrl: "http://demo.test",
+  };
+  service.fetchImpl = async (url) => {
+    if (url.endsWith("/app/auth/")) return new Response("<!doctype html>", { status: 200, headers: { "content-type": "text/html" } });
+    if (url.startsWith("http://project.test")) return Response.json({ status: "ok", service: "project-server" });
+    if (url.startsWith("http://build.test")) return Response.json({ status: "ok", service: "build-deploy-server", coordination: { ready: true } });
+    if (url.startsWith("http://demo.test")) return Response.json({ items: [{ demo_id: "nexi" }] });
+    throw new Error("unexpected synthetic target");
+  };
+  const result = await service.runSyntheticChecks({}, { actor: { actor_id: "ops-1", role: "administrator" } });
+  assert.deepEqual(result.summary, { total: 4, passed: 4, failed: 0, skipped: 0 });
+  assert.equal(result.items.every((item) => item.reason_code === "ok"), true);
+  assert.equal(result.items.some((item) => "body" in item || "url" in item), false);
+
+  const persisted = await service.syntheticChecks();
+  assert.equal(persisted.latest_run_id, result.latest_run_id);
+  assert.equal(persisted.items.length, 4);
+  assert.equal(service.repository.adminActions.at(-1).action_type, "synthetic_checks.run");
 });
 
 test("link inventory and authenticated check results are summarized centrally", async () => {
@@ -344,6 +464,35 @@ test("system events remain available after reopening the Admin Tool SQLite", asy
     assert.equal(events.summary.total, 1);
     assert.equal(events.items[0].event_type, "passkey_login_failed");
     assert.equal(events.items[0].account_id, "acct-1");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("synthetic check results remain available after reopening the Admin Tool SQLite", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-admin-synthetic-"));
+  const sqlitePath = path.join(tempDir, "admin.sqlite");
+  try {
+    const first = createDefaultAdminTool({ persistenceBackend: "sqlite", sqlitePath });
+    first.serviceClients = {
+      identityBaseUrl: "http://identity.test",
+      projectServerBaseUrl: "http://project.test",
+      buildDeployBaseUrl: "http://build.test",
+      publicDemoBaseUrl: "http://demo.test",
+    };
+    first.fetchImpl = async (url) => {
+      if (url.endsWith("/app/auth/")) return new Response("<!doctype html>", { status: 200, headers: { "content-type": "text/html" } });
+      if (url.startsWith("http://project.test")) return Response.json({ status: "ok", service: "project-server" });
+      if (url.startsWith("http://build.test")) return Response.json({ status: "ok", service: "build-deploy-server" });
+      if (url.startsWith("http://demo.test")) return Response.json({ items: [] });
+      throw new Error("unexpected synthetic target");
+    };
+    await first.runSyntheticChecks({}, { actor: { actor_id: "ops-1", role: "administrator" } });
+
+    const second = createDefaultAdminTool({ persistenceBackend: "sqlite", sqlitePath });
+    const persisted = await second.syntheticChecks();
+    assert.deepEqual(persisted.summary, { total: 4, passed: 4, failed: 0, skipped: 0 });
+    assert.equal(persisted.items.length, 4);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

@@ -59,6 +59,17 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/synthetic-checks") {
+      sendJson(res, 200, await service.syntheticChecks({ limit: url.searchParams.get("limit") || "" }));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/synthetic-checks/run") {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.runSyntheticChecks(body, readContext(url, body, req)));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/system-events") {
       sendJson(res, 200, await service.systemEvents({
         severity: url.searchParams.get("severity") || "",
@@ -74,8 +85,37 @@ function createHttpApp(options) {
         action_id: url.searchParams.get("action_id") || "",
         action_type: url.searchParams.get("action_type") || "",
         phase: url.searchParams.get("phase") || "",
+        hours: url.searchParams.get("hours") || "",
         limit: url.searchParams.get("limit") || "",
       }));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/user-action-incidents") {
+      sendJson(res, 200, await service.userActionIncidents({ status: url.searchParams.get("status") || "" }));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/user-action-alerts") {
+      sendJson(res, 200, await service.userActionAlerts());
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/user-action-alerts/evaluate") {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.evaluateUserActionAlerts(body, readContext(url, body, req)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/user-action-incidents") {
+      sendJson(res, 201, { incident: await service.createUserActionIncident(await readJsonBody(req), readContext(url, {}, req)) });
+      return;
+    }
+
+    const userActionIncidentMatch = url.pathname.match(/^\/api\/admin\/user-action-incidents\/([^/]+)$/);
+    if (req.method === "PUT" && userActionIncidentMatch) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, { incident: await service.updateUserActionIncident(decodeURIComponent(userActionIncidentMatch[1]), body, readContext(url, body, req)) });
       return;
     }
 
@@ -239,6 +279,17 @@ function createHttpApp(options) {
         sendJson(res, 403, { error: "user_action_ingest_access_denied" }); return;
       }
       sendJson(res, 201, { event: await service.recordUserActionEvent(await readJsonBody(req)) });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/synthetic-checks/run") {
+      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
+        sendJson(res, 403, { error: "synthetic_check_access_denied" }); return;
+      }
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.runSyntheticChecks(body, {
+        actor: { actor_id: "synthetic-monitor", role: "system", capabilities: [] },
+      }));
       return;
     }
 

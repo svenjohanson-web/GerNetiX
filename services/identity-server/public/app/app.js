@@ -81,6 +81,7 @@ const state = {
 const routeMap = {
   dashboard: "dashboardView",
   "hardware-lab": "hardwareLabView",
+  "requirements-workshop": "requirementsWorkshopView",
   about: "aboutView",
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",

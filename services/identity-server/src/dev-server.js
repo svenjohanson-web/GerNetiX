@@ -29,6 +29,7 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { createHelpAssistant } = require("./dev/help-assistant");
+const { createRequirementsWorkshopAssistant } = require("./dev/requirements-workshop-assistant");
 const { createProjectRepositoryRead } = require("./dev/project-repository-read");
 const { developmentProjectSources } = require("./dev/development-project-structure");
 const {
@@ -83,6 +84,7 @@ const { registerDeviceRoutes } = require("./dev/server/device-routes");
 const { registerCommunityRoutes } = require("./dev/server/community-routes");
 const { registerBuildRoutes } = require("./dev/server/build-routes");
 const { registerHardwareLabRoutes } = require("./dev/server/hardware-lab-routes");
+const { registerRequirementsWorkshopRoutes } = require("./dev/server/requirements-workshop-routes");
 const { customerArtifactList } = require("./dev/server/build-artifact-visibility");
 const { registerProjectRoutes } = require("./dev/server/project-routes");
 const { registerSystemRoutes } = require("./dev/server/system-routes");
@@ -113,6 +115,7 @@ const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml
 const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
 const { createRadioTechnologiesCourseModel } = require("./dev/project-models/radio-technologies-course");
 const { createEsp32CameraStreamingCourseModel } = require("./dev/project-models/esp32-camera-streaming-course");
+const { developmentLessonCatalog } = require("./dev/project-models/development-lesson-catalog");
 const {
   canReadKnowledgeChapter,
   findKnowledgeChapterRelease,
@@ -173,6 +176,9 @@ const identityLlmStateStore = identityAuxiliaryPool
 const identityHardwareLabStateStore = identityAuxiliaryPool
   ? new PostgresStateStore(identityAuxiliaryPool, "identity-hardware-lab", { sessions: [] })
   : null;
+const identityUserActionOutboxStore = identityAuxiliaryPool
+  ? new PostgresStateStore(identityAuxiliaryPool, "identity-user-action-outbox", { items: [] })
+  : null;
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
@@ -217,6 +223,7 @@ const recordSystemEvent = createSystemEventReporter({
 const recordUserActionEvent = createUserActionReporter({
   baseUrl: adminToolBaseUrl,
   ingestToken: systemEventIngestToken,
+  outboxStore: identityUserActionOutboxStore,
 });
 const handleUserActionIngest = createUserActionIngestHandler({
   readJsonBody,
@@ -350,6 +357,7 @@ const developmentAssistant = createDevelopmentAssistant({
   sendJson,
 });
 const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
+const requirementsWorkshopAssistant = createRequirementsWorkshopAssistant({ aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
 const builtInDemoAccounts = [
   { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword, subscription_plan: "premium_demo" },
   { user_id: "acct-basis-demo", username: basisDemoUsername, email: basisDemoEmail, password: basisDemoPassword, subscription_plan: "free" },
@@ -503,6 +511,11 @@ registerHardwareLabRoutes({
   buildDeployBaseUrl,
   aiUsageJson,
 });
+registerRequirementsWorkshopRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  requirementsWorkshopAssistant,
+});
 registerProjectRoutes({
   registry: routeRegistry,
   requireSession: sessionAccess.requireSession,
@@ -606,6 +619,11 @@ async function bootstrap() {
   if (identityPushStateStore) await identityPushStateStore.initialize();
   if (identitySmtpStateStore) await identitySmtpStateStore.initialize();
   if (identityLlmStateStore) await identityLlmStateStore.initialize();
+  if (identityUserActionOutboxStore) {
+    await identityUserActionOutboxStore.initialize();
+    const outboxResult = await recordUserActionEvent.flush();
+    if (outboxResult.pending) console.warn(`User action outbox: ${outboxResult.pending} Ereignisse warten auf Operations.`);
+  }
   if (identityHardwareLabStateStore) {
     await identityHardwareLabStateStore.initialize();
     hardwareLabRepository.hydrate();
@@ -3672,6 +3690,7 @@ function toPlatformProject(project) {
     entryMode: project.entry_mode || "project_story",
     developmentLessons: project.development_lessons || [],
     projectStory: project.project_story || null,
+    projectLessonAssignments: project.project_lesson_assignments || [],
     requiredCapabilityIds: project.required_capability_ids,
     accessModel: project.access_model || "subscription",
     customerEntries: project.customer_entries || [],
@@ -4399,6 +4418,12 @@ function project(slug, title, area, summary, steps, options = {}) {
   };
   const learningCategory = normalizeLearningProjectCategory(options.learning_category);
   const learningTags = normalizeLearningProjectTags(options.tags);
+  const projectLessonAssignments = Array.isArray(options.project_lesson_assignments)
+    ? options.project_lesson_assignments
+    : [];
+  const developmentLessons = projectLessonAssignments.length
+    ? developmentLessonCatalog.resolveProjectLessons(projectLessonAssignments)
+    : options.development_lessons || [];
   return {
     slug,
     project_server_id: `project_${slug}`,
@@ -4417,7 +4442,8 @@ function project(slug, title, area, summary, steps, options = {}) {
     learning_category: learningCategory,
     product_stage: String(options.product_stage || ""),
     tags: learningTags,
-    development_lessons: options.development_lessons || [],
+    project_lesson_assignments: projectLessonAssignments,
+    development_lessons: developmentLessons,
     project_story: options.project_story || null,
     title,
     area,

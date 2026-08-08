@@ -105,7 +105,7 @@ async function startBuild() {
   const device = allocatedIdeDevice(project);
   if (!project) {
     action?.fail("project_not_found");
-    return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+    return setFlashStatus("error", buildActionFailureMessage(action, "Bitte zuerst ein Projekt öffnen."));
   }
   const softwareUnits = projectSoftwareUnits(project);
   const buildTargets = softwareUnits.length ? softwareUnits : [null];
@@ -115,7 +115,7 @@ async function startBuild() {
       .map((unit) => `${unit.title || unit.software_unit_id} (${unit.build_system || "kein Buildsystem"})`)
       .join(", ");
     action?.fail("build_prerequisite_failed");
-    return setFlashStatus("error", `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`);
+    return setFlashStatus("error", buildActionFailureMessage(action, `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`));
   }
   if (buildSubmissionPending || activeBuildJobIds.size > 0) {
     action?.fail("build_prerequisite_failed");
@@ -191,7 +191,7 @@ async function startBuild() {
     else if (cancelled && !failed) setFlashStatus("running", `Gesamtbuild abgebrochen: ${cancelled} Software-Einheit${cancelled === 1 ? "" : "en"} abgebrochen.`);
     else setFlashStatus(
       failed ? "error" : "ok",
-      failed ? `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen${cancelled ? `, ${cancelled} abgebrochen` : ""}.` : `Gesamtbuild erfolgreich: ${summary}.`,
+      failed ? buildActionFailureMessage(action, `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen${cancelled ? `, ${cancelled} abgebrochen` : ""}.`) : `Gesamtbuild erfolgreich: ${summary}.`,
     );
     if (unavailable) action?.fail("build_status_unavailable");
     else if (cancelled) action?.fail("build_cancelled");
@@ -202,11 +202,15 @@ async function startBuild() {
     action?.fail(actionStage === "source"
       ? "source_persistence_failed"
       : actionStage === "wait" ? "build_status_unavailable" : buildFailureReason(error));
-    setFlashStatus("error", error.message);
+    setFlashStatus("error", buildActionFailureMessage(action, error.message));
   } finally {
     buildSubmissionPending = false;
     updateBuildActionButton();
   }
+}
+
+function buildActionFailureMessage(action, message) {
+  return action?.failureMessage?.(message) || message;
 }
 
 function buildActionStep(action, spanType, operation, reasonCode) {

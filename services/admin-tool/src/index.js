@@ -45,6 +45,7 @@ function createAdminService(config, repository, llmStateStore = null) {
       projectServerBaseUrl: config.projectServerBaseUrl,
       hardwareShopBaseUrl: config.hardwareShopBaseUrl,
       hardwareCatalogBaseUrl: config.hardwareCatalogBaseUrl,
+      publicDemoBaseUrl: config.publicDemoBaseUrl,
       aiUsageBaseUrl: config.aiUsageBaseUrl,
       aiContextBaseUrl: config.aiContextBaseUrl,
       provisioningBaseUrl: config.provisioningBaseUrl,

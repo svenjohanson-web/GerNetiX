@@ -9,6 +9,16 @@ function read(relativePath) {
   return fs.readFileSync(path.resolve(__dirname, "..", relativePath), "utf8");
 }
 
+test("initial action failures expose the same support reference shown in Operations", () => {
+  const actionOps = read("public/app/action-observability.js");
+  assert.match(actionOps, /failureMessage\(message\)/);
+  assert.match(actionOps, /Vorgangs-ID:/);
+  assert.match(read("public/app/auth/auth.js"), /action\?\.failureMessage/);
+  assert.match(read("public/app/project-app-controller.js"), /operation\?\.failureMessage/);
+  assert.match(read("public/app/app-device-build-controller.js"), /buildActionFailureMessage/);
+  assert.match(read("public/nachbauprojekte/nexi-sprachassistent/nexi-flash.js"), /action\.failureMessage/);
+});
+
 test("passkey login carries one action through browser requests and server failure correlation", () => {
   const html = read("public/app/auth/index.html");
   const client = read("public/app/auth/auth.js");

@@ -5,9 +5,6 @@ const modeToggle = document.querySelector("#auth-mode-toggle");
 const recoveryModeToggle = document.querySelector("#recovery-mode-toggle");
 const guestAccessButton = document.querySelector("#guest-access-button");
 const guestAccess = document.querySelector(".guest-access");
-const authMenuButton = document.querySelector("#authMenuButton");
-const authMenu = document.querySelector("#authMenu");
-const languageSelect = document.querySelector("#auth-language");
 let i18n = null;
 
 function tr(key, fallback, variables = {}) {
@@ -18,25 +15,6 @@ function currentLocale() {
   return i18n?.locale || window.GerNetiXI18n?.resolveLocale?.() || "de";
 }
 
-function closeAuthMenu() {
-  if (!authMenu || !authMenuButton) return;
-  authMenu.hidden = true;
-  authMenuButton.setAttribute("aria-expanded", "false");
-  authMenuButton.setAttribute("aria-label", tr("menu.open", "Menü öffnen"));
-}
-
-authMenuButton?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  const open = authMenu.hidden;
-  authMenu.hidden = !open;
-  authMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
-  authMenuButton.setAttribute("aria-label", open
-    ? tr("menu.close", "Menü schließen")
-    : tr("menu.open", "Menü öffnen"));
-});
-authMenu?.addEventListener("click", (event) => event.stopPropagation());
-document.addEventListener("click", closeAuthMenu);
-document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeAuthMenu(); });
 const titleElement = document.querySelector("#login-title");
 const statusElement = document.querySelector("#status");
 const identifierField = document.querySelector("#login-identifier-field");
@@ -47,22 +25,15 @@ let mode = query.get("mode") === "register" ? "register" : query.get("mode") ===
 initializeI18n();
 
 async function initializeI18n() {
-  try {
-    i18n = await window.GerNetiXI18n.create();
-    i18n.translateDocument();
-    languageSelect.value = i18n.locale;
-  } catch (error) {
-    console.warn("Identity translations could not be initialized.", error);
+  i18n = window.GerNetiXPublicI18n || null;
+  if (!i18n) {
+    document.addEventListener("gernetix:public-i18n-ready", (event) => {
+      i18n = event.detail;
+      applyMode(false);
+    }, { once: true });
   }
   applyMode(false);
 }
-
-languageSelect?.addEventListener("change", async () => {
-  if (!i18n) return;
-  await i18n.setLocale(languageSelect.value);
-  applyMode(false);
-  closeAuthMenu();
-});
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -94,7 +65,8 @@ loginForm.addEventListener("submit", async (event) => {
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error, action);
     action?.fail(actionStage === "options" ? "authentication_options_failed" : passkeyActionReason(error));
-    statusElement.textContent = passkeyLoginFailureMessage(error);
+    const message = passkeyLoginFailureMessage(error);
+    statusElement.textContent = action?.failureMessage(message) || message;
   }
 });
 

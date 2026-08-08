@@ -20,14 +20,19 @@ function createInterfaceCallTelemetry(options = {}) {
       route TEXT NOT NULL,
       status_code INTEGER NOT NULL,
       duration_ms INTEGER NOT NULL,
-      succeeded INTEGER NOT NULL
+      succeeded INTEGER NOT NULL,
+      action_id TEXT,
+      action_type TEXT
     )`);
+    ensureColumn(db, "gernetix_external_interface_calls", "action_id", "TEXT");
+    ensureColumn(db, "gernetix_external_interface_calls", "action_type", "TEXT");
     db.exec("CREATE INDEX IF NOT EXISTS idx_interface_calls_time ON gernetix_external_interface_calls(occurred_at)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_interface_calls_action ON gernetix_external_interface_calls(action_id, occurred_at)");
     connections.set(dbPath, db);
   }
   const insert = db.prepare(`INSERT INTO gernetix_external_interface_calls
-    (occurred_at, source_service, target_service, method, route, status_code, duration_ms, succeeded)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    (occurred_at, source_service, target_service, method, route, status_code, duration_ms, succeeded, action_id, action_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   return {
     record(input = {}) {
       try {
@@ -40,6 +45,8 @@ function createInterfaceCallTelemetry(options = {}) {
           Number(input.statusCode || 0),
           Math.max(0, Math.round(Number(input.durationMs || 0))),
           input.succeeded ? 1 : 0,
+          normalizeActionId(input.actionId),
+          normalizeActionType(input.actionType),
         );
       } catch {
         // Telemetrie darf den eigentlichen Schnittstellenaufruf nie blockieren.
@@ -68,6 +75,8 @@ function createHttpTelemetry(options) {
           status_code: Number(input.statusCode || 0),
           duration_ms: Math.max(0, Math.round(Number(input.durationMs || 0))),
           succeeded: Boolean(input.succeeded),
+          action_id: normalizeActionId(input.actionId),
+          action_type: normalizeActionType(input.actionType),
         }),
       }).catch(() => {
         // Betriebliche Telemetrie darf den Fachaufruf nie blockieren.
@@ -76,8 +85,23 @@ function createHttpTelemetry(options) {
   };
 }
 
+function ensureColumn(db, table, column, type) {
+  const columns = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((item) => item.name));
+  if (!columns.has(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+}
+
+function normalizeActionId(value) {
+  const result = String(value || "").trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(result) ? result : "";
+}
+
+function normalizeActionType(value) {
+  const result = String(value || "").trim();
+  return /^[a-z0-9][a-z0-9._-]{0,99}$/.test(result) ? result : "";
+}
+
 function normalizeRoute(value) {
   return String(value || "/").split("?")[0].slice(0, 300) || "/";
 }
 
-module.exports = { createInterfaceCallTelemetry, normalizeRoute };
+module.exports = { createInterfaceCallTelemetry, normalizeActionId, normalizeActionType, normalizeRoute };

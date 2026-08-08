@@ -10,8 +10,15 @@ initialen Wirkketten `nexi.flash.usb.start`, `identity.login.passkey`,
 `project.settings.save` und `project.build.start` sind durchgaengig
 instrumentiert. Die Admin-Sicht kann eine vollstaendige Action-ID suchen und
 zeigt deren minimierte Ereignisse chronologisch mit Span-, Phasen-, Release-,
-Route- und Reason-Code-Kontext. Alarmierung, Retention-Abnahme, vollstaendige
-Schaltflaechen-Inventur und synthetische Kernablaeufe bleiben offen.
+Route-, Reason-Code- und korreliertem Schnittstellenkontext. PostgreSQL-
+Zeitfenster, Releasevergleich, Hänger, Incident-Workflow, Admin-Audit,
+neustartfeste Zustell-Outbox und deduplizierte Alarmkandidaten im
+Beobachtungsmodus sind lokal umgesetzt. Vier feste, nicht mutierende
+synthetische Vorpruefungen decken Login-HTML, Project Server, Build-Koordination
+und Flash-Katalog ab und speichern ihre Ergebnisse in Operations-PostgreSQL.
+Produktiver Alarmversand, Retention-Abnahme, vollstaendige
+Schaltflaechen-Inventur und authentifizierte Browser-E2E-Kernablaeufe bleiben
+offen.
 
 Diese Trennung ist absichtlich: Das folgende Dokument beschreibt den
 vollstaendigen Zielvertrag; die Statusmatrix behauptet nur nachgewiesene
@@ -191,6 +198,11 @@ zurueck, damit Browseranzeige und Serverergebnis dieselbe Wirkkette benennen.
 Freie Client-IDs duerfen keine Autorisierungs- oder Besitzentscheidung
 beeinflussen.
 
+Instrumentierte ausgehende Serviceaufrufe übernehmen die validierte Action-ID
+und den Aktionstyp optional in `operations_interface_calls`. Der Action
+Explorer verbindet diese Messpunkte chronologisch mit den Action-/Span-
+Ereignissen. Queryparameter und freie Payloads bleiben ausgeschlossen.
+
 Der lokale Serial Helper darf die `action_id` innerhalb des lokalen
 Auftrags erhalten. Er kommuniziert sie nicht selbst an GerNetiX. Nur der
 Browser meldet bei Bedarf das minimierte Ergebnis derselben Aktion an den
@@ -211,18 +223,31 @@ interne Dienste weitergereicht. Die Header dienen ausschliesslich der
 Korrelation und niemals Authentisierung, Autorisierung oder Besitzpruefung.
 
 Wenn der Browser offline ist oder bereits der Plattformendpunkt nicht
-erreichbar ist, wird kein lokaler dauerhafter Ereignisspeicher aufgebaut. Die
-Luecke wird durch serverseitige Schnittstellenmessung und synthetische
+erreichbar ist, wird kein lokaler dauerhafter Ereignisspeicher aufgebaut. Hat
+Identity ein validiertes Ereignis angenommen, speichert es dieses vor dem
+Operations-Versand in einer PostgreSQL-State-Outbox. Erfolgreich zugestellte
+Eintraege werden entfernt; fehlgeschlagene Zustellungen werden begrenzt nach
+Neustart oder Wiedererreichbarkeit nachgesendet. Die verbleibende Luecke vor
+Identity wird durch serverseitige Schnittstellenmessung und synthetische
 Kernablauf-Pruefungen abgedeckt.
 
 ## Admin-Sicht
 
-Der erste lokale Durchstich zeigt Kennzahlen und letzte Versuche. Ein Operator
+Die lokale Sicht zeigt Kennzahlen und letzte Versuche. Ein Operator
 kann eine vollstaendige validierte Action-ID suchen, einen Versuch direkt aus
 der Liste oeffnen, die ID kopieren und die chronologische Action-/Span-Timeline
-mit Release, Route, Dauerklasse und normalisiertem Reason-Code lesen. Die
+einschliesslich korrelierter Serviceaufrufe mit Release, Route, Dauerklasse
+und normalisiertem Reason-Code lesen. PostgreSQL berechnet fuer 1 Stunde,
+24 Stunden, 7 Tage oder 30 Tage Fehlerquoten, Hänger, Top-Reason-Codes und
+Release-Vergleiche, ohne die Auswertung auf die zuletzt geladenen Events zu
+begrenzen. Fehlermeldungen der vier initialen Nutzerablaeufe zeigen dieselbe
+vollstaendige Vorgangs-ID, die im Explorer gesucht werden kann. Die
 Suche liefert ausschliesslich den bereits minimierten Ereignisvertrag; sie
 oeffnet weder lokale Diagnosedaten noch eine ungebundene Rohlog-Sicht.
+
+Aus einer Wirkkette kann ein persistenter Incident angelegt werden. Status,
+Owner, Runbook, Notiz und Fix-Version sind bearbeitbar; Erstellen und jede
+Statusaenderung werden als Admin-Aktion auditiert.
 
 Die weiterfuehrende Zielansicht soll keine Ereignisrohdatei sein, sondern eine
 handlungsorientierte Uebersicht:
@@ -272,6 +297,13 @@ Als erste Serviceziele gelten:
 - Erkennungszeit fuer eine breite Regression: hoechstens 10 Minuten.
 
 Die Werte werden nach einer vierwoechigen Baseline ueberprueft.
+
+Die lokale Implementierung wertet diese Regeln bereits als persistente,
+stabil deduplizierte Alarmkandidaten aus. Sie ist ausdrücklich
+`observe_only`: Kandidaten erscheinen im Admin Tool, erzeugen aber keine
+E-Mail und keinen Push. Da betroffene Sitzungen noch nicht per kurzlebigem
+`session_marker` gezählt werden, sind die derzeitigen Versuchsschwellen nur
+Baseline-Messpunkte und keine produktiven Alarme.
 
 ## Aufbewahrung und Zugriff
 

@@ -114,10 +114,60 @@ test("Admin Action Explorer reicht die exakte Action-ID als Filter weiter", asyn
   const actionId = "11111111-1111-4111-8111-111111111111";
   const app = createHttpApp({ service });
   await withServer(app, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/admin/user-action-events?action_id=${actionId}&limit=1000`);
+    const response = await fetch(`${baseUrl}/api/admin/user-action-events?action_id=${actionId}&hours=168&limit=1000`);
     assert.equal(response.status, 200);
     assert.equal(calls[0].action_id, actionId);
     assert.equal(calls[0].limit, "1000");
+    assert.equal(calls[0].hours, "168");
+  });
+});
+
+test("Admin API exposes the audited user action incident lifecycle", async () => {
+  const calls = [];
+  const service = {
+    serviceClients: {},
+    async userActionIncidents() { return { items: [] }; },
+    async createUserActionIncident(body, context) { calls.push(["create", body, context]); return { incident_id: "incident-1" }; },
+    async updateUserActionIncident(id, body, context) { calls.push(["update", id, body, context]); return { incident_id: id, ...body }; },
+  };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const listed = await fetch(`${baseUrl}/api/admin/user-action-incidents`);
+    assert.equal(listed.status, 200);
+    const created = await fetch(`${baseUrl}/api/admin/user-action-incidents`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action_id: "action-1", action_type: "project.build.start" }),
+    });
+    assert.equal(created.status, 201);
+    const updated = await fetch(`${baseUrl}/api/admin/user-action-incidents/incident-1`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "resolved", change_reason: "fixed" }),
+    });
+    assert.equal(updated.status, 200);
+    assert.deepEqual(calls.map((item) => item[0]), ["create", "update"]);
+  });
+});
+
+test("synthetic checks can be read by admins and run by the protected scheduler", async () => {
+  const calls = [];
+  const service = {
+    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    async syntheticChecks(filter) { calls.push(["list", filter]); return { items: [] }; },
+    async runSyntheticChecks(body, context) { calls.push(["run", body, context]); return { summary: { total: 4, passed: 4 } }; },
+  };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    assert.equal((await fetch(`${baseUrl}/api/admin/synthetic-checks?limit=20`)).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/internal/synthetic-checks/run`, { method: "POST", body: "{}" })).status, 403);
+    const run = await fetch(`${baseUrl}/api/internal/synthetic-checks/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      body: JSON.stringify({ timeout_ms: 1000 }),
+    });
+    assert.equal(run.status, 200);
+    assert.equal(calls[0][0], "list");
+    assert.equal(calls[1][0], "run");
+    assert.equal(calls[1][2].actor.actor_id, "synthetic-monitor");
   });
 });
 

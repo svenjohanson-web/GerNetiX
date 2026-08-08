@@ -67,6 +67,7 @@ openFlashButton.addEventListener("click", () => {
         action?.succeed();
       } catch (error) {
         action?.fail(actionReason(error));
+        if (action?.failureMessage) error.message = action.failureMessage(error.message);
         throw error;
       }
     },

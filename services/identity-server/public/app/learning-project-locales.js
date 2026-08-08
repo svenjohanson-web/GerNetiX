@@ -45,6 +45,7 @@ const LearningProjectLocales = (() => {
       noLessons: "Die Lessons für dieses Lernprojekt werden noch zugeordnet.", startProject: "Lernprojekt starten",
       guided: "Geführtes Lernprojekt", story: "Entwicklungsprojekt · Projektstory", standalone: "Entwicklungslesson · einzeln gestartet",
       prepared: "Vorbereiteter Einzelstart", allProjects: "Alle Lernprojekte",
+      lessons: "Lessons", step: "Schritt", steps: "Schritte", completed: "erledigt", projectProgress: "Projektfortschritt", showProgressDetails: "Lessons und Schritte anzeigen",
       ready: "bereit", running: "laufend", finished: "abgeschlossen",
     },
     en: {
@@ -59,6 +60,7 @@ const LearningProjectLocales = (() => {
       noLessons: "The lessons for this learning project are still being assigned.", startProject: "Start learning project",
       guided: "Guided learning project", story: "Development project · project story", standalone: "Development lesson · started separately",
       prepared: "Prepared standalone start", allProjects: "All learning projects",
+      lessons: "lessons", step: "step", steps: "steps", completed: "completed", projectProgress: "Project progress", showProgressDetails: "Show lessons and steps",
       ready: "ready", running: "in progress", finished: "completed",
     },
     nl: {
@@ -73,6 +75,7 @@ const LearningProjectLocales = (() => {
       noLessons: "De lessen voor dit leerproject worden nog toegewezen.", startProject: "Leerproject starten",
       guided: "Begeleid leerproject", story: "Ontwikkelproject · projectverhaal", standalone: "Ontwikkelles · afzonderlijk gestart",
       prepared: "Voorbereide afzonderlijke start", allProjects: "Alle leerprojecten",
+      lessons: "lessen", step: "stap", steps: "stappen", completed: "voltooid", projectProgress: "Projectvoortgang", showProgressDetails: "Lessen en stappen tonen",
       ready: "gereed", running: "bezig", finished: "voltooid",
     },
   };

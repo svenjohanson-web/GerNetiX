@@ -4,7 +4,7 @@
     "slug": "programming-fundamentals",
     "title": "Grundlagen der Programmierung",
     "area": "Programmierung",
-    "summary": "Lerne in kleinen, verpflichtend geprüften Lektionen, wie Werte, Variablen, Operationen, Logik, Funktionen, Bedingungen und Schleifen zusammenwirken.",
+    "summary": "Lerne in acht Lessons mit 43 verpflichtend geprüften Schritten, wie Werte, Variablen, Operationen, Logik, Funktionen, Bedingungen und Schleifen zusammenwirken.",
     "learning_category": "software_engineering",
     "tags": ["runtime:browser", "topic:programming", "level:beginner"],
     "hardware_profile_id": "runtime.browser_javascript",
@@ -13,12 +13,128 @@
     "source_files": [
       { "path": "src/grundlagen.js", "role": "user_code" },
       { "path": "README.md", "role": "learning_guide" }
+    ],
+    "project_lesson_assignments": [
+      { "lesson_id": "development_lesson.programming.flow_values", "prerequisite_lesson_ids": [] },
+      { "lesson_id": "development_lesson.programming.variables", "prerequisite_lesson_ids": ["development_lesson.programming.flow_values"] },
+      { "lesson_id": "development_lesson.programming.operations_logic", "prerequisite_lesson_ids": ["development_lesson.programming.variables"] },
+      { "lesson_id": "development_lesson.programming.functions", "prerequisite_lesson_ids": ["development_lesson.programming.operations_logic"] },
+      { "lesson_id": "development_lesson.programming.conditions", "prerequisite_lesson_ids": ["development_lesson.programming.functions"] },
+      { "lesson_id": "development_lesson.programming.loops", "prerequisite_lesson_ids": ["development_lesson.programming.conditions"] },
+      { "lesson_id": "development_lesson.programming.debugging_planning", "prerequisite_lesson_ids": ["development_lesson.programming.loops"] },
+      { "lesson_id": "development_lesson.programming.final_transfer", "prerequisite_lesson_ids": ["development_lesson.programming.debugging_planning"] }
     ]
   },
+  "development_lessons": [
+    {
+      "id": "development_lesson.programming.flow_values",
+      "title": "Programmablauf und Werte",
+      "summary": "Verstehe Anweisungen, Reihenfolge, Eingabe, Verarbeitung, Ausgabe, Werte und Datentypen.",
+      "step_ids": ["01-what-is-a-program", "02-statements-and-order", "03-input-processing-output", "04-values", "05-basic-data-types", "06-typeof", "07-trace-a-program"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.flow_values.empty",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.variables",
+      "title": "Variablen verstehen und verändern",
+      "summary": "Arbeite mit Deklaration, initialer Belegung, Lesen, Neuzuweisung, const und let.",
+      "step_ids": ["08-variables", "09-declaration-initial-value", "10-variable-value-type", "11-read-variable", "12-reassignment", "13-const-and-let"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.variables.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.operations_logic",
+      "title": "Operationen, Vergleiche und Logik",
+      "summary": "Berechne Werte, verbinde Texte und formuliere boolesche Aussagen mit Vergleichen und Logik.",
+      "step_ids": ["14-arithmetic", "15-expressions", "16-string-concatenation", "17-booleans", "18-comparisons", "19-strict-equality", "20-logical-and", "21-logical-or", "22-logical-not"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.operations_logic.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.functions",
+      "title": "Funktionen, Parameter und Rückgabewerte",
+      "summary": "Definiere und verbinde Funktionen mit Parametern, lokalen Variablen und return.",
+      "step_ids": ["23-why-functions", "24-define-function", "25-call-function", "26-parameters-arguments", "27-local-variables", "28-return", "29-use-return-value", "30-compose-functions"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.functions.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.conditions",
+      "title": "Entscheidungen mit Bedingungen",
+      "summary": "Steuere alternative Programmwege mit if, else und else if.",
+      "step_ids": ["31-if", "32-else", "33-else-if"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.conditions.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.loops",
+      "title": "Arrays und Schleifen",
+      "summary": "Verarbeite mehrere Werte mit Arrays, for...of, Akkumulatoren und Bedingungen in Schleifen.",
+      "step_ids": ["34-arrays", "35-for-of-loop", "36-accumulator", "37-condition-in-loop"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.loops.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.debugging_planning",
+      "title": "Fehler finden, testen und planen",
+      "summary": "Unterscheide Fehlerarten, entwirf Testfälle und zerlege Aufgaben mit Pseudocode.",
+      "step_ids": ["38-error-types", "39-test-cases", "40-decompose-problem", "41-pseudocode-plan"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.debugging_planning.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    },
+    {
+      "id": "development_lesson.programming.final_transfer",
+      "title": "Abschluss und Transfer",
+      "summary": "Setze die Bausteine zunächst geführt und danach selbstständig in vollständigen Aufgaben ein.",
+      "step_ids": ["42-guided-final", "43-transfer-project"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.programming.final_transfer.prepared",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "src/grundlagen.js",
+        "source_paths": ["src/grundlagen.js", "README.md"]
+      }
+    }
+  ],
   "view_manifest": {
     "schema_version": 4,
     "title": "Grundlagen der Programmierung",
-    "summary": "43 kleine Lektionen führen vom ersten Programmablauf bis zu einer selbstständigen JavaScript-Aufgabe.",
+    "summary": "Acht Lessons mit 43 Schritten führen vom ersten Programmablauf bis zu einer selbstständigen JavaScript-Aufgabe.",
     "primary_source_path": "src/grundlagen.js",
     "hide_source_editor": false,
     "mode": "guided_ide"
@@ -1065,7 +1181,7 @@
     {
       "path": "README.md",
       "role": "learning_guide",
-      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Lernprinzip\n\nJede Lektion führt höchstens einen neuen Denkbaustein ein. Du liest und untersuchst zunächst ein kleines Beispiel, sagst sein Verhalten voraus und bearbeitest anschließend eine verpflichtende Frage oder Code-Aufgabe. Ein bloßes Bestätigen ohne fachliche Aufgabe schließt keine Lektion ab.\n\n## Kapitel\n\n1. Programmablauf und Werte\n2. Datentypen, Variablen und Operationen\n3. Vergleiche und logische Verknüpfungen\n4. Funktionen, Parameter und return\n5. Bedingungen, Arrays und Schleifen\n6. Fehler, Tests, Planung und Abschlussprojekt\n\nMikrocontroller-spezifische Themen wie Bitbreiten, uint8_t, int32_t, float, double, GPIO und Speicherarchitektur gehören bewusst in das separate Lernprojekt Grundlagen der Mikrocontrollertechnik.\n"
+      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Lernprinzip\n\nAcht Lessons gliedern den Lernweg in 43 aufeinander aufbauende Schritte. Jeder Schritt führt höchstens einen neuen Denkbaustein ein. Du liest und untersuchst zunächst ein kleines Beispiel, sagst sein Verhalten voraus und bearbeitest anschließend eine verpflichtende Frage oder Code-Aufgabe. Ein bloßes Bestätigen ohne fachliche Aufgabe schließt keinen Schritt ab.\n\n## Lessons\n\n1. Programmablauf und Werte\n2. Variablen verstehen und verändern\n3. Operationen, Vergleiche und Logik\n4. Funktionen, Parameter und Rückgabewerte\n5. Entscheidungen mit Bedingungen\n6. Arrays und Schleifen\n7. Fehler finden, testen und planen\n8. Abschluss und Transfer\n\nMikrocontroller-spezifische Themen wie Bitbreiten, uint8_t, int32_t, float, double, GPIO und Speicherarchitektur gehören bewusst in das separate Lernprojekt Grundlagen der Mikrocontrollertechnik.\n"
     }
   ]
 }

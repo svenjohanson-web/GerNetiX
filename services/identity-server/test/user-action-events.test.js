@@ -98,3 +98,26 @@ test("identity reports user actions through the protected Admin Tool endpoint", 
   assert.equal(requests[0].url, "http://admin-tool:4600/api/internal/user-action-events");
   assert.equal(requests[0].options.headers["X-GerNetiX-System-Event-Token"], "ops-token");
 });
+
+test("identity keeps failed Operations deliveries in a persistent outbox and flushes after recovery", async () => {
+  let state = { items: [] };
+  let available = false;
+  const store = {
+    load() { return structuredClone(state); },
+    async save(value) { state = structuredClone(value); },
+  };
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", ingestToken: "ops-token", outboxStore: store,
+    logger: { warn() {} },
+    fetchImpl: async () => available ? { ok: true, status: 201 } : { ok: false, status: 503 },
+  });
+  const event = normalizeUserActionEvent(validInput);
+  assert.equal(await report(event), false);
+  assert.equal(await report.pending(), 1);
+  assert.equal(state.items[0].event_id, event.event_id);
+
+  available = true;
+  const flushed = await report.flush();
+  assert.deepEqual(flushed, { pending: 0, delivered: 1 });
+  assert.equal(await report.pending(), 0);
+});

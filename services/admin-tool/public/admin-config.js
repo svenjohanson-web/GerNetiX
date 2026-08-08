@@ -17,11 +17,17 @@ const state = {
   emailConfig: null,
   monitoring: null,
   monitoringLoading: false,
+  syntheticChecks: null,
+  syntheticChecksLoading: false,
   systemEvents: null,
   systemEventsLoading: false,
   userActions: null,
   userActionsLoading: false,
   userActionFilter: "",
+  userActionIncidents: null,
+  userActionIncidentsLoading: false,
+  userActionAlerts: null,
+  userActionAlertsLoading: false,
   linkIntegrity: null,
   linkIntegrityLoading: false,
   resources: null,
@@ -59,12 +65,22 @@ document.querySelector("#adminLlmTestButton").addEventListener("click", testLlmC
 document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click", loadLocalModels);
 document.querySelector("#refreshApiLlmModelsButton").addEventListener("click", loadApiModels);
 document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
+document.querySelector("#refreshSyntheticChecksButton").addEventListener("click", () => loadSyntheticChecks(true));
+document.querySelector("#runSyntheticChecksButton").addEventListener("click", runSyntheticChecks);
 document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
 document.querySelector("#refreshUserActionsButton").addEventListener("click", () => loadUserActions(true));
 document.querySelector("#userActionSearchForm").addEventListener("submit", searchUserAction);
 document.querySelector("#clearUserActionSearchButton").addEventListener("click", clearUserActionSearch);
 document.querySelector("#userActionAttemptRows").addEventListener("click", inspectUserAction);
 document.querySelector("#copyUserActionIdButton").addEventListener("click", copyUserActionId);
+document.querySelector("#createUserActionIncidentButton").addEventListener("click", openUserActionIncidentForm);
+document.querySelector("#cancelUserActionIncidentButton").addEventListener("click", closeUserActionIncidentForm);
+document.querySelector("#userActionIncidentCreateForm").addEventListener("submit", createUserActionIncident);
+document.querySelector("#userActionIncidentRows").addEventListener("submit", updateUserActionIncident);
+document.querySelector("#refreshUserActionIncidentsButton").addEventListener("click", () => loadUserActionIncidents(true));
+document.querySelector("#refreshUserActionAlertsButton").addEventListener("click", () => loadUserActionAlerts(true));
+document.querySelector("#evaluateUserActionAlertsButton").addEventListener("click", evaluateUserActionAlerts);
+document.querySelector("#userActionHours").addEventListener("change", () => { if (!state.userActionFilter) void loadUserActions(true); });
 document.querySelector("#refreshLinkIntegrityButton").addEventListener("click", () => loadLinkIntegrity(true));
 document.querySelector("#syncLinkIntegrityButton").addEventListener("click", synchronizeLinkIntegrity);
 document.querySelector("#refreshResourcesButton").addEventListener("click", () => loadResources(true));
@@ -258,9 +274,9 @@ function render() {
 function setView(view) {
   state.currentView = view || "statistics";
   renderNavigation();
-  if (state.currentView === "monitoring") loadMonitoring(false);
+  if (state.currentView === "monitoring") { loadMonitoring(false); loadSyntheticChecks(false); }
   if (state.currentView === "system-events") loadSystemEvents(false);
-  if (state.currentView === "user-actions") loadUserActions(false);
+  if (state.currentView === "user-actions") { loadUserActions(false); loadUserActionIncidents(false); loadUserActionAlerts(false); }
   if (state.currentView === "link-integrity") loadLinkIntegrity(false);
   if (state.currentView === "ai-clarifications") loadAiClarifications(false);
   if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
@@ -917,7 +933,7 @@ async function loadUserActions(force) {
   state.userActionsLoading = true;
   renderUserActions();
   try {
-    const query = new URLSearchParams({ limit: state.userActionFilter ? "1000" : "500" });
+    const query = new URLSearchParams({ limit: state.userActionFilter ? "1000" : "500", hours: document.querySelector("#userActionHours")?.value || "24" });
     if (state.userActionFilter) query.set("action_id", state.userActionFilter);
     state.userActions = await getJson(`/api/admin/user-action-events?${query}`);
   } catch (error) {
@@ -952,7 +968,8 @@ function renderUserActions() {
     metricCard("Versuche", formatNumber(summary.attempts), "eindeutige Action-IDs"),
     metricCard("Erfolgreich", formatNumber(summary.succeeded), "fachlich abgeschlossen"),
     metricCard("Fehler", formatNumber(summary.failed), "fehlgeschlagen oder Timeout"),
-    metricCard("Fehlerquote", `${formatNumber(summary.failure_rate_percent)} %`, "ueber geladene Wirkketten"),
+    metricCard("Hängend", formatNumber(summary.hanging), "Zeitbudget überschritten"),
+    metricCard("Fehlerquote", `${formatNumber(summary.failure_rate_percent)} %`, `letzte ${formatNumber(summary.hours || 24)} Stunden`),
   ].join("");
   const byType = summary.by_action_type || [];
   typeRows.innerHTML = byType.length ? byType.map((item) => `<tr>
@@ -965,11 +982,173 @@ function renderUserActions() {
     <td>${escapeHtml(formatDateTime(item.last_seen_at))}</td>
     <td><code title="${escapeHtml(item.action_id || "")}">${escapeHtml(shortActionId(item.action_id))}</code></td>
     <td><strong>${escapeHtml(item.action_type)}</strong><span>${escapeHtml(item.release_id || "-")}</span></td>
-    <td><strong class="severity ${escapeHtml(actionPhaseClass(item.phase))}">${escapeHtml(actionPhaseLabel(item.phase))}</strong>${item.reason_code ? `<span>${escapeHtml(item.reason_code)}</span>` : ""}</td>
+    <td><strong class="severity ${escapeHtml(item.hanging ? "warning" : actionPhaseClass(item.phase))}">${escapeHtml(item.hanging ? "Hängend" : actionPhaseLabel(item.phase))}</strong>${item.reason_code ? `<span>${escapeHtml(item.reason_code)}</span>` : ""}</td>
     <td>${formatNumber(item.event_count)}<span>${formatNumber(item.span_count)} Spans</span></td>
     <td><button type="button" data-user-action-id="${escapeHtml(item.action_id)}">Öffnen</button></td>
   </tr>`).join("") : `<tr><td colspan="6" class="empty-cell">Keine Wirkketten im gewählten Ausschnitt.</td></tr>`;
+  renderUserActionOperations(summary);
   renderUserActionTrace();
+}
+
+function renderUserActionOperations(summary) {
+  const releases = document.querySelector("#userActionReleaseComparison");
+  const reasons = document.querySelector("#userActionReasonCodes");
+  if (!releases || !reasons) return;
+  const comparisons = summary.release_regressions || [];
+  releases.innerHTML = comparisons.length ? comparisons.map((item) => `<article class="action-operation-card ${item.regression ? "error" : ""}">
+    <strong>${escapeHtml(item.action_type)}</strong><span>${escapeHtml(item.previous_release_id)} → ${escapeHtml(item.release_id)}</span>
+    <p>${formatNumber(item.previous_failure_rate_percent)} % → ${formatNumber(item.failure_rate_percent)} % (${item.delta_percentage_points >= 0 ? "+" : ""}${formatNumber(item.delta_percentage_points)} Prozentpunkte)</p>
+  </article>`).join("") : `<p class="empty">Noch keine zwei Releases derselben Aktion im Zeitraum.</p>`;
+  const topReasons = (summary.top_reason_codes || []).slice(0, 8);
+  reasons.innerHTML = topReasons.length ? topReasons.map((item) => `<article class="action-operation-card">
+    <strong>${escapeHtml(item.reason_code || "unknown_client_failure")}</strong><span>${escapeHtml(item.action_type)} · ${escapeHtml(item.release_id || "ohne Release")}</span>
+    <p>${formatNumber(item.failures)} fehlgeschlagene Versuche</p>
+  </article>`).join("") : `<p class="empty">Keine Fehlergründe im Zeitraum.</p>`;
+}
+
+async function loadUserActionIncidents(force) {
+  if (state.userActionIncidentsLoading || (state.userActionIncidents && !force)) { renderUserActionIncidents(); return; }
+  state.userActionIncidentsLoading = true;
+  renderUserActionIncidents();
+  try {
+    state.userActionIncidents = await getJson("/api/admin/user-action-incidents");
+  } catch (error) {
+    state.userActionIncidents = { items: [], error: error.message };
+  } finally {
+    state.userActionIncidentsLoading = false;
+    renderUserActionIncidents();
+  }
+}
+
+function openUserActionIncidentForm() {
+  const action = (state.userActions?.summary?.recent_actions || []).find((item) => item.action_id === state.userActionFilter);
+  if (!action) return setUserActionIncidentMessage("Bitte zuerst eine konkrete Wirkkette öffnen.", true);
+  const form = document.querySelector("#userActionIncidentCreateForm");
+  for (const [name, value] of [["action_id", action.action_id], ["action_type", action.action_type], ["reason_code", action.reason_code || "unknown_client_failure"], ["release_id", action.release_id || ""]]) form.elements[name].value = value;
+  document.querySelector("#userActionIncidentCreateContext").textContent = `${action.action_type} · ${action.action_id} · ${action.reason_code || "ohne Fehlergrund"}`;
+  form.classList.remove("hidden");
+  form.elements.owner.focus();
+}
+
+function closeUserActionIncidentForm() {
+  const form = document.querySelector("#userActionIncidentCreateForm");
+  form.reset();
+  form.classList.add("hidden");
+}
+
+async function createUserActionIncident(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const body = Object.fromEntries(data.entries());
+  try {
+    await postJson("/api/admin/user-action-incidents", body);
+    closeUserActionIncidentForm();
+    setUserActionIncidentMessage("Incident wurde angelegt und auditiert.");
+    await loadUserActionIncidents(true);
+  } catch (error) {
+    setUserActionIncidentMessage(error.message, true);
+  }
+}
+
+async function updateUserActionIncident(event) {
+  const form = event.target.closest("form[data-user-action-incident]");
+  if (!form) return;
+  event.preventDefault();
+  const incidentId = form.dataset.userActionIncident;
+  const body = Object.fromEntries(new FormData(form).entries());
+  try {
+    await putJson(`/api/admin/user-action-incidents/${encodeURIComponent(incidentId)}`, body);
+    setUserActionIncidentMessage("Incident wurde aktualisiert und auditiert.");
+    await loadUserActionIncidents(true);
+  } catch (error) {
+    setUserActionIncidentMessage(error.message, true);
+  }
+}
+
+function renderUserActionIncidents() {
+  const target = document.querySelector("#userActionIncidentRows");
+  if (!target) return;
+  if (state.userActionIncidentsLoading) { target.innerHTML = `<p class="empty">Incidents werden geladen.</p>`; return; }
+  if (state.userActionIncidents?.error) { target.innerHTML = `<p class="error-text">${escapeHtml(state.userActionIncidents.error)}</p>`; return; }
+  const items = state.userActionIncidents?.items || [];
+  target.innerHTML = items.length ? items.map((item) => `<form class="action-incident-card" data-user-action-incident="${escapeHtml(item.incident_id)}">
+    <header><div><strong>${escapeHtml(item.action_type)}</strong><span>${escapeHtml(item.reason_code)} · ${escapeHtml(item.release_id || "ohne Release")}</span></div><code>${escapeHtml(shortActionId(item.action_id))}</code></header>
+    <div class="action-incident-fields">
+      <label>Status<select name="status">${incidentStatusOptions(item.status)}</select></label>
+      <label>Verantwortlich<input name="owner" maxlength="100" value="${escapeHtml(item.owner || "")}" /></label>
+      <label>Runbook<input name="runbook_url" maxlength="500" value="${escapeHtml(item.runbook_url || "")}" /></label>
+      <label>Behoben in Version<input name="fix_release_id" maxlength="80" value="${escapeHtml(item.fix_release_id || "")}" /></label>
+      <label class="wide">Notiz<textarea name="note" maxlength="500" rows="2">${escapeHtml(item.note || "")}</textarea></label>
+      <label class="wide">Änderungsgrund<input name="change_reason" maxlength="300" required placeholder="Warum wird der Incident geändert?" /></label>
+    </div>
+    <footer><span>Aktualisiert ${escapeHtml(formatDateTime(item.updated_at))}</span><button class="primary" type="submit">Änderung speichern</button></footer>
+  </form>`).join("") : `<p class="empty">Noch keine Operations-Incidents.</p>`;
+}
+
+function incidentStatusOptions(selected) {
+  return [["new", "Neu"], ["investigating", "Untersucht"], ["resolved", "Behoben"], ["ignored", "Ignoriert"]]
+    .map(([value, label]) => `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`).join("");
+}
+
+function setUserActionIncidentMessage(message, isError = false) {
+  const target = document.querySelector("#userActionIncidentMessage");
+  target.textContent = message || "";
+  target.classList.toggle("error-text", isError);
+}
+
+async function loadUserActionAlerts(force) {
+  if (state.userActionAlertsLoading || (state.userActionAlerts && !force)) { renderUserActionAlerts(); return; }
+  state.userActionAlertsLoading = true;
+  renderUserActionAlerts();
+  try {
+    state.userActionAlerts = await getJson("/api/admin/user-action-alerts");
+  } catch (error) {
+    state.userActionAlerts = { mode: "observe_only", items: [], error: error.message };
+  } finally {
+    state.userActionAlertsLoading = false;
+    renderUserActionAlerts();
+  }
+}
+
+async function evaluateUserActionAlerts() {
+  const button = document.querySelector("#evaluateUserActionAlertsButton");
+  button.disabled = true;
+  try {
+    const hours = Number(document.querySelector("#userActionHours")?.value || 24);
+    const result = await postJson("/api/admin/user-action-alerts/evaluate", { hours });
+    setUserActionAlertMessage(`${formatNumber(result.candidates?.length || 0)} Kandidaten im Beobachtungsmodus ausgewertet.`);
+    await loadUserActionAlerts(true);
+  } catch (error) {
+    setUserActionAlertMessage(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderUserActionAlerts() {
+  const target = document.querySelector("#userActionAlertRows");
+  if (!target) return;
+  if (state.userActionAlertsLoading) { target.innerHTML = `<p class="empty">Alarmkandidaten werden geladen.</p>`; return; }
+  if (state.userActionAlerts?.error) { target.innerHTML = `<p class="error-text">${escapeHtml(state.userActionAlerts.error)}</p>`; return; }
+  const items = state.userActionAlerts?.items || [];
+  target.innerHTML = items.length ? items.map((item) => `<article class="action-alert-card ${escapeHtml(item.severity)}">
+    <header><strong>${escapeHtml(alertKindLabel(item.alert_kind))}</strong><span>${escapeHtml(String(item.severity || "warning").toUpperCase())}</span></header>
+    <h3>${escapeHtml(item.action_type)}</h3>
+    <p>${escapeHtml(item.reason_code)} · Release ${escapeHtml(item.release_id || "unbekannt")}</p>
+    <dl><div><dt>Versuche</dt><dd>${formatNumber(item.attempts)}</dd></div><div><dt>Fehler</dt><dd>${formatNumber(item.failures)}</dd></div><div><dt>Fehlerquote</dt><dd>${formatNumber(item.failure_rate_percent)} %</dd></div><div><dt>Hängend</dt><dd>${formatNumber(item.hanging)}</dd></div></dl>
+    <small>${formatNumber(item.window_hours)} h · zuletzt ${escapeHtml(formatDateTime(item.last_seen_at))} · ${item.notification_state === "observe_only" ? "kein Versand" : escapeHtml(item.notification_state)}</small>
+  </article>`).join("") : `<p class="empty">Keine persistenten Alarmkandidaten.</p>`;
+}
+
+function alertKindLabel(kind) {
+  return { failure_rate: "Erhöhte Fehlerquote", hanging: "Hängende Aktionen", release_regression: "Release-Regression" }[kind] || kind || "Auffälligkeit";
+}
+
+function setUserActionAlertMessage(message, isError = false) {
+  const target = document.querySelector("#userActionAlertMessage");
+  target.textContent = message || "";
+  target.classList.toggle("error-text", isError);
 }
 
 function searchUserAction(event) {
@@ -1027,20 +1206,31 @@ function renderUserActionTrace() {
     return;
   }
   panel.classList.remove("hidden");
-  setUserActionSearchMessage(`${formatNumber(action.event_count)} Ereignisse in ${formatNumber(action.span_count)} Spans gefunden.`);
+  const interfaceCalls = state.userActions.interface_calls || [];
+  setUserActionSearchMessage(`${formatNumber(action.event_count)} Action-Ereignisse und ${formatNumber(interfaceCalls.length)} korrelierte Schnittstellenaufrufe gefunden.`);
   metaTarget.innerHTML = [
     ["Action-ID", action.action_id], ["Aktion", action.action_type],
     ["Status", actionPhaseLabel(action.phase)], ["Release", action.release_id || "-"],
     ["Route", action.route_id || "-"], ["Fehlergrund", action.reason_code || "-"],
     ["Beginn", formatTraceTime(action.started_at)], ["Letztes Ereignis", formatTraceTime(action.last_seen_at)],
   ].map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
-  const events = [...(state.userActions.items || [])].sort((left, right) => String(left.occurred_at).localeCompare(String(right.occurred_at)));
-  timeline.innerHTML = events.map((item) => `<li class="${escapeHtml(actionPhaseClass(item.phase))}">
-    <div class="action-timeline-head"><time>${escapeHtml(formatTraceTime(item.occurred_at))}</time><strong>${escapeHtml(actionPhaseLabel(item.phase))}</strong></div>
-    <code>${escapeHtml(item.span_type || "action")}</code>
-    <p>${escapeHtml(item.reason_code || "Kein Fehlergrund")}</p>
-    <small>Span ${escapeHtml(shortActionId(item.span_id))}${item.parent_span_id ? ` · Parent ${escapeHtml(shortActionId(item.parent_span_id))}` : ""}${item.duration_bucket ? ` · ${escapeHtml(item.duration_bucket)}` : ""}</small>
-  </li>`).join("");
+  const events = [
+    ...(state.userActions.items || []).map((item) => ({ ...item, timeline_kind: "action" })),
+    ...interfaceCalls.map((item) => ({ ...item, timeline_kind: "interface" })),
+  ].sort((left, right) => String(left.occurred_at).localeCompare(String(right.occurred_at)));
+  timeline.innerHTML = events.map((item) => item.timeline_kind === "interface"
+    ? `<li class="${item.succeeded ? "ok" : "error"}">
+      <div class="action-timeline-head"><time>${escapeHtml(formatTraceTime(item.occurred_at))}</time><strong>Schnittstelle ${item.succeeded ? "erfolgreich" : "fehlgeschlagen"}</strong></div>
+      <code>${escapeHtml(item.source_service || "-")} → ${escapeHtml(item.target_service || "-")}</code>
+      <p>${escapeHtml(String(item.method || "GET").toUpperCase())} ${escapeHtml(item.route || "/")} · HTTP ${escapeHtml(item.status_code || 0)}</p>
+      <small>${formatNumber(item.duration_ms)} ms · ${escapeHtml(item.action_type || action.action_type)}</small>
+    </li>`
+    : `<li class="${escapeHtml(actionPhaseClass(item.phase))}">
+      <div class="action-timeline-head"><time>${escapeHtml(formatTraceTime(item.occurred_at))}</time><strong>${escapeHtml(actionPhaseLabel(item.phase))}</strong></div>
+      <code>${escapeHtml(item.span_type || "action")}</code>
+      <p>${escapeHtml(item.reason_code || "Kein Fehlergrund")}</p>
+      <small>Span ${escapeHtml(shortActionId(item.span_id))}${item.parent_span_id ? ` · Parent ${escapeHtml(shortActionId(item.parent_span_id))}` : ""}${item.duration_bucket ? ` · ${escapeHtml(item.duration_bucket)}` : ""}</small>
+    </li>`).join("");
 }
 
 function setUserActionSearchMessage(message, isError = false) {
@@ -1104,6 +1294,78 @@ async function loadMonitoring(force) {
     state.monitoringLoading = false;
     renderMonitoring();
   }
+}
+
+async function loadSyntheticChecks(force) {
+  if (state.syntheticChecksLoading) return;
+  if (state.syntheticChecks && !force) {
+    renderSyntheticChecks();
+    return;
+  }
+  state.syntheticChecksLoading = true;
+  renderSyntheticChecks();
+  try {
+    state.syntheticChecks = await getJson("/api/admin/synthetic-checks?limit=200");
+  } catch (error) {
+    state.syntheticChecks = { summary: { total: 0, passed: 0, failed: 0, skipped: 0 }, items: [], error: error.message };
+  } finally {
+    state.syntheticChecksLoading = false;
+    renderSyntheticChecks();
+  }
+}
+
+async function runSyntheticChecks() {
+  if (state.syntheticChecksLoading) return;
+  state.syntheticChecksLoading = true;
+  renderSyntheticChecks("Die vier read-only Vorpruefungen laufen …");
+  try {
+    state.syntheticChecks = await postJson("/api/admin/synthetic-checks/run", {});
+    const summary = state.syntheticChecks.summary || {};
+    renderSyntheticChecks(`${formatNumber(summary.passed)}/${formatNumber(summary.total)} Pruefungen bestanden.`);
+  } catch (error) {
+    renderSyntheticChecks(error.message || "Synthetische Pruefung fehlgeschlagen.");
+  } finally {
+    state.syntheticChecksLoading = false;
+    renderSyntheticChecks();
+  }
+}
+
+function renderSyntheticChecks(message = "") {
+  const list = document.querySelector("#syntheticCheckList");
+  const status = document.querySelector("#syntheticChecksStatus");
+  const runButton = document.querySelector("#runSyntheticChecksButton");
+  if (!list || !status || !runButton) return;
+  runButton.disabled = state.syntheticChecksLoading;
+  if (message) status.textContent = message;
+  else if (state.syntheticChecks?.error) status.textContent = state.syntheticChecks.error;
+  else if (state.syntheticChecks?.latest_run_id) status.textContent = `Letzter Lauf ${formatDateTime(state.syntheticChecks.items?.[0]?.checked_at)}.`;
+  else status.textContent = "Noch kein synthetischer Lauf gespeichert.";
+  if (state.syntheticChecksLoading && !state.syntheticChecks) {
+    list.innerHTML = `<p class="empty">Vorpruefungen werden geladen.</p>`;
+    return;
+  }
+  const items = state.syntheticChecks?.items || [];
+  list.innerHTML = items.length ? items.map(syntheticCheckCard).join("") : `<p class="empty">Noch keine Pruefergebnisse.</p>`;
+}
+
+function syntheticCheckCard(item) {
+  const statusClass = item.status === "passed" ? "ok" : item.status === "skipped" ? "warning" : "error";
+  const statusText = item.status === "passed" ? "bestanden" : item.status === "skipped" ? "uebersprungen" : "fehlgeschlagen";
+  return `
+    <article class="monitoring-card ${statusClass}">
+      <div class="monitoring-card-head">
+        <div><p class="eyebrow">${escapeHtml(item.check_id)}</p><h2>${escapeHtml(item.title || item.check_id)}</h2></div>
+        <span class="status-pill ${statusClass}">${statusText}</span>
+      </div>
+      <dl class="meta-list">
+        ${meta(["Zieldienst", item.target_service || "-"])}
+        ${meta(["Route", item.route || "-"])}
+        ${meta(["HTTP", item.http_status ?? "-"])}
+        ${meta(["Antwortzeit", `${formatNumber(item.response_ms || 0)} ms`])}
+        ${meta(["Ergebnis", item.reason_code || "-"])}
+      </dl>
+    </article>
+  `;
 }
 
 function renderMonitoring() {

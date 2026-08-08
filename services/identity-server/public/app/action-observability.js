@@ -22,6 +22,7 @@
     return {
       id: record.actionId,
       type: record.actionType,
+      failureMessage(message) { return supportMessage(message, record.actionId); },
       startSpan(spanType, parentSpanId = record.rootSpanId) {
         const span = { id: randomId(), type: spanType, parentSpanId, startedAt: Date.now(), finished: false };
         emit(record, { phase: "started", spanType, spanId: span.id, parentSpanId });
@@ -138,6 +139,11 @@
 
   function safeToken(value) { return String(value || "").slice(0, 100); }
   function randomId() { return root.crypto?.randomUUID?.() || "00000000-0000-4000-8000-000000000000"; }
+  function supportMessage(message, action) {
+    const actionId = typeof action === "string" ? action : action?.id;
+    const text = String(message || "Die Aktion ist fehlgeschlagen.");
+    return actionId && !text.includes(actionId) ? `${text} Vorgangs-ID: ${actionId}` : text;
+  }
 
   if (root.document?.addEventListener) {
     root.document.addEventListener("click", (event) => {
@@ -150,7 +156,7 @@
     }, true);
   }
 
-  const api = { begin, durationBucket, observeActivation };
+  const api = { begin, durationBucket, observeActivation, supportMessage };
   root.GerNetiXActionOps = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

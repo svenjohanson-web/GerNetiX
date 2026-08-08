@@ -36,6 +36,11 @@
       { "path": "docs/projektstory.md", "role": "decision_record" },
       { "path": "docs/quellen.md", "role": "reference" }
     ],
+    "project_lesson_assignments": [
+      { "lesson_id": "development_lesson.camera.sensor_basics", "prerequisite_lesson_ids": [] },
+      { "lesson_id": "development_lesson.camera.phone_access_point", "prerequisite_lesson_ids": ["development_lesson.camera.sensor_basics"] },
+      { "lesson_id": "development_lesson.camera.secure_vps_relay", "prerequisite_lesson_ids": ["development_lesson.camera.phone_access_point"] }
+    ],
     "steps": [
       { "title": "Kamera einrichten und verstehen", "text": "Ordne Pins, Sensor, JPEG-Format, PSRAM und Framebuffer ein und erfasse ein erstes Bild.", "insight": "Die Kamera ist kein einzelner Eingangspin, sondern ein zeitkritisches Parallelinterface mit eigenem Bildpuffer." },
       { "title": "Direkt auf das Smartphone streamen", "text": "Der ESP32 eröffnet ein geschütztes WLAN und liefert einen MJPEG-Stream an den Browser des Smartphones.", "insight": "Im SoftAP-Modus funktioniert die Verbindung lokal und ohne Router oder Internet." },
@@ -47,8 +52,6 @@
       "id": "development_lesson.camera.sensor_basics",
       "title": "Kamera einrichten und verstehen",
       "summary": "Initialisiere den OV2640, erfasse JPEG-Frames und gib den Puffer immer korrekt zurück.",
-      "order_index": 1,
-      "prerequisite_lesson_ids": [],
       "step_ids": ["camera-interface", "camera-framebuffer", "camera-first-frame"],
       "standalone_start": {
         "snapshot_id": "snapshot.camera.sensor_basics.ai_thinker",
@@ -62,8 +65,6 @@
       "id": "development_lesson.camera.phone_access_point",
       "title": "Kamerabild direkt auf dem Smartphone",
       "summary": "Starte einen WPA2-geschützten ESP32-Access-Point und öffne den MJPEG-Stream im Handy-Browser.",
-      "order_index": 2,
-      "prerequisite_lesson_ids": ["development_lesson.camera.sensor_basics"],
       "step_ids": ["ap-network", "mjpeg-stream", "phone-test"],
       "standalone_start": {
         "snapshot_id": "snapshot.camera.phone_access_point.with_camera",
@@ -77,8 +78,6 @@
       "id": "development_lesson.camera.secure_vps_relay",
       "title": "Geschützter Fernzugriff über einen VPS",
       "summary": "Verbinde das Gerät mit einem vorhandenen WLAN und entwirf einen ausgehenden, authentifizierten Video-Relay.",
-      "order_index": 3,
-      "prerequisite_lesson_ids": ["development_lesson.camera.phone_access_point"],
       "step_ids": ["remote-boundary", "relay-contract", "privacy-operations"],
       "standalone_start": {
         "snapshot_id": "snapshot.camera.secure_vps_relay.with_local_stream",

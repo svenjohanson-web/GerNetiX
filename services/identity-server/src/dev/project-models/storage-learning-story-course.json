@@ -28,6 +28,13 @@
       { "path": "lessons/04-sqlite/schema.sql", "role": "database_schema" },
       { "path": "lessons/05-dateiarchiv/architektur.md", "role": "architecture_model" }
     ],
+    "project_lesson_assignments": [
+      { "lesson_id": "development_lesson.storage.data_structures", "prerequisite_lesson_ids": [] },
+      { "lesson_id": "development_lesson.storage.nvs", "prerequisite_lesson_ids": ["development_lesson.storage.data_structures"] },
+      { "lesson_id": "development_lesson.storage.littlefs", "prerequisite_lesson_ids": ["development_lesson.storage.nvs"] },
+      { "lesson_id": "development_lesson.storage.sqlite", "prerequisite_lesson_ids": ["development_lesson.storage.littlefs"] },
+      { "lesson_id": "development_lesson.storage.file_archive", "prerequisite_lesson_ids": ["development_lesson.storage.sqlite"] }
+    ],
     "steps": [
       { "title": "Daten modellieren", "text": "Pflanzen, Standorte und Messwerte werden zuerst als Werte, Listen und Beziehungen verstanden.", "insight": "Eine Datenbank ersetzt kein durchdachtes Datenmodell." },
       { "title": "Einstellungen mit NVS sichern", "text": "Der ESP32 speichert wenige geprüfte Einstellungen als Schlüssel und Werte.", "insight": "Key-Value-Speicher passen zu Konfiguration, nicht zu frei abfragbarer Historie." },
@@ -41,8 +48,6 @@
       "id": "development_lesson.storage.data_structures",
       "title": "Daten und Datenstrukturen modellieren",
       "summary": "Baue ein Pflanzeninventar zunächst ohne Persistenz.",
-      "order_index": 1,
-      "prerequisite_lesson_ids": [],
       "step_ids": ["data-values", "data-records", "data-relationships"],
       "standalone_start": {
         "snapshot_id": "snapshot.storage.data_structures.empty",
@@ -56,8 +61,6 @@
       "id": "development_lesson.storage.nvs",
       "title": "Einstellungen mit NVS oder EEPROM sichern",
       "summary": "Speichere wenige validierte Geräteeinstellungen dauerhaft.",
-      "order_index": 2,
-      "prerequisite_lesson_ids": ["development_lesson.storage.data_structures"],
       "step_ids": ["nvs-choose-values", "nvs-persist", "nvs-recovery"],
       "standalone_start": {
         "snapshot_id": "snapshot.storage.nvs.prepared_esp32",
@@ -71,8 +74,6 @@
       "id": "development_lesson.storage.littlefs",
       "title": "Messwertlogbuch mit LittleFS",
       "summary": "Ergänze eine begrenzte, dateibasierte Offline-Historie.",
-      "order_index": 3,
-      "prerequisite_lesson_ids": ["development_lesson.storage.nvs"],
       "step_ids": ["littlefs-file-format", "littlefs-ring-buffer", "littlefs-power-loss"],
       "standalone_start": {
         "snapshot_id": "snapshot.storage.littlefs.with_nvs_baseline",
@@ -86,8 +87,6 @@
       "id": "development_lesson.storage.sqlite",
       "title": "Messwerthistorie mit SQLite",
       "summary": "Überführe Pflanzen, Geräte und Messwerte in relationale Tabellen.",
-      "order_index": 4,
-      "prerequisite_lesson_ids": ["development_lesson.storage.littlefs"],
       "step_ids": ["sqlite-schema", "sqlite-queries", "sqlite-transaction"],
       "standalone_start": {
         "snapshot_id": "snapshot.storage.sqlite.with_sample_measurements",
@@ -101,8 +100,6 @@
       "id": "development_lesson.storage.file_archive",
       "title": "Dateiarchiv mit SQLite-Metadaten",
       "summary": "Trenne große Dateien von ihren suchbaren Fachmetadaten.",
-      "order_index": 5,
-      "prerequisite_lesson_ids": ["development_lesson.storage.sqlite"],
       "step_ids": ["archive-boundary", "archive-integrity", "archive-webdav-option"],
       "standalone_start": {
         "snapshot_id": "snapshot.storage.file_archive.with_sqlite_baseline",

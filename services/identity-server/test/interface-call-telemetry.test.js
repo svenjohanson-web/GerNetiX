@@ -18,7 +18,10 @@ test("identity records outbound service calls in central or local SQL telemetry"
   assert.match(clients, /targetService: "device-management-server"/);
   assert.match(clients, /targetService: "ai-usage-server"/);
   assert.match(clients, /durationMs: Date\.now\(\) - startedAt/);
+  assert.match(clients, /x-gernetix-action-id/);
+  assert.match(clients, /\.\.\.action/);
   assert.match(telemetry, /CREATE TABLE IF NOT EXISTS gernetix_external_interface_calls/);
+  assert.match(telemetry, /idx_interface_calls_action/);
   assert.match(telemetry, /Telemetrie darf den eigentlichen Schnittstellenaufruf nie blockieren/);
   assert.match(assistant, /trackedFetch\("openai-api"/);
   assert.match(assistant, /trackedFetch\("anthropic-api"/);

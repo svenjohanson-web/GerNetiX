@@ -33,9 +33,14 @@ const LearningProjectController = (() => {
       const target = document.querySelector("#learningProjectWorkspace");
       const project = activeProject();
       const localizedProject = project ? localizeProject(project) : null;
+      const progress = project ? progressFor(project.id) : {};
+      const viewCount = project?.viewManifest?.views?.length || 0;
+      if (viewCount) state.activeIdeStep = Math.max(0, Math.min(Number(progress.currentStep || 0), viewCount - 1));
       const rendered = LearningProjectView.render({
         target,
         project: localizedProject,
+        progress,
+        activeStep: state.activeIdeStep,
         showRating: learningProjectCompleted(project) && project.learningFeedbackSubmitted !== true,
         escapeHtml,
         learningText,
@@ -89,6 +94,7 @@ const LearningProjectController = (() => {
         ? project.viewManifest?.views?.findIndex((view) => view.id === options.startViewId)
         : -1;
       const currentStep = requestedStep >= 0 ? requestedStep : Number(progress.currentStep || 0);
+      state.activeIdeStep = Math.max(0, currentStep);
       navigate(`/app/learning-project/?project=${encodeURIComponent(project.id)}`);
       void saveStep(project, currentStep, progress.completedSteps || [], false)
         .catch((error) => showError(error));

@@ -107,7 +107,8 @@
       } catch (error) {
         operation?.fail(settingsFailureReason(error));
         control.disabled = false;
-        root.alert?.(error.message || "Die Einstellung konnte nicht gespeichert werden.");
+        const message = error.message || "Die Einstellung konnte nicht gespeichert werden.";
+        root.alert?.(operation?.failureMessage(message) || message);
       }
     }
 

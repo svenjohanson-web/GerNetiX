@@ -1,6 +1,10 @@
 const modelData = require("./storage-learning-story-course.json");
+const { developmentLessonCatalog } = require("./development-lesson-catalog");
 
 function createStorageLearningStoryCourseModel() {
+  const lessonAssignments = modelData.project.project_lesson_assignments || [];
+  const developmentLessons = developmentLessonCatalog.resolveProjectLessons(lessonAssignments);
+
   function createProject(project, step) {
     const definition = modelData.project;
     return project(
@@ -12,7 +16,7 @@ function createStorageLearningStoryCourseModel() {
       {
         access_model: definition.access_model,
         default_device_id: definition.default_device_id,
-        development_lessons: clone(modelData.development_lessons),
+        project_lesson_assignments: clone(lessonAssignments),
         hardware_profile_id: definition.hardware_profile_id,
         learning_category: definition.learning_category,
         project_story: clone(modelData.project_story),
@@ -25,7 +29,10 @@ function createStorageLearningStoryCourseModel() {
 
   function createViewManifest(project, { lessonId = "", primarySourcePath, override } = {}) {
     if (override && !lessonId) return override;
-    const manifest = withSourceArtifacts(clone(modelData.view_manifest));
+    const manifest = withSourceArtifacts({
+      ...clone(modelData.view_manifest),
+      views: developmentLessonCatalog.viewsForProject(lessonAssignments),
+    });
     const lesson = lessonById(lessonId);
     if (!lesson) return { ...manifest, primary_source_path: primarySourcePath(project) };
     const views = manifest.views.filter((view) => view.lesson_id === lesson.id);
@@ -65,12 +72,11 @@ function createStorageLearningStoryCourseModel() {
   function createSources({ lessonId = "" } = {}) {
     const lesson = lessonById(lessonId);
     if (!lesson) return clone(modelData.sources);
-    const sourcePaths = new Set(lesson.standalone_start.source_paths);
-    return clone(modelData.sources.filter((source) => sourcePaths.has(source.path)));
+    return developmentLessonCatalog.sourcesForLesson(lesson.id);
   }
 
   function lessonById(lessonId) {
-    return modelData.development_lessons.find((lesson) => lesson.id === lessonId) || null;
+    return developmentLessons.find((lesson) => lesson.id === lessonId) || null;
   }
 
   return {

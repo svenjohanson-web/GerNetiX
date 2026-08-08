@@ -384,6 +384,19 @@ test("catalog includes a software-only programming fundamentals course", () => {
   assert.ok(course.project.tags.includes("topic:programming"));
   assert.ok(course.project.tags.includes("level:beginner"));
   assert.equal(course.lessons.length, 43);
+  assert.equal(course.development_lessons.length, 8);
+  assert.deepEqual(
+    course.project.project_lesson_assignments.map((assignment) => assignment.lesson_id),
+    course.development_lessons.map((lesson) => lesson.id),
+  );
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [7, 6, 9, 8, 3, 4, 4, 2]);
+  assert.ok(course.development_lessons.every((lesson) => lesson.step_ids.length > 1));
+  assert.ok(course.development_lessons.every((lesson) => lesson.order_index === undefined));
+  assert.ok(course.development_lessons.every((lesson) => lesson.prerequisite_lesson_ids === undefined));
+  assert.deepEqual(
+    course.development_lessons.flatMap((lesson) => lesson.step_ids),
+    course.lessons.map((lesson) => lesson.id),
+  );
   assert.equal(course.view_manifest.schema_version, 4);
   assert.deepEqual(course.lessons.slice(0, 10).map((lesson) => lesson.id), [
     "01-what-is-a-program",
@@ -417,9 +430,34 @@ test("catalog includes a software-only programming fundamentals course", () => {
   assert.match(course.sources.find((source) => source.path === "README.md").content, /benötigt keine Hardware/);
   assert.match(course.sources.find((source) => source.path === "README.md").content, /separate Lernprojekt Grundlagen der Mikrocontrollertechnik/);
   const courseModel = model.createProgrammingFundamentalsCourseModel();
+  const projectOptions = courseModel.createProject(
+    (_slug, _title, _area, _summary, _steps, options) => options,
+    (title, text, insight) => ({ title, text, insight }),
+  );
+  assert.equal(projectOptions.project_lesson_assignments.length, 8);
+  assert.deepEqual(
+    projectOptions.project_lesson_assignments.map((assignment) => assignment.lesson_id),
+    course.development_lessons.map((lesson) => lesson.id),
+  );
+  assert.equal(projectOptions.development_lessons, undefined);
   const manifest = courseModel.createViewManifest({}, { primarySourcePath: () => "src/grundlagen.js" });
   assert.equal(manifest.views.length, 43);
-  assert.equal(manifest.views[0].lesson_id, "programming-fundamentals.lesson-01");
+  assert.equal(manifest.views[0].lesson_id, "development_lesson.programming.flow_values");
+  assert.equal(manifest.views[6].lesson_id, "development_lesson.programming.flow_values");
+  assert.equal(manifest.views[7].lesson_id, "development_lesson.programming.variables");
+  assert.deepEqual(
+    manifest.views.map((view) => view.id),
+    course.lessons.map((lesson) => lesson.id),
+  );
+  const standaloneManifest = courseModel.createViewManifest(
+    { learning_project_id: "learning_project.programming_fundamentals" },
+    {
+      lessonId: "development_lesson.programming.final_transfer",
+      primarySourcePath: () => "src/grundlagen.js",
+    },
+  );
+  assert.equal(standaloneManifest.entry_mode, "standalone_lesson");
+  assert.deepEqual(standaloneManifest.views.map((view) => view.id), ["42-guided-final", "43-transfer-project"]);
   assert.equal(courseModel.slug, "programming-fundamentals");
   assert.match(server, /createProgrammingFundamentalsCourseModel/);
   assert.match(server, /programmingFundamentalsCourseModel\.createProject/);
@@ -507,9 +545,9 @@ test("models the storage story as one development project with reusable standalo
   assert.match(course.project_story.standalone_rule, /unabhängig gestartet/);
   assert.equal(course.development_lessons.length, 5);
   assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [3, 3, 3, 3, 3]);
-  assert.deepEqual(course.development_lessons.map((lesson) => lesson.order_index), [1, 2, 3, 4, 5]);
+  assert.deepEqual(course.project.project_lesson_assignments.map((assignment) => assignment.lesson_id), course.development_lessons.map((lesson) => lesson.id));
   assert.deepEqual(course.development_lessons.map((lesson) => lesson.standalone_start.hardware_required), [false, true, true, false, false]);
-  assert.deepEqual(course.development_lessons[2].prerequisite_lesson_ids, ["development_lesson.storage.nvs"]);
+  assert.deepEqual(course.project.project_lesson_assignments[2].prerequisite_lesson_ids, ["development_lesson.storage.nvs"]);
   assert.match(course.development_lessons[2].standalone_start.snapshot_id, /with_nvs_baseline/);
   assert.match(course.development_lessons[3].standalone_start.snapshot_id, /with_sample_measurements/);
 
@@ -580,9 +618,9 @@ test("models ESP32 camera streaming as three progressive and standalone lessons"
   assert.equal(course.project.slug, "esp32-camera-streaming");
   assert.equal(course.project.hardware_profile_id, "hardware.processor_board.ai_thinker_esp32_cam");
   assert.equal(course.project.build_config.board, "esp32cam");
-  assert.deepEqual(course.development_lessons.map((lesson) => lesson.order_index), [1, 2, 3]);
+  assert.deepEqual(course.project.project_lesson_assignments.map((assignment) => assignment.lesson_id), course.development_lessons.map((lesson) => lesson.id));
   assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [3, 3, 3]);
-  assert.deepEqual(course.development_lessons[2].prerequisite_lesson_ids, ["development_lesson.camera.phone_access_point"]);
+  assert.deepEqual(course.project.project_lesson_assignments[2].prerequisite_lesson_ids, ["development_lesson.camera.phone_access_point"]);
   assert.ok(course.project.tags.includes("topic:camera"));
   assert.ok(course.project.tags.includes("topic:networking"));
   assert.ok(course.project.tags.includes("topic:video"));

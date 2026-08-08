@@ -23,6 +23,8 @@ test("forwards interface telemetry to the central Operations endpoint", async ()
       statusCode: 200,
       durationMs: 12,
       succeeded: true,
+      actionId: "11111111-1111-4111-8111-111111111111",
+      actionType: "project.settings.save",
     });
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(request.url, "http://admin-tool:4600/api/internal/interface-calls");
@@ -30,6 +32,8 @@ test("forwards interface telemetry to the central Operations endpoint", async ()
     const body = JSON.parse(request.options.body);
     assert.equal(body.source_service, "identity-server");
     assert.equal(body.route, "/api/projects");
+    assert.equal(body.action_id, "11111111-1111-4111-8111-111111111111");
+    assert.equal(body.action_type, "project.settings.save");
   } finally {
     global.fetch = originalFetch;
   }

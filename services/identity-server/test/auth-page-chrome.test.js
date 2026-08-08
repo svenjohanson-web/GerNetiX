@@ -4,21 +4,27 @@ const path = require("node:path");
 const test = require("node:test");
 
 const authRoot = path.join(__dirname, "..", "public", "app", "auth");
+const publicRoot = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(authRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(authRoot, "auth.css"), "utf8");
 const script = fs.readFileSync(path.join(authRoot, "auth.js"), "utf8");
+const publicHeaderCss = fs.readFileSync(path.join(publicRoot, "public-header.css"), "utf8");
+const publicHeaderScript = fs.readFileSync(path.join(publicRoot, "landing.js"), "utf8");
 
-test("shows the public GerNetiX header and burger menu on the authentication page", () => {
-  assert.match(html, /class="auth-site-header"/);
+test("uses the one public GerNetiX header and burger menu on the authentication page", () => {
+  assert.match(html, /class="site-header"/);
   assert.match(html, /src="\/gernetix-wordmark\.png"[\s\S]*alt="GerNetiX"/);
-  assert.match(html, /id="authMenuButton"[\s\S]*aria-controls="authMenu"/);
-  assert.match(html, /id="authMenu"[\s\S]*href="\/wissen\/"[\s\S]*href="\/hilfe\//);
-  assert.match(html, /id="authMenu"[\s\S]*href="\/shop\/"[\s\S]*Webshop/);
-  assert.match(css, /\.auth-site-header/);
-  assert.match(css, /\.auth-menu-button/);
+  assert.match(html, /id="publicMenuButton"[\s\S]*aria-controls="publicMenu"/);
+  assert.match(html, /id="publicMenu"[\s\S]*href="\/nachbauprojekte\/"[\s\S]*href="\/community\/"/);
+  assert.match(html, /id="publicMenu"[\s\S]*href="\/tarife\/"[\s\S]*href="\/shop\/"/);
+  assert.match(html, /href="\/public-header\.css/);
+  assert.match(html, /src="\/landing\.js/);
+  assert.match(publicHeaderCss, /\.site-header/);
+  assert.match(publicHeaderCss, /\.menu-button/);
   assert.match(css, /\[hidden\]\s*\{\s*display:\s*none !important;/);
-  assert.match(script, /function closeAuthMenu/);
-  assert.match(script, /authMenuButton\?\.addEventListener/);
+  assert.match(publicHeaderScript, /menuButton\?\.addEventListener/);
+  assert.doesNotMatch(script, /authMenuButton|authMenu|closeAuthMenu/);
+  assert.doesNotMatch(css, /auth-site-header|auth-menu-button|auth-site-menu/);
   assert.doesNotMatch(html, /class="brand-mark" aria-hidden="true">G/);
   assert.match(html, /class="guest-access"[\s\S]*Als Gast starten/);
   assert.match(html, /Passwort\/Passkey vergessen/);
@@ -28,10 +34,10 @@ test("shows the public GerNetiX header and burger menu on the authentication pag
   assert.match(script, /\/api\/recovery\/offline\/start/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/options/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/verify/);
-  assert.match(html, /id="auth-language"[\s\S]*Deutsch[\s\S]*English[\s\S]*Nederlands/);
-  assert.match(html, /DE · EN · NL/);
+  assert.match(publicHeaderScript, /id="publicLanguage"[\s\S]*Deutsch[\s\S]*English[\s\S]*Nederlands/);
+  assert.match(publicHeaderScript, /DE · EN · NL/);
   assert.match(html, /\/app\/i18n\/i18n\.js/);
-  assert.match(script, /window\.GerNetiXI18n\.create\(\)/);
+  assert.match(publicHeaderScript, /window\.GerNetiXI18n\.create\(\)/);
   assert.match(script, /locale: currentLocale\(\)/);
   assert.doesNotMatch(script, /sessionStorage/);
   assert.doesNotMatch(script, /localStorage/);

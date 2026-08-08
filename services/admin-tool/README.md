@@ -54,6 +54,8 @@ Konfiguration:
 - `ADMIN_TOOL_RUNTIME_DIR`: Runtime-Verzeichnis fuer spaetere temporaere Artefakte
 - `PERSISTENCE_BACKEND`: System-Event-Persistenz, lokal standardmaessig `sqlite`
 - `OPERATIONS_POSTGRES_*`: Verbindung zur fuehrenden Operations-PostgreSQL-Datenbank
+- `PUBLIC_DEMO_BASE_URL`: interne Basis-URL des oeffentlichen Flash-Katalogs, Standard `http://127.0.0.1:4920`
+- `SYSTEM_EVENT_INGEST_TOKEN`: schuetzt neben System- und Action-Ingest auch den Scheduler-Start der synthetischen Vorpruefungen
 - `PERSISTENCE_SQLITE_PATH`: ausschliesslich Legacy-/Testpfad fuer die einmalige Altuebernahme
 - `SYSTEM_EVENT_INGEST_TOKEN`: eigener Dienst-zu-Dienst-Token fuer den internen System-Event-Eingang; im VPS-Betrieb identisch in Admin Tool und meldenden Diensten setzen
 - `LINK_INTEGRITY_INGEST_TOKEN`: davon getrennter Dienst-zu-Dienst-Token fuer Linkinventar und Prüfergebnisse; ausschließlich in Admin Tool und Identity setzen

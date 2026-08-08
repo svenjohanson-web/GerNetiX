@@ -19,6 +19,7 @@ function createConfig(env = process.env) {
     projectServerBaseUrl: env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
     hardwareShopBaseUrl: env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900",
     hardwareCatalogBaseUrl: env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910",
+    publicDemoBaseUrl: env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920",
     aiUsageBaseUrl: env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000",
     aiContextBaseUrl: env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500",
     provisioningBaseUrl: env.PROVISIONING_BASE_URL || "http://127.0.0.1:4500",
