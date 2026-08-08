@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { normalizeAppPath } = require("../src/dev/http-utils");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 const read = (file) => fs.readFileSync(path.join(appRoot, file), "utf8");
@@ -18,6 +19,7 @@ test("offers Nachschlagewerke as a dedicated authenticated menu route", () => {
   assert.match(html, /href="\/app\/nachschlagewerke\/" data-route="nachschlagewerke"/);
   assert.match(app, /nachschlagewerke: "referenceLibraryView"/);
   assert.match(shell, /nachschlagewerke:[\s\S]*label: "Nachschlagewerke"/);
+  assert.equal(normalizeAppPath("/app/nachschlagewerke/"), "/index.html");
 });
 
 test("loads the reference library view, styles and controller only on demand", () => {
