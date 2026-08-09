@@ -112,6 +112,7 @@ test("binds the ES3C28P touchscreen template to its versioned Forgejo product so
   assert.equal(templateBuildConfig(template).flash_size_mb, 16);
   assert.equal(templateBuildConfig(template).firmware_basis_id, "gernetix-runtime-basissoftware");
   assert.equal(templateBuildConfig(template).firmware_basis_variant, "full");
+  assert.equal(templateBuildConfig(template).platformio_options.build_unflags, "-Werror");
   assert.equal(templateBuildConfig(template).basissoftware_configuration.communication.ota_available, true);
   assert.deepEqual(files, []);
 });

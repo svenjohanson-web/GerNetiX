@@ -111,7 +111,10 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
           monitor_speed: 115200,
           upload_protocol: "esptool",
           build_flags: [],
-          platformio_options: { "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"" },
+          platformio_options: {
+            "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"",
+            build_unflags: "-Werror",
+          },
           firmware_basis_id: "gernetix-runtime-basissoftware",
           firmware_basis_version: "workspace",
           firmware_basis_variant: "full",

@@ -204,7 +204,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-04 | Repository-Provisionierung | fuer neue Projekte und Vorlagen umgesetzt | Projekt-/Template-Contract |
 | FG-05 | Git-basiertes Quellen-API | lokal umgesetzt, Cutover offen | CRUD-/Konflikt-/Pfadtests |
 | FG-06 | Echte Commit-Historie und Restore | lokal umgesetzt, Cutover offen | Historien-/Restore-Tests |
-| FG-07 | Commitgebundener Build | Build-Paket auf Staging nachgewiesen, Compilerabschluss offen | Build-Reproduzierbarkeit |
+| FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
 | FG-10 | Projektweiser Cutover und Rollback | offen | Staging-Migration |
@@ -404,8 +404,13 @@ veraendert das Paket nicht. Forgejo-BuildJobs speichern weder
 Artefaktmetadaten uebernehmen Repository-, Commit- und Package-Referenz.
 
 Der SQL-Altpfad behaelt seine Snapshots bis zum projektweisen Cutover. Offen
-bleiben der Nachweis gegen den echten Forgejo-Container auf Staging und die
-spaetere Stilllegung des SQL-Quellenpfads.
+bleibt die spaetere Stilllegung dieses SQL-Quellenpfads. Der echte
+Forgejo-/Compiler-Durchstich auf Staging ist fuer die ESP32-S3-Touch-
+Spielesammlung bestanden: Ein kurzlebiges Kundenprojekt erhielt ein eigenes
+privates Repository, das commitgebundene Build-Paket wurde durch PlatformIO
+kompiliert und `firmware.bin` mit 1.254.464 Bytes sowie SHA-256
+`f9018cf9ef0d3c2bb27ca5e737abe901fccefe86a9cb730c79d61a70f0b25aff`
+im Artifact Store abgelegt. Das Testprojekt wurde danach entfernt.
 
 Seit 2026-08-09 ist lokal zusaetzlich umgesetzt:
 

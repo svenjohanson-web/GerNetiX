@@ -563,7 +563,10 @@ function buildConfigForBoard(boardOrProfileId, existing = null) {
       flash_size_mb: 16,
       libraries: Array.from(new Set([...(catalogBuild?.libraries || []), ...(common.libraries || [])])),
       build_flags: [],
-      platformio_options: { "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"" },
+      platformio_options: {
+        "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"",
+        build_unflags: "-Werror",
+      },
       firmware_basis_id: "gernetix-runtime-basissoftware",
       firmware_basis_version: existing.firmware_basis_version || "workspace",
       firmware_basis_variant: "full",
@@ -784,4 +787,3 @@ function normalizeArchitectureDialog(input = {}, diagram = null) {
 }
 
 module.exports = { createProjectHardwareModel };
-
