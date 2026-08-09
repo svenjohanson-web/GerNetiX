@@ -16,7 +16,7 @@ Freigaben und Audit. Build-Binaries bleiben im getrennten Artifact Store.
 Diese Zielentscheidung loest die bisherige SQL-basierte Git-Light-Architektur
 ab. Fuer den Staging-Kundenbestand ist keine Bestandsmigration erforderlich:
 Die einzigen accountgebundenen Altprojekte gehoerten zum freigegebenen
-Demo-/Testbestand von `Sven02` und werden vollstaendig geloescht. Das vorhandene
+Demo-/Testbestand von `Sven02` und wurden vollstaendig geloescht. Das vorhandene
 SQL-zu-Git-Werkzeug bleibt als technische Rueckfallhilfe erhalten, wird aber
 nicht auf diesen Bestand angewendet.
 
@@ -214,7 +214,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
-| FG-10 | Projektweiser Cutover und Rollback | fuer den Staging-Kundenbestand entfallen | Nullbestand nach freigegebener Demo-Bereinigung |
+| FG-10 | Projektweiser Cutover und Rollback | fuer den Staging-Kundenbestand entfallen und nachgewiesen | Nullbestand nach freigegebener Demo-Bereinigung |
 | FG-11 | SQL-Quelltabellen stilllegen | offen | Negativtests und Schemaaudit |
 | FG-12 | Board-Support-Repositories | offen | Katalog-/Commit-Vertrag |
 | FG-13 | Backup, Restore und Upgrade | Backupvertrag lokal, Restore offen | isolierter Restore-Test |
@@ -548,7 +548,10 @@ Entscheidung vom 9. August 2026:
   Demo-/Testbestand. Sie umfassten 1.133 SQL-Quellen, 113 Build-Jobs,
   385 Artefaktreferenzen und zwei Git-Light-Versionen, aber keine
   Projekttelemetrie, Push-Anmeldungen oder Forgejo-Bindungen.
-- Dieser Bestand wird geloescht statt migriert. System-Templates und der
+- Dieser Bestand wurde geloescht statt migriert. Die Project-Server-Antworten
+  bestaetigten dabei 51 Projekte, 1.125 zum Loeschzeitpunkt vorhandene Quellen,
+  113 Projekt-Builddatensaetze, 385 Projekt-Artefaktreferenzen, vier
+  Lernfortschritte und eine Projekt-App-Einstellung. System-Templates und der
   technische Build-Nachweis sind nicht Teil dieser Accountbereinigung.
 - Das generische FG-09-Werkzeug bleibt im Quellstand, falls spaeter bewusst ein
   externer Altbestand importiert werden soll. Es ist kein offener Schritt fuer
@@ -556,7 +559,8 @@ Entscheidung vom 9. August 2026:
 
 Abnahme fuer den heutigen Bestand:
 
-- `Sven02` besitzt nach der Bereinigung kein Project-Server-Projekt mehr.
+- `Sven02` besitzt nach der Bereinigung nachweislich kein
+  Project-Server-Projekt mehr.
 - Die Projektliste erzeugt beim Lesen keine Katalogprojekte neu.
 - Ein bewusster Projektstart materialisiert weiterhin eine neue Kundenkopie.
 - Loeschen eines bereits Forgejo-gebundenen Projekts archiviert zuerst dessen
