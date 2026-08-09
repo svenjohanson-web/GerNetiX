@@ -122,6 +122,10 @@ class ForgejoProjectRepositoryStore {
     return this.git.readFiles({
       remote_url: trustedCloneUrl(repository.clone_url, this.client.baseUrl),
       commit_sha: reference.commit_sha,
+      // System-owned product repositories contain versioned source assets
+      // (for example PCM8 audio and image files). Customer repositories stay
+      // text-only; binary entries are only materialized into a build package.
+      allow_binary: true,
     });
   }
 

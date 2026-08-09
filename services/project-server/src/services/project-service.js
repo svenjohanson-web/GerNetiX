@@ -1046,7 +1046,7 @@ class ProjectService {
   }
 
   async loadProductSource(sourceId) {
-    if (!sourceId) return { reference: null, sources: [] };
+    if (!sourceId) return { reference: null, sources: [], binary_assets: [] };
     const source = this.systemRepositoryById.get(String(sourceId));
     if (!source || source.kind !== "product") {
       throw new ProjectServerError("protected_product_source_invalid", "Die angeforderte Produktquelle ist nicht freigegeben.", 400);
@@ -1059,7 +1059,29 @@ class ProjectService {
     }
     const reference = protectedSourceReference(source);
     const files = await this.projectRepositoryStore.readProtectedFiles(reference);
-    return { reference, sources: materializeProductSources(files, source.materialization) };
+    const materialized = materializeProductSources(files, source.materialization);
+    return {
+      reference,
+      // Customer repositories deliberately remain text-only. Source assets
+      // stay in the pinned, protected product repository and are added only
+      // to the immutable BuildPackage below.
+      sources: materialized.filter((file) => !file.content_base64),
+      binary_assets: materialized.filter((file) => file.content_base64),
+    };
+  }
+
+  async loadProductBuildAssets(reference) {
+    if (!reference) return [];
+    const source = this.systemRepositoryById.get(String(reference.source_id || ""));
+    if (!source || source.kind !== "product" || !source.commit_sha
+      || !sameProtectedSourceReference(reference, protectedSourceReference(source))) {
+      throw new ProjectServerError("protected_repository_reference_mismatch", "Die Produktquellen-Referenz im Projekt entspricht nicht der serverseitig freigegebenen Version.", 409);
+    }
+    if (!this.projectRepositoryStore?.readProtectedFiles) {
+      throw new ProjectServerError("protected_repository_store_required", "Die geschuetzte Produktquelle kann nur aus Forgejo geladen werden.", 503);
+    }
+    const files = await this.projectRepositoryStore.readProtectedFiles(protectedSourceReference(source));
+    return materializeProductSources(files, source.materialization).filter((file) => file.content_base64);
   }
 
   async loadProtectedBasissoftwareFiles(buildConfig = {}) {
@@ -1219,7 +1241,8 @@ class ProjectService {
     if (job.software_unit_id && softwareUnit?.software_unit_id !== job.software_unit_id) {
       throw new ProjectServerError("build_commit_software_unit_missing", "Die Softwareeinheit des BuildJobs fehlt im gebundenen Commit.", 409);
     }
-    const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
+    const productAssets = await this.loadProductBuildAssets(project.view_manifest?.product_source_reference);
+    const sources = sourcesForSoftwareUnit(mergeSourceSets(productAssets, allSources), softwareUnit, softwareUnits);
     const buildConfig = debugBuildConfig(job.build_config || softwareUnit?.build_config || buildProject.build_config, job.build_profile);
     const contractProblems = firmwareSoftwareUnitProblems(softwareUnit, sources.map((source) => source.path), {
       pathsAreScoped: true,
@@ -1266,9 +1289,9 @@ class ProjectService {
       { path: "platformio.ini", content: platformioIni, content_type: "text/plain" },
       ...firmwareSources.filter((source) => source.path !== "platformio.ini").map((source) => ({
         path: source.path,
-        content: source.content,
+        ...(source.content_base64 ? { content: { base64: source.content_base64 } } : { content: source.content }),
         content_type: source.content_type,
-        sha256: source.content_sha256,
+        sha256: source.content_sha256 || sourceContentSha256(source),
       })),
     ];
     const packageSha256 = buildPackageHash(packageFiles);
@@ -2156,7 +2179,8 @@ function materializeProductSources(files, materialization = {}) {
     const sourcePath = normalizeSourcePath(targetRoot ? `${targetRoot}/${mappedPath}` : mappedPath);
     return {
       path: sourcePath,
-      content: String(file.content || ""),
+      ...(file.content_base64 ? { content_base64: String(file.content_base64) } : { content: String(file.content || "") }),
+      content_sha256: sourceContentSha256(file),
       content_type: file.content_type || contentType(sourcePath),
       role: file.role || inferSourceRole(sourcePath),
     };
@@ -2881,7 +2905,7 @@ function buildPackageHash(files) {
     .map((file) => ({
       path: file.path,
       content_type: file.content_type || "application/octet-stream",
-      sha256: file.sha256 || sha256(String(file.content || "")),
+      sha256: file.sha256 || sha256(file.content?.base64 ? Buffer.from(file.content.base64, "base64") : String(file.content || "")),
     }));
   return sha256(JSON.stringify(manifest));
 }
@@ -3000,6 +3024,12 @@ function required(value, field) {
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function sourceContentSha256(source = {}) {
+  return source.content_sha256 || sha256(source.content_base64
+    ? Buffer.from(String(source.content_base64), "base64")
+    : String(source.content || ""));
 }
 
 function createId(prefix) {

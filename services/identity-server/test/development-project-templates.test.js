@@ -96,7 +96,7 @@ test("provides a sensor-actuator control template as one logical effect chain", 
   assert.equal(templateBuildConfig(template), null);
 });
 
-test("provides the complete ES3C28P touchscreen example as versioned template sources", () => {
+test("binds the ES3C28P touchscreen template to its versioned Forgejo product source", () => {
   const template = developmentProjectTemplate("touchscreen_game_collection");
   const source = templateArchitecturePlantUml(template, template.title);
   const files = templateFirmwareSources(template, "Meine Spiele");
@@ -105,38 +105,15 @@ test("provides the complete ES3C28P touchscreen example as versioned template so
   assert.match(source, /rectangle "Board mit Touchdisplay" as device/);
   assert.doesNotMatch(source, /Startbildschirm|Spielauswahl|Game Loop|Beispielspiele|Nibbles|-->/);
   assert.equal(templateHardwareProfileId(template), "hardware.processor_board.esp32_s3_es3c28p");
-  assert.equal(template.schemaVersion, 3);
+  assert.equal(template.schemaVersion, 4);
+  assert.equal(template.realization.systemSourceId, "gernetix-product-game-collection-esp32");
   assert.equal(templateBuildConfig(template).board, "4d_systems_esp32s3_gen4_r8n16");
   assert.equal(templateBuildConfig(template).framework, "espidf");
   assert.equal(templateBuildConfig(template).flash_size_mb, 16);
   assert.equal(templateBuildConfig(template).firmware_basis_id, "gernetix-runtime-basissoftware");
   assert.equal(templateBuildConfig(template).firmware_basis_variant, "full");
   assert.equal(templateBuildConfig(template).basissoftware_configuration.communication.ota_available, true);
-  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini"), false);
-  const boardAdapter = files.find((file) => file.path === "Komponenten/IoT-Device 1/src/board_adapter.cpp").content;
-  const soundDriver = files.find((file) => file.path === "Komponenten/IoT-Device 1/src/sound_driver.cpp").content;
-  assert.match(boardAdapter, /Es3c28pDisplay/);
-  assert.match(boardAdapter, /i2c_master_write_read_device/);
-  assert.match(soundDriver, /i2c_master_write_to_device/);
-  assert.doesNotMatch(`${boardAdapter}\n${soundDriver}`, /#include <Arduino\.h>|#include <Wire\.h>/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /void userMain\(\)/);
-  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/include/board_adapter.h"), true);
-  for (const game of ["nibbles", "frogger", "arkanoid", "space_invaders"]) {
-    assert.equal(files.some((file) => file.path === `Komponenten/IoT-Device 1/src/${game}.cpp`), true);
-  }
-
-  const composed = composeEsp32BasissoftwarePackage({
-    basisFiles: loadEsp32BasissoftwareFiles(),
-    projectSources: files.map((file) => ({ ...file, path: file.path.replace("Komponenten/IoT-Device 1/", "") })),
-    buildConfig: { ...templateBuildConfig(template), user_source_path: "src/user_main.cpp" },
-  });
-  assert.equal(composed.some((file) => file.path === "src/main.cpp"), true);
-  assert.equal(composed.some((file) => file.path === "src/functions/mqtt_ota.cpp"), true);
-  assert.equal(composed.some((file) => file.path === "src/user_project/game_application.cpp"), true);
-  assert.equal(composed.some((file) => file.path === "include/user_project/game_application.h"), true);
-  assert.match(composed.find((file) => file.path === "platformio.ini").content, /partitions_full_16mb\.csv/);
-  assert.match(composed.find((file) => file.path === "platformio.ini").content, /LovyanGFX/);
-  assert.match(composed.find((file) => file.path === "include/gernetix_basissoftware_configuration.h").content, /GERNETIX_COMMUNICATION_OTA_AVAILABLE 1/);
+  assert.deepEqual(files, []);
 });
 
 test("provides a two-target camera-to-display template with isolated build roots", () => {

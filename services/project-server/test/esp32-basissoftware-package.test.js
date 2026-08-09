@@ -98,6 +98,24 @@ test("packages the complete modular Nexi customer firmware behind the protected 
   assert.equal(files.some((file) => file.path.startsWith("Komponenten/")), false);
 });
 
+test("packages a source manifest and binary product assets without turning them into text", () => {
+  const audio = Buffer.from([0, 1, 2, 255]);
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [
+      { path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n' },
+      { path: "Komponenten/IoT-Device 1/sources.cmake", content: 'set(GERNETIX_PROJECT_SOURCES "${CMAKE_CURRENT_LIST_DIR}/voice_lab.cpp")\nset(GERNETIX_PROJECT_EMBED_FILES "${CMAKE_CURRENT_LIST_DIR}/assets/story.pcm8")\n' },
+      { path: "Komponenten/IoT-Device 1/assets/story.pcm8", content_base64: audio.toString("base64"), content_type: "application/octet-stream" },
+    ],
+    buildConfig: { user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp" },
+  });
+
+  assert.equal(files.some((file) => file.path === "src/user/user_app.cpp"), false);
+  assert.equal(files.find((file) => file.path === "src/user_project/voice_lab.cpp").content.includes("userMain"), true);
+  assert.equal(files.find((file) => file.path === "src/user_project/assets/story.pcm8").content_base64, audio.toString("base64"));
+  assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /GERNETIX_PROJECT_SOURCE_DIR "\$\{CMAKE_CURRENT_SOURCE_DIR\}\/user_project"/);
+});
+
 function loadNexiProductTestSources() {
   const productRoot = path.resolve(__dirname, "../../../projects/waveshare-voice-lab");
   const componentRoot = "Komponenten/IoT-Device 1";

@@ -135,6 +135,7 @@ test("copies a protected product commit into the customer repository and fixes i
         return [
           { path: "voice_lab.cpp", content: "// Nexi entry\n" },
           { path: "include/nexi/application.h", content: "// Nexi API\n" },
+          { path: "assets/story.pcm8", content_base64: Buffer.from([0, 1, 255]).toString("base64"), binary: true },
           { path: "gernetix/system-repository.json", content: "{}\n" },
         ];
       },
@@ -161,7 +162,46 @@ test("copies a protected product commit into the customer repository and fixes i
   assert.ok(provisionInput.changes.some((item) => item.path === "Komponenten/IoT-Device 1/src/user_main.cpp"));
   assert.ok(provisionInput.changes.some((item) => item.path === "Komponenten/IoT-Device 1/include/nexi/application.h"));
   assert.ok(provisionInput.changes.some((item) => item.path === "docs/meine-nexi.md"));
+  assert.equal(provisionInput.changes.some((item) => item.path.endsWith("story.pcm8")), false);
   assert.equal(provisionInput.changes.some((item) => item.path.endsWith("gernetix/system-repository.json")), false);
+});
+
+test("adds protected binary product assets to the immutable build package", async () => {
+  const approvedCommit = "d".repeat(40);
+  const repository = new InMemoryProjectRepository();
+  const audio = Buffer.from([0, 1, 2, 255]);
+  const productFiles = [
+    { path: "src/user_main.cpp", content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n' },
+    { path: "assets/story.pcm8", content_base64: audio.toString("base64"), binary: true },
+  ];
+  const service = new ProjectService({
+    repository,
+    systemRepositories: [{
+      source_id: "product-audio", title: "Produkt mit Audio", kind: "product", provider: "forgejo",
+      organization: "gernetix-products", repository_name: "product-audio", default_branch: "main",
+      commit_sha: approvedCommit, protected: true,
+      materialization: { target_root: "Komponenten/IoT-Device 1", path_mappings: {}, excluded_paths: [] },
+    }],
+    projectRepositoryStore: {
+      readProtectedFiles: async () => productFiles,
+      provisionProject: async () => ({
+        provider: "forgejo", organization: "gernetix-projects", repository_name: "project-audio",
+        repository_id: "789", clone_url: "http://forgejo:3000/gernetix-projects/project-audio.git",
+        default_branch: "main", head_sha: "a".repeat(40), state: "active",
+      }),
+    },
+  });
+  const created = await service.createProject({
+    project_id: "project-audio", user_id: "account-audio", title: "Audio Build",
+    system_source_id: "product-audio",
+    build_config: { platform: "espressif32", framework: "arduino", board: "esp32dev", environment: "esp32dev", user_source_path: "src/user_main.cpp" },
+  });
+  await repository.saveProject({ ...(await repository.findProject(created.project_id)), repository_binding: null });
+
+  const job = await service.createBuildJob(created.project_id);
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
+  assert.deepEqual(buildPackage.files.find((file) => file.path === "assets/story.pcm8").content, { base64: audio.toString("base64") });
+  assert.equal(buildPackage.files.find((file) => file.path === "assets/story.pcm8").sha256, require("node:crypto").createHash("sha256").update(audio).digest("hex"));
 });
 
 test("migrates legacy SQL project sources into a private Forgejo repository", async () => {

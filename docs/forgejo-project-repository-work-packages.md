@@ -446,10 +446,15 @@ systemverwalteten Forgejo-Repositories. Die Basissoftware bleibt ausserhalb des
 schreibbaren Kunden-Repositories und wird beim Build ueber ihren festen Commit
 eingebunden. Eine Produktquelle wie Nexi wird dagegen an ihrem freigegebenen
 Commit gelesen und als bearbeitbare Ausgangskopie in den Initial-Commit des
-privaten Kundenprojekts uebernommen. Das Projekt behaelt zusaetzlich die
-serverseitig fixierte Herkunftsreferenz. Kunden duerfen diese Kopie und ihre
-Projektkonfiguration bearbeiten, aber weder die geschuetzte Basissoftware noch
-die vom Build verwendete Core- oder Produkt-Herkunftsreferenz ersetzen.
+privaten Kundenprojekts uebernommen. Versionierte binaere Produkt-Assets wie
+PCM8-Audio, JPEG oder PNG bleiben ebenfalls in diesem geschuetzten
+Produkt-Repository: Der Project Server liest sie aus genau dem fixierten Commit
+und fuegt sie bytegenau nur dem kurzlebigen BuildPackage hinzu. Sie sind weder
+Build-Artefakte noch Text-Quellen im Kundenrepository. Das Projekt behaelt
+zusaetzlich die serverseitig fixierte Herkunftsreferenz. Kunden duerfen die
+textuelle Produktkopie und ihre Projektkonfiguration bearbeiten, aber weder die
+geschuetzte Basissoftware noch die vom Build verwendete Core- oder
+Produkt-Herkunftsreferenz ersetzen.
 
 Kompilierte Firmware, ELF, Map und groessere Buildlogs werden nicht in Forgejo
 geschrieben. Sie liegen im Artifact Store und referenzieren den exakten

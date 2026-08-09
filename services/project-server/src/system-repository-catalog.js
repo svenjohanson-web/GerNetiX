@@ -12,8 +12,15 @@ function createSystemRepositoryCatalog(env = process.env) {
       excluded_paths: ["gernetix/system-repository.json"],
     }),
     systemRepository("gernetix-product-flashbox", "FlashBox", "product", "gernetix-products", "flashbox", env.FORGEJO_FLASHBOX_COMMIT),
-    systemRepository("gernetix-product-game-collection-esp8266", "Spielesammlung ESP8266 OLED", "product", "gernetix-products", "spielesammlung-esp8266-oled", env.FORGEJO_ESP8266_GAME_COLLECTION_COMMIT),
-    systemRepository("gernetix-product-game-collection-esp32", "Spielesammlung ESP32-S3 Touch", "product", "gernetix-products", "spielesammlung-esp32-s3-touch", env.FORGEJO_ESP32_GAME_COLLECTION_COMMIT),
+    systemRepository("gernetix-product-game-collection-esp8266", "Spielesammlung ESP8266 OLED", "product", "gernetix-products", "spielesammlung-esp8266-oled", env.FORGEJO_ESP8266_GAME_COLLECTION_COMMIT, {
+      target_root: "Komponenten/IoT-Device 1",
+      excluded_paths: ["gernetix/system-repository.json", "platformio.ini"],
+    }),
+    systemRepository("gernetix-product-game-collection-esp32", "Spielesammlung ESP32-S3 Touch", "product", "gernetix-products", "spielesammlung-esp32-s3-touch", env.FORGEJO_ESP32_GAME_COLLECTION_COMMIT, {
+      target_root: "Komponenten/IoT-Device 1",
+      path_mappings: { "src/main.cpp": "src/user_main.cpp" },
+      excluded_paths: ["gernetix/system-repository.json", "platformio.ini"],
+    }),
   ];
   const configured = parseConfiguredRepositories(env.PROJECT_SYSTEM_REPOSITORIES_JSON);
   const byId = new Map(defaults.map((item) => [item.source_id, item]));

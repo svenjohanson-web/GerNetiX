@@ -1,10 +1,11 @@
-const fs = require("node:fs");
-const path = require("node:path");
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
 
 function templateFirmwareSources(template, title) {
   if (template?.id === "esp32_camera_to_touch_display") return cameraToTouchDisplaySources(template);
-  if (template.id === "touchscreen_game_collection") return touchscreenDemoSources();
+  // Product templates are materialized by Project Server from their pinned
+  // Forgejo source. Keeping a second local copy here would make the demo
+  // directory an accidental source of truth again.
+  if (template?.realization?.systemSourceId) return [];
   if (template.id === "ai_board_playground") return boardPlaygroundSources(title);
   if (!template?.realization?.buildConfig) return [];
   return [{
@@ -648,39 +649,6 @@ function cameraDisplayReadme() {
     "MQTT ist fuer diesen Datenweg deaktiviert. Im voreingestellten Geräte-AP-Modus nutzt der Client die konfigurierte AP-IP; im Haus-WLAN wird der Kamera-Host per lokalem mDNS-Namen gefunden.",
     "",
     "> Der HTTP-Bildstrom ist ein lokaler Entwicklungs-Durchstich ohne Benutzeranmeldung und darf nicht per Portweiterleitung oder öffentlichem Reverse Proxy ins Internet gestellt werden.",
-    "",
-  ].join("\n");
-}
-
-function touchscreenDemoSources() {
-  const root = path.resolve(__dirname, "../../../../Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung/firmware");
-  const files = fs.readdirSync(path.join(root, "src")).sort().map((name) => `src/${name}`);
-  return files.map((relativePath) => ({
-    path: `Komponenten/IoT-Device 1/${relativePath === "src/main.cpp" ? "src/user_main.cpp" : relativePath.endsWith(".h") ? relativePath.replace(/^src\//, "include/") : relativePath}`,
-    role: "user_code",
-    content_type: relativePath.endsWith(".h") ? "text/x-c++hdr" : "text/x-c++src",
-    content: relativePath === "src/main.cpp"
-      ? touchscreenBasisEntrypoint()
-      : fs.readFileSync(path.join(root, relativePath), "utf8"),
-  }));
-}
-
-function touchscreenBasisEntrypoint() {
-  return [
-    '#include "user/user_app.h"',
-    '#include "user_project/game_application.h"',
-    "",
-    "namespace {",
-    "GameApplication application;",
-    "}",
-    "",
-    'extern "C" void userMain() {',
-    "  application.begin();",
-    "}",
-    "",
-    'extern "C" void userTick() {',
-    "  application.tick();",
-    "}",
     "",
   ].join("\n");
 }

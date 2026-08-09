@@ -13,5 +13,5 @@ test("plans all protected Basissoftware and product repositories without network
     "basissoftware-esp32", "basissoftware-esp8266", "nexi", "flashbox", "spielesammlung-esp8266-oled", "spielesammlung-esp32-s3-touch",
   ]);
   assert.ok(plan.repositories.every((item) => item.file_count > 1));
-  assert.equal(plan.repositories.find((item) => item.repository_name === "spielesammlung-esp8266-oled").source_root, "Demoanwendungen/Boards/hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung");
+  assert.equal(plan.repositories.find((item) => item.repository_name === "spielesammlung-esp8266-oled").source_root, "Demoanwendungen/Boards/hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung/firmware");
 });

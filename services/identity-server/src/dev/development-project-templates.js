@@ -65,6 +65,7 @@ function templateSoftwareUnits(template) {
 function assertDevelopmentProjectTemplateContract(template) {
   const units = templateSoftwareUnits(template);
   if (!units.length) return;
+  if (template?.realization?.systemSourceId) return;
   const sourcePaths = templateFirmwareSources(template, template.title).map((source) => source.path);
   for (const unit of units) {
     const problems = firmwareSoftwareUnitProblems(unit, sourcePaths, { requireEntrypointSource: true });

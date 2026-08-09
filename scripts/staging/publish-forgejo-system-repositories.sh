@@ -64,5 +64,7 @@ printf '%s\n' "$assignments" | while IFS='=' read -r key value; do
   upsert_env "$key" "$value"
   count=$((count + 1))
 done
+upsert_env PROJECT_REPOSITORY_STORE forgejo
+upsert_env PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS true
 compose up -d --no-deps --force-recreate --wait --wait-timeout 90 project-server >/dev/null
-printf 'Forgejo-Systemquellen veroeffentlicht und %s Commit-Referenzen aktiviert.\n' "$(printf '%s\n' "$assignments" | grep -c .)"
+printf 'Forgejo-Systemquellen veroeffentlicht, %s Commit-Referenzen und die Forgejo-Bindung fuer neue Projekte aktiviert.\n' "$(printf '%s\n' "$assignments" | grep -c .)"

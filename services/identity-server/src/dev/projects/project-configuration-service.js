@@ -135,6 +135,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   }
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = template.id === "empty" ? "" : templateArchitecturePlantUml(template, title);
+  const systemSourceId = String(template.realization?.systemSourceId || "");
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
     .concat(templateFirmwareSources(template, title));
   const templateVariant = selectedPlaygroundBoard
@@ -149,7 +150,8 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         project_id: templateProjectId, user_id: "system", title: template.title, description: template.description,
         learning_project_id: "system_template", hardware_profile_id: templateHardwareProfileId(template), build_config: buildConfig,
         ...(softwareUnits.length ? { software_units: softwareUnits, active_software_unit_id: softwareUnits[0].software_unit_id } : {}),
-        status: "template", view_manifest: { template_id: template.id, template_ref: { version: template.schemaVersion } }, sources,
+        status: "template", view_manifest: { template_id: template.id, template_ref: { version: template.schemaVersion } },
+        ...(systemSourceId ? { system_source_id: systemSourceId } : {}), sources,
       },
     });
   }

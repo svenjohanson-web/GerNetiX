@@ -56,12 +56,6 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     content: renderPlatformioIni(effectiveBuildConfig),
     content_type: "text/plain",
   });
-  byPath.set(userTargetPath, {
-    path: userTargetPath,
-    content: userSource.content,
-    content_type: userSource.content_type || "text/x-c++src",
-    source_project_path: userSourcePath,
-  });
   const sourceSegmentIndex = userSourcePath.lastIndexOf("/src/");
   const componentRoot = sourceSegmentIndex >= 0
     ? userSourcePath.slice(0, sourceSegmentIndex)
@@ -69,6 +63,18 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
   const componentPrefix = componentRoot ? `${componentRoot}/` : "";
   const implementationRoot = `${componentPrefix}src/`;
   const includeRoot = `${componentPrefix}include/`;
+  const usesSourceManifest = projectSources.some((source) => source.path === `${componentPrefix}sources.cmake`);
+  if (usesSourceManifest) {
+    packageProjectSourceTree(byPath, projectSources, componentPrefix, userSourcePath);
+    configureExternalProjectSourceTree(byPath);
+    return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
+  }
+  byPath.set(userTargetPath, {
+    path: userTargetPath,
+    content: userSource.content,
+    content_type: userSource.content_type || "text/x-c++src",
+    source_project_path: userSourcePath,
+  });
   for (const projectSource of projectSources) {
     if (projectSource.path === userSourcePath) continue;
     const isImplementationFile = projectSource.path.startsWith(implementationRoot);
@@ -106,6 +112,43 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     });
   }
   return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function packageProjectSourceTree(byPath, projectSources, componentPrefix, userSourcePath) {
+  for (const projectSource of projectSources) {
+    if (!projectSource.path.startsWith(componentPrefix)) continue;
+    const relative = projectSource.path.slice(componentPrefix.length);
+    if (!relative || relative.includes("..")) continue;
+    const targetPath = `src/user_project/${relative}`;
+    byPath.set(targetPath, {
+      path: targetPath,
+      ...(projectSource.content_base64 ? { content_base64: projectSource.content_base64 } : { content: projectSource.content }),
+      content_type: projectSource.content_type || "text/plain",
+      source_project_path: projectSource.path,
+    });
+  }
+  // Nexi's historical source manifest names its entry `voice_lab.cpp`; the
+  // customer layout intentionally exposes it as `src/user_main.cpp`.
+  const userSource = projectSources.find((source) => source.path === userSourcePath);
+  if (userSource && !byPath.has("src/user_project/voice_lab.cpp")) {
+    byPath.set("src/user_project/voice_lab.cpp", {
+      path: "src/user_project/voice_lab.cpp",
+      ...(userSource.content_base64 ? { content_base64: userSource.content_base64 } : { content: userSource.content }),
+      content_type: userSource.content_type || "text/x-c++src",
+      source_project_path: userSource.path,
+    });
+  }
+}
+
+function configureExternalProjectSourceTree(byPath) {
+  const cmake = byPath.get("src/CMakeLists.txt");
+  if (!cmake) return;
+  const marker = 'set(GERNETIX_PROJECT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/user_project")';
+  if (String(cmake.content || "").includes(marker)) return;
+  byPath.set("src/CMakeLists.txt", {
+    ...cmake,
+    content: String(cmake.content || "").replace("idf_component_register(", `${marker}\n\nidf_component_register(`),
+  });
 }
 
 function applyBoardConfiguration(byPath, configuration) {

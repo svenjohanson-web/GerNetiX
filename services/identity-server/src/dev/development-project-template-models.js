@@ -80,7 +80,7 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
   }),
   touchscreen_game_collection: templateModel({
     id: "touchscreen_game_collection",
-    schemaVersion: 3,
+    schemaVersion: 4,
     title: "Touchscreen-Spielesammlung",
     description: "Ein Nutzer bedient eine Spielesammlung auf einem Board mit Touchdisplay.",
     hint: "Die statische Architektur zeigt nur Nutzer und Board; Spielablauf und Spiele gehoeren in Verhalten und Code.",
@@ -92,6 +92,7 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
       relations: [],
     },
     realization: {
+      systemSourceId: "gernetix-product-game-collection-esp32",
       hardwareProfileId: "hardware.processor_board.esp32_s3_es3c28p",
       softwareUnits: [{
         software_unit_id: "touchscreen_games",
