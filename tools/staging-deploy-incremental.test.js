@@ -101,6 +101,7 @@ test("provisions missing staging secrets without replacing existing values", () 
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex/);
   assert.match(remoteDeploy, /ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex/);
   assert.match(remoteDeploy, /ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64/);
+  assert.match(remoteDeploy, /ensure_staging_secret PROJECT_ADMIN_READ_TOKEN hex/);
   assert.match(remoteDeploy, /ensure_staging_secret FORGEJO_POSTGRES_PASSWORD hex/);
   assert.match(remoteDeploy, /ensure_staging_secret FORGEJO_SECRET_KEY hex/);
   assert.match(remoteDeploy, /ensure_staging_secret FORGEJO_INTERNAL_TOKEN hex/);
