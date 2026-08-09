@@ -24,7 +24,7 @@ class GitProjectRepositoryStore {
   async initialize(input = {}) {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const branch = validateBranch(input.branch || "main");
-    const changes = normalizeChanges(input.changes, { allowEmpty: false });
+    const changes = normalizeChanges(input.changes, { allowEmpty: false, allowBinary: input.allow_binary === true });
     return this.withWorkspace(async (workspace) => {
       await this.git(["init", "--initial-branch", branch], workspace);
       await this.configureIdentity(workspace);
@@ -46,7 +46,7 @@ class GitProjectRepositoryStore {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const branch = validateBranch(input.branch || "main");
     const expectedHeadSha = validateSha(input.expected_head_sha, "expected_head_sha");
-    const changes = normalizeChanges(input.changes, { allowEmpty: false });
+    const changes = normalizeChanges(input.changes, { allowEmpty: false, allowBinary: input.allow_binary === true });
     return this.withWorkspace(async (workspace) => {
       await this.git(["init"], workspace);
       await this.configureIdentity(workspace);
@@ -117,7 +117,7 @@ class GitProjectRepositoryStore {
     const commitSha = validateSha(input.commit_sha, "commit_sha");
     const branch = input.branch ? validateBranch(input.branch) : "";
     return this.withFetchedCommit(remoteUrl, commitSha, async (workspace) => {
-      return this.readTreeEntries(workspace, await this.treeEntries(workspace, commitSha));
+      return this.readTreeEntries(workspace, await this.treeEntries(workspace, commitSha), input.allow_binary === true);
     }, branch);
   }
 
@@ -205,11 +205,14 @@ class GitProjectRepositoryStore {
     return entries;
   }
 
-  async readTreeEntry(workspace, entry) {
+  async readTreeEntry(workspace, entry, allowBinary = false) {
     this.assertReadableTreeEntry(entry);
     const result = await this.git(["cat-file", "blob", entry.blob_sha], workspace, { binaryOutput: true, maxOutputBytes: MAX_FILE_BYTES + 1 });
-    const content = decodeUtf8Text(result.stdout, entry.path);
-    return { ...entry, content };
+    try { return { ...entry, content: decodeUtf8Text(result.stdout, entry.path) }; }
+    catch (error) {
+      if (!allowBinary || !["repository_binary_forbidden", "repository_encoding_invalid"].includes(error.code)) throw error;
+      return { ...entry, content_base64: Buffer.from(result.stdout).toString("base64"), binary: true };
+    }
   }
 
   assertReadableTreeEntry(entry) {
@@ -218,13 +221,13 @@ class GitProjectRepositoryStore {
     if (entry.size_bytes > MAX_FILE_BYTES) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413, { path: entry.path });
   }
 
-  async readTreeEntries(workspace, entries) {
+  async readTreeEntries(workspace, entries, allowBinary = false) {
     let totalBytes = 0;
     const files = [];
     for (const entry of entries) {
       totalBytes += entry.size_bytes;
       if (totalBytes > MAX_READ_BYTES) throw new ProjectServerError("repository_read_too_large", "Der gelesene Projektstand überschreitet 5 MiB Text.", 413);
-      files.push(await this.readTreeEntry(workspace, entry));
+      files.push(await this.readTreeEntry(workspace, entry, allowBinary));
     }
     return files;
   }
@@ -345,7 +348,7 @@ async function applyChanges(workspace, changes) {
       continue;
     }
     await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-    await fs.writeFile(absolutePath, change.content, "utf8");
+    await fs.writeFile(absolutePath, change.content_base64 ? Buffer.from(change.content_base64, "base64") : change.content, change.content_base64 ? undefined : "utf8");
   }
 }
 
@@ -379,13 +382,18 @@ function normalizeChanges(input, options = {}) {
     const repositoryPath = normalizeRepositoryPath(raw?.path);
     if (paths.has(repositoryPath)) throw new ProjectServerError("duplicate_repository_path", "Ein Pfad darf pro Commit nur einmal vorkommen.");
     paths.add(repositoryPath);
-    const content = operation === "upsert" ? String(raw?.content ?? "") : "";
+    const binary = operation === "upsert" && raw?.content_base64 !== undefined;
+    if (binary && !options.allowBinary) throw new ProjectServerError("repository_binary_forbidden", "Binary content is not permitted.", 415, { path: repositoryPath });
+    const contentBase64 = binary ? String(raw.content_base64) : "";
+    const binaryContent = binary ? Buffer.from(contentBase64, "base64") : null;
+    if (binary && binaryContent.toString("base64") !== contentBase64) throw new ProjectServerError("repository_binary_invalid", "Binary content must use canonical base64.", 415, { path: repositoryPath });
+    const content = operation === "upsert" && !binary ? String(raw?.content ?? "") : "";
     if (content.includes("\0")) throw new ProjectServerError("repository_binary_forbidden", "Binärdateien sind im Projektquellen-Repository nicht zulässig.", 415, { path: repositoryPath });
-    const bytes = Buffer.byteLength(content);
+    const bytes = binary ? binaryContent.length : Buffer.byteLength(content);
     if (bytes > 1024 * 1024) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413);
     totalBytes += bytes;
     if (totalBytes > 5 * 1024 * 1024) throw new ProjectServerError("repository_commit_too_large", "Ein Projektcommit darf höchstens 5 MiB Text enthalten.", 413);
-    return { operation, path: repositoryPath, content };
+    return { operation, path: repositoryPath, content, ...(binary ? { content_base64: contentBase64 } : {}) };
   });
 }
 

@@ -48,7 +48,7 @@ async function publishOne(client, git, item) {
     return publishedResult(item, commit.head_sha, "created", changes.length);
   }
   const head = await git.head({ remote_url: remoteUrl, branch: "main" });
-  const existing = await git.readFiles({ remote_url: remoteUrl, commit_sha: head.head_sha, branch: "main" });
+  const existing = await git.readFiles({ remote_url: remoteUrl, commit_sha: head.head_sha, branch: "main", allow_binary: true });
   const pendingChanges = treeChanges(existing, changes);
   if (pendingChanges.length === 0) return publishedResult(item, head.head_sha, "unchanged", changes.length);
   const commit = await commitInBatches(git, remoteUrl, item.title, head.head_sha, pendingChanges, "Systemquelle abgeglichen");
@@ -61,7 +61,7 @@ async function initializeInBatches(git, remoteUrl, title, changes) {
     remote_url: remoteUrl,
     branch: "main",
     message: batchMessage("Initialer Import", title, 1, batches.length),
-    changes: batches[0],
+    changes: batches[0], allow_binary: true,
   });
   for (let index = 1; index < batches.length; index += 1) {
     commit = await git.commit({
@@ -69,7 +69,7 @@ async function initializeInBatches(git, remoteUrl, title, changes) {
       branch: "main",
       expected_head_sha: commit.head_sha,
       message: batchMessage("Initialer Import", title, index + 1, batches.length),
-      changes: batches[index],
+      changes: batches[index], allow_binary: true,
     });
   }
   return commit;
@@ -85,7 +85,7 @@ async function commitInBatches(git, remoteUrl, title, headSha, changes, prefix) 
       branch: "main",
       expected_head_sha: currentHead,
       message: batchMessage(prefix, title, index + 1, batches.length),
-      changes: batches[index],
+      changes: batches[index], allow_binary: true,
     });
     currentHead = commit.head_sha;
   }
@@ -111,27 +111,21 @@ function sourceFiles(item) {
     const filePath = path.resolve(workspaceRoot, relativeWorkspacePath);
     const stat = fs.statSync(filePath);
     if (stat.size > 1024 * 1024) throw new Error(`system_repository_file_too_large:${relativePath}`);
-    const content = fs.readFileSync(filePath, "utf8");
-    if (content.includes("\0")) {
-      if (isReproducibleBinaryAsset(relativePath)) return null;
-      throw new Error(`system_repository_binary_forbidden:${relativePath}`);
-    }
+    const buffer = fs.readFileSync(filePath);
+    const content = buffer.toString("utf8");
+    const binary = content.includes("\0") || Buffer.from(content, "utf8").compare(buffer) !== 0;
     return {
       operation: "upsert",
       path: relativePath.slice(prefix.length),
-      content,
+      ...(binary ? { content_base64: buffer.toString("base64") } : { content }),
     };
-  }).filter(Boolean);
+  });
   result.push({
     operation: "upsert",
     path: "gernetix/system-repository.json",
     content: `${JSON.stringify({ schema_version: 1, source_id: item.source_id, title: item.title, kind: item.kind, protected: true }, null, 2)}\n`,
   });
   return result.sort((left, right) => left.path.localeCompare(right.path));
-}
-
-function isReproducibleBinaryAsset(relativePath) {
-  return relativePath.startsWith("projects/waveshare-voice-lab/assets/stories/audio/") && relativePath.endsWith(".pcm8");
 }
 
 function listSourceFiles(directory, relativeRoot) {
@@ -147,13 +141,17 @@ function listSourceFiles(directory, relativeRoot) {
 }
 
 function treeChanges(existing, changes) {
-  const current = new Map((existing || []).map((item) => [item.path, item.content]));
-  const desired = new Map(changes.map((item) => [item.path, item.content]));
-  const pending = changes.filter((item) => current.get(item.path) !== item.content);
+  const current = new Map((existing || []).map((item) => [item.path, contentSignature(item)]));
+  const desired = new Map(changes.map((item) => [item.path, contentSignature(item)]));
+  const pending = changes.filter((item) => current.get(item.path) !== contentSignature(item));
   for (const path of current.keys()) {
     if (!desired.has(path)) pending.push({ operation: "delete", path });
   }
   return pending.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function contentSignature(item) {
+  return item.content_base64 === undefined ? `text:${item.content}` : `binary:${item.content_base64}`;
 }
 
 function publishedResult(item, commitSha, state, fileCount) {
