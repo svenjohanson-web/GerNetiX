@@ -2,7 +2,6 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { execFileSync } = require("node:child_process");
 const { ForgejoClient } = require("../services/project-server/src/repository-store/forgejo-client");
 const { GitProjectRepositoryStore } = require("../services/project-server/src/repository-store/git-project-repository-store");
 
@@ -63,9 +62,7 @@ async function publishOne(client, git, item) {
 
 function sourceFiles(item) {
   const prefix = `${item.source_root.replace(/\\/g, "/").replace(/\/$/, "")}/`;
-  const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "--", item.source_root], {
-    cwd: workspaceRoot, encoding: "utf8", maxBuffer: 4 * 1024 * 1024,
-  }).split(/\r?\n/).filter(Boolean).filter((relativeWorkspacePath) => fs.existsSync(path.resolve(workspaceRoot, relativeWorkspacePath)));
+  const files = listSourceFiles(path.resolve(workspaceRoot, item.source_root), item.source_root);
   const result = files.map((relativeWorkspacePath) => {
     const relativePath = relativeWorkspacePath.replace(/\\/g, "/");
     if (!relativePath.startsWith(prefix)) throw new Error(`system_repository_source_outside_root:${relativePath}`);
@@ -84,6 +81,18 @@ function sourceFiles(item) {
     content: `${JSON.stringify({ schema_version: 1, source_id: item.source_id, title: item.title, kind: item.kind, protected: true }, null, 2)}\n`,
   });
   return result.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function listSourceFiles(directory, relativeRoot) {
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name === ".git" || entry.name === ".pio" || entry.name === "node_modules") continue;
+    const relativePath = path.posix.join(relativeRoot.replace(/\\/g, "/"), entry.name);
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...listSourceFiles(absolutePath, relativePath));
+    else if (entry.isFile()) files.push(relativePath);
+  }
+  return files;
 }
 
 function treeChanges(existing, changes) {
