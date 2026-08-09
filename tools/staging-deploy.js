@@ -26,13 +26,14 @@ function parseEnvFile(content) {
 }
 
 function parseArgs(argv) {
-  const result = { dryRun: false, plan: false, publicDemo: false, publishNexi: false, migrateArtifacts: false };
+  const result = { dryRun: false, plan: false, publicDemo: false, publishNexi: false, publishSystemRepositories: false, migrateArtifacts: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
     else if (argument === "--plan") result.plan = true;
     else if (argument === "--public-demo") result.publicDemo = true;
     else if (argument === "--publish-nexi") result.publishNexi = true;
+    else if (argument === "--publish-system-repositories") result.publishSystemRepositories = true;
     else if (argument === "--migrate-artifacts") result.migrateArtifacts = true;
     else if (["--host", "--remote-dir", "--branch"].includes(argument)) {
       const value = argv[index + 1];
@@ -167,7 +168,7 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, publishNexi = false, migrateArtifacts = false }) {
+function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, publishNexi = false, publishSystemRepositories = false, migrateArtifacts = false }) {
   const commands = [
     `cd ${shellQuote(remoteDir)}`,
     "if [ -n \"$(git status --porcelain --untracked-files=no)\" ]; then echo 'Die VPS-Arbeitskopie enthaelt lokale Aenderungen.' >&2; exit 1; fi",
@@ -182,6 +183,9 @@ function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, pu
   );
   if (publishNexi) commands.push(
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T -e NEXI_RELEASE_VERSION=${shellQuote(`0.1.0-${commit.slice(0, 12)}`)} -e NEXI_SOURCE_COMMIT=${shellQuote(commit)} public-demo-server sh -lc ${shellQuote("/opt/platformio/bin/platformio run --project-dir /app/basissoftware/esp32 -e waveshare-esp32-s3-audio-voice-lab && node /app/tools/publish-nexi-release.js")}`,
+  );
+  if (publishSystemRepositories) commands.push(
+    `docker compose --env-file .env.vps -f compose.vps.yaml exec -T project-server node /app/tools/publish-forgejo-system-repositories.js --apply`,
   );
   const lockedCommand = commands.join(" && ");
   return [
@@ -245,7 +249,7 @@ function main() {
   const upstream = run("git", ["rev-parse", "@{upstream}"], { capture: true, quiet: true });
   if (commit !== upstream) throw new Error("Der aktuelle Commit ist noch nicht zum Upstream-Branch gepusht.");
 
-  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, publishNexi: args.publishNexi, migrateArtifacts: args.migrateArtifacts });
+  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, publishNexi: args.publishNexi, publishSystemRepositories: args.publishSystemRepositories, migrateArtifacts: args.migrateArtifacts });
   process.stdout.write(`Staging-Deploy: ${branch} @ ${commit.slice(0, 12)} -> ${host}:${remoteDir}\n`);
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${host} ${command}\n`);

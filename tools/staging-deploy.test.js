@@ -27,6 +27,7 @@ test("parses deploy arguments", () => {
     plan: false,
     publicDemo: false,
     publishNexi: false,
+    publishSystemRepositories: false,
     migrateArtifacts: false,
     host: "deploy@example.test",
     branch: "agent/test",
@@ -142,4 +143,9 @@ test("quotes remote values and deploys an exact commit", () => {
   assert.match(command, /git switch --detach .*0123456789abcdef/);
   assert.match(command, /remote-deploy\.sh "\$previous_commit"/);
   assert.match(command, /flock -E 75 -n \/var\/lock\/gernetix-staging-deploy\.lock/);
+});
+
+test("runs the controlled Forgejo system-source publisher only when requested", () => {
+  const command = remoteDeployCommand({ branch: "main", commit: "0123456789abcdef0123456789abcdef01234567", remoteDir: "/opt/gernetix", publishSystemRepositories: true });
+  assert.match(command, /project-server node \/app\/tools\/publish-forgejo-system-repositories\.js --apply/);
 });
