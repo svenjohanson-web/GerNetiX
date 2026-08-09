@@ -44,21 +44,62 @@ async function publishOne(client, git, item) {
   const remoteUrl = String(ensured.repository?.clone_url || "");
   const changes = sourceFiles(item);
   if (ensured.created || ensured.repository?.empty) {
-    const commit = await git.initialize({ remote_url: remoteUrl, branch: "main", message: `Initialer Import: ${item.title}`, changes });
+    const commit = await initializeInBatches(git, remoteUrl, item.title, changes);
     return publishedResult(item, commit.head_sha, "created", changes.length);
   }
   const head = await git.head({ remote_url: remoteUrl, branch: "main" });
   const existing = await git.readFiles({ remote_url: remoteUrl, commit_sha: head.head_sha, branch: "main" });
   const pendingChanges = treeChanges(existing, changes);
   if (pendingChanges.length === 0) return publishedResult(item, head.head_sha, "unchanged", changes.length);
-  const commit = await git.commit({
+  const commit = await commitInBatches(git, remoteUrl, item.title, head.head_sha, pendingChanges, "Systemquelle abgeglichen");
+  return publishedResult(item, commit.head_sha, "updated", changes.length);
+}
+
+async function initializeInBatches(git, remoteUrl, title, changes) {
+  const batches = changeBatches(changes);
+  let commit = await git.initialize({
     remote_url: remoteUrl,
     branch: "main",
-    expected_head_sha: head.head_sha,
-    message: `Systemquelle abgeglichen: ${item.title}`,
-    changes: pendingChanges,
+    message: batchMessage("Initialer Import", title, 1, batches.length),
+    changes: batches[0],
   });
-  return publishedResult(item, commit.head_sha, "updated", changes.length);
+  for (let index = 1; index < batches.length; index += 1) {
+    commit = await git.commit({
+      remote_url: remoteUrl,
+      branch: "main",
+      expected_head_sha: commit.head_sha,
+      message: batchMessage("Initialer Import", title, index + 1, batches.length),
+      changes: batches[index],
+    });
+  }
+  return commit;
+}
+
+async function commitInBatches(git, remoteUrl, title, headSha, changes, prefix) {
+  const batches = changeBatches(changes);
+  let currentHead = headSha;
+  let commit = null;
+  for (let index = 0; index < batches.length; index += 1) {
+    commit = await git.commit({
+      remote_url: remoteUrl,
+      branch: "main",
+      expected_head_sha: currentHead,
+      message: batchMessage(prefix, title, index + 1, batches.length),
+      changes: batches[index],
+    });
+    currentHead = commit.head_sha;
+  }
+  return commit;
+}
+
+function changeBatches(changes) {
+  const batches = [];
+  for (let index = 0; index < changes.length; index += 100) batches.push(changes.slice(index, index + 100));
+  return batches;
+}
+
+function batchMessage(prefix, title, number, total) {
+  return total === 1 ? `${prefix}: ${title}` : `${prefix}: ${title} (${number}/${total})`;
 }
 
 function sourceFiles(item) {
