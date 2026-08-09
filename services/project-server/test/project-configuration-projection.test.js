@@ -16,6 +16,8 @@ test("materializes every development configuration as deterministic visible proj
     "gernetix/configuration/board-peripherals/iot_device_1.json",
     "gernetix/configuration/communication.json",
     "gernetix/configuration/events.json",
+    "gernetix/configuration/game.json",
+    "gernetix/configuration/home-automation.json",
     "gernetix/configuration/pwa-dashboard.json",
     "gernetix/configuration/software-features/camera.json",
     "gernetix/hardware/allocation.json",
@@ -113,6 +115,8 @@ function representativeProject() {
       template_ref: { template_id: "camera", model_schema_version: 1 },
       architecture_dialog: { schema_version: 1, goal: "Kamerabild anzeigen" },
       communication_setup: { schema_version: 2, mode: "device_access_point", access_point: { ssid: "GerNetiX-Camera", password: "GerNetiX-Start" } },
+      home_automation_configuration: { schema_version: 2, coordinator: "none", nodes: [] },
+      game_configuration: { schema_version: 2, selected_game_ids: ["nibbles", "frogger"] },
       pwa_dashboard: { schema_version: 1, title: "Kamera", visible_cards: ["current_values"] },
       event_configuration: { worker: { schema_version: 1, event_name: "camera_tick", trigger_type: "timer", cycle_minutes: 1 } },
       views: [{

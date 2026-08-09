@@ -28,3 +28,14 @@ test("rejects unknown schema versions and binary text payloads", () => {
   assert.throws(() => validateProjectChanges([{ path: "gernetix/project.json", content: '{"schema_version":99}' }]), (error) => error.code === "project_schema_version_unsupported");
   assert.throws(() => loadProjectFileSet([{ path: "gernetix/project.json", content: '{"schema_version":1}\u0000' }]), (error) => error.code === "repository_binary_forbidden");
 });
+
+test("accepts schema version 2 only for configuration contracts that define it", () => {
+  assert.doesNotThrow(() => validateProjectChanges([
+    { path: "gernetix/configuration/game.json", content: '{"schema_version":2,"selected_game_ids":["nibbles"]}' },
+    { path: "gernetix/configuration/home-automation.json", content: '{"schema_version":2,"coordinator":"none","nodes":[]}' },
+  ]));
+  assert.throws(
+    () => validateProjectChanges([{ path: "gernetix/configuration/events.json", content: '{"schema_version":2}' }]),
+    (error) => error.code === "project_schema_version_unsupported",
+  );
+});

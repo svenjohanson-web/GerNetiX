@@ -115,7 +115,11 @@ function unknownSchema(version, path) {
 }
 
 function supportedSchemaVersions(path) {
-  if (path === "gernetix/configuration/communication.json") return [1, 2];
+  if ([
+    "gernetix/configuration/communication.json",
+    "gernetix/configuration/game.json",
+    "gernetix/configuration/home-automation.json",
+  ].includes(path)) return [1, 2];
   return [PROJECT_FILE_SCHEMA_VERSION];
 }
 

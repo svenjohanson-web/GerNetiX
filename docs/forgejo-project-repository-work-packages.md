@@ -728,7 +728,11 @@ Umgesetzt im ersten Schritt:
 - Der Project Server erzeugt deterministische, sichtbare Dateien unter
   `gernetix/` fuer Projekt, Architektur, Software-Einheiten, Hardware,
   Boards, Basissoftware, Softwarefunktionen/Webserver, Kommunikation,
-  PWA-Dashboard, Ereigniskonfiguration und Board-Peripherie.
+  Spielesammlung, Home-Automation, PWA-Dashboard, Ereigniskonfiguration und
+  Board-Peripherie. Die aktuellen Vertraege fuer Kommunikation,
+  Spielesammlung und Home-Automation verwenden `schema_version: 2`; alle
+  anderen Projektdateipfade bleiben auf ihre jeweils freigegebene Version
+  begrenzt.
 - Boardkonfigurationen erzeugen zusaetzlich einen sichtbaren, in der IDE
   schreibgeschuetzten `gernetix_board_configuration.h` je Software-Einheit.
 - Reine Laufzeitzeitstempel verursachen keinen Inhaltsunterschied. Secrets
