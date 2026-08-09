@@ -111,18 +111,27 @@ function sourceFiles(item) {
     const filePath = path.resolve(workspaceRoot, relativeWorkspacePath);
     const stat = fs.statSync(filePath);
     if (stat.size > 1024 * 1024) throw new Error(`system_repository_file_too_large:${relativePath}`);
+    const content = fs.readFileSync(filePath, "utf8");
+    if (content.includes("\0")) {
+      if (isReproducibleBinaryAsset(relativePath)) return null;
+      throw new Error(`system_repository_binary_forbidden:${relativePath}`);
+    }
     return {
       operation: "upsert",
       path: relativePath.slice(prefix.length),
-      content: fs.readFileSync(filePath, "utf8"),
+      content,
     };
-  });
+  }).filter(Boolean);
   result.push({
     operation: "upsert",
     path: "gernetix/system-repository.json",
     content: `${JSON.stringify({ schema_version: 1, source_id: item.source_id, title: item.title, kind: item.kind, protected: true }, null, 2)}\n`,
   });
   return result.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function isReproducibleBinaryAsset(relativePath) {
+  return relativePath.startsWith("projects/waveshare-voice-lab/assets/stories/audio/") && relativePath.endsWith(".pcm8");
 }
 
 function listSourceFiles(directory, relativeRoot) {
