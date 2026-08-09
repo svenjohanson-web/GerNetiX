@@ -17,6 +17,8 @@ projects/*
 basissoftware/*
 !basissoftware/esp32
 !basissoftware/esp32/**
+!basissoftware/esp8266
+!basissoftware/esp8266/**
 basissoftware/esp32/managed_components
 *.log
 .DS_Store

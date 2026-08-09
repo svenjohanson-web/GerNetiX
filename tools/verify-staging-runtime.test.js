@@ -13,6 +13,7 @@ const {
 
 const repoRoot = path.resolve(__dirname, "..");
 const identityDockerfile = fs.readFileSync(path.join(repoRoot, "docker", "identity-service.Dockerfile"), "utf8");
+const dockerIgnore = fs.readFileSync(path.join(repoRoot, ".dockerignore"), "utf8");
 
 test("discovers Identity dependencies outside its service directory", () => {
   const paths = discoverIdentityRuntimePaths({ repoRoot });
@@ -61,4 +62,9 @@ test("rejects missing COPY sources in every staging runtime Dockerfile", () => {
     }),
     /synthetic\.Dockerfile: tools\/does-not-exist\.js/,
   );
+});
+
+test("includes both protected Basissoftware source trees in the Docker build context", () => {
+  assert.match(dockerIgnore, /^!basissoftware\/esp32\/\*\*$/m);
+  assert.match(dockerIgnore, /^!basissoftware\/esp8266\/\*\*$/m);
 });
