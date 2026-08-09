@@ -7,6 +7,7 @@ const { createDeviceDiscoveryService } = require("../src/dev/device-discovery");
 test("the Identity startup defers the project capability normalizer until discovery runs", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
   assert.match(source, /createDeviceDiscoveryService\(\{[\s\S]*?normalizeCapabilityIds:\s*\(\.\.\.args\)\s*=>\s*normalizeCapabilityIds\(\.\.\.args\)/);
+  assert.match(source, /createDevelopmentAssistant\(\{[\s\S]*?requireProjectAccess:\s*\(\.\.\.args\)\s*=>\s*requireSessionProject\(\.\.\.args\)/);
 });
 
 test("discovers GerNetiX node by default hostname candidate", async () => {

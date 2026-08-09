@@ -344,7 +344,7 @@ const developmentAssistant = createDevelopmentAssistant({
   projectServerJson,
   projectServerUserId,
   readJsonBody,
-  requireProjectAccess: requireSessionProject,
+  requireProjectAccess: (...args) => requireSessionProject(...args),
   sendJson,
 });
 const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
