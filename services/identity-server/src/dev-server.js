@@ -333,7 +333,7 @@ const { discoverNetworkDevices } = createDeviceDiscoveryService({
   deviceDiscoveryUrls,
   deviceManagementJson,
   loadUserIdeDevices: (...args) => loadUserIdeDevices(...args),
-  normalizeCapabilityIds,
+  normalizeCapabilityIds: (...args) => normalizeCapabilityIds(...args),
   nodeHostnamePrefix: gernetixNodeHostnamePrefix,
 });
 const developmentAssistant = createDevelopmentAssistant({
