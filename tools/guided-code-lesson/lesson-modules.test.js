@@ -79,6 +79,9 @@ test("every guided learning project is a separate registered module", () => {
     "plant-watering-control",
     "climate-box-control",
     "smartbox-rfid-access-control",
+    "database-foundations",
+    "embedded-device-communication-foundations",
+    "networked-application-communication-foundations",
   ];
   const moduleSources = scriptSources().filter((source) =>
     source.startsWith("lessons/") && source.endsWith(".lesson.js"));
@@ -96,7 +99,7 @@ test("every guided learning project is a separate registered module", () => {
   assert.deepEqual(Array.from(lessons, (lesson) => String(lesson.slug)),
     expectedSlugs);
   assert.deepEqual(Array.from(lessons, (lesson) => lesson.steps.length),
-    [19, 8, 7, 7, 7, 7, 7]);
+    [19, 8, 7, 7, 7, 7, 7, 7, 7, 7]);
   assert.equal(new Set(lessons.map((lesson) => lesson.projectIdeaId)).size,
     lessons.length);
   for (const lesson of lessons) {
