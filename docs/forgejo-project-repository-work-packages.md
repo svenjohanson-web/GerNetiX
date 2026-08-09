@@ -200,11 +200,11 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-00 | Architektur- und Speichergrenze | dokumentiert | Graph- und Doku-Konsistenz |
 | FG-01 | Projektdatei- und Schemakontrakt | lokal umgesetzt | Schema-/Roundtrip-Tests |
 | FG-02 | Abgesicherter Forgejo-Betrieb | lokal umgesetzt, Betriebstest offen | Compose-/Security-Contract |
-| FG-03 | Forgejo- und Git-Adapter | teilweise umgesetzt | Adapter-Integrationstest |
-| FG-04 | Repository-Provisionierung | teilweise umgesetzt | Projekt-/Template-Contract |
+| FG-03 | Forgejo- und Git-Adapter | umgesetzt, Staging-Durchstich bestanden | Adapter-Integrationstest |
+| FG-04 | Repository-Provisionierung | fuer neue Projekte und Vorlagen umgesetzt | Projekt-/Template-Contract |
 | FG-05 | Git-basiertes Quellen-API | lokal umgesetzt, Cutover offen | CRUD-/Konflikt-/Pfadtests |
 | FG-06 | Echte Commit-Historie und Restore | lokal umgesetzt, Cutover offen | Historien-/Restore-Tests |
-| FG-07 | Commitgebundener Build | lokal umgesetzt, Staging offen | Build-Reproduzierbarkeit |
+| FG-07 | Commitgebundener Build | Build-Paket auf Staging nachgewiesen, Compilerabschluss offen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
 | FG-10 | Projektweiser Cutover und Rollback | offen | Staging-Migration |
@@ -214,7 +214,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-14 | Monitoring, Quoten und Betrieb | Health lokal, Operations-Sicht offen | Operations-Sicht und Alarme |
 | FG-15 | Externer Git-Zugang und Zusammenarbeit | spaeter | eigene Produktentscheidung |
 | FG-16 | Repository-Karte im Entwicklungsbereich | lokal umgesetzt | UI-/Autorisierungs-Contract |
-| FG-17 | Schablonen materialisieren Projektdateien | teilweise umgesetzt | Projektions-/Wirkungs-Contract |
+| FG-17 | Schablonen erzeugen eigene Kunden-Repositories | Repository-Materialisierung umgesetzt, Feldwirkung teilweise | Projektions-/Wirkungs-Contract |
 
 ## FG-00 - Architektur- und Speichergrenze
 

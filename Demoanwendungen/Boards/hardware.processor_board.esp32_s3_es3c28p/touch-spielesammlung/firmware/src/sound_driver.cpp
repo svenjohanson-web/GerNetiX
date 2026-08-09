@@ -7,7 +7,6 @@
 #include <freertos/task.h>
 
 namespace {
-constexpr i2s_chan_id_t audioPort = I2S_NUM_0;
 constexpr uint32_t sampleRate = 44100;
 constexpr int audioEnablePin = 1;
 constexpr int i2sMclkPin = 4;
@@ -60,7 +59,7 @@ void SoundDriver::begin() {
   gpio_set_level(static_cast<gpio_num_t>(audioEnablePin), 0);
   vTaskDelay(pdMS_TO_TICKS(20));
 
-  i2s_chan_config_t channelConfig = I2S_CHANNEL_DEFAULT_CONFIG(audioPort, I2S_ROLE_MASTER);
+  i2s_chan_config_t channelConfig = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
   channelConfig.dma_desc_num = 4;
   channelConfig.dma_frame_num = 128;
   if (i2s_new_channel(&channelConfig, &audioChannel, nullptr) != ESP_OK) return;

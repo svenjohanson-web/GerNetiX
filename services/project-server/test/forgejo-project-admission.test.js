@@ -51,6 +51,54 @@ test("provisions the complete generated project tree into Forgejo when the cutov
   assert.ok(provisionInput.changes.some((source) => source.path === "gernetix/project.json"));
 });
 
+test("materializes every customer template copy into its own private Forgejo repository", async () => {
+  const treesByRepository = new Map();
+  const projectRepositoryStore = {
+    provisionProject: async (input) => {
+      const repositoryName = `repository-${input.project_id}`;
+      treesByRepository.set(repositoryName, input.changes.map((source) => ({ ...source })));
+      return {
+        provider: "forgejo",
+        organization: "gernetix-projects",
+        repository_name: repositoryName,
+        repository_id: repositoryName,
+        clone_url: `http://forgejo:3000/gernetix-projects/${repositoryName}.git`,
+        default_branch: "main",
+        head_sha: require("node:crypto").createHash("sha1").update(repositoryName).digest("hex"),
+        state: "active",
+      };
+    },
+    readFiles: async (binding) => treesByRepository.get(binding.repository_name) || [],
+  };
+  const service = new ProjectService({
+    repository: new InMemoryProjectRepository(),
+    requireForgejoForNewProjects: true,
+    projectRepositoryStore,
+  });
+
+  const template = await service.createProject({
+    project_id: "system-template-sensor-v1",
+    user_id: "system",
+    title: "Sensorvorlage",
+    status: "template",
+    sources: [{ path: "src/main.cpp", content: "int templateValue = 1;\n" }],
+  });
+  const customer = await service.createProject({
+    project_id: "customer-sensor-project",
+    template_project_id: template.project_id,
+    user_id: "customer-1",
+    title: "Mein Sensorprojekt",
+  });
+
+  assert.equal(template.repository_binding.state, "active");
+  assert.equal(customer.repository_binding.state, "active");
+  assert.notEqual(customer.repository_binding.repository_name, template.repository_binding.repository_name);
+  assert.equal(treesByRepository.get(customer.repository_binding.repository_name)
+    .some((source) => source.path.endsWith("src/main.cpp") && source.content === "int templateValue = 1;\n"), true);
+  assert.equal(treesByRepository.get(customer.repository_binding.repository_name)
+    .some((source) => source.path === "gernetix/project.json"), true);
+});
+
 test("pins protected Basissoftware to the server-approved Forgejo commit", async () => {
   let provisionInput;
   let protectedRead;
