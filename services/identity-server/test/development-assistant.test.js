@@ -1491,6 +1491,33 @@ test("architecture chat requires an account-bound development project", async ()
   assert.equal(payload.body.error, "missing_project");
 });
 
+test("architecture discovery accepts a transient project draft without project access", async () => {
+  let payload = null;
+  let projectAccessCalled = false;
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: { publicConfig: () => ({}), resolveRoute: () => ({ provider: "ollama", ollamaModel: "local" }) },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectDraft: { title: "Flüchtiger Entwurf", type: "development_project", viewManifest: { template_id: "empty" } },
+      messages: [{ role: "user", content: "Nenne mir deine Pattern" }],
+    }),
+    requireProjectAccess: async () => {
+      projectAccessCalled = true;
+      return null;
+    },
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+
+  assert.equal(projectAccessCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedDialogControl, true);
+});
+
 test("does not synthesize architecture prompt rules when ai context prompt is missing", async () => {
   let providerCalled = false;
   let payload = null;

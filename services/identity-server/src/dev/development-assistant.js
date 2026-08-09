@@ -67,6 +67,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     const userMessages = normalizeMessages(body.messages);
     const previousResponseId = cleanResponseId(body.previousResponseId || body.previous_response_id);
     const projectId = cleanProjectId(body.projectId || body.project_id);
+    const projectDraft = normalizeProjectDraft(body.projectDraft || body.project_draft);
     const assistantMode = cleanAssistantMode(body.assistantMode || body.assistant_mode);
     const functionMode = assistantMode === "function_clarification";
     const effectChainMode = assistantMode === "effect_chain_derivation";
@@ -75,12 +76,12 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       sendJson(res, 400, { error: "missing_messages", message: "Mindestens eine Nachricht wird benoetigt." });
       return;
     }
-    if (!projectId) {
+    if (!projectId && !projectDraft) {
       sendJson(res, 400, { error: "missing_project", message: "Bitte zuerst ein Entwicklungsprojekt auswaehlen oder anlegen." });
       return;
     }
     try {
-      const project = requireProjectAccess ? await requireProjectAccess(session, projectId) : null;
+      const project = projectId && requireProjectAccess ? await requireProjectAccess(session, projectId) : projectDraft;
       if (!codeExplorerMode && project && !["development_project", "custom_project"].includes(project.area || project.type)) {
         sendJson(res, 400, { error: "not_development_project", message: "Bitte ein eigenes Entwicklungsprojekt fuer den Architektur-Chat auswaehlen." });
         return;
@@ -149,7 +150,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         });
         return;
       }
-      const context = codeExplorerMode ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
+      const context = codeExplorerMode || !projectId ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
       const codeContext = codeExplorerMode ? normalizeCodeContext(body.codeContext) : null;
       const messages = [
         ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext, project) : await systemPrompt(session, requestProfile, project) }] : []),
@@ -1939,6 +1940,26 @@ function escapeRegExp(value) {
 
 function cleanProjectId(value) {
   return String(value || "").trim().slice(0, 160);
+}
+
+function normalizeProjectDraft(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const title = String(value.title || value.name || "Projektentwurf").trim().slice(0, 120);
+  const description = String(value.description || "").trim().slice(0, 2000);
+  const manifest = value.viewManifest && typeof value.viewManifest === "object" && !Array.isArray(value.viewManifest)
+    ? value.viewManifest
+    : {};
+  return {
+    id: "",
+    area: "development_project",
+    type: "development_project",
+    title,
+    name: title,
+    description,
+    view_manifest: manifest,
+    viewManifest: manifest,
+    is_draft: true,
+  };
 }
 
 function cleanAssistantMode(value) {

@@ -138,10 +138,13 @@ test("loads the development template catalog from the server model registry", ()
   assert.doesNotMatch(publicController, /const projectTemplates = \{/);
 });
 
-test("creates a board-bound AI playground through the existing project and repository flow", () => {
+test("keeps a board-bound AI playground transient until the explicit IDE save", () => {
   assert.match(publicHtml, /id="developmentProjectBoardField"/);
   assert.match(publicController, /boardSelectionRequired: template\.board_selection_required === true/);
-  assert.match(publicController, /board_profile_id: boardInput\.value/);
+  assert.match(publicController, /hardwareProfileId: selectedTemplate\?\.boardSelectionRequired \? boardInput\.value/);
+  assert.match(publicController, /board_profile_id: draft\.hardwareProfileId/);
+  assert.match(publicController, /projectOrigin: "transient_draft"/);
+  assert.match(publicController, /repositoryCard\?\.render\(project\?\.isDraft \? null : project\)/);
   assert.match(publicController, /Welche Experimente passen zu den Funktionen meines Boards/);
   assert.match(publicController, /assistantOpen = selectedTemplateId === "ai_board_playground"/);
   assert.match(devServer, /template\.id === "ai_board_playground"/);
@@ -293,7 +296,7 @@ test("separates project start and initial architecture from configuration", () =
   assert.match(publicHtml, /id="continueDevelopmentConfigurationButton"[^>]*>Weiter zur Konfiguration<\/button>/);
   assert.match(publicHtml, /development-requirements-panel development-configuration-only/);
   assert.match(publicHtml, /development-chat-sidebar development-configuration-only[^\"]*hidden/);
-  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern<\/button>/);
+  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Entwurf aktualisieren<\/button>/);
   assert.match(publicHtml, /acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware<\/button>/);
   assert.match(publicController, /workflowStep: "project_start"/);
   assert.match(publicController, /function continueToDevelopmentConfiguration/);
@@ -329,7 +332,7 @@ test("opens every selected template directly in component configuration", () => 
   assert.doesNotMatch(publicHtml, /data-create-and-continue/);
   assert.match(publicController, /const startsInConfiguration = selectedTemplateId && selectedTemplateId !== "empty"/);
   assert.match(publicController, /workflowStep = startsInConfiguration \? "configuration" : "project_start"/);
-  assert.match(publicController, /Konfiguration ist geoeffnet/);
+  assert.match(publicController, /Flüchtiger Entwurf vorbereitet/);
 });
 
 test("configures a touchscreen game collection through games, board and inventory", () => {
@@ -392,7 +395,7 @@ test("development platform places requirements and architecture centrally with c
   assert.match(publicHtml, /development-chat-sidebar[\s\S]*developmentChatMessages[\s\S]*developmentChatForm/);
   assert.doesNotMatch(publicHtml, /chooseDevelopmentProjectButton/);
   assert.match(publicHtml, /backToDevelopmentProjectStartButton" type="button">Projekt wechseln<\/button>/);
-  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern<\/button>/);
+  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Entwurf aktualisieren<\/button>/);
   assert.match(publicHtml, /acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware<\/button>/);
   assert.doesNotMatch(publicHtml, /startFunctionClarificationButton|startEffectChainButton|Architektur speichern/);
   assert.match(publicCss, /\.development-workspace-panel \{[\s\S]*grid-template-areas:[\s\S]*"project chat"[\s\S]*"main chat"/);
@@ -414,7 +417,7 @@ test("development platform places requirements and architecture centrally with c
   assert.doesNotMatch(publicController, /functionCoverageHint\(diagram\)/);
 });
 
-test("hardware allocation is a persisted intermediate view with boards, circuits and pins", () => {
+test("hardware allocation stays transient until the project is saved for the IDE", () => {
   assert.match(publicController, /backToDevelopmentArchitectureButton[\s\S]*openDevelopmentArchitectureFromHardware/);
   assert.match(publicController, /editExternalHardwareArchitectureButton[\s\S]*openDevelopmentArchitectureFromHardware/);
   assert.match(publicController, /function openDevelopmentArchitectureFromHardware\(\)[\s\S]*view=architecture/);
@@ -424,8 +427,12 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicHtml, /hardware-overview[\s\S]*developmentHardwareArchitecture[\s\S]*developmentHardwareComponents[\s\S]*developmentHardwareHints[\s\S]*developmentHardwareValidationSummary[\s\S]*continueDevelopmentHardwareButton/);
   assert.doesNotMatch(publicHtml, /developmentHardwareWiring/);
   assert.doesNotMatch(publicHtml, /Konkretisierung|Abstrakte Komponenten zuordnen|Boards, Sensoren und Aktoren werden konkretisiert/);
-  assert.match(publicHtml, /Hardware speichern/);
-  assert.match(publicHtml, /Weiter zur IDE/);
+  assert.match(publicHtml, /Entwurf aktualisieren/);
+  assert.match(publicHtml, /Projekt speichern und IDE öffnen/);
+  assert.match(publicHtml, /id="developmentDraftSaveDialog"[\s\S]*IDE[\s\S]*Projekt dauerhaft speichern\?/);
+  assert.match(publicHtml, /id="saveDevelopmentDraftProjectButton"[^>]*>Projekt speichern und IDE öffnen/);
+  assert.match(publicController, /developmentDraftSaveDialog[\s\S]*showModal\(\)/);
+  assert.match(publicController, /function materializeDraftProject/);
   assert.match(publicHtml, /Externe Hardware in der Architektur bearbeiten/);
   assert.match(publicHtml, /Neue externe Sensoren und Aktoren werden zuerst in der Architektur ergänzt und verbunden/);
   assert.match(publicApp, /"development-hardware": "developmentHardwareView"/);

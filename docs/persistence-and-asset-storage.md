@@ -9,6 +9,12 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
   dauerhaft benoetigte Binaerartefakte liegen im Artifact Store. Lose Dateien
   ausserhalb eines verwalteten Repository- oder Artifact-Store-Vertrags,
   Browser-State und Prozessspeicher sind keine Quelle der Wahrheit.
+- Architektur-Discovery, Templatekonfiguration und Hardware-Zuordnung eines
+  noch nicht bestaetigten Entwicklungsprojekts bleiben ausschliesslich als
+  fluechtiger Browser-Sitzungsentwurf erhalten. Erst die ausdrueckliche Aktion
+  `Projekt speichern und IDE oeffnen` legt Projektidentitaet, Repository-Bindung
+  und Projektdateien dauerhaft an. Ein verworfener oder durch Neuladen
+  verlorener Entwurf benoetigt daher weder Loeschung noch Speicherbereinigung.
 - Zugriff wird serverseitig aus Route, Sitzung, Besitz, Projektzuordnung und Freigabeklasse abgeleitet. Ein Client darf keine fremde `account_id` als Berechtigung setzen.
 - Oeffentliche, angemeldete, berechtigte, kontoeigene, projektgebundene und interne Daten sind getrennte Schutzklassen.
 - Veroeffentlichte Releases sind unveraenderlich. Eine neue Fassung erhaelt eine neue Version; Widerruf ersetzt kein Artefakt stillschweigend.

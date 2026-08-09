@@ -25,7 +25,8 @@ test("development area contains the read-only Git repository card and all requir
   assert.match(card, /Umbenannt/);
   assert.match(card, /Gelöscht/);
   assert.match(card, /Standkonflikt/);
-  assert.match(platform, /repositoryCard\?\.render\(currentProject\(\)\)/);
+  assert.match(platform, /repositoryCard\?\.render\(project\?\.isDraft \? null : project\)/);
+  assert.match(platform, /projectOrigin: "transient_draft"/);
 });
 
 test("browser code uses only session-bound Identity routes and contains no Forgejo secrets or clone URLs", () => {

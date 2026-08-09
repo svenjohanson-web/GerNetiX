@@ -1044,7 +1044,7 @@
                 </div>
                 <div class="button-row development-project-form-actions">
                   <button type="button" data-development-project-back>Zurück zur Auswahl</button>
-                  <button type="submit" class="primary">Projekt anlegen</button>
+                  <button type="submit" class="primary">Entwurf starten</button>
                 </div>
               </form>
               <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen, leer anlegen oder aus einem Template starten.</p>
@@ -1072,7 +1072,7 @@
                   </fieldset>
                   <div id="touchscreenGameInventoryMatch" class="touchscreen-game-inventory-match"></div>
                   <div class="button-row home-automation-actions">
-                    <button type="button" data-game-save>Spielprojekt speichern und öffnen</button>
+                    <button type="button" data-game-save>Projekt speichern und IDE öffnen</button>
                   </div>
                   <p id="touchscreenGameStatus" class="helper-text" aria-live="polite"></p>
                 </form>
@@ -1084,7 +1084,7 @@
               <div class="button-row development-project-actions development-page-actions development-configuration-only">
                 <button id="backToDevelopmentProjectStartButton" type="button">Projekt wechseln</button>
                 <button id="toggleDevelopmentAssistantButton" type="button" class="secondary">KI-Unterstuetzung (optional)</button>
-                <button id="saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern</button>
+                <button id="saveDevelopmentArchitectureButton" type="button" disabled>Entwurf aktualisieren</button>
                 <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware</button>
               </div>
               <p id="developmentActionStatus" class="helper-text development-action-status" aria-live="polite"></p>
@@ -1168,7 +1168,7 @@
           <div class="button-row development-page-actions hardware-page-actions">
             <div class="hardware-secondary-actions">
               <button id="backToDevelopmentArchitectureButton" type="button">Zurueck zur Architektur</button>
-              <button id="saveDevelopmentHardwareButton" type="button">Hardware speichern</button>
+              <button id="saveDevelopmentHardwareButton" type="button">Entwurf aktualisieren</button>
             </div>
             <div class="hardware-continue-area">
               <div id="developmentHardwareValidationSummary" class="hardware-validation-summary is-blocked" role="status" aria-live="polite"></div>
@@ -1178,6 +1178,20 @@
           <p id="developmentHardwareStatus" class="helper-text development-action-status" aria-live="polite"></p>
         </article>
       </section>
+
+      <dialog id="developmentDraftSaveDialog" class="development-template-help-dialog" aria-labelledby="developmentDraftSaveDialogTitle">
+        <section class="development-template-help-shell">
+          <header>
+            <div><p class="eyebrow">IDE</p><h3 id="developmentDraftSaveDialogTitle">Projekt dauerhaft speichern?</h3></div>
+            <button type="button" class="secondary" data-close-development-draft-save>Zurück zum Entwurf</button>
+          </header>
+          <p><strong id="developmentDraftSaveProjectName">Projektentwurf</strong> ist bisher nur in dieser Browser-Sitzung vorhanden. Erst mit dem folgenden Schritt werden das Projekt und sein privates Git-Repository angelegt.</p>
+          <div class="button-row">
+            <button id="saveDevelopmentDraftProjectButton" class="primary" type="button">Projekt speichern und IDE öffnen</button>
+          </div>
+          <p id="developmentDraftSaveStatus" class="helper-text" aria-live="polite"></p>
+        </section>
+      </dialog>
 
       <section id="devicesView" class="view hidden">
         <div class="section-head">

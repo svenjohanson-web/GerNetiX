@@ -25,9 +25,10 @@ test("does not ask users to choose an internal game pattern", () => {
   assert.match(controller, /disabled = !configuration\.board_profile_id[\s\S]*!configuration\.selected_game_ids\.length/);
 });
 
-test("opens the configured game project after saving", () => {
-  assert.match(html, /data-game-save>Spielprojekt speichern und öffnen/);
-  assert.match(controller, /function saveTouchscreenGameConfiguration\(\)[\s\S]*await persistDevelopmentDialog\(\)[\s\S]*await openProjectInIde\(projectId\)/);
+test("saves the configured game project explicitly before opening the IDE", () => {
+  assert.match(html, /data-game-save>Projekt speichern und IDE öffnen/);
+  assert.match(controller, /function saveTouchscreenGameConfiguration\(\)[\s\S]*currentProject\(\)\?\.isDraft[\s\S]*await materializeDraftProject\(\)/);
+  assert.match(controller, /function materializeDraftProject[\s\S]*postJson\("\/api\/platform\/development-projects"[\s\S]*await openProjectInIde\(savedProject\.id\)/);
   assert.match(controller, /saveDevelopmentArchitectureButton"\)\?\.classList\.toggle\("hidden", visible\)/);
   assert.match(controller, /acceptDevelopmentArchitectureButton"\)\?\.classList\.toggle\("hidden", visible\)/);
 });

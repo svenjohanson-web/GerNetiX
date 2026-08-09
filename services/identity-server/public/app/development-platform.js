@@ -23,6 +23,7 @@ const DevelopmentPlatform = (() => {
         componentDraftConnectionMode: "direct",
         componentDraftBrowserAccessScope: "local_network",
         workflowStep: "project_start",
+        draftProject: null,
       };
     }
     if (!state.developmentPlatform.projectPanelMode) state.developmentPlatform.projectPanelMode = "choice";
@@ -70,6 +71,15 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#editExternalHardwareArchitectureButton").addEventListener("click", openDevelopmentArchitectureFromHardware);
       document.querySelector("#saveDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(false));
       document.querySelector("#continueDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(true));
+      document.querySelector("#saveDevelopmentDraftProjectButton").addEventListener("click", saveDraftProjectAndOpenIde);
+      document.querySelector("#developmentDraftSaveDialog").addEventListener("click", (event) => {
+        if (event.target === event.currentTarget || event.target.closest("[data-close-development-draft-save]")) event.currentTarget.close();
+      });
+      document.querySelector("#developmentDraftSaveDialog").addEventListener("close", () => {
+        if (currentProject()?.isDraft && state.developmentPlatform.hardwareConfiguration) {
+          syncHardwareActions(state.developmentPlatform.hardwareConfiguration);
+        }
+      });
       document.querySelector("#touchscreenGameForm").addEventListener("change", handleTouchscreenGameChange);
       document.querySelector("#touchscreenGameForm").addEventListener("click", handleTouchscreenGameClick);
     }
@@ -178,7 +188,8 @@ const DevelopmentPlatform = (() => {
       renderQuickPrompts();
       renderArchitectureDiagram();
       syncChatAvailability();
-      void repositoryCard?.render(currentProject());
+      const project = currentProject();
+      void repositoryCard?.render(project?.isDraft ? null : project);
     }
 
     async function handleProjectOverviewClick(event) {
@@ -407,14 +418,14 @@ const DevelopmentPlatform = (() => {
     }
 
     async function openArchitecture(projectId) {
-      let project = developmentProjects().find((item) => item.id === projectId);
+      let project = (state.projects || []).find((item) => item.id === projectId && (item.isDraft || item.type === "development_project" || item.type === "custom_project"));
       if (!project) {
         enterProjectStart();
         return;
       }
-      if (!project.detailsLoaded) project = await loadProjectDetail(projectId);
+      if (!project.isDraft && !project.detailsLoaded) project = await loadProjectDetail(projectId);
       state.developmentPlatform.activeProjectId = project.id;
-      storeActiveProjectId(project.id);
+      if (!project.isDraft) storeActiveProjectId(project.id);
       state.developmentPlatform.projectPanelMode = "closed";
       state.developmentPlatform.workflowStep = "configuration";
       restoreDevelopmentDialog(project);
@@ -1087,6 +1098,16 @@ const DevelopmentPlatform = (() => {
         return;
       }
       synchronizeConfigurationArchitecture();
+      if (currentProject()?.isDraft) {
+        setTouchscreenGameStatus("Projekt und privates Git-Repository werden jetzt dauerhaft angelegt...");
+        try {
+          await materializeDraftProject();
+        } catch (error) {
+          setTouchscreenGameStatus(`Projekt konnte nicht gespeichert werden: ${error.message}`);
+          if (saveButton) saveButton.disabled = false;
+        }
+        return;
+      }
       setTouchscreenGameStatus("Spiele, Board und User-Quellen werden gespeichert...");
       const saved = await persistDevelopmentDialog();
       if (!saved) {
@@ -1295,7 +1316,7 @@ const DevelopmentPlatform = (() => {
     }
 
     function developmentProjects() {
-      return (state.projects || []).filter((project) => project.type === "development_project" || project.type === "custom_project");
+      return (state.projects || []).filter((project) => !project.isDraft && (project.type === "development_project" || project.type === "custom_project"));
     }
 
     function formatDevelopmentProjectDate(value) {
@@ -1425,6 +1446,7 @@ const DevelopmentPlatform = (() => {
       const projectId = activeProjectId();
       if (!projectId) return false;
       synchronizeConfigurationArchitecture();
+      if (currentProject()?.isDraft) return true;
       try {
         const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(projectId)}/dialog`, {
           messages: state.developmentPlatform.chat,
@@ -1565,33 +1587,49 @@ const DevelopmentPlatform = (() => {
         boardInput?.focus();
         return;
       }
-      setProjectStatus("Projekt wird angelegt...");
+      setProjectStatus("Entwurf wird vorbereitet...");
       try {
-        const response = await postJson("/api/platform/development-projects", {
+        const draftId = `draft_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
+        const preview = projectTemplatePreviews[selectedTemplateId] || null;
+        const draftProject = {
+          id: draftId,
+          isDraft: true,
+          detailsLoaded: true,
+          type: "development_project",
+          projectOrigin: "transient_draft",
+          name: title,
           title,
           description: descriptionInput.value.trim(),
-          template_id: templateInput.value,
-          ...(selectedTemplate?.boardSelectionRequired ? { board_profile_id: boardInput.value } : {}),
-        });
-        if (response.project) {
-          state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
-          state.developmentPlatform.activeProjectId = response.project.id;
+          hardwareProfileId: selectedTemplate?.boardSelectionRequired ? boardInput.value : "",
+          viewManifest: {
+            template_id: selectedTemplateId,
+            views: preview?.source ? [{
+              id: "architecture-diagram",
+              type: "plantuml",
+              title: preview.title || "Architektur-Skizze",
+              summary: preview.summary || "Startarchitektur aus Projekttemplate.",
+              payload: { source: preview.source, derived_from: preview.derived_from || "project_template" },
+            }] : [],
+          },
+        };
+        state.developmentPlatform.draftProject = draftProject;
+        state.projects = state.projects.filter((project) => !project.isDraft).concat(draftProject);
+        state.developmentPlatform.activeProjectId = draftId;
           const startsInConfiguration = selectedTemplateId && selectedTemplateId !== "empty";
           state.developmentPlatform.workflowStep = startsInConfiguration ? "configuration" : "project_start";
           state.developmentPlatform.chat = [];
           state.developmentPlatform.lastRouting = null;
           state.developmentPlatform.assistantMode = "architecture_structure";
           state.developmentPlatform.assistantOpen = selectedTemplateId === "ai_board_playground";
-          state.developmentPlatform.architectureDiagram = architectureDiagramForProject(response.project);
+          state.developmentPlatform.architectureDiagram = architectureDiagramForProject(draftProject);
           state.developmentPlatform.homeAutomationConfiguration = selectedTemplateId === "distributed_home_automation"
-            ? normalizeHomeAutomationConfiguration(response.project.viewManifest?.home_automation_configuration)
+            ? normalizeHomeAutomationConfiguration()
             : null;
           state.developmentPlatform.gameConfiguration = selectedTemplateId === "touchscreen_game_collection"
-            ? normalizeTouchscreenGameConfiguration(response.project.viewManifest?.game_configuration)
+            ? normalizeTouchscreenGameConfiguration()
             : null;
-          storeActiveProjectId(response.project.id);
           if (selectedTemplateId !== "empty") {
-            const architectureView = (response.project.viewManifest?.views || []).find((view) => view.id === "architecture-diagram");
+            const architectureView = (draftProject.viewManifest?.views || []).find((view) => view.id === "architecture-diagram");
             const source = architectureView?.payload?.source || "";
             if (source) {
               state.developmentPlatform.architectureDiagram = sanitizeArchitectureDiagram({
@@ -1608,9 +1646,8 @@ const DevelopmentPlatform = (() => {
           templateInput.value = "empty";
           applyProjectTemplate({ preserveValues: true });
           setProjectStatus(startsInConfiguration
-            ? `Projekt angelegt: ${response.project.name}. Konfiguration ist geoeffnet.`
-            : `Projekt angelegt: ${response.project.name}`);
-        }
+            ? `Flüchtiger Entwurf vorbereitet: ${draftProject.name}. Noch kein Projekt oder Git-Repository angelegt.`
+            : `Flüchtiger Entwurf vorbereitet: ${draftProject.name}. Noch nicht dauerhaft gespeichert.`);
         render();
       } catch (error) {
         setProjectStatus(`Projekt konnte nicht angelegt werden: ${error.message}`);
@@ -1697,8 +1734,9 @@ const DevelopmentPlatform = (() => {
       renderChatMessages();
       renderQuickPrompts();
       try {
+        const project = currentProject();
         const response = await postJson("/api/platform/development-assistant/chat", {
-          projectId: activeProjectId(),
+          ...(project?.isDraft ? { projectDraft: { title: project.name, description: project.description, type: project.type, viewManifest: project.viewManifest } } : { projectId: activeProjectId() }),
           messages: state.developmentPlatform.chat.filter((message) => !message.pending),
           architectureDiagram: state.developmentPlatform.architectureDiagram,
           assistantMode: state.developmentPlatform.assistantMode,
@@ -1834,6 +1872,23 @@ const DevelopmentPlatform = (() => {
       acceptButton.disabled = true;
       setActionStatus(continueToIde ? "Architektur wird uebernommen..." : "Architektur wird gespeichert...");
       try {
+        if (project?.isDraft) {
+          project.viewManifest.views = (project.viewManifest.views || []).filter((view) => view.id !== "architecture-diagram").concat({
+            id: "architecture-diagram",
+            type: "plantuml",
+            title: state.developmentPlatform.architectureDiagram.title || "Architektur-Skizze",
+            summary: state.developmentPlatform.architectureDiagram.summary || "Architektur des Projektentwurfs.",
+            payload: { ...state.developmentPlatform.architectureDiagram },
+          });
+          if (continueToIde) {
+            setActionStatus("Architektur in den flüchtigen Entwurf übernommen. Hardware-Zuordnung wird geöffnet...");
+            navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(project.id)}`);
+          } else {
+            setActionStatus("Architektur im flüchtigen Entwurf aktualisiert. Es wurden noch keine dauerhaften Daten angelegt.");
+            syncChatAvailability();
+          }
+          return;
+        }
         const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(projectId)}/architecture`, {
           title: project?.name || state.developmentPlatform.architectureDiagram.title || "Entwicklungsprojekt",
           description: project?.description || "",
@@ -3061,6 +3116,20 @@ const DevelopmentPlatform = (() => {
       continueButton.disabled = true;
       setHardwareStatus("Hardware-Konfiguration wird gespeichert...");
       try {
+        if (project.isDraft) {
+          state.developmentPlatform.hardwareConfiguration = configuration;
+          if (continueToIde) {
+            const dialog = document.querySelector("#developmentDraftSaveDialog");
+            document.querySelector("#developmentDraftSaveProjectName").textContent = project.name || "Projektentwurf";
+            document.querySelector("#developmentDraftSaveStatus").textContent = "";
+            if (!dialog.open) dialog.showModal();
+            setHardwareStatus("Der Entwurf ist bereit für die IDE. Dauerhafte Speicherung erfolgt erst nach deiner Bestätigung.");
+            return;
+          }
+          renderHardwareConfiguration();
+          setHardwareStatus("Hardware im flüchtigen Entwurf aktualisiert. Noch keine dauerhaften Daten angelegt.");
+          return;
+        }
         const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`, { hardware_configuration: configuration });
         if (response.project) state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
         state.developmentPlatform.hardwareConfiguration = response.hardware_configuration || configuration;
@@ -3079,6 +3148,55 @@ const DevelopmentPlatform = (() => {
         saveButton.disabled = false;
         syncHardwareActions(configuration);
       }
+    }
+
+    async function saveDraftProjectAndOpenIde() {
+      const button = document.querySelector("#saveDevelopmentDraftProjectButton");
+      const status = document.querySelector("#developmentDraftSaveStatus");
+      button.disabled = true;
+      status.textContent = "Projekt und privates Git-Repository werden angelegt...";
+      try {
+        await materializeDraftProject({ hardwareConfiguration: state.developmentPlatform.hardwareConfiguration });
+        document.querySelector("#developmentDraftSaveDialog").close();
+      } catch (error) {
+        status.textContent = `Projekt konnte nicht gespeichert werden: ${error.message}`;
+        button.disabled = false;
+      }
+    }
+
+    async function materializeDraftProject({ hardwareConfiguration = state.developmentPlatform.hardwareConfiguration } = {}) {
+      const draft = currentProject();
+      if (!draft?.isDraft) {
+        if (draft?.id) await openProjectInIde(draft.id);
+        return;
+      }
+      const response = await postJson("/api/platform/development-projects", {
+        title: draft.name,
+        description: draft.description || "",
+        template_id: currentProjectTemplateIdFor(draft),
+        ...(draft.hardwareProfileId ? { board_profile_id: draft.hardwareProfileId } : {}),
+      });
+      if (!response.project?.id) throw new Error("Das dauerhaft gespeicherte Projekt hat keine ID.");
+      const savedProject = response.project;
+      state.projects = state.projects.filter((project) => project.id !== draft.id && project.id !== savedProject.id).concat(savedProject);
+      state.developmentPlatform.draftProject = null;
+      state.developmentPlatform.activeProjectId = savedProject.id;
+      storeActiveProjectId(savedProject.id);
+      if (state.developmentPlatform.architectureDiagram?.source) {
+        const architectureResponse = await postJson(`/api/platform/development-projects/${encodeURIComponent(savedProject.id)}/architecture`, {
+          title: draft.name,
+          description: draft.description || "",
+          architectureDiagram: state.developmentPlatform.architectureDiagram,
+        });
+        if (architectureResponse.project) state.projects = state.projects.filter((project) => project.id !== savedProject.id).concat(architectureResponse.project);
+      }
+      await persistDevelopmentDialog();
+      if (hardwareConfiguration) {
+        const hardwareResponse = await postJson(`/api/platform/development-projects/${encodeURIComponent(savedProject.id)}/hardware-configuration`, { hardware_configuration: hardwareConfiguration });
+        if (hardwareResponse.project) state.projects = state.projects.filter((project) => project.id !== savedProject.id).concat(hardwareResponse.project);
+      }
+      setHardwareStatus("Projekt gespeichert. IDE wird geöffnet...");
+      await openProjectInIde(savedProject.id);
     }
 
     function readStoredActiveProjectId() {

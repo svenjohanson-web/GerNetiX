@@ -20,9 +20,12 @@ Demo-/Testbestand von `Sven02` und wurden vollstaendig geloescht. Das vorhandene
 SQL-zu-Git-Werkzeug bleibt als technische Rueckfallhilfe erhalten, wird aber
 nicht auf diesen Bestand angewendet.
 
-Katalogdefinitionen bleiben kuenftig virtuell. Erst ein ausdruecklicher
-Projektstart erzeugt eine accountgebundene Kopie und damit ein eigenes privates
-Forgejo-Repository; das Lesen der Projektliste legt keine Projekte mehr an.
+Katalogdefinitionen bleiben kuenftig virtuell. Architektur-Discovery und
+Konfiguration eines neuen Entwicklungsprojekts sind fluechtige
+Browser-Sitzungsentwuerfe. Erst `Projekt speichern und IDE oeffnen` erzeugt
+eine accountgebundene Kopie und damit ein eigenes privates Forgejo-Repository;
+das Starten eines Entwurfs und das Lesen der Projektliste legen keine Projekte
+an.
 
 ## Ergebnis der Bestandsuntersuchung
 
@@ -330,7 +333,9 @@ Teilfehlersituationen und der Forgejo-Container-End-to-End-Nachweis.
 
 Ziel:
 
-- Jedes neue Projekt atomar mit privatem Repository und Initialcommit anlegen.
+- Jedes ausdruecklich gespeicherte neue Projekt atomar mit privatem Repository
+  und Initialcommit anlegen; ungespeicherte Discovery-Entwuerfe bleiben
+  ausserhalb von Project Server und Forgejo.
 - Systemvorlagen als unveraenderliche Template-Repositories beziehungsweise
   freigegebene Template-Commits verwalten.
 - Accountprojekt aus einem exakten Template-Commit erzeugen.
@@ -454,8 +459,9 @@ lokalen Code- oder Dokumentationslauf ausgeloest.
 
 ## Verbindliches Ziel fuer neue Entwicklungsprojekte
 
-Jedes neue Entwicklungsprojekt wird ausschliesslich mit einem privaten
-Forgejo-Repository angelegt. Der Project Server materialisiert dabei die
+Jedes ausdruecklich gespeicherte Entwicklungsprojekt wird ausschliesslich mit
+einem privaten Forgejo-Repository angelegt. Vorherige Discovery-, Komponenten-
+und Hardwarearbeit bleibt ein fluechtiger Sitzungsentwurf. Der Project Server materialisiert dabei die
 Projektartefakte, schreibt sie in das Repository und erzeugt den Initial-Commit.
 Zu den Artefakten gehoeren mindestens Projektmanifest, Architektur- und
 Hardwarekonfiguration, Software-Einheiten, generierte Builddateien, Quell-,
@@ -481,7 +487,7 @@ Kompilierte Firmware, ELF, Map und groessere Buildlogs werden nicht in Forgejo
 geschrieben. Sie liegen im Artifact Store und referenzieren den exakten
 Basissoftware-, Produkt- und Projektcommit.
 
-**Abnahme:** Ein neu angelegtes Entwicklungsprojekt besitzt unmittelbar eine
+**Abnahme:** Ein ausdruecklich gespeichertes Entwicklungsprojekt besitzt unmittelbar eine
 aktive Forgejo-Bindung, einen Initial-Commit mit allen Startartefakten und eine
 commitgebundene Build-Referenz. Ein Build ohne aktive Repository-Bindung oder
 mit einer manipulierten Core-Referenz wird abgewiesen.
