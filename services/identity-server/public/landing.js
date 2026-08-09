@@ -2,6 +2,7 @@ const menuButton = document.querySelector("#publicMenuButton");
 const menu = document.querySelector("#publicMenu");
 let publicI18n = null;
 
+initializePublicTheme();
 normalizePublicNavigation();
 const publicI18nReady = initializePublicI18n();
 initializePublicSession();
@@ -169,6 +170,41 @@ function addPublicLanguageSwitcher() {
   });
 }
 
+function initializePublicTheme() {
+  const storageKey = "gernetix-public-theme";
+  const root = document.documentElement;
+  const savedTheme = window.localStorage.getItem(storageKey);
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  let theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : (prefersDark ? "dark" : "light");
+
+  const applyTheme = (nextTheme) => {
+    theme = nextTheme;
+    root.dataset.publicTheme = theme;
+    const button = document.querySelector("#publicThemeToggle");
+    if (!button) return;
+    const nextLabel = theme === "dark" ? "Helles Design einschalten" : "Dunkles Design einschalten";
+    button.setAttribute("aria-label", nextLabel);
+    button.setAttribute("title", nextLabel);
+    button.setAttribute("aria-pressed", String(theme === "dark"));
+    button.textContent = theme === "dark" ? "☀" : "◐";
+  };
+
+  applyTheme(theme);
+  const header = document.querySelector(".site-header");
+  if (!header || document.querySelector("#publicThemeToggle")) return;
+  const button = document.createElement("button");
+  button.id = "publicThemeToggle";
+  button.className = "public-theme-toggle";
+  button.type = "button";
+  button.addEventListener("click", () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    window.localStorage.setItem(storageKey, nextTheme);
+    applyTheme(nextTheme);
+  });
+  header.insertBefore(button, menuButton);
+  applyTheme(theme);
+}
+
 function decoratePublicNavigation() {
   const keysByPath = {
     "/": "nav.home",
@@ -200,12 +236,14 @@ function tr(key, fallback) {
 }
 
 function closeMenu() {
+  if (!menu || !menuButton) return;
   menu.hidden = true;
   menuButton.setAttribute("aria-expanded", "false");
   menuButton.setAttribute("aria-label", tr("menu.open", "Menü öffnen"));
 }
 
 function openMenu() {
+  if (!menu || !menuButton) return;
   menu.hidden = false;
   menuButton.setAttribute("aria-expanded", "true");
   menuButton.setAttribute("aria-label", tr("menu.close", "Menü schließen"));

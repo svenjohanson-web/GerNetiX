@@ -347,3 +347,26 @@ button.secondary {
   }
 
 }
+
+/* The public header stores the selected theme on the document element. */
+html[data-public-theme="light"] { color-scheme: light; background: #f6f3ed; color: #20211d; }
+html[data-public-theme="light"] body, html[data-public-theme="light"] .login-shell { background: #f6f3ed; }
+html[data-public-theme="light"] .login-panel { border-color: #d8d2c6; background: #fffdf8; box-shadow: 0 18px 42px rgba(54, 46, 34, .1); }
+html[data-public-theme="light"] .eyebrow, html[data-public-theme="light"] .link-button { color: #763025; }
+html[data-public-theme="light"] h1, html[data-public-theme="light"] label, html[data-public-theme="light"] .guest-access > p:first-child, html[data-public-theme="light"] .registration-step > strong, html[data-public-theme="light"] .recovery-choice > strong { color: #20211d; }
+html[data-public-theme="light"] input { border-color: #bdb5a8; background: #fffdf8; color: #20211d; }
+html[data-public-theme="light"] input:focus { border-color: #763025; outline-color: rgba(118, 48, 37, .18); }
+html[data-public-theme="light"] button { border-color: #817a70; background: #f1ece3; color: #20211d; }
+html[data-public-theme="light"] button:hover { background: #e7dfd3; }
+html[data-public-theme="light"] .primary { border-color: #20211d; background: #20211d; color: #fffdf8; }
+html[data-public-theme="light"] .primary:hover { background: #763025; }
+html[data-public-theme="light"] .guest-button, html[data-public-theme="light"] button.secondary { border-color: #817a70; background: #f1ece3; color: #20211d; }
+html[data-public-theme="light"] .passkey-qr-hint, html[data-public-theme="light"] .demo-hint { border-color: #b98a43; background: #f2e9dc; color: #4f4e48; }
+html[data-public-theme="light"] .check-line, html[data-public-theme="light"] .guest-hint, html[data-public-theme="light"] .recovery-choice p, html[data-public-theme="light"] .recovery-intro, html[data-public-theme="light"] .status, html[data-public-theme="light"] .separator, html[data-public-theme="light"] .step-label, html[data-public-theme="light"] .recovery-choice > strong span { color: #5d5b54; }
+html[data-public-theme="light"] .guest-access { border-color: #d8d2c6; }
+html[data-public-theme="light"] .separator::before, html[data-public-theme="light"] .separator::after { background: #d8d2c6; }
+html[data-public-theme="light"] .recovery-set, html[data-public-theme="light"] .registration-step, html[data-public-theme="light"] .recovery-choice { border-color: #d8d2c6; background: #faf7f1; }
+html[data-public-theme="light"] .recovery-set p { color: #4f4e48; }
+html[data-public-theme="light"] .recovery-set code { background: #eee8dd; color: #20211d; }
+html[data-public-theme="light"] .auth-site-footer { color: #5d5b54; }
+html[data-public-theme="light"] .auth-site-footer a { color: #4f4e48; }
