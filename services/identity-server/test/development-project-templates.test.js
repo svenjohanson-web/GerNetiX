@@ -13,6 +13,7 @@ const {
   templateSoftwareUnits,
 } = require("../src/dev/development-project-templates");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../../project-server/src/modules/esp32-basissoftware-package");
+const { developmentFirmwareStarterSources } = require("../src/dev/projects/project-configuration-service");
 const developmentComponentMetamodel = require("../public/app/development-component-metamodel");
 
 test("separates semantic template models from rendered views", () => {
@@ -377,4 +378,19 @@ test("IoT-device-only template remains logical until hardware realization", () =
   assert.equal(buildConfig, null);
   assert.deepEqual(sources, []);
   assert.deepEqual(templateFirmwareSources(developmentProjectTemplate("empty"), "Leer"), []);
+});
+
+test("materializes a buildable starter source when a logical IoT device receives its board", () => {
+  const [source] = developmentFirmwareStarterSources([{
+    software_unit_id: "software_device",
+    build_system: "platformio",
+    source_root: "Komponenten/IoT-Device 1",
+    entrypoint: "src/user_main.cpp",
+    build_config: { framework: "arduino", firmware_basis_id: "" },
+  }], "IoT-Device only");
+
+  assert.equal(source.path, "Komponenten/IoT-Device 1/src/user_main.cpp");
+  assert.match(source.content, /#include <Arduino\.h>/);
+  assert.match(source.content, /void setup\(\)/);
+  assert.match(source.content, /void loop\(\)/);
 });

@@ -738,6 +738,10 @@ Umgesetzt im ersten Schritt:
   Board-JSON und Header werden dabei aus demselben kanonischen
   Software-Einheiten-Snapshot erzeugt, damit der Build-Drift-Schutz keine
   voneinander abweichenden Projektionen akzeptiert.
+- Wird eine zuvor rein logische IoT-Device-Schablone durch die Boardauswahl
+  erstmals buildfaehig, erhaelt jede neue PlatformIO-Software-Einheit genau
+  einmal eine zum Framework passende Einstiegsquelle. Bereits vorhandener
+  Kundencode wird dabei nicht ueberschrieben.
 - Reine Laufzeitzeitstempel verursachen keinen Inhaltsunterschied. Secrets
   erscheinen nur als `<runtime-secret>` und nicht im Projektdateiinhalt.
 - Project-Server-Antworten nennen geaenderte, unveraenderte und entfernte

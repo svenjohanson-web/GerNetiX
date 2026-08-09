@@ -461,7 +461,11 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         inventory_device_id: primaryInventoryDevice?.device_id || "",
       })
     : existingManifest.game_configuration;
-  const sources = hardwareConfigurationSources(hardwareConfiguration, project.title);
+  const currentSources = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
+  const currentSourcePaths = new Set((currentSources.items || []).map((source) => source.path));
+  const starterSources = developmentFirmwareStarterSources(softwareUnits, project.title)
+    .filter((source) => !currentSourcePaths.has(source.path));
+  const sources = hardwareConfigurationSources(hardwareConfiguration, project.title).concat(starterSources);
   const expectedHeadSha = await projectSources.persistGenerated(project, sources, "Hardwareansichten aktualisiert");
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
@@ -764,4 +768,52 @@ function primaryProjectComponentPath(project) {
   };
 }
 
-module.exports = { createProjectConfigurationService };
+function developmentFirmwareStarterSources(softwareUnits = [], projectTitle = "") {
+  const safeTitle = String(projectTitle || "GerNetiX Projekt").replace(/["\\\r\n]/g, "").slice(0, 120);
+  return softwareUnits
+    .filter((unit) => unit?.build_system === "platformio" && unit.build_config)
+    .map((unit) => {
+      const sourceRoot = String(unit.source_root || "").replace(/\/$/, "");
+      let entrypoint = String(unit.entrypoint || unit.build_config.user_source_path || "src/user_main.cpp").replace(/^\/+/, "");
+      if (sourceRoot && entrypoint.startsWith(`${sourceRoot}/`)) entrypoint = entrypoint.slice(sourceRoot.length + 1);
+      const path = [sourceRoot, entrypoint].filter(Boolean).join("/");
+      const basissoftware = Boolean(unit.build_config.firmware_basis_id);
+      const framework = String(unit.build_config.framework || "").toLowerCase();
+      const content = basissoftware ? [
+        '#include "user/user_app.h"',
+        '#include "gernetix_board_configuration.h"',
+        "",
+        'extern "C" void userMain() {',
+        `  // Projektstart: ${safeTitle}`,
+        "}",
+        "",
+        'extern "C" void userTick() {',
+        "}",
+        "",
+      ] : framework === "arduino" ? [
+        "#include <Arduino.h>",
+        '#include "gernetix_board_configuration.h"',
+        "",
+        "void setup() {",
+        "  Serial.begin(115200);",
+        `  // Projektstart: ${safeTitle}`,
+        "}",
+        "",
+        "void loop() {",
+        "  delay(10);",
+        "}",
+        "",
+      ] : [
+        '#include "gernetix_board_configuration.h"',
+        "",
+        'extern "C" void app_main(void) {',
+        `  // Projektstart: ${safeTitle}`,
+        "}",
+        "",
+      ];
+      return { path, role: "user_code", content_type: "text/x-c++src", content: content.join("\n") };
+    })
+    .filter((source) => source.path);
+}
+
+module.exports = { createProjectConfigurationService, developmentFirmwareStarterSources };
