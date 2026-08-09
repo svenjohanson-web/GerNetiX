@@ -107,7 +107,6 @@ const { createProjectConfigurationService } = require("./dev/projects/project-co
 const { createProjectHardwareModel } = require("./dev/projects/project-hardware-model");
 const { createProjectViewModel } = require("./dev/projects/project-view-model");
 const { createProjectPlatformMapper } = require("./dev/projects/project-platform-mapper");
-const { createProjectCatalogSeedingService } = require("./dev/projects/project-catalog-seeding-service");
 const { createProjectRuntimeService } = require("./dev/projects/project-runtime-service");
 const { createDemoProjectSources, slugifyProjectId } = require("./dev/projects/demo-project-sources");
 const { createPlatformService } = require("./dev/platform/platform-service");
@@ -531,14 +530,6 @@ const {
   projectViewManifest,
   restoreDevelopmentTemplateReference,
 });
-const { scheduleProjectServerDemoProjects } = createProjectCatalogSeedingService({
-  accountSubscription,
-  demoProjectSources,
-  getUserIdeState: () => userIdeState,
-  projectServerJson,
-  projectServerUserId,
-  projectViewManifest,
-});
 const {
   invalidateUserIdeProjectCaches,
   loadUserIdeProjectSummaries,
@@ -554,7 +545,6 @@ const {
   mapUserIdeProjects,
   projectServerJson,
   projectServerUserId,
-  scheduleProjectServerDemoProjects,
 });
 const routeRegistry = createRouteRegistry();
 const sessionAccess = createSessionAccess({ resolveSession: sessionService.read, sendJson });

@@ -288,8 +288,27 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht gelöscht werden.", 409);
-    const deleted = await this.repository.deleteProject(projectId);
-    return { project_id: project.project_id, deleted };
+    const binding = this.activeRepositoryBinding(project);
+    const repositoryArchive = binding
+      ? await this.projectRepositoryStore.archive(binding)
+      : null;
+    try {
+      const deleted = await this.repository.deleteProject(projectId);
+      return {
+        project_id: project.project_id,
+        deleted,
+        repository_archive: publicRepositoryBinding(repositoryArchive),
+      };
+    } catch (error) {
+      if (repositoryArchive) {
+        await this.repository.saveProject({
+          ...project,
+          repository_binding: repositoryArchive,
+          updated_at: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      throw error;
+    }
   }
 
   async listProjects(query = {}) {

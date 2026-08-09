@@ -22,7 +22,6 @@ test("shares concurrent project loads and keeps synchronization behind the learn
       return { items: [{ project_id: "p1", learning_project_id: "learning.one", view_manifest: { schema_version: 1 } }] };
     },
     projectServerUserId: () => "account-1",
-    scheduleProjectServerDemoProjects() {},
   });
 
   const [left, right] = await Promise.all([
@@ -45,8 +44,6 @@ test("rejects project access across account boundaries", async () => {
     mapUserIdeProjects: () => [],
     projectServerJson: async () => ({ project_id: "p1", user_id: "another-account" }),
     projectServerUserId: () => "account-1",
-    scheduleProjectServerDemoProjects() {},
   });
   await assert.rejects(() => service.requireSessionProject({}, "p1"), { status: 404 });
 });
-

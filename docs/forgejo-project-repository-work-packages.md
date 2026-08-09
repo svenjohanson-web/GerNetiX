@@ -14,8 +14,15 @@ Mitgliedschaften, Berechtigungen, Tarif, Repository-Bindung, Build-Jobs,
 Freigaben und Audit. Build-Binaries bleiben im getrennten Artifact Store.
 
 Diese Zielentscheidung loest die bisherige SQL-basierte Git-Light-Architektur
-ab. Die Migration ist noch nicht umgesetzt; bis zum erfolgreichen Cutover
-bleiben `project_sources` und `project_versions` die laufende Altimplementierung.
+ab. Fuer den Staging-Kundenbestand ist keine Bestandsmigration erforderlich:
+Die einzigen accountgebundenen Altprojekte gehoerten zum freigegebenen
+Demo-/Testbestand von `Sven02` und werden vollstaendig geloescht. Das vorhandene
+SQL-zu-Git-Werkzeug bleibt als technische Rueckfallhilfe erhalten, wird aber
+nicht auf diesen Bestand angewendet.
+
+Katalogdefinitionen bleiben kuenftig virtuell. Erst ein ausdruecklicher
+Projektstart erzeugt eine accountgebundene Kopie und damit ein eigenes privates
+Forgejo-Repository; das Lesen der Projektliste legt keine Projekte mehr an.
 
 ## Ergebnis der Bestandsuntersuchung
 
@@ -207,7 +214,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
-| FG-10 | Projektweiser Cutover und Rollback | offen | Staging-Migration |
+| FG-10 | Projektweiser Cutover und Rollback | fuer den Staging-Kundenbestand entfallen | Nullbestand nach freigegebener Demo-Bereinigung |
 | FG-11 | SQL-Quelltabellen stilllegen | offen | Negativtests und Schemaaudit |
 | FG-12 | Board-Support-Repositories | offen | Katalog-/Commit-Vertrag |
 | FG-13 | Backup, Restore und Upgrade | Backupvertrag lokal, Restore offen | isolierter Restore-Test |
@@ -533,22 +540,27 @@ Abnahme:
 
 ## FG-10 - Projektweiser Cutover und Rollback
 
-Ziel:
+Entscheidung vom 9. August 2026:
 
-- Migration pro Projekt statt als unteilbaren Gesamtwechsel ausfuehren.
-- Projekt kurz in read-only setzen, letzten SQL-Stand exportieren, validieren
-  und Repository-Bindung atomar aktivieren.
-- Nach Cutover nur Forgejo schreiben; keine dauerhafte Dual-Write-Phase.
-- SQL-Altquellen bis zum bestandenen Restore-Nachweis read-only behalten.
-- Rollback darf nur zum eingefrorenen SQL-Stand erfolgen und muss spaetere
-  Git-Commits sichtbar behandeln.
+- Im Stagingbestand existierten keine Kundenprojekte, die erhalten und nach
+  Forgejo migriert werden muessen.
+- Die 51 accountgebundenen Projekte von `Sven02` waren freigegebener
+  Demo-/Testbestand. Sie umfassten 1.133 SQL-Quellen, 113 Build-Jobs,
+  385 Artefaktreferenzen und zwei Git-Light-Versionen, aber keine
+  Projekttelemetrie, Push-Anmeldungen oder Forgejo-Bindungen.
+- Dieser Bestand wird geloescht statt migriert. System-Templates und der
+  technische Build-Nachweis sind nicht Teil dieser Accountbereinigung.
+- Das generische FG-09-Werkzeug bleibt im Quellstand, falls spaeter bewusst ein
+  externer Altbestand importiert werden soll. Es ist kein offener Schritt fuer
+  den heutigen Staging-Cutover.
 
-Abnahme:
+Abnahme fuer den heutigen Bestand:
 
-- Staging-Migration mit leerem Projekt, Template, Mehrzielprojekt,
-  Git-Light-Historie und Binary-Version.
-- Geplanter Abbruch an jeder Phasengrenze ist wiederholbar und verliert keine
-  bestaetigte Aenderung.
+- `Sven02` besitzt nach der Bereinigung kein Project-Server-Projekt mehr.
+- Die Projektliste erzeugt beim Lesen keine Katalogprojekte neu.
+- Ein bewusster Projektstart materialisiert weiterhin eine neue Kundenkopie.
+- Loeschen eines bereits Forgejo-gebundenen Projekts archiviert zuerst dessen
+  privates Repository und entfernt danach die Projektmetadaten.
 
 ## FG-11 - SQL-Quelltabellen stilllegen
 

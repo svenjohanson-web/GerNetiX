@@ -9,7 +9,6 @@ function createProjectRuntimeService({
   mapUserIdeProjects,
   projectServerJson,
   projectServerUserId,
-  scheduleProjectServerDemoProjects,
   projectCacheMs = 2_500,
   summaryCacheMs = 15_000,
 }) {
@@ -81,14 +80,12 @@ function createProjectRuntimeService({
 
   async function loadUserIdeProjectSummariesUncached(session, userId) {
     await ensureAccountResourcePlan(session);
-    scheduleProjectServerDemoProjects(session);
     const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`);
     return mapUserIdeProjectSummaries(session, response.items || []);
   }
 
   async function loadUserIdeProjectsUncached(session, userId) {
     await ensureAccountResourcePlan(session);
-    scheduleProjectServerDemoProjects(session);
     const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
     const learningProjects = getLearningProjects();
     const synchronizedItems = await Promise.all(response.items.map(async (project) => {

@@ -9,7 +9,6 @@ const platformService = fs.readFileSync(path.resolve(__dirname, "../src/dev/plat
 const learningProjectService = fs.readFileSync(path.resolve(__dirname, "../src/dev/learning/learning-project-service.js"), "utf8");
 const projectPlatformMapper = fs.readFileSync(path.resolve(__dirname, "../src/dev/projects/project-platform-mapper.js"), "utf8");
 const projectRuntimeService = fs.readFileSync(path.resolve(__dirname, "../src/dev/projects/project-runtime-service.js"), "utf8");
-const projectCatalogSeedingService = fs.readFileSync(path.resolve(__dirname, "../src/dev/projects/project-catalog-seeding-service.js"), "utf8");
 const runtimeSource = [devServer, platformService, learningProjectService, projectPlatformMapper, projectRuntimeService].join("\n");
 const app = readPlatformAppSource();
 const platformRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/platform-routes.js"), "utf8");
@@ -82,12 +81,11 @@ test("loads progress only for the open learning project after leaving the catalo
   assert.match(runtimeSource, /progress\?\.status === "completed"[\s\S]*learningProgress\.hasSubmittedFeedback\(userId, project\.project_server_id\)/);
 });
 
-test("synchronizes catalog projects once per account without blocking the project list", () => {
-  assert.match(projectLoader, /scheduleProjectServerDemoProjects\(session\)/);
-  assert.doesNotMatch(projectLoader, /await ensureProjectServerDemoProjects/);
-  assert.match(projectCatalogSeedingService, /const seededUsers = new Set\(\)/);
-  assert.match(projectCatalogSeedingService, /const seedPromises = new Map\(\)/);
-  assert.match(projectCatalogSeedingService, /if \(seedPromises\.has\(userId\)\) return seedPromises\.get\(userId\)/);
+test("keeps catalog definitions virtual until the user starts a project", () => {
+  assert.doesNotMatch(devServer, /createProjectCatalogSeedingService/);
+  assert.doesNotMatch(projectLoader, /scheduleProjectServerDemoProjects|ensureProjectServerDemoProjects/);
+  assert.match(learningProjectService, /async function handleLearningProjectStart/);
+  assert.match(learningProjectService, /projectServerJson\("\/api\/projects", \{[\s\S]*method: "POST"/);
 });
 
 test("shares the immediate project load between bootstrap and route hydration", () => {

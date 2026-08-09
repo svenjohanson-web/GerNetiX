@@ -32,6 +32,20 @@ test("provisions a repository and commits projected configuration with head comp
   }), (error) => error.code === "repository_head_conflict");
 });
 
+test("archives the private Forgejo repository before deleting its project metadata", async () => {
+  const store = new RecordingRepositoryStore();
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository, projectRepositoryStore: store });
+  const project = await service.createProject({ project_id: "project-delete", user_id: "user-1", title: "Delete" });
+
+  const result = await service.deleteProject(project.project_id);
+
+  assert.equal(store.archived.length, 1);
+  assert.equal(store.archived[0].repository_id, "42");
+  assert.equal(result.repository_archive.state, "archived");
+  await assert.rejects(service.getProject(project.project_id), (error) => error.code === "project_not_found");
+});
+
 test("requires expected_head_sha for an atomic multi-file commit and mirrors its result into the SQL transition cache", async () => {
   const store = new RecordingRepositoryStore();
   const service = new ProjectService({ repository: new InMemoryProjectRepository(), projectRepositoryStore: store });
@@ -212,7 +226,7 @@ test("checks account storage before Forgejo commits and repository restores", as
 });
 
 class RecordingRepositoryStore {
-  constructor() { this.commits = []; this.files = new Map(); this.snapshots = new Map(); this.treeReads = 0; this.fullReads = 0; }
+  constructor() { this.commits = []; this.files = new Map(); this.snapshots = new Map(); this.treeReads = 0; this.fullReads = 0; this.archived = []; }
   async provisionProject(input) {
     this.provisioned = input;
     for (const change of input.changes) this.files.set(change.path, change.content);
@@ -270,5 +284,9 @@ class RecordingRepositoryStore {
     const head = String.fromCharCode(97 + this.commits.length).repeat(40);
     this.snapshots.set(head, new Map(this.files));
     return { head_sha: head, branch: "main", changed_paths: [...this.files.keys()], no_change: false, restored_from_commit_sha: input.restore_commit_sha };
+  }
+  async archive(binding) {
+    this.archived.push(binding);
+    return { ...binding, state: "archived" };
   }
 }
