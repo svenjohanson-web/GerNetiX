@@ -159,7 +159,7 @@ function assertSafeGitRef(value) {
 }
 
 function assertSafeSshTarget(value) {
-  if (!/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(value)) throw new Error(`Ungueltiges SSH-Ziel: ${value}`);
+  if (!/^(?:[A-Za-z0-9._-]+@)?[A-Za-z0-9.-]+$/.test(value)) throw new Error(`Ungueltiges SSH-Ziel: ${value}`);
   return value;
 }
 

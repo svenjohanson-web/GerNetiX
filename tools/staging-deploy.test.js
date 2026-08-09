@@ -127,6 +127,7 @@ test("rejects unsafe refs and ssh targets", () => {
   assert.throws(() => assertSafeGitRef("main; reboot"), /Unsicherer/);
   assert.throws(() => assertSafeGitRef("../main"), /Unsicherer/);
   assert.throws(() => assertSafeSshTarget("root@example.test -o ProxyCommand=x"), /Ungueltiges/);
+  assert.equal(assertSafeSshTarget("gernetix-vps"), "gernetix-vps");
 });
 
 test("quotes remote values and deploys an exact commit", () => {
