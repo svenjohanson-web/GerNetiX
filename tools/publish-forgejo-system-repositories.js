@@ -86,7 +86,7 @@ function sourceFiles(item) {
 function listSourceFiles(directory, relativeRoot) {
   const files = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if ([".git", ".pio", "node_modules", "managed_components"].includes(entry.name)) continue;
+    if ([".git", ".pio", ".runtime", "node_modules", "managed_components", "Desktop", "g"].includes(entry.name)) continue;
     const relativePath = path.posix.join(relativeRoot.replace(/\\/g, "/"), entry.name);
     const absolutePath = path.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...listSourceFiles(absolutePath, relativePath));
