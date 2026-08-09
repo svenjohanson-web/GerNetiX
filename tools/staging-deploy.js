@@ -185,7 +185,7 @@ function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, pu
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T -e NEXI_RELEASE_VERSION=${shellQuote(`0.1.0-${commit.slice(0, 12)}`)} -e NEXI_SOURCE_COMMIT=${shellQuote(commit)} public-demo-server sh -lc ${shellQuote("/opt/platformio/bin/platformio run --project-dir /app/basissoftware/esp32 -e waveshare-esp32-s3-audio-voice-lab && node /app/tools/publish-nexi-release.js")}`,
   );
   if (publishSystemRepositories) commands.push(
-    `docker compose --env-file .env.vps -f compose.vps.yaml exec -T project-server node /app/tools/publish-forgejo-system-repositories.js --apply`,
+    "./scripts/staging/publish-forgejo-system-repositories.sh .env.vps",
   );
   const lockedCommand = commands.join(" && ");
   return [

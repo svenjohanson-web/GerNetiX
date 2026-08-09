@@ -147,5 +147,5 @@ test("quotes remote values and deploys an exact commit", () => {
 
 test("runs the controlled Forgejo system-source publisher only when requested", () => {
   const command = remoteDeployCommand({ branch: "main", commit: "0123456789abcdef0123456789abcdef01234567", remoteDir: "/opt/gernetix", publishSystemRepositories: true });
-  assert.match(command, /project-server node \/app\/tools\/publish-forgejo-system-repositories\.js --apply/);
+  assert.match(command, /scripts\/staging\/publish-forgejo-system-repositories\.sh \.env\.vps/);
 });
