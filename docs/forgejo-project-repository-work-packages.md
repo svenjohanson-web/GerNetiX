@@ -209,8 +209,8 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-02 | Abgesicherter Forgejo-Betrieb | lokal umgesetzt, Betriebstest offen | Compose-/Security-Contract |
 | FG-03 | Forgejo- und Git-Adapter | umgesetzt, Staging-Durchstich bestanden | Adapter-Integrationstest |
 | FG-04 | Repository-Provisionierung | fuer neue Projekte und Vorlagen umgesetzt | Projekt-/Template-Contract |
-| FG-05 | Git-basiertes Quellen-API | lokal umgesetzt, Cutover offen | CRUD-/Konflikt-/Pfadtests |
-| FG-06 | Echte Commit-Historie und Restore | lokal umgesetzt, Cutover offen | Historien-/Restore-Tests |
+| FG-05 | Git-basiertes Quellen-API | Staging fuer neue Kundenprojekte bestanden, Altpfad-Stilllegung offen | CRUD-/Konflikt-/Pfadtests plus Staging-Durchstich |
+| FG-06 | Echte Commit-Historie und Restore | Staging fuer neue Kundenprojekte bestanden, Altpfad-Stilllegung offen | Historien-/Restore-Tests plus Staging-Durchstich |
 | FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
@@ -355,8 +355,13 @@ zurueck.
 
 Liste, Lesen, Suche, Rename und Delete verwenden bei aktiver Forgejo-Bindung
 Git und sind einschliesslich Unicode-, Leerdatei-, Binaer-, Pfad- und
-Head-Konfliktfaellen getestet. Noch offen ist der kontrollierte Cutover ohne
-SQL-Quellwahrheit.
+Head-Konfliktfaellen getestet. Der Staging-Durchstich vom 2026-08-09 legte aus
+einer Systemschablone ein neues Sven02-Kundenprojekt mit privatem Repository
+an, schrieb zwei Dateien atomar in einen Commit und wies einen veralteten Head
+ohne Inhaltsverlust ab. Das Testprojekt wurde danach geloescht und sein
+Repository archiviert. Noch offen ist nur die spaetere technische Stilllegung
+des SQL-Altpfads; eine Kunden-Bestandsmigration ist mangels Altbestand nicht
+erforderlich.
 
 Ziel:
 
@@ -378,8 +383,12 @@ Abnahme:
 
 Lokal umgesetzt sind echte Git-Historie und Diff-Metadaten, benannte
 Versionen als Commitreferenzen ohne Quellkopie sowie Restore als neuer
-linearer Commit. Offen bleiben der Container-End-to-End-Nachweis und der
-spaetere Cutover der SQL-Vollsnapshots.
+linearer Commit. Der reale Staging-Nachweis bestand mit vier linearen Commits:
+Initialstand, atomarer Mehrdatei-Commit, Weiterbearbeitung und Restore aus der
+benannten Version. Baum, Dateiinhalt, Diff und Historie wurden am echten
+Forgejo-Repository gelesen; danach wurden Kundenprojekt und aktive Bindung
+kontrolliert entfernt beziehungsweise archiviert. Offen bleibt die spaetere
+technische Stilllegung der SQL-Vollsnapshots.
 
 Ziel:
 
