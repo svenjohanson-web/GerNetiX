@@ -16,6 +16,10 @@ class ForgejoProjectRepositoryStore {
   async provisionProject(input = {}) {
     const projectId = required(input.project_id, "project_id");
     const repositoryName = repositoryNameForProject(projectId);
+    await this.client.ensureOrganization(this.organization, {
+      full_name: "GerNetiX Projekte",
+      description: "Private Kundenprojekte von GerNetiX.",
+    });
     const ensured = await this.client.ensureOrganizationRepository(this.organization, {
       name: repositoryName,
       description: `GerNetiX Projekt ${projectId}`,

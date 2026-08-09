@@ -28,8 +28,10 @@ test("provisions a private repository with separated REST and Git adapters", asy
   assert.equal(binding.head_sha, "a".repeat(40));
   assert.equal(gitInput.remote_url, "http://forgejo:3000/gernetix-projects/project.git");
   assert.equal(calls[1].options.headers.Authorization, "token provision-secret");
-  assert.equal(JSON.parse(calls[1].options.body).private, true);
-  assert.equal(JSON.parse(calls[1].options.body).auto_init, false);
+  assert.equal(JSON.parse(calls[1].options.body).visibility, "private");
+  assert.equal(calls[3].options.headers.Authorization, "token provision-secret");
+  assert.equal(JSON.parse(calls[3].options.body).private, true);
+  assert.equal(JSON.parse(calls[3].options.body).auto_init, false);
   assert.notEqual(repositoryNameForProject("project-1"), repositoryNameForProject("project-2"));
 });
 
@@ -54,6 +56,7 @@ test("retries safe reads once but never retries repository creation", async () =
 test("resumes provisioning idempotently when the exact initial tree already exists", async () => {
   const client = {
     baseUrl: "http://forgejo:3000",
+    ensureOrganization: async () => ({ created: false }),
     ensureOrganizationRepository: async () => ({
       created: false,
       repository: { id: 42, clone_url: "http://forgejo:3000/gernetix-projects/project.git", empty: false },
