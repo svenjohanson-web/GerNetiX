@@ -201,6 +201,47 @@ test("rejects a build when a generated repository file drifts from its commit co
   );
 });
 
+test("builds an IoT template from one canonical board snapshot when the hardware view omits its name", async () => {
+  const store = new RecordingRepositoryStore();
+  const service = new ProjectService({ repository: new InMemoryProjectRepository(), projectRepositoryStore: store });
+  const boardConfiguration = {
+    schema_version: 1,
+    source: "catalog",
+    name: "ESP32-S3 ES3C28P Touch-Board",
+    base_board_profile_id: "hardware.processor_board.esp32_s3_es3c28p",
+    board_features: { display: { enabled: true, hardware: "tft_lcd", driver: "ili9341", connection: "spi", pins: { cs: 10 }, value: "" } },
+  };
+  const project = await service.createProject({
+    project_id: "project-board-snapshot",
+    user_id: "user-1",
+    title: "IoT-Device only",
+    build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", framework: "arduino", board_configuration: boardConfiguration },
+    view_manifest: {
+      views: [{
+        id: "hardware-configuration",
+        type: "hardware_configuration",
+        payload: {
+          schema_version: 6,
+          components: [{
+            component_id: "device",
+            component_path: "Komponenten/IoT-Device 1",
+            label: "IoT-Device 1",
+            abstract_type: "iot_device",
+            board_configuration: { ...boardConfiguration, name: "" },
+          }],
+        },
+      }],
+    },
+  });
+  const boardPath = (await service.listSources(project.project_id))
+    .find((source) => source.path.startsWith("gernetix/hardware/boards/")).path;
+  const boardDocument = JSON.parse((await service.getSource(project.project_id, boardPath)).content);
+  const job = await service.createBuildJob(project.project_id, { commit_sha: project.repository_binding.head_sha });
+
+  assert.equal(boardDocument.name, boardConfiguration.name);
+  await assert.doesNotReject(service.createBuildPackage(job.build_job_id));
+});
+
 test("rejects a build commit that is not reachable in the bound project repository", async () => {
   const store = new RecordingRepositoryStore();
   const service = new ProjectService({ repository: new InMemoryProjectRepository(), projectRepositoryStore: store });

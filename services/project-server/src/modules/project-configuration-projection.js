@@ -24,6 +24,8 @@ function projectConfigurationSources(project = {}) {
   const softwareUnits = Array.isArray(project.software_units) ? project.software_units : [];
   const architecture = manifestView(manifest, "architecture-diagram");
   const hardware = manifestView(manifest, "hardware-configuration");
+  const hardwareComponents = Array.isArray(hardware?.payload?.components) ? hardware.payload.components : [];
+  const boardConfigurationsBySoftwareUnit = new Map();
 
   sources.push(jsonSource("gernetix/project.json", {
     schema_version: 1,
@@ -45,17 +47,21 @@ function projectConfigurationSources(project = {}) {
   }
 
   if (hardware?.payload && typeof hardware.payload === "object") {
-    const components = Array.isArray(hardware.payload.components) ? hardware.payload.components : [];
     sources.push(jsonSource("gernetix/hardware/allocation.json", {
       schema_version: 1,
       model_schema_version: Number(hardware.payload.schema_version) || 1,
       ...withoutKeys(hardware.payload, ["components", "schema_version"]),
-      components: components.map(hardwareAllocationComponent),
+      components: hardwareComponents.map(hardwareAllocationComponent),
     }));
-    for (const component of components) {
-      if (component?.abstract_type !== "iot_device" || !component.board_configuration) continue;
+    for (const component of hardwareComponents) {
+      if (component?.abstract_type !== "iot_device") continue;
+      const softwareUnit = softwareUnitForHardwareComponent(softwareUnits, component);
+      const unitBoardConfiguration = objectValue(softwareUnit?.build_config).board_configuration;
+      const boardConfiguration = unitBoardConfiguration || component.board_configuration;
+      if (!boardConfiguration) continue;
       const componentId = safePathSegment(component.component_id || component.label || "board");
-      sources.push(jsonSource(`gernetix/hardware/boards/${componentId}.json`, versioned(component.board_configuration)));
+      sources.push(jsonSource(`gernetix/hardware/boards/${componentId}.json`, versioned(boardConfiguration)));
+      if (softwareUnit) boardConfigurationsBySoftwareUnit.set(softwareUnit.software_unit_id, boardConfiguration);
     }
   }
 
@@ -107,12 +113,14 @@ function projectConfigurationSources(project = {}) {
         versioned(configuration),
       ));
     }
-    if (sourceRoot && buildConfig.board_configuration) {
+    const boardConfiguration = boardConfigurationsBySoftwareUnit.get(unit.software_unit_id)
+      || buildConfig.board_configuration;
+    if (sourceRoot && boardConfiguration) {
       sources.push({
         path: `${sourceRoot}/include/gernetix_board_configuration.h`,
         role: GENERATED_CONFIGURATION_ROLE,
         content_type: "text/x-c++hdr",
-        content: renderBoardConfigurationHeader(buildConfig.board_configuration),
+        content: renderBoardConfigurationHeader(boardConfiguration),
       });
     }
   }
@@ -130,6 +138,20 @@ function hardwareAllocationComponent(component = {}) {
     result.board_configuration_path = `gernetix/hardware/boards/${safePathSegment(component.component_id || component.label || "board")}.json`;
   }
   return result;
+}
+
+function softwareUnitForHardwareComponent(softwareUnits, component) {
+  const componentPath = String(component.component_path || "").replace(/\/$/, "");
+  if (componentPath) {
+    const exact = softwareUnits.find((unit) => String(unit.source_root || "").replace(/\/$/, "") === componentPath);
+    if (exact) return exact;
+  }
+  const componentLabel = String(component.label || "");
+  const componentId = safePathSegment(component.component_id || "");
+  return softwareUnits.find((unit) => {
+    const unitLabel = String(unit.source_root || "").replace(/\/$/, "").split("/").pop();
+    return unitLabel === componentLabel || safePathSegment(unitLabel) === componentId;
+  }) || null;
 }
 
 function addManifestConfiguration(sources, manifest, key, path) {

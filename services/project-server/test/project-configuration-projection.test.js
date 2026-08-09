@@ -58,6 +58,19 @@ test("changes meaningful dialog values but ignores volatile timestamps", () => {
   assert.notEqual(after.get("Komponenten/IoT-Device 1/include/gernetix_board_configuration.h"), before.get("Komponenten/IoT-Device 1/include/gernetix_board_configuration.h"));
 });
 
+test("derives the board document and generated header from the same software-unit snapshot", () => {
+  const project = representativeProject();
+  const hardwareView = project.view_manifest.views.find((view) => view.id === "hardware-configuration");
+  hardwareView.payload.components[0].board_configuration.name = "";
+
+  const sources = new Map(projectConfigurationSources(project).map((source) => [source.path, source.content]));
+  const boardDocument = JSON.parse(sources.get("gernetix/hardware/boards/iot_device_1.json"));
+  const boardHeader = sources.get("Komponenten/IoT-Device 1/include/gernetix_board_configuration.h");
+
+  assert.equal(boardDocument.name, "ESP32 Kamera");
+  assert.match(boardHeader, /GERNETIX_BOARD_CONFIGURATION_NAME "ESP32 Kamera"/);
+});
+
 function representativeProject() {
   const boardConfiguration = {
     schema_version: 1,

@@ -735,6 +735,9 @@ Umgesetzt im ersten Schritt:
   begrenzt.
 - Boardkonfigurationen erzeugen zusaetzlich einen sichtbaren, in der IDE
   schreibgeschuetzten `gernetix_board_configuration.h` je Software-Einheit.
+  Board-JSON und Header werden dabei aus demselben kanonischen
+  Software-Einheiten-Snapshot erzeugt, damit der Build-Drift-Schutz keine
+  voneinander abweichenden Projektionen akzeptiert.
 - Reine Laufzeitzeitstempel verursachen keinen Inhaltsunterschied. Secrets
   erscheinen nur als `<runtime-secret>` und nicht im Projektdateiinhalt.
 - Project-Server-Antworten nennen geaenderte, unveraenderte und entfernte
