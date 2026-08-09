@@ -12,7 +12,8 @@ const DEFINITIONS = [
   definition("gernetix-runtime-basissoftware-esp8266", "Basissoftware ESP8266", "basissoftware", "gernetix-platform", "basissoftware-esp8266", "basissoftware/esp8266", "FORGEJO_ESP8266_BASIS_COMMIT"),
   definition("gernetix-product-nexi", "Nexi", "product", "gernetix-products", "nexi", "projects/waveshare-voice-lab", "FORGEJO_NEXI_COMMIT"),
   definition("gernetix-product-flashbox", "FlashBox", "product", "gernetix-products", "flashbox", "firmware/gernetix-flashbox", "FORGEJO_FLASHBOX_COMMIT"),
-  definition("gernetix-product-game-collection", "Spielesammlung", "product", "gernetix-products", "spielesammlung", "Demoanwendungen", "FORGEJO_GAME_COLLECTION_COMMIT"),
+  definition("gernetix-product-game-collection-esp8266", "Spielesammlung ESP8266 OLED", "product", "gernetix-products", "spielesammlung-esp8266-oled", "Demoanwendungen/Boards/hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung", "FORGEJO_ESP8266_GAME_COLLECTION_COMMIT"),
+  definition("gernetix-product-game-collection-esp32", "Spielesammlung ESP32-S3 Touch", "product", "gernetix-products", "spielesammlung-esp32-s3-touch", "Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung", "FORGEJO_ESP32_GAME_COLLECTION_COMMIT"),
 ];
 
 async function main() {

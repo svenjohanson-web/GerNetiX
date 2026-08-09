@@ -10,8 +10,8 @@ test("plans all protected Basissoftware and product repositories without network
   const plan = JSON.parse(output);
   assert.equal(plan.mode, "plan");
   assert.deepEqual(plan.repositories.map((item) => item.repository_name), [
-    "basissoftware-esp32", "basissoftware-esp8266", "nexi", "flashbox", "spielesammlung",
+    "basissoftware-esp32", "basissoftware-esp8266", "nexi", "flashbox", "spielesammlung-esp8266-oled", "spielesammlung-esp32-s3-touch",
   ]);
   assert.ok(plan.repositories.every((item) => item.file_count > 1));
-  assert.equal(plan.repositories.find((item) => item.repository_name === "spielesammlung").source_root, "Demoanwendungen");
+  assert.equal(plan.repositories.find((item) => item.repository_name === "spielesammlung-esp8266-oled").source_root, "Demoanwendungen/Boards/hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung");
 });

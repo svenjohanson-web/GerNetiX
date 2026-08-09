@@ -95,7 +95,8 @@ verbindlich vorbereitet: Neue Projekte erhalten ein privates Repository und
 einen Initialcommit mit Quellcode, Builddateien und Engineering-Konfiguration.
 Ohne erreichbares Forgejo wird kein neues Entwicklungsprojekt angelegt.
 
-ESP32-/ESP8266-Basissoftware, Nexi, FlashBox und Spielesammlung werden mit
+ESP32-/ESP8266-Basissoftware, Nexi, FlashBox sowie die getrennten
+Spielesammlungen fuer ESP8266-OLED und ESP32-S3-Touch werden mit
 `tools/publish-forgejo-system-repositories.js` in getrennte private
 System-Repositories importiert. Der Build akzeptiert die Basissoftware nur an
 dem serverseitig freigegebenen Commit; eine Kundenangabe kann Organisation,
@@ -226,7 +227,7 @@ Konfiguration:
 - `FORGEJO_PROVISION_TOKEN`: nur fuer Repository-Lifecycle
 - `FORGEJO_RUNTIME_TOKEN`: nur fuer Git-Lese-/Schreiboperationen
 - `FORGEJO_TIMEOUT_MS`, `PROJECT_GIT_TIMEOUT_MS`, `GIT_BINARY`: Adapter-Zeitlimits und Git-Programm
-- `FORGEJO_ESP32_BASIS_COMMIT`, `FORGEJO_ESP8266_BASIS_COMMIT`, `FORGEJO_NEXI_COMMIT`, `FORGEJO_FLASHBOX_COMMIT`, `FORGEJO_GAME_COLLECTION_COMMIT`: freigegebene System-Commits
+- `FORGEJO_ESP32_BASIS_COMMIT`, `FORGEJO_ESP8266_BASIS_COMMIT`, `FORGEJO_NEXI_COMMIT`, `FORGEJO_FLASHBOX_COMMIT`, `FORGEJO_ESP8266_GAME_COLLECTION_COMMIT`, `FORGEJO_ESP32_GAME_COLLECTION_COMMIT`: freigegebene System-Commits
 
 Accountgebundene Entwicklungsprojekte werden im gemeinsamen VPS-Betrieb in `gernetix_projects` gespeichert. Der einmalige Migrationscontainer uebernimmt alte Projektdaten transaktional aus der getrennten Projekt-SQLite oder, falls diese noch leer ist, aus der frueheren gemeinsamen Service-SQLite. Entwicklungsrechner verwenden den Project Server ueber HTTP und oeffnen keine Datenbankdatei. `memory`, `sqlite` und `json` sind nur fuer isolierte Tests oder lokale Fallbacks gedacht. Der Browser darf sich lokal das zuletzt geoeffnete Projekt merken; die Projektdaten selbst bleiben auf dem Project Server.
 

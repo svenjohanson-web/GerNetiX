@@ -411,8 +411,8 @@ Seit 2026-08-09 ist lokal zusaetzlich umgesetzt:
 
 - ein harter Admission-Gate fuer neue Projekte ohne Forgejo-Store,
 - getrennte, geschuetzte Systemquellen fuer ESP32-/ESP8266-Basissoftware,
-  Nexi, FlashBox und Spielesammlung,
-- ein idempotenter Plan-/Importablauf fuer diese fuenf Repositories,
+  Nexi, FlashBox sowie die Spielesammlungen fuer ESP8266-OLED und ESP32-S3-Touch,
+- ein idempotenter Plan-/Importablauf fuer diese sechs Repositories,
 - eine nicht durch Kunden ueberschreibbare Basissoftware-Referenz auf einen
   serverseitig freigegebenen Forgejo-Commit,
 - Laden der Basissoftware aus genau diesem Commit statt aus dem lokalen
