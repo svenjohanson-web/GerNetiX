@@ -56,14 +56,7 @@ ensure_service_access() {
 
 ensure_service_access
 published=$(compose exec -T project-server node /app/tools/publish-forgejo-system-repositories.js --apply)
-assignments=$(printf '%s' "$published" | node -e '
-  let input = "";
-  process.stdin.on("data", (chunk) => { input += chunk; });
-  process.stdin.on("end", () => {
-    const result = JSON.parse(input);
-    for (const item of result.repositories || []) console.log(item.environment_variable);
-  });
-')
+assignments=$(printf '%s\n' "$published" | sed -n 's/.*"environment_variable": "\([^"]*\)".*/\1/p')
 count=0
 printf '%s\n' "$assignments" | while IFS='=' read -r key value; do
   test -n "$key"
