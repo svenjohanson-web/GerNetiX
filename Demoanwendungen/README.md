@@ -1,13 +1,13 @@
-# Demoanwendungen
+# Starterprojekte zum Nachbauen
 
-Dieser Bereich enthaelt vorgefertigte, gepruefte Demo-Firmware fuer den oeffentlichen GerNetiX-Demo-Bereich.
+Dieser Bereich enthaelt vorgefertigte, gepruefte Starterprojekte. Kunden uebernehmen ein passendes Projekt in ihr privates Forgejo-Repository und entwickeln es dort weiter.
 
 Er steht bewusst neben `basissoftware/`:
 
 - `basissoftware/` enthaelt die geschuetzte Laufzeit- und Wiederherstellungssoftware.
-- `Demoanwendungen/` enthaelt sichtbare Beispielprogramme, die Besucher per USB ausprobieren koennen.
+- `Demoanwendungen/` enthaelt die bearbeitbaren Nachbauprojekte und ihre Boardvarianten.
 
-Eine Demo ist kein Entwicklungsprojekt und kein OTA-Update. Sie darf keine Konto-, Projekt- oder Kundendaten voraussetzen oder verwenden.
+Die Starterprojekte sind weder die Basissoftware noch ein OTA-Update. Sie duerfen keine fremden Konto-, Projekt- oder Kundendaten voraussetzen oder verwenden.
 
 ## Struktur
 
@@ -23,7 +23,7 @@ Demoanwendungen/
         firmware/             # buildbare Quellen der Demo
 ```
 
-## Regeln fuer eine veroeffentlichte Demo
+## Regeln fuer Starterprojekte
 
 1. Sie ist genau an die im Hardware Catalog gefuehrte Boardvariante und ihr Flash-Layout gebunden.
 2. Sie wird vor der Veroeffentlichung gebaut, geprueft und signiert.

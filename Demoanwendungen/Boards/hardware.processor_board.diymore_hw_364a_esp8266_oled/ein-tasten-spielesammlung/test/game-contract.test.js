@@ -14,6 +14,7 @@ const platformio = fs.readFileSync(path.join(firmwareRoot, "platformio.ini"), "u
 
 test("demo is bound to the exact HW-364A catalog profile", () => {
   assert.equal(manifest.board_hardware_item_id, "hardware.processor_board.diymore_hw_364a_esp8266_oled");
+  assert.deepEqual(manifest.games.map((game) => game.id), ["reaction", "cat_jump", "cave_bat"]);
   assert.match(platformio, /board = nodemcuv2/);
   assert.match(platformio, /GERNETIX_USER_APPLICATION_HEADER/);
 });
@@ -21,9 +22,16 @@ test("demo is bound to the exact HW-364A catalog profile", () => {
 test("one-button menu uses short selection and long start", () => {
   assert.match(app, /BUTTON_PIN = 0/);
   assert.match(app, /LONG_PRESS_MS = 700/);
-  assert.match(app, /menuSelection = \(menuSelection \+ 1\) % 2/);
+  assert.match(app, /menuSelection = \(menuSelection \+ 1\) % 3/);
   assert.match(app, /startSelectedGame\(\)/);
   assert.match(app, /pendingGamePress = true/);
+});
+
+test("Reaction measures a post-GO press and detects early input", () => {
+  const reaction = fs.readFileSync(path.join(sources, "reaction_game.cpp"), "utf8");
+  assert.match(reaction, /random\(1500, 4001\)/);
+  assert.match(reaction, /reactionMs_ = nowMs - startedAt_/);
+  assert.match(reaction, /"Zu frueh!"/);
 });
 
 test("Cat Jump jumps over a dog and Cave Bat uses hold-to-rise physics", () => {

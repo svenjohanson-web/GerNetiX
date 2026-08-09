@@ -13,7 +13,7 @@ const DEFINITIONS = [
   definition("gernetix-runtime-basissoftware-esp8266", "Basissoftware ESP8266", "basissoftware", "gernetix-platform", "basissoftware-esp8266", "basissoftware/esp8266", "FORGEJO_ESP8266_BASIS_COMMIT"),
   definition("gernetix-product-nexi", "Nexi", "product", "gernetix-products", "nexi", "projects/waveshare-voice-lab", "FORGEJO_NEXI_COMMIT"),
   definition("gernetix-product-flashbox", "FlashBox", "product", "gernetix-products", "flashbox", "firmware/gernetix-flashbox", "FORGEJO_FLASHBOX_COMMIT"),
-  definition("gernetix-product-game-collection", "Spielesammlung", "product", "gernetix-products", "spielesammlung", "firmware/esp8266-oled-game-collection", "FORGEJO_GAME_COLLECTION_COMMIT"),
+  definition("gernetix-product-game-collection", "Spielesammlung", "product", "gernetix-products", "spielesammlung", "Demoanwendungen", "FORGEJO_GAME_COLLECTION_COMMIT"),
 ];
 
 async function main() {
@@ -49,8 +49,16 @@ async function publishOne(client, git, item) {
   }
   const head = await git.head({ remote_url: remoteUrl, branch: "main" });
   const existing = await git.readFiles({ remote_url: remoteUrl, commit_sha: head.head_sha, branch: "main" });
-  if (!sameTree(existing, changes)) throw new Error(`system_repository_content_conflict:${item.organization}/${item.repository_name}`);
-  return publishedResult(item, head.head_sha, "unchanged", changes.length);
+  const pendingChanges = treeChanges(existing, changes);
+  if (pendingChanges.length === 0) return publishedResult(item, head.head_sha, "unchanged", changes.length);
+  const commit = await git.commit({
+    remote_url: remoteUrl,
+    branch: "main",
+    expected_head_sha: head.head_sha,
+    message: `Systemquelle abgeglichen: ${item.title}`,
+    changes: pendingChanges,
+  });
+  return publishedResult(item, commit.head_sha, "updated", changes.length);
 }
 
 function sourceFiles(item) {
@@ -78,9 +86,14 @@ function sourceFiles(item) {
   return result.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function sameTree(existing, changes) {
+function treeChanges(existing, changes) {
   const current = new Map((existing || []).map((item) => [item.path, item.content]));
-  return current.size === changes.length && changes.every((item) => current.get(item.path) === item.content);
+  const desired = new Map(changes.map((item) => [item.path, item.content]));
+  const pending = changes.filter((item) => current.get(item.path) !== item.content);
+  for (const path of current.keys()) {
+    if (!desired.has(path)) pending.push({ operation: "delete", path });
+  }
+  return pending.sort((left, right) => left.path.localeCompare(right.path));
 }
 
 function publishedResult(item, commitSha, state, fileCount) {

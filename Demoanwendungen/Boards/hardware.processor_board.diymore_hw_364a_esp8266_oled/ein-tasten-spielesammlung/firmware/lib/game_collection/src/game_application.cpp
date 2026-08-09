@@ -2,6 +2,7 @@
 
 #include "cat_jump.h"
 #include "cave_bat.h"
+#include "reaction_game.h"
 
 namespace {
 constexpr uint8_t BUTTON_PIN = 0;
@@ -9,7 +10,7 @@ constexpr uint32_t DEBOUNCE_MS = 25;
 constexpr uint32_t LONG_PRESS_MS = 700;
 constexpr uint32_t FRAME_MS = 33;
 
-enum class Scene : uint8_t { Menu, CatJump, CaveBat, GameOver };
+enum class Scene : uint8_t { Menu, Reaction, CatJump, CaveBat, GameOver };
 
 struct ButtonState {
   bool rawPressed = false;
@@ -30,6 +31,7 @@ uint32_t lastFrameAt = 0;
 bool pendingGamePress = false;
 CatJumpGame catJump;
 CaveBatGame caveBat;
+ReactionGame reaction;
 
 void updateButton(uint32_t nowMs) {
   button.pressEvent = false;
@@ -60,8 +62,9 @@ void drawMenu(U8G2 &display) {
   display.clearBuffer();
   display.setFont(u8g2_font_6x10_tf);
   display.drawStr(0, 9, "SPIELE");
-  display.drawStr(4, 27, menuSelection == 0 ? "> CAT JUMP" : "  CAT JUMP");
-  display.drawStr(4, 41, menuSelection == 1 ? "> CAVE BAT" : "  CAVE BAT");
+  display.drawStr(4, 22, menuSelection == 0 ? "> REAKTION" : "  REAKTION");
+  display.drawStr(4, 35, menuSelection == 1 ? "> CAT JUMP" : "  CAT JUMP");
+  display.drawStr(4, 48, menuSelection == 2 ? "> CAVE BAT" : "  CAVE BAT");
   display.setFont(u8g2_font_5x7_tf);
   display.drawStr(0, 61, "kurz:wahl lang:start");
   display.sendBuffer();
@@ -70,6 +73,9 @@ void drawMenu(U8G2 &display) {
 void startSelectedGame() {
   pendingGamePress = false;
   if (menuSelection == 0) {
+    reaction.reset(millis());
+    scene = Scene::Reaction;
+  } else if (menuSelection == 1) {
     catJump.reset();
     scene = Scene::CatJump;
   } else {
@@ -102,7 +108,7 @@ void gernetixUserApplicationTick(U8G2 &display, uint32_t nowMs) {
   updateButton(nowMs);
   if (scene == Scene::Menu) {
     if (button.longEvent) startSelectedGame();
-    else if (button.releaseEvent && !button.longConsumed) menuSelection = (menuSelection + 1) % 2;
+    else if (button.releaseEvent && !button.longConsumed) menuSelection = (menuSelection + 1) % 3;
     if (scene == Scene::Menu) drawMenu(display);
     lastFrameAt = nowMs;
     return;
@@ -118,6 +124,21 @@ void gernetixUserApplicationTick(U8G2 &display, uint32_t nowMs) {
     return;
   }
   if (button.pressEvent) pendingGamePress = true;
+  if (scene == Scene::Reaction) {
+    if (button.longEvent) {
+      scene = Scene::Menu;
+      drawMenu(display);
+      lastFrameAt = nowMs;
+      return;
+    }
+    reaction.update(pendingGamePress, nowMs);
+    pendingGamePress = false;
+    if (nowMs - lastFrameAt >= FRAME_MS || button.pressEvent) {
+      lastFrameAt = nowMs;
+      reaction.draw(display);
+    }
+    return;
+  }
   if (nowMs - lastFrameAt < FRAME_MS) return;
   const uint32_t elapsedMs = min<uint32_t>(nowMs - lastFrameAt, 80);
   lastFrameAt = nowMs;

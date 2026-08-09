@@ -16,4 +16,4 @@ Eine Demo wird erst nach erfolgreichem Build, Kompatibilitaetspruefung und Signa
 
 ## Build-verifizierte Nachbauprojekte
 
-- `hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung`: Cat Jump und Cave Bat auf dem integrierten SSD1306-OLED, bedient mit dem FLASH-Taster. Das Projekt erweitert die ESP8266-Basissoftware und besitzt noch kein signiertes oeffentliches Release.
+- `hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung`: Reaktion, Cat Jump und Cave Bat auf dem integrierten SSD1306-OLED, bedient mit dem FLASH-Taster. Das Projekt erweitert die ESP8266-Basissoftware und besitzt noch kein signiertes oeffentliches Release.

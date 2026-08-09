@@ -1,7 +1,8 @@
 # Ein-Tasten-Spielesammlung fuer das diymore HW-364A
 
-Dieses Nachbauprojekt erweitert die GerNetiX-ESP8266-Basissoftware um zwei Spiele fuer das integrierte 0,96-Zoll-OLED:
+Dieses Nachbauprojekt erweitert die GerNetiX-ESP8266-Basissoftware um drei Spiele fuer das integrierte 0,96-Zoll-OLED:
 
+- **Reaktion:** Warte auf `GO!` und druecke dann so schnell wie moeglich. Ein zu frueher Tastendruck wird erkannt.
 - **Cat Jump:** Die Katze laeuft automatisch. Ein kurzer Tastendruck laesst sie ueber den Hund springen.
 - **Cave Bat:** Solange der Taster gedrueckt ist, steigt die Fledermaus. Beim Loslassen sinkt sie.
 
@@ -11,7 +12,9 @@ Verwendet wird der Taster `FLASH` an `GPIO0` (aktiv LOW). Der danebenliegende Ta
 
 - Menue: kurz druecken = Spiel wechseln
 - Menue: etwa 0,7 Sekunden halten = Spiel starten
-- Im Spiel: entsprechend der Spielregel druecken beziehungsweise halten
+- Im Reaktionsspiel: bei `GO!` kurz druecken; ein weiterer kurzer Druck startet neu
+- In Cat Jump: kurz druecken = springen
+- In Cave Bat: gedrueckt halten = steigen, loslassen = sinken
 - Nach einer Kollision: kurz druecken = erneut spielen, lange druecken = zurueck zum Menue
 
 Wichtig: Wird `FLASH` waehrend eines Resets gehalten, startet der ESP8266 technisch bedingt im Bootloader. Zum normalen Spielen den Taster beim Einschalten und Reset loslassen.

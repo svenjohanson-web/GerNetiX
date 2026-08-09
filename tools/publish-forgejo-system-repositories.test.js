@@ -13,4 +13,5 @@ test("plans all protected Basissoftware and product repositories without network
     "basissoftware-esp32", "basissoftware-esp8266", "nexi", "flashbox", "spielesammlung",
   ]);
   assert.ok(plan.repositories.every((item) => item.file_count > 1));
+  assert.equal(plan.repositories.find((item) => item.repository_name === "spielesammlung").source_root, "Demoanwendungen");
 });
