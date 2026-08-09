@@ -63,7 +63,6 @@ COPY --chown=node:node tools/audit-postgres-binaries.js ./tools/audit-postgres-b
 COPY --chown=node:node tools/migrate-postgres-domains-to-runtime.js ./tools/migrate-postgres-domains-to-runtime.js
 COPY --chown=node:node tools/provision-build-worker-postgres.js ./tools/provision-build-worker-postgres.js
 COPY --chown=node:node tools/submit-flashbox-build-job.js ./tools/submit-flashbox-build-job.js
-COPY --chown=node:node tools/publish-touch-demo-release.js ./tools/publish-touch-demo-release.js
 COPY --chown=node:node tools/publish-nexi-release.js ./tools/publish-nexi-release.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js
 COPY --chown=node:node tools/usb-serial-helper ./tools/usb-serial-helper

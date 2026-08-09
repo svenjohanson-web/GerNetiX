@@ -7,6 +7,7 @@ const test = require("node:test");
 const {
   discoverIdentityRuntimePaths,
   dockerCopySources,
+  verifyDockerfileCopySources,
   verifyIdentityImageClosure,
 } = require("./verify-staging-runtime");
 
@@ -19,7 +20,6 @@ test("discovers Identity dependencies outside its service directory", () => {
     "Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung/firmware",
     "basissoftware/esp32/firmware-build-targets.js",
     "docker/healthcheck.js",
-    "projects/waveshare-voice-lab/voice_lab.cpp",
     "services/recovery-tool/src/services/recovery-service.js",
     "services/shared/index.js",
     "tools/usb-serial-helper/dist",
@@ -37,7 +37,9 @@ test("validates the complete dedicated Identity image closure", () => {
 
 test("fails locally before deployment when a required Docker COPY is missing", () => {
   const incompleteDockerfile = identityDockerfile
-    .replace(/^COPY --chown=node:node tools\/usb-serial-helper .*\n/m, "");
+    .split(/\r?\n/)
+    .filter((line) => !line.includes("COPY --chown=node:node tools/usb-serial-helper"))
+    .join("\n");
   assert.throws(
     () => verifyIdentityImageClosure({ repoRoot, dockerfileContent: incompleteDockerfile }),
     /tools\/usb-serial-helper\/package\.json/,
@@ -48,5 +50,15 @@ test("extracts every source from shell-form COPY commands", () => {
   assert.deepEqual(
     dockerCopySources("COPY --chown=node:node a/package.json a/package-lock.json ./a/\nCOPY b ./b\n"),
     ["a/package.json", "a/package-lock.json", "b"],
+  );
+});
+
+test("rejects missing COPY sources in every staging runtime Dockerfile", () => {
+  assert.throws(
+    () => verifyDockerfileCopySources({
+      repoRoot,
+      dockerfiles: [{ name: "synthetic.Dockerfile", content: "COPY tools/does-not-exist.js ./tools/does-not-exist.js\n" }],
+    }),
+    /synthetic\.Dockerfile: tools\/does-not-exist\.js/,
   );
 });

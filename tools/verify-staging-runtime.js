@@ -83,6 +83,26 @@ function isCoveredByCopy(requiredPath, copySources) {
   return copySources.some((source) => requiredPath === source || requiredPath.startsWith(`${source}/`));
 }
 
+function verifyDockerfileCopySources({
+  repoRoot = defaultRepoRoot,
+  dockerfiles = fs.readdirSync(path.join(repoRoot, "docker"))
+    .filter((name) => name.endsWith(".Dockerfile"))
+    .map((name) => ({ name, content: fs.readFileSync(path.join(repoRoot, "docker", name), "utf8") })),
+} = {}) {
+  const absentSources = [];
+  let copySourceCount = 0;
+  for (const dockerfile of dockerfiles) {
+    for (const source of dockerCopySources(dockerfile.content)) {
+      copySourceCount += 1;
+      if (!fs.existsSync(path.join(repoRoot, source))) absentSources.push(`${dockerfile.name}: ${source}`);
+    }
+  }
+  if (absentSources.length > 0) {
+    throw new Error(`Dockerfiles kopieren nicht vorhandene Quellen: ${absentSources.join(", ")}`);
+  }
+  return { dockerfileCount: dockerfiles.length, copySourceCount };
+}
+
 function verifyIdentityImageClosure({
   repoRoot = defaultRepoRoot,
   dockerfileContent = fs.readFileSync(path.join(repoRoot, "docker", "identity-service.Dockerfile"), "utf8"),
@@ -108,13 +128,15 @@ function verifyStagingRuntime({ repoRoot = defaultRepoRoot } = {}) {
     nodeModulesDirectory: path.join(repoRoot, "services", "identity-server", "node_modules"),
     workspaceRoot: repoRoot,
   });
-  return verifyIdentityImageClosure({ repoRoot });
+  const identity = verifyIdentityImageClosure({ repoRoot });
+  const dockerfiles = verifyDockerfileCopySources({ repoRoot });
+  return { ...identity, ...dockerfiles };
 }
 
 if (require.main === module) {
   try {
     const report = verifyStagingRuntime();
-    process.stdout.write(`Staging-Runtime-Vorpruefung bestanden: ${report.requiredPaths.length} Identity-Pfade, ${report.copySources.length} Docker-COPY-Quellen.\n`);
+    process.stdout.write(`Staging-Runtime-Vorpruefung bestanden: ${report.requiredPaths.length} Identity-Pfade, ${report.copySourceCount} COPY-Quellen in ${report.dockerfileCount} Runtime-Dockerfiles.\n`);
   } catch (error) {
     process.stderr.write(`Staging-Runtime-Vorpruefung fehlgeschlagen: ${error.message}\n`);
     process.exitCode = 1;
@@ -125,6 +147,7 @@ module.exports = {
   discoverIdentityRuntimePaths,
   dockerCopySources,
   isCoveredByCopy,
+  verifyDockerfileCopySources,
   verifyIdentityImageClosure,
   verifyStagingRuntime,
 };
