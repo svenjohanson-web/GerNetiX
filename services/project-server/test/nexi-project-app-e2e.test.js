@@ -20,7 +20,30 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
       (slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }),
       (title, text, insight) => ({ title, text, insight }),
     );
-    const service = new ProjectService({ repository: FileBackedProjectRepository.create(runtimeRoot) });
+    const approvedCommit = "c".repeat(40);
+    const productStore = {
+      readProtectedFiles: async () => [
+        { path: "voice_lab.cpp", content: "void userSetup() { nexi::ApplicationManager app; }\n" },
+        { path: "src/project_entry.cpp", content: "extern \"C\" void onProjectInit() {}\n" },
+        { path: "include/nexi/voice_types.h", content: "enum class VoiceEffect { Robot, Echo, };\n" },
+        { path: "gernetix/system-repository.json", content: "{}\n" },
+      ],
+      provisionProject: async () => ({}),
+    };
+    const serviceOptions = {
+      projectRepositoryStore: productStore,
+      systemRepositories: [{
+        source_id: "gernetix-product-nexi", title: "Nexi", kind: "product", provider: "forgejo",
+        organization: "gernetix-products", repository_name: "nexi", default_branch: "main",
+        commit_sha: approvedCommit, protected: true,
+        materialization: {
+          target_root: "Komponenten/IoT-Device 1",
+          path_mappings: { "voice_lab.cpp": "src/user_main.cpp" },
+          excluded_paths: ["gernetix/system-repository.json"],
+        },
+      }],
+    };
+    const service = new ProjectService({ repository: FileBackedProjectRepository.create(runtimeRoot), ...serviceOptions });
     const created = await service.createProject({
       project_id: projectId,
       user_id: accountId,
@@ -30,6 +53,7 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
       hardware_profile_id: definition.hardware_profile_id,
       device_ids: ["nexi-living-room", "nexi-child-room"],
       build_config: definition.build_config,
+      system_source_id: definition.system_source_id,
       sources: model.createSources(),
     });
 
@@ -38,6 +62,9 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
     assert.equal(created.build_config.environment, "waveshare_esp32_s3_audio_board");
     assert.equal(created.build_config.flash_size_mb, 16);
     assert.equal(created.build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
+    assert.equal(created.view_manifest.product_source_reference.commit_sha, approvedCommit);
+    assert.equal(created.view_manifest.product_source_reference.repository_name, "nexi");
+    assert.equal(created.source_files.some((source) => source.path.endsWith("gernetix/system-repository.json")), false);
     assert.match((await service.getSource(projectId, definition.build_config.user_source_path)).content, /nexi::ApplicationManager/);
     assert.match((await service.getSource(
       projectId,
@@ -61,7 +88,7 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
       device_ids: ["nexi-child-room", "nexi-travel"],
     });
 
-    const resumedService = new ProjectService({ repository: FileBackedProjectRepository.create(runtimeRoot) });
+    const resumedService = new ProjectService({ repository: FileBackedProjectRepository.create(runtimeRoot), ...serviceOptions });
     const resumed = await resumedService.getProjectAppSettings(projectId, accountId);
     assert.equal(resumed.revision, 1);
     assert.equal(resumed.values.cloud_enabled, true);

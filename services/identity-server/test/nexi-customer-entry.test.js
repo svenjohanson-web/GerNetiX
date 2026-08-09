@@ -24,20 +24,15 @@ test("offers Nexi as local product, build, learning and development customer jou
   assert.equal(definition.customer_entries.find((entry) => entry.id === "use").availability, "requires_instance");
 });
 
-test("keeps Nexi Basic useful without claiming an active AI provider", () => {
+test("binds Nexi Basic to its protected product source without claiming an active AI provider", () => {
   const model = createNexiCourseModel();
+  const definition = model.createProject((slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }), (title, text, insight) => ({ title, text, insight }));
   const sources = model.createSources();
   const decisions = sources.find((source) => source.path === "docs/nexi-entscheidungen.md");
   assert.ok(decisions);
-  const firmware = sources.find((source) => source.path === "Komponenten/IoT-Device 1/src/user_main.cpp");
-  assert.ok(firmware);
-  assert.match(firmware.content, /nexi::ApplicationManager/);
-  const projectEntry = sources.find((source) => source.path === "Komponenten/IoT-Device 1/src/project_entry.cpp");
-  const voiceTypes = sources.find((source) => source.path === "Komponenten/IoT-Device 1/include/nexi/voice_types.h");
-  assert.ok(projectEntry);
-  assert.ok(voiceTypes);
-  assert.match(projectEntry.content, /extern "C" void onProjectInit\(\)/);
-  assert.match(voiceTypes.content, /enum class VoiceEffect[\s\S]*\bRobot,/);
+  assert.equal(definition.system_source_id, "gernetix-product-nexi");
+  assert.ok(definition.source_files.some((source) => source.path === "Komponenten/IoT-Device 1/src/user_main.cpp"));
+  assert.equal(sources.some((source) => source.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
   const modelSource = fs.readFileSync(path.join(root, "src/dev/project-models/nexi-course.json"), "utf8");
   assert.match(modelSource, /funktioniert lokal/);
   assert.match(modelSource, /Ohne Provider/);

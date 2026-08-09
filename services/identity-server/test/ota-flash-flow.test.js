@@ -9,6 +9,9 @@ const server = [
   "dev-server.js",
   path.join("dev", "server", "device-routes.js"),
   path.join("dev", "server", "build-routes.js"),
+  path.join("dev", "builds", "build-service.js"),
+  path.join("dev", "builds", "build-runtime-utils.js"),
+  path.join("dev", "devices", "device-runtime-service.js"),
 ].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
 

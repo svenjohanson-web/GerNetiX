@@ -5,7 +5,8 @@ const test = require("node:test");
 const { readPlatformAppSource } = require("../test-support/platform-app-source");
 
 const app = readPlatformAppSource();
-const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const server = ["../src/dev-server.js", "../src/dev/projects/project-configuration-service.js"]
+  .map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
 const routes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/project-routes.js"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 

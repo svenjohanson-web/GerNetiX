@@ -1,3 +1,16 @@
+"use strict";
+
+// Candidate transformations for a future, explicitly customer-approved
+// project migration. This module is deliberately not connected to project
+// reads, project opening, server bootstrap or any automatic write path.
+const cameraDisplayTemplateMigrationProposal = Object.freeze({
+  id: "project_template_migration.camera_display_runtime_v19",
+  template_id: "esp32_camera_to_touch_display",
+  target_runtime_model_version: 19,
+  customer_consent_required: true,
+  automatic_execution: false,
+});
+
 function migrateCameraTemplateWifiArchitecture(source) {
   const current = String(source || "");
   if (!/^[ \t]*camera_processor[ \t]+-->[ \t]+display_processor[ \t]+:[ \t]+uebertraegt Bilddaten[ \t]*$/m.test(current)) return current;
@@ -33,4 +46,8 @@ function migrateCameraTemplateDisplayGpioTypes(source) {
   return replacements.reduce((content, [legacy, replacement]) => content.replaceAll(legacy, replacement), String(source || ""));
 }
 
-module.exports = { migrateCameraTemplateDisplayGpioTypes, migrateCameraTemplateWifiArchitecture };
+module.exports = {
+  cameraDisplayTemplateMigrationProposal,
+  migrateCameraTemplateDisplayGpioTypes,
+  migrateCameraTemplateWifiArchitecture,
+};

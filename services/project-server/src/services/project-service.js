@@ -30,6 +30,9 @@ class ProjectService {
   constructor(options) {
     this.repository = options.repository;
     this.projectRepositoryStore = options.projectRepositoryStore || null;
+    this.requireForgejoForNewProjects = options.requireForgejoForNewProjects === true;
+    this.systemRepositories = (options.systemRepositories || []).map((item) => structuredClone(item));
+    this.systemRepositoryById = new Map(this.systemRepositories.map((item) => [item.source_id, item]));
     this.storageMeter = options.storageMeter || new SqlCacheAccountStorageMeter(this.repository);
     this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
     this.ready = this.ensureResourcePolicies();
@@ -37,6 +40,13 @@ class ProjectService {
 
   async createProject(input = {}) {
     await this.ready;
+    if (this.requireForgejoForNewProjects && !this.projectRepositoryStore) {
+      throw new ProjectServerError(
+        "forgejo_project_repository_required",
+        "Neue Entwicklungsprojekte benötigen eine aktive Forgejo-Repository-Bindung.",
+        503,
+      );
+    }
     const requestedStatus = normalizeProjectStatus(input.status || "active");
     if (requestedStatus === "plan_locked") {
       throw new ProjectServerError("project_status_managed", "Tarifgesperrte Projekte werden ausschließlich durch interne Tarifprozesse erzeugt.", 409);
@@ -49,17 +59,20 @@ class ProjectService {
     const templateSources = template
       ? templateBinding ? await this.repositoryFiles(template, templateBinding.head_sha) : await this.repository.listSources(template.project_id)
       : [];
+    const productSource = await this.loadProductSource(input.system_source_id || inheritedProductSourceId(template));
     const templateHash = template ? projectVersionHash(sanitizeProject(template), templateSources) : "";
     const inheritedManifest = template ? structuredClone(template.view_manifest || {}) : {};
     const inheritedBuildConfig = Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined;
-    const initialInputSources = input.sources?.length ? input.sources : templateSources;
+    const suppliedSources = input.sources?.length ? input.sources : templateSources;
+    const initialInputSources = mergeSourceSets(productSource.sources, suppliedSources);
     const inferredEntrypoint = inferFirmwareEntrypoint(initialInputSources);
-    const normalizedBuildConfig = normalizeBuildConfig(inheritedBuildConfig && inferredEntrypoint && !inheritedBuildConfig.user_source_path
+    const normalizedBuildConfig = this.protectBuildConfig(normalizeBuildConfig(inheritedBuildConfig && inferredEntrypoint && !inheritedBuildConfig.user_source_path
       ? { ...inheritedBuildConfig, user_source_path: inferredEntrypoint }
-      : inheritedBuildConfig);
+      : inheritedBuildConfig));
     const normalizedManifest = normalizeViewManifest({
       ...inheritedManifest,
       ...(input.view_manifest || input.project_view_manifest || {}),
+      product_source_reference: productSource.reference,
       ...(template ? { template_id: inheritedManifest.template_id || template.project_id, template_ref: {
         project_id: template.project_id,
         version: template.view_manifest?.template_ref?.version || 1,
@@ -67,10 +80,10 @@ class ProjectService {
         ...(templateBinding ? { commit_sha: templateBinding.head_sha } : {}),
       } } : {}),
     });
-    const softwareUnits = filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(
+    const softwareUnits = this.protectSoftwareUnits(filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(
       Object.hasOwn(input, "software_units") ? input.software_units : template?.software_units,
       normalizedBuildConfig,
-    ), normalizedManifest);
+    ), normalizedManifest));
     const sourceLayoutMappings = softwareLayoutMappings(
       Object.hasOwn(input, "software_units") ? input.software_units || [] : template?.software_units || [],
       softwareUnits,
@@ -105,7 +118,7 @@ class ProjectService {
     await this.repository.saveProject(project);
     let configurationProjection = emptyProjectionResult();
     try {
-      const initialSources = (input.sources?.length ? input.sources : templateSources)
+      const initialSources = initialInputSources
         .map((source) => ({ ...source, path: remapSoftwareSourcePath(source.path, sourceLayoutMappings) }));
       for (const source of defaultSources(project, initialSources)) {
         if (project.status === "template") {
@@ -301,23 +314,27 @@ class ProjectService {
     if (this.activeRepositoryBinding(project)) validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, input.expected_head_sha);
     const rollbackSources = await this.repository.listSources(projectId);
-    const nextViewManifest = input.view_manifest || input.project_view_manifest
+    const requestedViewManifest = input.view_manifest || input.project_view_manifest
       ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
       : project.view_manifest;
-    let softwareUnits = filterSoftwareUnitsForArchitecture(
+    const nextViewManifest = normalizeViewManifest({
+      ...requestedViewManifest,
+      product_source_reference: project.view_manifest?.product_source_reference || null,
+    });
+    let softwareUnits = this.protectSoftwareUnits(filterSoftwareUnitsForArchitecture(
       normalizeSoftwareUnits(project.software_units, project.build_config),
       nextViewManifest,
-    );
+    ));
     let activeSoftwareUnitId = activeSoftwareUnitIdFor(
       input.active_software_unit_id || project.active_software_unit_id,
       softwareUnits,
     );
     if (Object.hasOwn(input, "software_units")) {
-      softwareUnits = filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(input.software_units, null), nextViewManifest);
+      softwareUnits = this.protectSoftwareUnits(filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(input.software_units, null), nextViewManifest));
       activeSoftwareUnitId = activeSoftwareUnitIdFor(input.active_software_unit_id || activeSoftwareUnitId, softwareUnits);
     }
     let buildConfig = Object.hasOwn(input, "build_config")
-      ? normalizeBuildConfig(input.build_config ? { ...(project.build_config || {}), ...input.build_config } : null)
+      ? this.protectBuildConfig(normalizeBuildConfig(input.build_config ? { ...(project.build_config || {}), ...input.build_config } : null))
       : softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || project.build_config;
     if (Object.hasOwn(input, "build_config") && softwareUnits.length) {
       softwareUnits = softwareUnits.map((unit) => unit.software_unit_id === activeSoftwareUnitId
@@ -1004,6 +1021,178 @@ class ProjectService {
     });
   }
 
+  protectSoftwareUnits(units = []) {
+    return units.map((unit) => ({
+      ...unit,
+      build_config: unit.build_config ? this.protectBuildConfig(unit.build_config) : null,
+    }));
+  }
+
+  protectBuildConfig(buildConfig) {
+    if (!buildConfig) return null;
+    const source = this.systemRepositoryById.get(buildConfig.firmware_basis_id);
+    if (!source) return { ...buildConfig, firmware_basis_reference: null };
+    if (!source.commit_sha) {
+      if (this.requireForgejoForNewProjects) {
+        throw new ProjectServerError(
+          "protected_repository_commit_required",
+          `Fuer ${source.title} ist noch kein freigegebener Forgejo-Commit konfiguriert.`,
+          503,
+        );
+      }
+      return { ...buildConfig, firmware_basis_reference: null };
+    }
+    return { ...buildConfig, firmware_basis_reference: protectedSourceReference(source) };
+  }
+
+  async loadProductSource(sourceId) {
+    if (!sourceId) return { reference: null, sources: [] };
+    const source = this.systemRepositoryById.get(String(sourceId));
+    if (!source || source.kind !== "product") {
+      throw new ProjectServerError("protected_product_source_invalid", "Die angeforderte Produktquelle ist nicht freigegeben.", 400);
+    }
+    if (!source.commit_sha) {
+      throw new ProjectServerError("protected_repository_commit_required", `Fuer ${source.title} ist noch kein freigegebener Forgejo-Commit konfiguriert.`, 503);
+    }
+    if (!this.projectRepositoryStore?.readProtectedFiles) {
+      throw new ProjectServerError("protected_repository_store_required", "Die geschuetzte Produktquelle kann nur aus Forgejo geladen werden.", 503);
+    }
+    const reference = protectedSourceReference(source);
+    const files = await this.projectRepositoryStore.readProtectedFiles(reference);
+    return { reference, sources: materializeProductSources(files, source.materialization) };
+  }
+
+  async loadProtectedBasissoftwareFiles(buildConfig = {}) {
+    const source = this.systemRepositoryById.get(buildConfig.firmware_basis_id);
+    const reference = buildConfig.firmware_basis_reference;
+    if (source?.commit_sha) {
+      const expected = protectedSourceReference(source);
+      if (!sameProtectedSourceReference(reference, expected)) {
+        throw new ProjectServerError("protected_repository_reference_mismatch", "Die Basissoftware-Referenz im Projekt entspricht nicht der serverseitig freigegebenen Version.", 409);
+      }
+      if (!this.projectRepositoryStore?.readProtectedFiles) {
+        throw new ProjectServerError("protected_repository_store_required", "Die geschuetzte Basissoftware kann nur aus Forgejo geladen werden.", 503);
+      }
+      return this.projectRepositoryStore.readProtectedFiles(expected);
+    }
+    if (this.requireForgejoForNewProjects) {
+      throw new ProjectServerError("protected_repository_commit_required", "Fuer die Basissoftware fehlt ein freigegebener Forgejo-Commit.", 503);
+    }
+    return this.loadEsp32BasissoftwareFiles();
+  }
+
+  async repositoryAdministrationSummary() {
+    await this.ready;
+    const [projects, buildJobs, artifacts] = await Promise.all([
+      this.repository.listProjects({}),
+      this.repository.listBuildJobs({}),
+      this.repository.listArtifacts({}),
+    ]);
+    const systemRepositories = await Promise.all(this.systemRepositories.map(async (source) => {
+      if (!this.projectRepositoryStore?.inspectProtectedRepository) return { ...source, exists: false, inspection_state: "repository_store_inactive" };
+      try {
+        return { ...await this.projectRepositoryStore.inspectProtectedRepository(source), inspection_state: "available" };
+      } catch (error) {
+        return { ...source, exists: false, inspection_state: "unavailable", error: error.code || "repository_inspection_failed" };
+      }
+    }));
+    const artifactCountByJob = countBy(artifacts, (item) => item.build_job_id);
+    const buildCountByProject = countBy(buildJobs, (item) => item.project_id);
+    const artifactCountByProject = countBy(artifacts, (item) => item.project_id);
+    return {
+      generated_at: new Date().toISOString(),
+      cutover: {
+        repository_store_active: Boolean(this.projectRepositoryStore),
+        forgejo_required_for_new_projects: this.requireForgejoForNewProjects,
+      },
+      summary: {
+        system_repositories: systemRepositories.length,
+        system_repositories_ready: systemRepositories.filter((item) => item.exists && item.commit_sha).length,
+        project_repositories: projects.filter((item) => this.activeRepositoryBinding(item)).length,
+        projects_without_repository: projects.filter((item) => !this.activeRepositoryBinding(item)).length,
+        builds: buildJobs.length,
+        artifacts: artifacts.length,
+      },
+      system_repositories: systemRepositories,
+      project_repositories: projects.map((project) => ({
+        project_id: project.project_id,
+        title: project.title,
+        user_id: project.user_id,
+        status: project.status,
+        repository: project.repository_binding || null,
+        template_ref: project.view_manifest?.template_ref || null,
+        product_source_reference: project.view_manifest?.product_source_reference || null,
+        basissoftware_references: softwareUnitsForProject(project).map((unit) => unit.build_config?.firmware_basis_reference).filter(Boolean),
+        build_count: buildCountByProject.get(project.project_id) || 0,
+        artifact_count: artifactCountByProject.get(project.project_id) || 0,
+        updated_at: project.updated_at,
+      })),
+      builds: [...buildJobs].sort((left, right) => String(right.created_at).localeCompare(String(left.created_at))).slice(0, 200).map((job) => ({
+        build_job_id: job.build_job_id,
+        project_id: job.project_id,
+        repository_id: job.repository_id || null,
+        commit_sha: job.commit_sha || null,
+        status: job.status,
+        package_sha256: job.package_sha256 || "",
+        artifact_count: artifactCountByJob.get(job.build_job_id) || 0,
+        created_at: job.created_at,
+        finished_at: job.finished_at || null,
+      })),
+      artifacts: [...artifacts].sort((left, right) => String(right.created_at).localeCompare(String(left.created_at))).slice(0, 300).map((artifact) => ({
+        artifact_id: artifact.artifact_id,
+        project_id: artifact.project_id,
+        build_job_id: artifact.build_job_id,
+        file_name: artifact.file_name,
+        artifact_type: artifact.artifact_type,
+        sha256: artifact.sha256,
+        size_bytes: artifact.size_bytes,
+        created_at: artifact.created_at,
+      })),
+    };
+  }
+
+  async migrateProjectRepositories(input = {}) {
+    await this.ready;
+    if (!this.projectRepositoryStore) throw new ProjectServerError("forgejo_project_repository_required", "Der Forgejo-Repository-Store ist nicht aktiv.", 503);
+    const requestedProjectId = String(input.project_id || "").trim();
+    const projects = (await this.repository.listProjects({})).filter((project) => (
+      (!requestedProjectId || project.project_id === requestedProjectId) && !this.activeRepositoryBinding(project)
+    ));
+    if (requestedProjectId && !projects.length) {
+      const existing = await this.repository.findProject(requestedProjectId);
+      if (!existing) throw new ProjectServerError("project_not_found", "Projekt wurde nicht gefunden.", 404);
+    }
+    const plan = projects.map((project) => ({ project_id: project.project_id, title: project.title, user_id: project.user_id }));
+    if (input.apply !== true) return { mode: "plan", projects: plan, count: plan.length };
+    const migrated = [];
+    for (const current of projects) {
+      const softwareUnits = this.protectSoftwareUnits(normalizeSoftwareUnits(current.software_units, current.build_config));
+      const activeSoftwareUnitId = activeSoftwareUnitIdFor(current.active_software_unit_id, softwareUnits);
+      const project = await this.repository.saveProject({
+        ...current,
+        software_units: softwareUnits,
+        active_software_unit_id: activeSoftwareUnitId,
+        build_config: softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || null,
+        updated_at: new Date().toISOString(),
+      });
+      await this.syncPlatformioSources(project);
+      await this.syncProjectConfigurationSources(project);
+      const sources = await this.repository.listSources(project.project_id);
+      loadProjectFileSet(sources);
+      const binding = await this.projectRepositoryStore.provisionProject({
+        project_id: project.project_id,
+        message: `Projekt ${project.title} aus PostgreSQL migriert`,
+        changes: sources.map((source) => ({ path: source.path, content: source.content })),
+      });
+      await this.repository.saveProject({
+        ...project,
+        repository_binding: { ...binding, provisioned_at: new Date().toISOString(), migration_source: "postgresql" },
+      });
+      migrated.push({ project_id: project.project_id, repository_id: binding.repository_id, commit_sha: binding.head_sha });
+    }
+    return { mode: "applied", migrated, count: migrated.length };
+  }
+
   async createBuildPackage(jobId) {
     await this.ready;
     const job = await this.getBuildJob(jobId);
@@ -1047,7 +1236,7 @@ class ProjectService {
     const includesGerNetiXBasissoftware = buildConfig?.firmware_basis_id === "gernetix-runtime-basissoftware";
     const firmwareSources = includesGerNetiXBasissoftware
       ? composeEsp32BasissoftwarePackage({
-          basisFiles: this.loadEsp32BasissoftwareFiles(),
+          basisFiles: await this.loadProtectedBasissoftwareFiles(buildConfig),
           projectSources: sources,
           buildConfig,
         })
@@ -1908,6 +2097,7 @@ function normalizeBuildConfig(input = {}) {
     firmware_basis_id: firmwareBasisId,
     firmware_basis_version: input.firmware_basis_version || "",
     firmware_basis_variant: input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : ""),
+    firmware_basis_reference: normalizeProtectedSourceReference(input.firmware_basis_reference),
     partition_profile_id: input.partition_profile_id || "",
     flash_size_mb: positiveInteger(input.flash_size_mb) || (/^espressif(32|8266)$/i.test(platform) ? 4 : 0),
     user_source_path: input.user_source_path || "",
@@ -1922,6 +2112,70 @@ function normalizeBuildConfig(input = {}) {
       : {},
     board_configuration: normalizeBoardConfiguration(input.board_configuration),
   };
+}
+
+function protectedSourceReference(source = {}) {
+  return {
+    source_id: source.source_id,
+    provider: "forgejo",
+    organization: source.organization,
+    repository_name: source.repository_name,
+    commit_sha: source.commit_sha,
+  };
+}
+
+function normalizeProtectedSourceReference(input) {
+  if (!input || typeof input !== "object") return null;
+  const commitSha = String(input.commit_sha || "").toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(commitSha)) return null;
+  return {
+    source_id: String(input.source_id || "").slice(0, 100),
+    provider: input.provider === "forgejo" ? "forgejo" : "",
+    organization: String(input.organization || "").slice(0, 100),
+    repository_name: String(input.repository_name || "").slice(0, 100),
+    commit_sha: commitSha,
+  };
+}
+
+function sameProtectedSourceReference(left, right) {
+  return Boolean(left && right && ["source_id", "provider", "organization", "repository_name", "commit_sha"]
+    .every((key) => left[key] === right[key]));
+}
+
+function inheritedProductSourceId(template) {
+  return template?.view_manifest?.product_source_reference?.source_id || "";
+}
+
+function materializeProductSources(files, materialization = {}) {
+  const targetRoot = String(materialization?.target_root || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+  const mappings = materialization?.path_mappings || {};
+  const excluded = new Set(materialization?.excluded_paths || []);
+  return (files || []).filter((file) => !excluded.has(file.path)).map((file) => {
+    const repositoryPath = normalizeSourcePath(required(file.path, "path"));
+    const mappedPath = mappings[repositoryPath] || repositoryPath;
+    const sourcePath = normalizeSourcePath(targetRoot ? `${targetRoot}/${mappedPath}` : mappedPath);
+    return {
+      path: sourcePath,
+      content: String(file.content || ""),
+      content_type: file.content_type || contentType(sourcePath),
+      role: file.role || inferSourceRole(sourcePath),
+    };
+  });
+}
+
+function mergeSourceSets(baseSources = [], overlaySources = []) {
+  const sources = new Map();
+  for (const source of [...baseSources, ...overlaySources]) sources.set(String(source.path || ""), source);
+  return [...sources.values()];
+}
+
+function countBy(items, keyFor) {
+  const counts = new Map();
+  for (const item of items || []) {
+    const key = keyFor(item);
+    if (key) counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return counts;
 }
 
 function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
@@ -2182,6 +2436,7 @@ function normalizeViewManifest(input = {}) {
   const gameConfiguration = manifest.game_configuration || manifest.gameConfiguration;
   const pwaDashboard = manifest.pwa_dashboard || manifest.pwaDashboard;
   const communicationSetup = manifest.communication_setup || manifest.communicationSetup;
+  const productSourceReference = normalizeProtectedSourceReference(manifest.product_source_reference || manifest.productSourceReference);
   return {
     schema_version: Number(manifest.schema_version || manifest.schemaVersion || 1),
     title: manifest.title || "",
@@ -2210,6 +2465,7 @@ function normalizeViewManifest(input = {}) {
     ...(communicationSetup && typeof communicationSetup === "object"
       ? { communication_setup: normalizeProjectCommunicationSetup(communicationSetup) }
       : {}),
+    ...(productSourceReference ? { product_source_reference: productSourceReference } : {}),
     primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
     hide_source_editor: Boolean(manifest.hide_source_editor || manifest.hideSourceEditor),
     mode: manifest.mode || "guided_ide",

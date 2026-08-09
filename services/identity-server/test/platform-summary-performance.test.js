@@ -5,11 +5,17 @@ const path = require("node:path");
 const test = require("node:test");
 
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const platformService = fs.readFileSync(path.resolve(__dirname, "../src/dev/platform/platform-service.js"), "utf8");
+const learningProjectService = fs.readFileSync(path.resolve(__dirname, "../src/dev/learning/learning-project-service.js"), "utf8");
+const projectPlatformMapper = fs.readFileSync(path.resolve(__dirname, "../src/dev/projects/project-platform-mapper.js"), "utf8");
+const projectRuntimeService = fs.readFileSync(path.resolve(__dirname, "../src/dev/projects/project-runtime-service.js"), "utf8");
+const projectCatalogSeedingService = fs.readFileSync(path.resolve(__dirname, "../src/dev/projects/project-catalog-seeding-service.js"), "utf8");
+const runtimeSource = [devServer, platformService, learningProjectService, projectPlatformMapper, projectRuntimeService].join("\n");
 const app = readPlatformAppSource();
 const platformRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/platform-routes.js"), "utf8");
-const platformSummary = devServer.match(/async function handlePlatformSummary[\s\S]*?\r?\n}\r?\n\r?\nfunction externalLoginMessage/)?.[0] || "";
-const platformBootstrap = devServer.match(/async function handlePlatformBootstrap[\s\S]*?\r?\n}\r?\n\r?\nasync function loadKnowledgeState/)?.[0] || "";
-const projectLoader = devServer.match(/async function loadUserIdeProjects[\s\S]*?\r?\n}\r?\n\r?\nfunction mapUserIdeProjects/)?.[0] || "";
+const platformSummary = platformService.match(/async function handlePlatformSummary[\s\S]*?(?=async function handlePlatformBootstrap)/)?.[0] || "";
+const platformBootstrap = platformService.match(/async function handlePlatformBootstrap[\s\S]*?(?=async function loadKnowledgeState)/)?.[0] || "";
+const projectLoader = projectRuntimeService;
 
 test("loads only requested platform summary sections and keeps selected dependencies concurrent", () => {
   assert.match(platformSummary, /requestedPlatformSummarySections\(requestedSections\)/);
@@ -20,7 +26,7 @@ test("loads only requested platform summary sections and keeps selected dependen
   assert.match(platformSummary, /const communitySummaryPromise = sections\.has\("community"\) \? loadCommunityDashboardSummary/);
   assert.match(platformSummary, /const knowledgeStatePromise = sections\.has\("knowledge"\) \? loadKnowledgeState/);
   assert.match(platformSummary, /const projects = await trackedProjectsPromise;[\s\S]*const buildsPromise = sections\.has\("builds"\) \? loadProjectBuilds\(projects/);
-  assert.match(platformSummary, /const \[devices, builds, aiUsage, communitySummary, knowledgeState, learningProgress\] = await Promise\.all/);
+  assert.match(platformSummary, /const \[devices, builds, aiUsage, communitySummary, knowledgeState, learningProgressItems\] = await Promise\.all/);
   assert.doesNotMatch(platformSummary, /const devices = await loadUserIdeDevices/);
 });
 
@@ -48,7 +54,7 @@ test("uses lightweight data profiles for independent routes", () => {
 });
 
 test("loads development configuration only for development routes and preserves it across partial summaries", () => {
-  assert.match(devServer, /platformBootstrapSections = new Set\(\["projects", "development"\]\)/);
+  assert.match(platformService, /platformBootstrapSections = new Set\(\["projects", "development"\]\)/);
   assert.match(platformSummary, /if \(sections\.has\("development"\)\) \{[\s\S]*payload\.development_assistant/);
   assert.match(platformBootstrap, /if \(sections\.has\("development"\)\) \{[\s\S]*payload\.development_project_templates/);
   assert.match(app, /\["development-platform", "development-hardware"\]\.includes\(route\).*sections\.push\("development"\)/);
@@ -60,9 +66,9 @@ test("loads development configuration only for development routes and preserves 
 });
 
 test("keeps project cards compact and loads one project detail on demand", () => {
-  assert.match(devServer, /profile=summary/);
-  assert.match(devServer, /function toPlatformProjectSummary\(project\)/);
-  assert.doesNotMatch(devServer.match(/function toPlatformProjectSummary[\s\S]*?\n}/)?.[0] || "", /viewManifest|sourceFiles|buildConfig|steps/);
+  assert.match(projectRuntimeService, /profile=summary/);
+  assert.match(projectPlatformMapper, /function toPlatformProjectSummary\(project\)/);
+  assert.doesNotMatch(projectPlatformMapper.match(/function toPlatformProjectSummary[\s\S]*?\n  }/)?.[0] || "", /viewManifest|sourceFiles|buildConfig|steps/);
   assert.match(app, /getJson\(`\/api\/platform\/projects\/\$\{encodeURIComponent\(projectId\)\}`\)/);
   assert.match(app, /const projectDetailLoads = new Map\(\)/);
   assert.match(app, /loadRouteProjectDetail\(activeRoute\)/);
@@ -72,23 +78,23 @@ test("loads progress only for the open learning project after leaving the catalo
   assert.match(app, /if \(route === "learn"\) return \["progress"\]/);
   assert.doesNotMatch(app, /\["learn", "learning-project-overview", "learning-project"\]\.includes\(route\).*\["progress"\]/);
   assert.match(app, /response\.learning_progress/);
-  assert.match(devServer, /const userId = projectServerUserId\(session\);[\s\S]*listLearningProgress\(userId, \[project\]\)/);
-  assert.match(devServer, /learningProgress\?\.status === "completed"[\s\S]*hasSubmittedLearningFeedback\(userId, project\.project_server_id\)/);
+  assert.match(runtimeSource, /const userId = projectServerUserId\(session\);[\s\S]*learningProgress\.list\(userId, \[project\]\)/);
+  assert.match(runtimeSource, /progress\?\.status === "completed"[\s\S]*learningProgress\.hasSubmittedFeedback\(userId, project\.project_server_id\)/);
 });
 
 test("synchronizes catalog projects once per account without blocking the project list", () => {
   assert.match(projectLoader, /scheduleProjectServerDemoProjects\(session\)/);
   assert.doesNotMatch(projectLoader, /await ensureProjectServerDemoProjects/);
-  assert.match(devServer, /const projectServerSeededUsers = new Set\(\)/);
-  assert.match(devServer, /const projectServerSeedPromises = new Map\(\)/);
-  assert.match(devServer, /if \(projectServerSeedPromises\.has\(userId\)\) return projectServerSeedPromises\.get\(userId\)/);
+  assert.match(projectCatalogSeedingService, /const seededUsers = new Set\(\)/);
+  assert.match(projectCatalogSeedingService, /const seedPromises = new Map\(\)/);
+  assert.match(projectCatalogSeedingService, /if \(seedPromises\.has\(userId\)\) return seedPromises\.get\(userId\)/);
 });
 
 test("shares the immediate project load between bootstrap and route hydration", () => {
-  assert.match(devServer, /const userIdeProjectsCache = new Map\(\)/);
-  assert.match(devServer, /const userIdeProjectLoads = new Map\(\)/);
+  assert.match(projectRuntimeService, /const projectsCache = new Map\(\)/);
+  assert.match(projectRuntimeService, /const projectLoads = new Map\(\)/);
   assert.match(projectLoader, /cached\.expires_at > Date\.now\(\)/);
-  assert.match(projectLoader, /userIdeProjectLoads\.has\(userId\)/);
+  assert.match(projectLoader, /projectLoads\.has\(userId\)/);
   assert.match(projectLoader, /loadUserIdeProjectsUncached\(session, userId\)/);
-  assert.match(devServer, /userIdeProjectsCacheMs = 2_500/);
+  assert.match(projectRuntimeService, /projectCacheMs = 2_500/);
 });

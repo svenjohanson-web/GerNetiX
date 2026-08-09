@@ -53,7 +53,7 @@ test("public entry page provides an initial English translation and visible lang
   assert.match(landingHtml, /data-i18n="landing\.hero\.title"/);
   assert.match(landingHtml, /data-i18n="landing\.shared\.knowledge\.title"/);
   assert.match(landingHtml, /data-i18n="landing\.motivation\.title"/);
-  assert.equal(catalogs.en["landing.hero.title"], "Understand technology and develop your own systems.");
+  assert.equal(catalogs.en["landing.hero.title"], "Learn to think like an engineer. Shape technology freely.");
   assert.equal(catalogs.en["landing.shared.knowledge.title"], "Knowledge portal");
   assert.equal(catalogs.en["landing.shared.community.title"], "Community");
   assert.equal(catalogs.en["dashboard.title"], "Welcome to GerNetiX");

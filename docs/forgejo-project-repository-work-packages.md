@@ -407,6 +407,59 @@ Der SQL-Altpfad behaelt seine Snapshots bis zum projektweisen Cutover. Offen
 bleiben der Nachweis gegen den echten Forgejo-Container auf Staging und die
 spaetere Stilllegung des SQL-Quellenpfads.
 
+Seit 2026-08-09 ist lokal zusaetzlich umgesetzt:
+
+- ein harter Admission-Gate fuer neue Projekte ohne Forgejo-Store,
+- getrennte, geschuetzte Systemquellen fuer ESP32-/ESP8266-Basissoftware,
+  Nexi, FlashBox und Spielesammlung,
+- ein idempotenter Plan-/Importablauf fuer diese fuenf Repositories,
+- eine nicht durch Kunden ueberschreibbare Basissoftware-Referenz auf einen
+  serverseitig freigegebenen Forgejo-Commit,
+- Laden der Basissoftware aus genau diesem Commit statt aus dem lokalen
+  Project-Server-Arbeitsverzeichnis,
+- commitgenaues Laden der Nexi-Produktquelle aus Forgejo und Materialisierung
+  ihrer Dateien als bearbeitbare Ausgangskopie im privaten Kundenprojekt,
+- eine serverseitig fixierte Nexi-Herkunftsreferenz, deren Organisation,
+  Repository und Commit der Kunde nicht durch Request-Daten ersetzen kann,
+- ein Plan-/Apply-Ablauf fuer die projektweise Migration vorhandener
+  PostgreSQL-Projekte,
+- eine token-geschuetzte read-only Admin-Sicht fuer Systemquellen,
+  Projekt-Repositories, Builds, Commits, Paket-Hashes und Artefakt-Hashes.
+
+Das VPS-Compose aktiviert den Gate nur mit getrennten Tokens und allen festen
+System-Commit-IDs. Die eigentliche Repository-Anlage, SQL-Projektmigration und
+das Deployment bleiben bewusste Betriebsaktionen und werden nicht durch einen
+lokalen Code- oder Dokumentationslauf ausgeloest.
+
+## Verbindliches Ziel fuer neue Entwicklungsprojekte
+
+Jedes neue Entwicklungsprojekt wird ausschliesslich mit einem privaten
+Forgejo-Repository angelegt. Der Project Server materialisiert dabei die
+Projektartefakte, schreibt sie in das Repository und erzeugt den Initial-Commit.
+Zu den Artefakten gehoeren mindestens Projektmanifest, Architektur- und
+Hardwarekonfiguration, Software-Einheiten, generierte Builddateien, Quell-,
+Header- und Testdateien sowie die Referenzen auf die verwendete Basissoftware
+und das Produkttemplate.
+
+Die Basissoftware und Produkttemplates liegen in getrennten, geschuetzten
+systemverwalteten Forgejo-Repositories. Die Basissoftware bleibt ausserhalb des
+schreibbaren Kunden-Repositories und wird beim Build ueber ihren festen Commit
+eingebunden. Eine Produktquelle wie Nexi wird dagegen an ihrem freigegebenen
+Commit gelesen und als bearbeitbare Ausgangskopie in den Initial-Commit des
+privaten Kundenprojekts uebernommen. Das Projekt behaelt zusaetzlich die
+serverseitig fixierte Herkunftsreferenz. Kunden duerfen diese Kopie und ihre
+Projektkonfiguration bearbeiten, aber weder die geschuetzte Basissoftware noch
+die vom Build verwendete Core- oder Produkt-Herkunftsreferenz ersetzen.
+
+Kompilierte Firmware, ELF, Map und groessere Buildlogs werden nicht in Forgejo
+geschrieben. Sie liegen im Artifact Store und referenzieren den exakten
+Basissoftware-, Produkt- und Projektcommit.
+
+**Abnahme:** Ein neu angelegtes Entwicklungsprojekt besitzt unmittelbar eine
+aktive Forgejo-Bindung, einen Initial-Commit mit allen Startartefakten und eine
+commitgebundene Build-Referenz. Ein Build ohne aktive Repository-Bindung oder
+mit einer manipulierten Core-Referenz wird abgewiesen.
+
 Ziel:
 
 - `source_snapshot` und projektbezogene Vollquellen aus BuildJob entfernen.
@@ -444,8 +497,11 @@ Abnahme:
 Lokal umgesetzt ist ein strikt read-only arbeitender Dry-run fuer PostgreSQL
 und Legacy-SQLite. Er erzeugt deterministische Baum- und Commitkennungen sowie
 einen schema-validierbaren Bericht und blockiert Secrets, unzulaessige
-Binaerdateien, Pfadkonflikte und mehrdeutige Historien. Schreibmodus,
-Migrationsledger und Cutover sind bewusst nicht enthalten.
+Binaerdateien, Pfadkonflikte und mehrdeutige Historien. Zusaetzlich kann der
+Project Server den aktuellen, validierten Projektbaum nach ausdruecklichem
+`--apply` in ein privates Forgejo-Repository schreiben und die aktive Bindung
+mit Zielcommit speichern. Historische SQL-Versionen und ein separates
+Migrationsledger sind weiterhin nicht enthalten.
 
 Ziel:
 

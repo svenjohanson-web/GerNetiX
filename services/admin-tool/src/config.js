@@ -17,6 +17,7 @@ function createConfig(env = process.env) {
     securityMonitorToken: env.SECURITY_MONITOR_TOKEN || "",
     buildDeployBaseUrl: env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     projectServerBaseUrl: env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
+    projectAdminReadToken: env.PROJECT_ADMIN_READ_TOKEN || "",
     hardwareShopBaseUrl: env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900",
     hardwareCatalogBaseUrl: env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910",
     publicDemoBaseUrl: env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920",

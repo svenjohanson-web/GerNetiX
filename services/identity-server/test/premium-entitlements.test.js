@@ -9,6 +9,9 @@ const server = [
   path.join("dev", "server", "platform-routes.js"),
   path.join("dev", "server", "project-routes.js"),
   path.join("dev", "server", "system-routes.js"),
+  path.join("dev", "platform", "platform-service.js"),
+  path.join("dev", "projects", "project-configuration-service.js"),
+  path.join("dev", "account", "subscription-access.js"),
 ].map((file) => fs.readFileSync(path.join(root, "src", file), "utf8")).join("\n");
 const platform = fs.readFileSync(path.join(root, "public", "app", "development-platform.js"), "utf8");
 const guidedProject = fs.readFileSync(path.join(root, "public", "app", "guided-project-view.js"), "utf8");

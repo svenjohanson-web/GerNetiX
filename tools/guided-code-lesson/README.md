@@ -13,7 +13,9 @@ Der Prototyp zeigt jetzt eine Verbindung von Projektidee zu konkreten Schritten:
 - `pattern` zeigt das didaktische Muster, z. B. Systemgrenze, Code-Walkthrough, Experiment oder Reflexion.
 - `focusLines`, `editableLines` und `expectedContains` steuern das Step-Tool.
 
-Der Prototyp enth?lt keine Build-, Flash-, Backend-, Datenbank- oder Persistenzfunktion.
+Der Prototyp enthaelt keine Build-, Flash- oder Datenbankfunktion. Lokale
+Bearbeitungen werden im Browser gespeichert; eine ausdrueckliche Aktion kann
+eine Vorschau an den lokalen Identity-Server spiegeln.
 
 ## Profilabh?ngige Validierung
 
@@ -23,7 +25,10 @@ Wenn kein bekanntes Board vorliegt, wird nur ein allgemeiner Zahlenbereich valid
 
 ## Projektideen-Auswahl
 
-Oben im Tool kann eine Projektidee ausgew?hlt werden. Der Prototyp nutzt daf?r einen internen Katalog in `app.js`, damit `index.html` weiterhin direkt per Browser ohne Server funktioniert.
+Oben im Tool kann eine Projektidee ausgewaehlt werden. Die Lernprojekte liegen
+als einzelne Module unter `lessons/` und werden ueber den gemeinsamen
+`LearningProjectRegistry`-Vertrag geladen. `app.js` startet nur noch die bereits
+zusammengesetzte Anwendung.
 
 Die Aktorik-Idee enth?lt eine echte gef?hrte Code-Lektion. Die weiteren Projektideen sind als strukturierte Vorschau hinterlegt: links steht ein kompakter Projektideen-Ausschnitt, rechts wird Schritt f?r Schritt durch die didaktische Struktur gef?hrt.
 
@@ -39,3 +44,7 @@ Das zugrunde liegende Anzeige-Modell liegt unter:
 ```text
 model/tamagotchi/step-by-step-view.yaml
 ```
+
+Die ausfuehrbare Tamagotchi-Vorschau ist als projektspezifischer Adapter unter
+`adapters/tamagotchi-runtime-adapter.js` gekapselt. Die allgemeine Anwendung
+kennt nur den in `runtime-preview-registry.js` definierten Adaptervertrag.

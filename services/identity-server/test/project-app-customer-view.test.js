@@ -34,7 +34,7 @@ test("serves the Project-App as a direct authenticated SPA entry point", () => {
 
 test("offers the Project-App only for personal projects that contain its manifest", () => {
   const controller = read("public/app/app-project-controller.js");
-  const server = read("src/dev-server.js");
+  const server = read("src/dev/projects/project-platform-mapper.js");
   assert.match(controller, /source\.path === "project-app\/manifest\.json"/);
   assert.match(controller, /data-open-project-app/);
   assert.match(controller, /\/app\/project-app\/\?project=/);
@@ -71,7 +71,7 @@ test("keeps every project application widget readable in the shared dark theme",
 test("lets one application manage several account devices without duplicating shared settings", () => {
   const controller = read("public/app/project-app-controller.js");
   const projectController = read("public/app/app-project-controller.js");
-  const server = read("src/dev-server.js");
+  const server = read("src/dev/projects/project-platform-mapper.js");
   assert.match(controller, /data-project-app-device/);
   assert.match(controller, /project-app\/devices/);
   assert.match(controller, /Familienregeln und Limits gelten gemeinsam/);

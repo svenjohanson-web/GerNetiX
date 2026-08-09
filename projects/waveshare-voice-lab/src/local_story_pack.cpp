@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include "nexi/generated_story_audio.h"
+#include "nexi/local_story_audio_assets.h"
 
 namespace nexi {
 namespace {
@@ -61,19 +61,19 @@ bool LocalStoryCatalogValidator::valid(const LocalStoryCatalog& catalog) {
 }
 
 const LocalStoryCatalog& builtInLocalStoryCatalog() {
-  using namespace generated_story_audio;
+  const LocalStoryAudioAssets& audio = builtInLocalStoryAudioAssets();
   static const LocalStory kWonderStories[] = {
       {"lumi-und-der-stern", "Lumi und der leise Stern",
-          kStoryAudioLumiUndDerStern,
-          kStoryAudioLumiUndDerSternSampleCount, kSampleRateHz},
+          audio.lumiUndDerStern.pcm8Samples,
+          audio.lumiUndDerStern.sampleCount, kLocalStorySampleRateHz},
       {"milo-und-der-regentakt", "Milo und der Regentakt",
-          kStoryAudioMiloUndDerRegentakt,
-          kStoryAudioMiloUndDerRegentaktSampleCount, kSampleRateHz},
+          audio.miloUndDerRegentakt.pcm8Samples,
+          audio.miloUndDerRegentakt.sampleCount, kLocalStorySampleRateHz},
   };
   static const LocalStory kCalmStories[] = {
       {"die-kleine-wolke", "Die kleine Wolke",
-          kStoryAudioDieKleineWolke,
-          kStoryAudioDieKleineWolkeSampleCount, kSampleRateHz},
+          audio.dieKleineWolke.pcm8Samples,
+          audio.dieKleineWolke.sampleCount, kLocalStorySampleRateHz},
   };
   static const LocalStoryPack kPacks[] = {
       {"nexi.stories.wonder.de", 1, kWonderStories, 2},

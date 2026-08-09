@@ -8,7 +8,17 @@ const { normalizeAppPath } = require("../src/dev/http-utils");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const app = readPlatformAppSource();
 const learningController = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-controller.js"), "utf8");
-const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const server = [
+  "../src/dev-server.js",
+  "../src/dev/learning/learning-project-service.js",
+  "../src/dev/learning/learning-progress-service.js",
+  "../src/dev/projects/project-hardware-model.js",
+  "../src/dev/projects/project-view-model.js",
+  "../src/dev/projects/project-platform-mapper.js",
+  "../src/dev/projects/project-runtime-service.js",
+  "../src/dev/projects/demo-project-sources.js",
+].map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
+const learningModels = fs.readFileSync(path.resolve(__dirname, "../src/dev/learning/learning-project-models.js"), "utf8");
 const webRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/web-routes.js"), "utf8");
 
 test("learning area leads with a dedicated project catalog", () => {
@@ -97,8 +107,8 @@ test("keeps the catalog and the active learning project in separate views", () =
 });
 
 test("catalog includes the button-to-smartphone notification learning project", () => {
-  assert.match(server, /button-to-smartphone-notification/);
-  assert.match(server, /createButtonToSmartphoneNotificationCourseModel/);
+  assert.match(learningModels, /button-to-smartphone-notification/);
+  assert.match(learningModels, /createButtonToSmartphoneNotificationCourseModel/);
 });
 
 test("catalog includes a free browser-based YAML fundamentals project", () => {
@@ -118,8 +128,8 @@ test("catalog includes a free browser-based YAML fundamentals project", () => {
     (title, text, insight) => ({ title, text, insight }),
   );
   assert.deepEqual(created.required_capability_ids, []);
-  assert.match(server, /createYamlFundamentalsCourseModel/);
-  assert.match(server, /yamlFundamentalsCourseModel\.createProject/);
+  assert.match(learningModels, /createYamlFundamentalsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
   assert.match(server, /"topic:yaml"/);
 });
 
@@ -136,8 +146,8 @@ test("catalog includes the requirements workshop as a regular guided learning pr
   assert.equal(course.view_manifest.views[1].payload.artifact.type, "requirements_mirror");
   assert.ok(course.project.tags.includes("topic:requirements-engineering"));
   assert.equal(typeof model.createRequirementsWorkshopCourseModel, "function");
-  assert.match(server, /createRequirementsWorkshopCourseModel/);
-  assert.match(server, /requirementsWorkshopCourseModel\.createProject/);
+  assert.match(learningModels, /createRequirementsWorkshopCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
   assert.match(server, /"topic:requirements-engineering"/);
   assert.match(guidedView, /\/api\/platform\/requirements-workshop\/feedback/);
   assert.doesNotMatch(html, /\/app\/requirements-workshop\//);
@@ -161,8 +171,8 @@ test("catalog includes the free browser-based radio technologies project", () =>
   assert.match(JSON.stringify(course.view_manifest), /Jede Funkübertragung kann gestört werden/);
   assert.match(JSON.stringify(course.view_manifest), /ziviles Passagierflugzeug/);
   assert.equal(typeof model.createRadioTechnologiesCourseModel, "function");
-  assert.match(server, /createRadioTechnologiesCourseModel/);
-  assert.match(server, /radioTechnologiesCourseModel\.createProject/);
+  assert.match(learningModels, /createRadioTechnologiesCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
 });
 
 test("catalog includes the free measurement tools learning project", () => {
@@ -205,10 +215,10 @@ test("catalog includes the free measurement tools learning project", () => {
   assert.equal(created.steps.length, 11);
   assert.equal(courseModel.createSources()[0].path, "docs/messprotokoll.md");
   assert.equal(courseModel.createViewManifest({}, { primarySourcePath: () => "docs/messprotokoll.md" }).views.length, 11);
-  assert.match(server, /createMeasurementToolsBasicsCourseModel/);
-  assert.match(server, /measurementToolsBasicsCourseModel\.createProject/);
-  assert.match(server, /measurementToolsBasicsCourseModel\.createViewManifest/);
-  assert.match(server, /measurementToolsBasicsCourseModel\.createSources/);
+  assert.match(learningModels, /createMeasurementToolsBasicsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
+  assert.match(server, /learningProjectModel\.createViewManifest/);
+  assert.match(server, /learningProjectModel\.createSources/);
   assert.match(app, /"topic:measurement": "Messtechnik"/);
 });
 
@@ -255,7 +265,7 @@ test("button-to-smartphone course uses its guided learning entry instead of the 
   assert.equal(manifest.views[0].id, "goal");
   assert.equal(manifest.views[1].id, "read-button-pin");
   assert.equal(manifest.views[0].payload.artifact.type, "inventory_board_selection");
-  assert.match(server, /project\.slug === buttonToSmartphoneNotificationCourseModel\.slug/);
+  assert.match(server, /learningProjectRegistry\.getBySlug\(project\.slug\)/);
 });
 
 test("guided navigation renders the following learning step even if progress persistence is temporarily unavailable", () => {
@@ -327,7 +337,7 @@ test("asks for learning-project feedback once after the final completed step", (
   assert.match(learningView, /showRating \? `<section class="learning-rating"/);
   assert.match(guidedView, /learning-progress-updated/);
   assert.match(guidedView, /function setIdeGuidedStep[\s\S]*saveIdeGuidedProgress[\s\S]*learning-progress-updated/);
-  assert.match(server, /hasSubmittedLearningFeedback/);
+  assert.match(server, /hasSubmittedFeedback/);
 });
 
 test("balances the guided learning workspace and keeps optional AI help outside the task column", () => {
@@ -355,9 +365,9 @@ test("balances the guided learning workspace and keeps optional AI help outside 
 test("catalog includes the home automation network course with a resource boundary", () => {
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
   const course = fs.readFileSync(path.resolve(__dirname, "../src/dev/project-models/home-automation-network-course.json"), "utf8");
-  assert.match(server, /home-automation-network/);
-  assert.match(server, /createHomeAutomationNetworkCourseModel/);
-  assert.match(server, /homeAutomationNetworkCourseModel\.createProject/);
+  assert.match(learningModels, /home-automation-network/);
+  assert.match(learningModels, /createHomeAutomationNetworkCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
   assert.match(guidedView, /access_gate/);
   assert.match(guidedView, /open_billing/);
   assert.match(course, /background_worker/);
@@ -367,8 +377,8 @@ test("catalog includes the home automation network course with a resource bounda
 test("catalog includes a distinct sensor-learning project for home automation", () => {
   const course = require("../src/dev/project-models/home-automation-sensors-course.json");
   const model = require("../src/dev/project-models/home-automation-sensors-course");
-  assert.match(server, /createHomeAutomationSensorsCourseModel/);
-  assert.match(server, /homeAutomationSensorsCourseModel\.createProject/);
+  assert.match(learningModels, /createHomeAutomationSensorsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
   assert.equal(course.project.title, "Sensorik für deine Hausautomation");
   assert.equal(course.project.learning_category, "embedded");
   assert.ok(course.project.tags.includes("topic:home-automation"));
@@ -382,8 +392,8 @@ test("catalog includes a distinct sensor-learning project for home automation", 
 test("catalog includes a motor-control project that joins actuator electronics and firmware", () => {
   const course = require("../src/dev/project-models/motor-control-basics-course.json");
   const model = require("../src/dev/project-models/motor-control-basics-course");
-  assert.match(server, /createMotorControlBasicsCourseModel/);
-  assert.match(server, /motorControlBasicsCourseModel\.createProject/);
+  assert.match(learningModels, /createMotorControlBasicsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
   assert.equal(course.project.title, "Motoransteuerung: Bewegung sicher steuern");
   assert.equal(course.project.learning_category, "embedded");
   assert.ok(course.project.tags.includes("topic:actuators"));
@@ -432,10 +442,10 @@ test("catalog scaffolds the proximity-sensor project with FMCW radar as its firs
   assert.match(course.sources.find((source) => source.path.endsWith("radar-naeherungssensor-plan.md")).content, /Hersteller und genaue Typbezeichnung/);
   assert.match(course.sources.find((source) => source.path.endsWith("versuchsplan.csv")).content, /radar_ausgabe/);
   assert.equal(model.createProximitySensorRadarCourseModel().slug, "build-your-own-proximity-sensor");
-  assert.match(server, /createProximitySensorRadarCourseModel/);
-  assert.match(server, /proximitySensorRadarCourseModel\.createProject/);
-  assert.match(server, /proximitySensorRadarCourseModel\.createViewManifest/);
-  assert.match(server, /proximitySensorRadarCourseModel\.createSources/);
+  assert.match(learningModels, /createProximitySensorRadarCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
+  assert.match(server, /learningProjectModel\.createViewManifest/);
+  assert.match(server, /learningProjectModel\.createSources/);
   assert.match(app, /"topic:radar": "Radar"/);
   assert.match(app, /"topic:sensors": "Sensorik"/);
   assert.match(app, /catalog=|get\("catalog"\)/);
@@ -581,10 +591,10 @@ test("catalog includes a software-only programming fundamentals course", () => {
   assert.equal(standaloneManifest.entry_mode, "standalone_lesson");
   assert.deepEqual(standaloneManifest.views.map((view) => view.id), ["42-guided-final", "43-transfer-project"]);
   assert.equal(courseModel.slug, "programming-fundamentals");
-  assert.match(server, /createProgrammingFundamentalsCourseModel/);
-  assert.match(server, /programmingFundamentalsCourseModel\.createProject/);
-  assert.match(server, /programmingFundamentalsCourseModel\.createViewManifest/);
-  assert.match(server, /programmingFundamentalsCourseModel\.createSources/);
+  assert.match(learningModels, /createProgrammingFundamentalsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
+  assert.match(server, /learningProjectModel\.createViewManifest/);
+  assert.match(server, /learningProjectModel\.createSources/);
   assert.match(app, /"topic:programming": "Programmierung"/);
 });
 
@@ -645,10 +655,10 @@ test("catalog includes the progressive microcontroller fundamentals course", () 
   assert.equal(manifest.views[0].lesson_id, "microcontroller-fundamentals.lesson-01");
   assert.equal(manifest.views[49].lesson_id, "microcontroller-fundamentals.lesson-50");
   assert.equal(courseModel.slug, "microcontroller-fundamentals");
-  assert.match(server, /createMicrocontrollerFundamentalsCourseModel/);
-  assert.match(server, /microcontrollerFundamentalsCourseModel\.createProject/);
-  assert.match(server, /microcontrollerFundamentalsCourseModel\.createViewManifest/);
-  assert.match(server, /microcontrollerFundamentalsCourseModel\.createSources/);
+  assert.match(learningModels, /createMicrocontrollerFundamentalsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
+  assert.match(server, /learningProjectModel\.createViewManifest/);
+  assert.match(server, /learningProjectModel\.createSources/);
   assert.match(app, /"topic:microcontroller": "Mikrocontroller"/);
 });
 
@@ -702,7 +712,7 @@ test("models the storage story as one development project with reusable standalo
     "lessons/04-sqlite/beispieldaten.csv",
   ]);
 
-  assert.match(server, /createStorageLearningStoryCourseModel/);
+  assert.match(learningModels, /createStorageLearningStoryCourseModel/);
   assert.match(server, /handleDevelopmentLessonStart/);
   assert.match(server, /standalone_lesson/);
   assert.match(server, /learningProjectManifestForPersistedProject/);
@@ -764,8 +774,8 @@ test("models ESP32 camera streaming as three progressive and standalone lessons"
     "docs/projektstory.md",
     "docs/quellen.md",
   ]);
-  assert.match(server, /createEsp32CameraStreamingCourseModel/);
-  assert.match(server, /esp32CameraStreamingCourseModel\.createProject/);
+  assert.match(learningModels, /createEsp32CameraStreamingCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
   assert.match(server, /ai_thinker_esp32_cam[\s\S]*framework: "arduino"[\s\S]*board: "esp32cam"/);
   assert.match(app, /"topic:camera": "Kamera"/);
 });
@@ -795,10 +805,10 @@ test("catalog exposes the UML fundamentals course", () => {
   assert.match(JSON.stringify(course.view_manifest), /Bilder, die Mensch und Maschine verstehen/);
   assert.match(course.sources.find((source) => source.path.endsWith(".puml")).content, /@startuml[\s\S]*@enduml/);
   assert.equal(model.createUmlFundamentalsCourseModel().slug, "uml-fundamentals");
-  assert.match(server, /createUmlFundamentalsCourseModel/);
-  assert.match(server, /umlFundamentalsCourseModel\.createProject/);
-  assert.match(server, /umlFundamentalsCourseModel\.createViewManifest/);
-  assert.match(server, /umlFundamentalsCourseModel\.createSources/);
+  assert.match(learningModels, /createUmlFundamentalsCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
+  assert.match(server, /learningProjectModel\.createViewManifest/);
+  assert.match(server, /learningProjectModel\.createSources/);
 });
 
 test("does not expose the retired ESP32 OTA basis software as a learning project", () => {

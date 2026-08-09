@@ -8,6 +8,7 @@ class ForgejoProjectRepositoryStore {
     this.client = options.client;
     this.git = options.git;
     this.organization = String(options.organization || "gernetix-projects");
+    this.protectedOrganizations = new Set((options.protectedOrganizations || []).map(String));
     this.defaultBranch = String(options.defaultBranch || "main");
     if (!this.client || !this.git) throw new Error("forgejo_store_dependencies_required");
   }
@@ -113,6 +114,29 @@ class ForgejoProjectRepositoryStore {
     await this.client.archiveRepository(binding.organization, binding.repository_name);
     return { ...binding, state: "archived" };
   }
+
+  async readProtectedFiles(reference = {}) {
+    requireProtectedReference(reference, this.protectedOrganizations);
+    const repository = await this.client.getRepository(reference.organization, reference.repository_name);
+    if (!repository) throw new ProjectServerError("protected_repository_not_found", "Das geschuetzte Forgejo-Repository wurde nicht gefunden.", 503);
+    return this.git.readFiles({
+      remote_url: trustedCloneUrl(repository.clone_url, this.client.baseUrl),
+      commit_sha: reference.commit_sha,
+    });
+  }
+
+  async inspectProtectedRepository(reference = {}) {
+    requireProtectedReference(reference, this.protectedOrganizations, { allowMissingCommit: true });
+    const repository = await this.client.getRepository(reference.organization, reference.repository_name);
+    return {
+      ...reference,
+      exists: Boolean(repository),
+      repository_id: repository?.id === undefined ? "" : String(repository.id),
+      archived: Boolean(repository?.archived),
+      empty: Boolean(repository?.empty),
+      html_url: repository?.html_url || "",
+    };
+  }
 }
 
 function repositoryBinding(organization, repositoryName, repository, remoteUrl, defaultBranch, headSha) {
@@ -167,6 +191,20 @@ function requireActiveBinding(binding) {
 function requireConfiguredBinding(binding, organization) {
   requireActiveBinding(binding);
   if (binding.organization !== organization) throw new ProjectServerError("repository_binding_invalid", "Repository-Bindung gehört nicht zur konfigurierten Organisation.", 500);
+}
+
+function requireProtectedReference(reference, organizations, options = {}) {
+  if (reference?.provider !== "forgejo" || !organizations.has(String(reference.organization || ""))) {
+    throw new ProjectServerError("protected_repository_reference_invalid", "Die geschuetzte Repository-Referenz ist nicht zugelassen.", 500);
+  }
+  required(reference.repository_name, "repository_name");
+  if (!options.allowMissingCommit) validateCommitSha(reference.commit_sha);
+}
+
+function validateCommitSha(value) {
+  const sha = String(value || "");
+  if (!/^[a-f0-9]{40}$/.test(sha)) throw new ProjectServerError("protected_repository_commit_required", "Fuer die geschuetzte Quelle fehlt ein fester Forgejo-Commit.", 503);
+  return sha;
 }
 
 function required(value, field) {

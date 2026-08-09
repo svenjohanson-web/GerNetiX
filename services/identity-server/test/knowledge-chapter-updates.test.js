@@ -13,7 +13,8 @@ const {
 const { InMemoryIdentityRepository } = require("../src/repositories/in-memory-identity-repository");
 const { SqliteBackedIdentityRepository } = require("../src/repositories/sqlite-backed-identity-repository");
 
-const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const server = ["../src/dev-server.js", "../src/dev/platform/platform-service.js"]
+  .map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
 const app = readPlatformAppSource();
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
@@ -114,10 +115,12 @@ test("builds an entitlement-filtered knowledge history with publication and read
 test("persists chapter read receipts in local SQLite without storing notifications in browser state", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-knowledge-updates-"));
   const sqlitePath = path.join(directory, "identity.sqlite");
+  let first;
+  let second;
   try {
-    const first = SqliteBackedIdentityRepository.create(sqlitePath, () => new Date("2026-07-24T20:00:00.000Z"));
+    first = SqliteBackedIdentityRepository.create(sqlitePath, () => new Date("2026-07-24T20:00:00.000Z"));
     first.markKnowledgeChapterRead("acct-1", "yaml-basics", "2026-07-24.1");
-    const second = SqliteBackedIdentityRepository.create(sqlitePath);
+    second = SqliteBackedIdentityRepository.create(sqlitePath);
     assert.deepEqual(second.listKnowledgeChapterReads("acct-1"), [{
       account_id: "acct-1",
       chapter_id: "yaml-basics",
@@ -125,6 +128,8 @@ test("persists chapter read receipts in local SQLite without storing notificatio
       seen_at: "2026-07-24T20:00:00.000Z",
     }]);
   } finally {
+    second?.close();
+    first?.close();
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });

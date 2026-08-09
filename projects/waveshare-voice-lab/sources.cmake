@@ -7,6 +7,7 @@ set(GERNETIX_PROJECT_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/src/board_controls.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/capability_policy.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/companion_state.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/src/embedded_story_audio.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/esp_monotonic_clock.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/esp_timer_power_control.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/hardware_platform.cpp"
@@ -15,7 +16,6 @@ set(GERNETIX_PROJECT_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/src/local_quiz_application.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/local_quiz_pack.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/local_tone_output.cpp"
-  "${CMAKE_CURRENT_LIST_DIR}/src/generated_story_audio.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/local_story_application.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/local_story_pack.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/local_timer_application.cpp"
@@ -42,4 +42,10 @@ set(GERNETIX_PROJECT_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/src/waveshare_reaction_game_feedback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/waveshare_story_feedback.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/src/waveshare_timer_feedback.cpp"
+)
+
+set(GERNETIX_PROJECT_EMBED_FILES
+  "${CMAKE_CURRENT_LIST_DIR}/assets/stories/audio/lumi-und-der-stern.pcm8"
+  "${CMAKE_CURRENT_LIST_DIR}/assets/stories/audio/milo-und-der-regentakt.pcm8"
+  "${CMAKE_CURRENT_LIST_DIR}/assets/stories/audio/die-kleine-wolke.pcm8"
 )

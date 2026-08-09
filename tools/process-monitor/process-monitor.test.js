@@ -76,6 +76,12 @@ test("packaged Electron runtime starts services in Node mode", () => {
   assert.match(source, /ELECTRON_RUN_AS_NODE:"1"/);
 });
 
+test("packaged monitor starts local services with Node instead of its Electron executable", () => {
+  assert.equal(control.serviceNodeExecutable({ env:{}, versions:{ electron:"37.10.3" }, execPath:"C:\\Program Files\\GerNetiX Prozess-Monitor.exe" }), "node");
+  assert.equal(control.serviceNodeExecutable({ env:{ GERNETIX_NODE_COMMAND:"C:\\Tools\\node.exe" }, versions:{ electron:"37.10.3" }, execPath:"ignored" }), "C:\\Tools\\node.exe");
+  assert.equal(control.serviceNodeExecutable({ env:{}, versions:{}, execPath:"C:\\Program Files\\node.exe" }), "C:\\Program Files\\node.exe");
+});
+
 test("desktop monitor starts the Docker build worker through the dedicated helper", async () => {
   let checkCount = 0;
   let invocation = null;
@@ -86,7 +92,7 @@ test("desktop monitor starts the Docker build worker through the dedicated helpe
   });
   assert.equal(result.healthy,true);
   assert.equal(invocation.file,process.execPath);
-  assert.match(invocation.args[0],/tools\/build-worker\.js$/);
+  assert.match(invocation.args[0],/tools[\\/]build-worker\.js$/);
   assert.equal(invocation.args[1],"start");
   assert.equal(invocation.options.env.ELECTRON_RUN_AS_NODE,"1");
   assert.ok(invocation.options.env.GERNETIX_DOCKER_COMMAND);
@@ -132,7 +138,9 @@ test("monitor reads VPS compose state through the established staging SSH config
   assert.equal(rows.length, 2);
   assert.equal(rows[0].id, "mqtt-broker");
   assert.equal(rows[0].healthy, true);
+  assert.equal(rows[0].portLabel, "8883");
   assert.equal(rows[1].healthy, false);
+  assert.equal(rows[1].portLabel, "4400");
   assert.match(desktopPreload, /listVps/);
   assert.match(desktopMain, /processes:list-vps/);
   assert.match(html, /Backend und Infrastruktur/);
@@ -148,6 +156,22 @@ test("monitor reads VPS compose state through the established staging SSH config
   });
   assert.equal(remoteCommand, "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps");
   assert.deepEqual(remote.items.map((item)=>item.id), ["identity-server", "project-server"]);
+
+  const unavailable = await control.remoteProcessStates({
+    config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
+    execFileAsync:async()=>{throw new Error("SSH unavailable");},
+  });
+  assert.equal(unavailable.stale, true);
+  assert.ok(unavailable.error.includes("VPS nicht erreichbar"));
+  assert.equal(unavailable.items.length, 2);
+  assert.ok(unavailable.items.every((item)=>item.healthy===false&&item.state==="unknown"&&item.stale===true));
+  assert.ok(unavailable.checkedAt);
+  assert.ok(unavailable.lastSuccessfulAt);
+  assert.match(client, /VPS-Status unbekannt/);
+  assert.match(client, /status unknown/);
+  assert.match(client, /Port.*portLabel/);
+  assert.match(html, /VPS-Portweiterleitung \(SSH\)/);
+  assert.match(html, /vpsCheckedAt/);
 });
 
 test("monitor displays persisted external interface call statistics", () => {

@@ -18,9 +18,12 @@ test("serves the GerNetiX homepage publicly before authentication", () => {
   assert.doesNotMatch(html, /Jetzt starten/);
 });
 
+test("puts engineering thinking, freedom and manageable complexity at the top of the homepage", () => {
+  assert.match(html, /Ingenieurdenken lernen\. Technik frei gestalten/);
+  assert.match(html, /nimmt dir Komplexität nicht einfach weg[\s\S]*nachvollziehbaren Schritten[\s\S]*eigene Hardware einbindest[\s\S]*verteilte Systeme frei gestalten/);
+});
+
 test("introduces learning and development as the two GerNetiX areas", () => {
-  assert.match(html, /Technik verstehen und eigene Systeme entwickeln/);
-  assert.match(html, /GerNetiX hat zwei Bereiche:[\s\S]*Wissensportal und Community begleiten dich auf beiden Wegen/);
   assert.match(html, /href="#learning-paths"[\s\S]*Zum Lernbereich/);
   assert.match(html, /href="#ide"[\s\S]*Zum Entwicklungsbereich/);
   assert.doesNotMatch(html, /direkt mit Projekten zum Nachbauen starten|Drei Bereiche/);

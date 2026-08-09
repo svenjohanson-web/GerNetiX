@@ -38,6 +38,9 @@ include/nexi/
 src/
   *.cpp                        Implementierungen dieser Module
   project_entry.cpp            einziger Adapter zur Basissoftware
+assets/stories/audio/
+  *.pcm8                       eingebettete binaere Offline-Geschichten
+  manifest.json                Format, Samplezahl und SHA-256 je Asset
 voice_lab.cpp                  Composition Root ohne Treiberimplementierungen
 ```
 
@@ -217,7 +220,9 @@ Moduswahl oder mit `Hey Nexi, starte das Klangquiz`.
 
 Die lokalen Geschichten enthalten drei eigens fuer Nexi geschriebene
 Kurztexte in zwei versionierten Paketen. Die gesprochenen Audiodaten liegen
-als 8-kHz/8-Bit-Mono-Assets im Firmware-Flash und werden blockweise ueber den
+als echte `.pcm8`-Binaerassets mit 8 kHz, 8 Bit und einem Monokanal im
+Firmware-Flash. ESP-IDF bettet sie beim Build ein; C++ enthaelt nur Katalog,
+Metadaten und die Linker-Symbolbindung. Die Samples werden blockweise ueber den
 bestehenden 16-kHz-Stereo-Codec ausgegeben. Es werden weder Texte noch
 Nutzerdaten geladen oder uebertragen. In der Storyauswahl wechseln KEY1 und
 KEY3 zur vorherigen beziehungsweise naechsten Geschichte; KEY2 spielt die
@@ -231,6 +236,11 @@ Die Auswahl startet ueber die Moduswahl oder mit
 `Hey Nexi, starte die Geschichten`. Die Audioausgabe ist in diesem
 Durchstich noch blockierend; Sprache und Tasten werden waehrend einer maximal
 45 Sekunden langen Geschichte erst danach wieder ausgewertet.
+
+Die Binaerassets und ihr Hash-/Laengenmanifest unter
+`assets/stories/audio/` werden auf macOS aus `stories.de.json` mit
+`node tools/generate-local-story-audio.js` neu erzeugt. Die
+generierten Audiodateien werden nicht manuell bearbeitet.
 
 Der lokale Begleiter ist der erste NEXI-06-Durchstich. Er fuehrt die vier
 begrenzten Werte Energie, Freude, Vertrauen und Anzahl der Interaktionen.

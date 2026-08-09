@@ -5,7 +5,8 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const ide = fs.readFileSync(path.join(root, "public", "app", "app-ide-controller.js"), "utf8");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const server = ["dev-server.js", path.join("dev", "projects", "project-configuration-service.js")]
+  .map((file) => fs.readFileSync(path.join(root, "src", file), "utf8")).join("\n");
 
 test("configuration dialogs refresh their newly projected files in the IDE tree", () => {
   assert.match(ide, /async function refreshProjectedProjectSources\(project\)/);

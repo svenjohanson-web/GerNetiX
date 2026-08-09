@@ -25,14 +25,33 @@ const knowledgeArticleFiles = [
 const knowledgeCatalogContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
 const knowledgeChapterIndex = fs.readFileSync(path.join(appRoot, "knowledge-chapter-index.js"), "utf8");
 const generatedKnowledgeChapterFiles = fs.readdirSync(path.join(appRoot, "knowledge-chapters")).filter((file) => file.endsWith(".js"));
+const generatedKnowledgeContent = generatedKnowledgeChapterFiles
+  .map((file) => fs.readFileSync(path.join(appRoot, "knowledge-chapters", file), "utf8"))
+  .join("\n");
 const distributedKnowledgeContent = fs.readFileSync(path.join(appRoot, "knowledge-articles-distributed-systems.js"), "utf8");
 const knowledgeContent = [
   ...knowledgeArticleFiles.map((file) => fs.readFileSync(path.join(appRoot, file), "utf8")),
   knowledgeCatalogContent,
 ].join("\n");
-const normalizedHelpContent = helpOnlyContent.replace(/,\n\s*/g, ", ");
-const normalizedKnowledgeContent = knowledgeContent.replace(/,\n\s*/g, ", ");
-const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}`;
+function restoreNavigationTitles(content, titles) {
+  let restored = content;
+  for (const [id, title] of Object.entries(titles)) {
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    restored = restored.replace(
+      new RegExp(`id: "${escapedId}",\\s*articleId: "${escapedId}",`, "g"),
+      `id: "${id}", title: "${title}", articleId: "${id}",`,
+    );
+  }
+  return restored;
+}
+const helpTitles = Object.fromEntries(
+  [...helpOnlyContent.matchAll(/"([^"]+)": \{\s*title: "([^"]+)"/g)].map((match) => [match[1], match[2]]),
+);
+const chapterIndexData = JSON.parse(knowledgeChapterIndex.match(/const KnowledgeChapterIndex=(\{[\s\S]*\});/)?.[1] || "{}");
+const chapterTitles = Object.fromEntries(Object.entries(chapterIndexData).map(([id, chapter]) => [id, chapter.title]));
+const normalizedHelpContent = restoreNavigationTitles(helpOnlyContent.replace(/,\r?\n\s*/g, ", "), helpTitles);
+const normalizedKnowledgeContent = restoreNavigationTitles(knowledgeContent.replace(/,\r?\n\s*/g, ", "), chapterTitles);
+const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}\n${knowledgeChapterIndex}\n${generatedKnowledgeContent}`;
 const informationView = fs.readFileSync(path.join(appRoot, "information-view.js"), "utf8");
 const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
 const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "..", "..", "docs", "webshop-account-separation.md"), "utf8");

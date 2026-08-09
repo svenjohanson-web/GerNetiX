@@ -10,7 +10,8 @@ const css = fs.readFileSync(path.join(publicRoot, "app.css"), "utf8");
 const app = `${readPlatformAppSource()}\n${fs.readFileSync(path.join(publicRoot, "app-device-build-controller.js"), "utf8")}`;
 const shell = fs.readFileSync(path.join(publicRoot, "app-shell-controller.js"), "utf8");
 const flashProgress = fs.readFileSync(path.join(publicRoot, "flash-progress.js"), "utf8");
-const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+const server = ["dev-server.js", path.join("dev", "builds", "build-service.js")]
+  .map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
 
 test("build and flash actions expose their concrete prerequisite without becoming inert", () => {
   assert.match(html, /id="ideActionReason"/);

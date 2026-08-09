@@ -10,12 +10,22 @@ function createDefaultProjectServer(config = createConfig()) {
   const repository = createRepository(config);
   if (repository && typeof repository.then === "function") {
     return repository.then(async (resolvedRepository) => {
-      const service = new ProjectService({ repository: resolvedRepository, projectRepositoryStore: createProjectRepositoryStore(config) });
+      const service = new ProjectService({
+        repository: resolvedRepository,
+        projectRepositoryStore: createProjectRepositoryStore(config),
+        requireForgejoForNewProjects: config.requireForgejoForNewProjects,
+        systemRepositories: config.systemRepositories,
+      });
       await service.ready;
       return service;
     });
   }
-  return new ProjectService({ repository, projectRepositoryStore: createProjectRepositoryStore(config) });
+  return new ProjectService({
+    repository,
+    projectRepositoryStore: createProjectRepositoryStore(config),
+    requireForgejoForNewProjects: config.requireForgejoForNewProjects,
+    systemRepositories: config.systemRepositories,
+  });
 }
 
 function createProjectRepositoryStore(config) {
@@ -28,6 +38,7 @@ function createProjectRepositoryStore(config) {
   const { GitProjectRepositoryStore } = require("./repository-store/git-project-repository-store");
   return new ForgejoProjectRepositoryStore({
     organization: config.forgejo.organization,
+    protectedOrganizations: config.forgejo.protectedOrganizations,
     defaultBranch: config.forgejo.defaultBranch,
     client: new ForgejoClient({
       baseUrl: config.forgejo.baseUrl,

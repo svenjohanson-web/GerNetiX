@@ -31,6 +31,8 @@ const state = {
   linkIntegrity: null,
   linkIntegrityLoading: false,
   resources: null,
+  sourceRepositories: null,
+  sourceRepositoriesLoading: false,
   componentMetamodel: null,
   adminSession: null,
   community: null,
@@ -84,6 +86,7 @@ document.querySelector("#userActionHours").addEventListener("change", () => { if
 document.querySelector("#refreshLinkIntegrityButton").addEventListener("click", () => loadLinkIntegrity(true));
 document.querySelector("#syncLinkIntegrityButton").addEventListener("click", synchronizeLinkIntegrity);
 document.querySelector("#refreshResourcesButton").addEventListener("click", () => loadResources(true));
+document.querySelector("#refreshSourceRepositoriesButton")?.addEventListener("click", () => loadSourceRepositories(true));
 document.querySelector("#resourcePolicyRows").addEventListener("click", saveResourcePolicy);
 document.querySelector("#refreshAiClarificationsButton").addEventListener("click", () => loadAiClarifications(true));
 document.querySelector("#aiClarificationStatusFilter").addEventListener("change", () => loadAiClarifications(true));
@@ -116,7 +119,7 @@ bootstrap();
 
 async function bootstrap() {
   await loadAdminSession();
-  if (!isFullAdministrator()) state.currentView = "community";
+  if (!canAccessView(state.currentView)) state.currentView = "community";
   if (!isFullAdministrator()) {
     await loadCommunity(false);
     render();
@@ -153,6 +156,12 @@ function isFullAdministrator() {
 function canUseCommunity(capability) {
   const capabilities = new Set(state.adminSession?.admin?.capabilities || []);
   return capabilities.has(capability);
+}
+
+function canAccessView(view) {
+  if (isFullAdministrator()) return true;
+  if (view !== "community") return false;
+  return canUseCommunity("admin_community_support") || canUseCommunity("admin_community_moderation");
 }
 
 async function loadOverview() {
@@ -259,6 +268,7 @@ function render() {
   renderLinkIntegrity();
   renderAccounts();
   renderResources();
+  renderSourceRepositories();
   renderComponentMetamodel();
   renderAiUsage();
   renderAiContext();
@@ -278,6 +288,7 @@ function setView(view) {
   if (state.currentView === "system-events") loadSystemEvents(false);
   if (state.currentView === "user-actions") { loadUserActions(false); loadUserActionIncidents(false); loadUserActionAlerts(false); }
   if (state.currentView === "link-integrity") loadLinkIntegrity(false);
+  if (state.currentView === "source-repositories") loadSourceRepositories(false);
   if (state.currentView === "ai-clarifications") loadAiClarifications(false);
   if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
   if (state.currentView === "email-config") loadEmailConfig().then(renderEmailConfig);
@@ -288,9 +299,8 @@ function setView(view) {
 function renderNavigation() {
   const aiView = isAiView(state.currentView);
   document.querySelector("#aiSubNav")?.classList.toggle("hidden", !aiView);
-  const communityOnly = !isFullAdministrator();
   document.querySelectorAll("[data-admin-view]").forEach((button) => {
-    button.classList.toggle("hidden", communityOnly && button.dataset.adminView !== "community");
+    button.classList.toggle("hidden", !canAccessView(button.dataset.adminView));
   });
   document.querySelectorAll(".admin-view").forEach((view) => {
     view.classList.toggle("hidden", view.id !== viewId(state.currentView));
@@ -322,6 +332,7 @@ function viewId(view) {
     "link-integrity": "linkIntegrityView",
     accounts: "accountsView",
     resources: "resourcesView",
+    "source-repositories": "sourceRepositoriesView",
     community: "communityView",
     "component-metamodel": "componentMetamodelView",
     "ai-usage": "aiUsageView",
@@ -424,11 +435,14 @@ async function loadCommunity(force) {
     try { return await getJson(path); } catch (error) { return { ...fallback, error: error.message }; }
   };
   try {
+    const canSupport = isFullAdministrator() || canUseCommunity("admin_community_support");
+    const canModerate = isFullAdministrator() || canUseCommunity("admin_community_moderation");
+    const unavailable = { items: [], unavailable: true };
     const [overview, support, questions, reports] = await Promise.all([
-      loadPart("/api/admin/community/overview", { summary: {} }),
-      loadPart("/api/admin/community/support-threads", { items: [] }),
-      loadPart("/api/admin/community/questions", { items: [] }),
-      loadPart("/api/admin/community/message-reports?status=open", { items: [] }),
+      isFullAdministrator() ? loadPart("/api/admin/community/overview", { summary: {} }) : Promise.resolve({ summary: {} }),
+      canSupport ? loadPart("/api/admin/community/support-threads", { items: [] }) : Promise.resolve(unavailable),
+      canModerate ? loadPart("/api/admin/community/questions", { items: [] }) : Promise.resolve(unavailable),
+      canModerate ? loadPart("/api/admin/community/message-reports?status=open", { items: [] }) : Promise.resolve(unavailable),
     ]);
     state.community = { overview, support, questions, reports };
   } finally {
@@ -444,6 +458,10 @@ function renderCommunity() {
   const reportRows = document.querySelector("#communityReportRows");
   if (!metrics || !supportRows || !questionRows || !reportRows) return;
   const data = state.community || {};
+  document.querySelectorAll("[data-community-capability]").forEach((element) => {
+    const capability = element.dataset.communityCapability;
+    element.classList.toggle("hidden", !isFullAdministrator() && !canUseCommunity(capability));
+  });
   const summary = data.overview?.summary || {};
   const questionSummary = summary.questions || {};
   metrics.innerHTML = [
@@ -459,7 +477,9 @@ function renderCommunity() {
   const support = data.support?.items || [];
   const questions = data.questions?.items || [];
   const reports = data.reports?.items || [];
-  supportRows.innerHTML = data.support?.error
+  supportRows.innerHTML = data.support?.unavailable
+    ? `<tr><td colspan="4" class="empty-cell">Deine Rolle besitzt keinen Support-Zugriff.</td></tr>`
+    : data.support?.error
     ? `<tr><td colspan="4" class="empty-cell">${escapeHtml(data.support.error)}</td></tr>`
     : support.length ? support.map((thread) => `<tr>
       <td><strong>${escapeHtml(thread.subject || "Support-Anfrage")}</strong><span>${formatNumber(thread.message_count || 0)} Nachrichten</span></td>
@@ -467,7 +487,9 @@ function renderCommunity() {
       <td>${escapeHtml(truncate(thread.latest_message?.body || "", 110))}<span>${escapeHtml(formatDateTime(thread.updated_at))}</span></td>
       <td><button type="button" data-community-open-support="${escapeHtml(thread.thread_id)}">Öffnen</button></td>
     </tr>`).join("") : `<tr><td colspan="4" class="empty-cell">Keine offenen Support-Anfragen.</td></tr>`;
-  questionRows.innerHTML = data.questions?.error
+  questionRows.innerHTML = data.questions?.unavailable
+    ? `<tr><td colspan="5" class="empty-cell">Deine Rolle besitzt keine Moderationsberechtigung.</td></tr>`
+    : data.questions?.error
     ? `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.questions.error)}</td></tr>`
     : questions.length ? questions.map((question) => `<tr>
       <td><strong>${escapeHtml(question.title)}</strong><span>${escapeHtml(truncate(question.body, 110))}</span></td>
@@ -476,7 +498,9 @@ function renderCommunity() {
       <td>${formatNumber(question.answer_count || 0)}</td>
       <td><button type="button" data-community-open-question="${escapeHtml(question.question_id)}">Bearbeiten</button></td>
     </tr>`).join("") : `<tr><td colspan="5" class="empty-cell">Keine Community-Anfragen.</td></tr>`;
-  reportRows.innerHTML = data.reports?.error
+  reportRows.innerHTML = data.reports?.unavailable
+    ? `<tr><td colspan="5" class="empty-cell">Deine Rolle besitzt keine Moderationsberechtigung.</td></tr>`
+    : data.reports?.error
     ? `<tr><td colspan="4" class="empty-cell">${escapeHtml(data.reports.error)}</td></tr>`
     : reports.length ? reports.map((report) => `<tr data-community-report="${escapeHtml(report.report_id)}">
       <td><strong>${escapeHtml(report.thread?.subject || "Unterhaltung")}</strong><span>${escapeHtml(formatDateTime(report.created_at))}</span></td>
@@ -767,6 +791,57 @@ async function loadResources(force) {
   try { state.resources = await getJson("/api/admin/resources"); }
   catch (error) { state.resources = { policies: [], accounts: [], error: error.message }; }
   renderResources();
+}
+
+async function loadSourceRepositories(force) {
+  if (state.sourceRepositoriesLoading || (state.sourceRepositories && !force)) return;
+  state.sourceRepositoriesLoading = true;
+  renderSourceRepositories();
+  try {
+    state.sourceRepositories = await getJson("/api/admin/source-repositories");
+  } catch (error) {
+    state.sourceRepositories = { summary: {}, system_repositories: [], project_repositories: [], builds: [], artifacts: [], error: error.message };
+  } finally {
+    state.sourceRepositoriesLoading = false;
+    renderSourceRepositories();
+  }
+}
+
+function renderSourceRepositories() {
+  const data = state.sourceRepositories || {};
+  const summary = data.summary || {};
+  const systemRepositories = data.system_repositories || [];
+  const projectRepositories = data.project_repositories || [];
+  const builds = data.builds || [];
+  const metricRoot = document.querySelector("#sourceRepositoryMetrics");
+  if (!metricRoot) return;
+  metricRoot.innerHTML = [
+    metricCard("Systemquellen", formatNumber(summary.system_repositories || 0), `${formatNumber(summary.system_repositories_ready || 0)} freigegeben`),
+    metricCard("Projekt-Repositories", formatNumber(summary.project_repositories || 0), `${formatNumber(summary.projects_without_repository || 0)} ohne Forgejo`),
+    metricCard("Builds", formatNumber(summary.builds || 0), "commitgebunden"),
+    metricCard("Artefakte", formatNumber(summary.artifacts || 0), "im Artifact Store"),
+  ].join("");
+  document.querySelector("#systemRepositoryRows").innerHTML = systemRepositories.length
+    ? systemRepositories.map((item) => {
+      const ready = item.exists && item.commit_sha;
+      const repository = `${item.organization || "-"}/${item.repository_name || "-"}`;
+      return `<tr><td><strong>${escapeHtml(item.title || item.source_id)}</strong><small>${escapeHtml(item.source_id || "")}</small></td><td>${escapeHtml(item.kind === "basissoftware" ? "Basissoftware" : "Produkt")}</td><td>${escapeHtml(repository)}</td><td><code>${escapeHtml(shortSha(item.commit_sha))}</code></td><td><span class="status-pill ${ready ? "ok" : "warning"}">${ready ? "bereit" : item.exists ? "Commit fehlt" : "Repository fehlt"}</span></td></tr>`;
+    }).join("")
+    : `<tr><td colspan="5" class="empty-cell">${escapeHtml(state.sourceRepositoriesLoading ? "Quellen werden geladen ..." : data.error || "Keine Systemquellen konfiguriert.")}</td></tr>`;
+  document.querySelector("#projectRepositoryRows").innerHTML = projectRepositories.length
+    ? projectRepositories.map((item) => {
+      const reference = item.basissoftware_references?.[0];
+      return `<tr><td><strong>${escapeHtml(item.title || item.project_id)}</strong><small>${escapeHtml(item.project_id || "")}</small></td><td>${escapeHtml(item.user_id || "-")}</td><td>${escapeHtml(item.repository ? `${item.repository.organization}/${item.repository.repository_name}` : "-")}<small>${escapeHtml(shortSha(item.repository?.head_sha))}</small></td><td>${reference ? `${escapeHtml(reference.repository_name)}<small>${escapeHtml(shortSha(reference.commit_sha))}</small>` : "-"}</td><td>${formatNumber(item.build_count || 0)}</td><td>${formatNumber(item.artifact_count || 0)}</td><td><span class="status-pill ${item.repository?.state === "active" ? "ok" : "warning"}">${item.repository?.state === "active" ? "Forgejo aktiv" : "Migration offen"}</span></td></tr>`;
+    }).join("")
+    : `<tr><td colspan="7" class="empty-cell">Keine Projekte vorhanden.</td></tr>`;
+  document.querySelector("#repositoryBuildRows").innerHTML = builds.length
+    ? builds.map((item) => `<tr><td>${escapeHtml(formatDateTime(item.finished_at || item.created_at))}</td><td><strong>${escapeHtml(item.project_id || "-")}</strong><small>${escapeHtml(item.build_job_id || "")}</small></td><td><code>${escapeHtml(shortSha(item.commit_sha))}</code></td><td><code>${escapeHtml(shortSha(item.package_sha256, 12))}</code></td><td>${formatNumber(item.artifact_count || 0)}</td><td><span class="status-pill ${item.status === "succeeded" ? "ok" : item.status === "failed" ? "error" : "warning"}">${escapeHtml(item.status || "-")}</span></td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty-cell">Noch keine Builds vorhanden.</td></tr>`;
+}
+
+function shortSha(value, length = 10) {
+  const normalized = String(value || "");
+  return normalized ? normalized.slice(0, length) : "-";
 }
 
 async function loadComponentMetamodel() {

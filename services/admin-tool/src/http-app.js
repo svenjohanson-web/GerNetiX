@@ -46,6 +46,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/source-repositories") {
+      sendJson(res, 200, await service.sourceRepositories());
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/component-metamodel") {
       sendJson(res, 200, {
         component_types: Object.entries(componentMetamodel.componentTypes).map(([id, item]) => ({ id, ...item })),

@@ -43,6 +43,8 @@ Die Community Platform wird im normalen Remote-Dev-Betrieb ausschliesslich als V
 
 Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattformdiagnose (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Dieser Tunnel startet keine Identity; er stellt nur Diagnosezugriffe auf den laufenden VPS bereit. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
 
+Die VPS-Prozesskarten stammen aus einer getrennten, kurzlebigen read-only SSH-Diagnoseabfrage. Schlaegt diese Abfrage fehl, zeigt der Monitor zuletzt bekannte oder erwartete Dienste ausschliesslich mit `Status unbekannt`, nennt den Fehler sowie Pruefzeitpunkt und gegebenenfalls den letzten erfolgreichen Nachweis. Ein alter gruener Containerstatus darf nicht als aktueller Zustand stehen bleiben. Die dauerhafte Portweiterleitung wird separat angezeigt und entscheidet ueber die Erreichbarkeit lokaler Tunnel-URLs wie `127.0.0.1:14600`.
+
 Die App selbst oeffnet keinen HTTP-Port. Ihre Start-/Stop-Aktionen steuern den lokalen Identity-Listener auf Port `4300` und getrennt davon den build-only Docker-Worker auf seiner privaten WireGuard-Adresse. PostgreSQL und die Domaenendienste bleiben auf dem VPS. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; separat gestartete lokale Prozesse und die VPS-Prozesse bleiben davon unberuehrt.
 
 ```powershell

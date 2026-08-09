@@ -43,6 +43,7 @@ function createAdminService(config, repository, llmStateStore = null) {
       linkIntegrityIngestToken: config.linkIntegrityIngestToken,
       buildDeployBaseUrl: config.buildDeployBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,
+      projectAdminReadToken: config.projectAdminReadToken,
       hardwareShopBaseUrl: config.hardwareShopBaseUrl,
       hardwareCatalogBaseUrl: config.hardwareCatalogBaseUrl,
       publicDemoBaseUrl: config.publicDemoBaseUrl,

@@ -28,7 +28,7 @@ test("keeps the development package out of the global app shell", () => {
 
 test("loads and initializes the development package only for its two routes", () => {
   assert.match(app, /\["development-platform", "development-hardware"\]\.includes\(route\)/);
-  const loader = app.match(/async function loadRouteAssets\(route\)[\s\S]*?\n}\n\nfunction applyDevelopmentSummary/)?.[0] || "";
+  const loader = app.match(/async function loadRouteAssets\(route\)[\s\S]*?\r?\n}\r?\n\r?\nfunction applyDevelopmentSummary/)?.[0] || "";
   assert.match(loader, /Promise\.all\(\[[\s\S]*development-hardware-model\.js[\s\S]*project-repository-card\.js/);
   assert.ok(loader.indexOf("development-platform.js") > loader.indexOf("await Promise.all"));
   assert.match(loader, /developmentPlatform\(\)\.init\(\)/);

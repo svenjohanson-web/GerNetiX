@@ -4,9 +4,11 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
+const readServer = () => ["src/dev-server.js", "src/dev/projects/project-configuration-service.js", "src/dev/projects/project-hardware-model.js"]
+  .map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 
 test("persists the camera and display template boards as its initial hardware realization", () => {
-  const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
+  const server = readServer();
 
   assert.match(server, /let hardwareConfiguration = templateHardwareConfiguration\(template\)/);
   assert.match(server, /board_configuration: compilerBoardConfiguration\(null, board\)/);
@@ -18,33 +20,22 @@ test("persists the camera and display template boards as its initial hardware re
     "Systemtemplate und Accountkopie muessen dieselben aufgeloesten Software-Einheiten erhalten.");
 });
 
-test("repairs the runtime contract of account projects created from older camera templates", () => {
-  const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
+test("never migrates an existing camera template project while loading or opening it", () => {
+  const devServer = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
+  const proposal = fs.readFileSync(path.join(root, "src/dev/development-project-template-migrations.js"), "utf8");
 
-  assert.match(server, /synchronizeDevelopmentTemplateRuntimeModel\(project, session\)/);
-  assert.match(server, /const targetVersion = 19/);
-  assert.doesNotMatch(server, /const targetVersion = Number\(template\.schemaVersion/);
-  assert.match(server, /refreshCatalogBoardConfigurations = currentVersion < 19/);
-  assert.match(server, /currentVersion >= targetVersion && !missingBoardConfiguration[\s\S]*!refreshCatalogBoardConfigurations/);
-  assert.match(server, /missingCommunicationSetup/);
-  assert.match(server, /communication_setup: communicationSetup/);
-  assert.match(server, /applyProjectCommunicationSetup\(softwareUnits, communicationSetup\)/);
-  assert.match(server, /hardware\.board_configuration[\s\S]*compilerBoardConfiguration\(null, catalogBoard\)/);
-  assert.match(server, /preservedBuildValues\.board_configuration = compilerBoardConfiguration\([\s\S]*catalogBoard/);
-  assert.match(server, /board_configuration: compilerBoardConfiguration\(component\.board_configuration, catalogBoard\)/);
-  assert.match(server, /baseBuildConfig && resolvedBoardConfiguration[\s\S]*board_configuration: compilerBoardConfiguration\(resolvedBoardConfiguration, board\)/);
-  assert.match(server, /runtime_model_version: targetVersion/);
-  assert.match(server, /migrateCameraTemplateWifiArchitectureSources\(project\.project_id\)/);
-  assert.match(server, /currentVersion < 19[\s\S]*migrateCameraTemplateDisplaySource\(project\.project_id\)/);
-  assert.match(server, /view\.id === "architecture-diagram" && migratedArchitectureSource/);
-  assert.match(server, /source_root: `Komponenten\/IoT-Device \$\{index \+ 1\}`/);
-  assert.match(server, /\.\.\.canonical\.build_config/);
-  assert.match(server, /currentVersion < 16[\s\S]*preservedBuildValues\.platformio_options = existingBuild\.platformio_options/);
+  assert.doesNotMatch(devServer, /synchronizeDevelopmentTemplateRuntimeModel/);
+  assert.doesNotMatch(devServer, /development-project-template-migrations/);
+  assert.doesNotMatch(devServer, /migrateCameraTemplateWifiArchitecture/);
+  assert.doesNotMatch(devServer, /migrateCameraTemplateDisplayGpioTypes/);
+  assert.doesNotMatch(devServer, /runtime_model_version: targetVersion/);
+  assert.match(proposal, /customer_consent_required: true/);
+  assert.match(proposal, /automatic_execution: false/);
 });
 
 test("shows the catalog camera while keeping its board-supplied connection", () => {
   const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
-  const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
+  const server = readServer();
 
   assert.match(platform, /!String\(merged\.concrete_type \|\| ""\)\.startsWith\("integrated_"\)/);
   assert.match(platform, /\$\{escapeHtml\(component\.label\)\} ist Bestandteil der gewählten Boardkonfiguration/);

@@ -62,6 +62,10 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     return read;
   }
 
+  close() {
+    this.store.close();
+  }
+
   persist() {
     const state = {
       userAccounts: Array.from(this.userAccounts.values()),

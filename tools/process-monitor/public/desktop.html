@@ -36,7 +36,7 @@
         </section>
         <section class="monitor-group vpn-group">
           <div class="group-head vpn-head">
-            <div><p>PRIVATE DIAGNOSE</p><h2>VPS SSH-Tunnel</h2></div>
+            <div><p>PRIVATE DIAGNOSE</p><h2>VPS-Portweiterleitung (SSH)</h2></div>
             <div class="vpn-controls">
               <span id="tunnelStatus" class="status offline">Pruefe Tunnel ...</span>
               <label class="vpn-switch" title="Privaten VPS-Diagnosetunnel verbinden oder trennen">
@@ -45,7 +45,7 @@
               </label>
             </div>
           </div>
-          <p class="vpn-description">Verbindet die lokale Identity sicher mit PostgreSQL und den Diensten auf dem VPS.</p>
+          <p class="vpn-description">Dauerhafte lokale Portweiterleitungen, unter anderem <code>14600</code> zur Admin Console. Die VPS-Statusabfrage verwendet eine getrennte kurze SSH-Verbindung.</p>
           <p id="tunnelMessage" class="group-error"></p>
         </section>
       </div>
@@ -67,6 +67,7 @@
             <span id="vpsSummary">Prüfe VPS ...</span>
           </div>
           <section id="vpsProcesses" class="process-grid" aria-live="polite"></section>
+          <p id="vpsCheckedAt" class="runtime-description"></p>
           <p id="vpsError" class="group-error"></p>
         </section>
       </div>

@@ -7,6 +7,8 @@ const authSource = fs.readFileSync(path.join(__dirname, "..", "public", "app", "
 const serverSource = [
   "dev-server.js",
   path.join("dev", "server", "auth-routes.js"),
+  path.join("dev", "auth", "identity-auth-handlers.js"),
+  path.join("dev", "session", "session-service.js"),
 ].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
 
 test("browser-side WebAuthn failures are reported without sending their message or credential", () => {
@@ -54,12 +56,12 @@ test("offline recovery is wired as a token-bound passkey registration flow", () 
   assert.match(serverSource, /handleOfflineRecoveryStart/);
   assert.match(serverSource, /handleOfflineRecoveryPasskeyOptions/);
   assert.match(serverSource, /handleOfflineRecoveryPasskeyVerify/);
-  assert.match(serverSource, /offlineRecoveryChallengeSubject\(recoveryToken\)/);
+  assert.match(serverSource, /recoverySubject\(recoveryToken\)/);
   assert.match(serverSource, /evictCachedSessionsForUser\(completed\.account\.user_id\)/);
-  assert.match(serverSource, /const resolved = await auth\.resolve_session_token\(token\)/);
-  assert.match(serverSource, /offlineRecoveryRateLimit\(req, username\)/);
+  assert.match(serverSource, /const resolved = await auth\(\)\.resolve_session_token\(token\)/);
+  assert.match(serverSource, /recoveryLimit\(req, username\)/);
   assert.match(serverSource, /offlineRecoveryAttempts = new Map/);
   assert.match(serverSource, /event_type: eventType/);
-  assert.match(serverSource, /username_hash: hashedAuditValue/);
-  assert.match(serverSource, /client_hash: hashedAuditValue/);
+  assert.match(serverSource, /username_hash: auditHash/);
+  assert.match(serverSource, /client_hash: auditHash/);
 });

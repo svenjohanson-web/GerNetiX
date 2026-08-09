@@ -45,14 +45,14 @@ test("dark PlantUML theme is injected before diagram elements", () => {
 });
 
 test("standalone guided lessons render PlantUML on the same dark background", () => {
-  const app = fs.readFileSync(path.join(guidedToolRoot, "app.js"), "utf8");
+  const renderer = fs.readFileSync(path.join(guidedToolRoot, "lesson-renderer.js"), "utf8");
   const css = fs.readFileSync(path.join(guidedToolRoot, "styles.css"), "utf8");
 
-  assert.match(app, /TextEncoder\(\)\.encode\(themedPlantUmlSource\(source\)\)/);
-  assert.match(app, /skinparam backgroundColor transparent/);
-  assert.match(app, /skinparam rectangleBackgroundColor #1E3A5F/);
-  assert.match(app, /skinparam rectangleBorderColor #67E8F9/);
+  assert.match(renderer, /TextEncoder\(\)\.encode\(themedPlantUmlSource\(source\)\)/);
+  assert.match(renderer, /skinparam backgroundColor transparent/);
+  assert.match(renderer, /skinparam rectangleBackgroundColor #1E3A5F/);
+  assert.match(renderer, /skinparam rectangleBorderColor #67E8F9/);
   assert.match(css, /\.plantuml-viewer \{[\s\S]*?background: #111827/);
   assert.match(css, /\.plantuml-diagram \{[\s\S]*?background: #111827/);
-  assert.match(fs.readFileSync(path.join(guidedToolRoot, "index.html"), "utf8"), /app\.js\?v=20260801-plantuml-contrast/);
+  assert.match(fs.readFileSync(path.join(guidedToolRoot, "index.html"), "utf8"), /lesson-renderer\.js\?v=20260809-app-modules/);
 });

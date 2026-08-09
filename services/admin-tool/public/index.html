@@ -25,6 +25,7 @@
           <button type="button" data-admin-view="link-integrity">Links</button>
           <button type="button" data-admin-view="system-events">Sicherheit</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
+          <button type="button" data-admin-view="source-repositories">Quellen & Builds</button>
           <button type="button" data-admin-view="resources">Ressourcen</button>
           <button type="button" data-admin-view="community">Kommunikation</button>
           <button type="button" data-admin-view="component-metamodel">Metamodell</button>
@@ -52,7 +53,7 @@
           <button id="refreshCommunityButton" type="button">Aktualisieren</button>
         </section>
         <section class="metrics-grid" id="communityMetrics"></section>
-        <section class="admin-layout community-layout">
+        <section class="admin-layout community-layout" data-community-capability="admin_community_support">
           <article class="panel">
             <p class="eyebrow">Privates Postfach</p>
             <h2>Support-Anfragen</h2>
@@ -64,7 +65,7 @@
             <div id="communitySupportDetail" class="community-detail empty">Wähle eine Support-Anfrage aus.</div>
           </aside>
         </section>
-        <section class="admin-layout community-layout">
+        <section class="admin-layout community-layout" data-community-capability="admin_community_moderation">
           <article class="panel">
             <p class="eyebrow">Fragen</p>
             <h2>Community-Anfragen</h2>
@@ -76,7 +77,7 @@
             <div id="communityQuestionDetail" class="community-detail empty">Wähle eine Community-Anfrage aus.</div>
           </aside>
         </section>
-        <section class="panel">
+        <section class="panel" data-community-capability="admin_community_moderation">
           <p class="eyebrow">Moderation</p>
           <h2>Gemeldete Nachrichten</h2>
           <p class="helper-text">Nur konkret gemeldete Nachrichten sind hier sichtbar; das ist kein Zugriff auf private Direktnachrichten.</p>
@@ -552,6 +553,33 @@
         </section>
         <section class="panel"><p class="eyebrow">Nutzung</p><h2>Gespeicherte Entwicklungsprojekte</h2><div class="table-wrap"><table><thead><tr><th>Account</th><th>Profil / Version</th><th>Projekte</th><th>Speicher</th><th>Limit</th><th>Auslastung</th><th>Status</th></tr></thead><tbody id="resourceAccountRows"></tbody></table></div></section>
         <section class="panel"><p class="eyebrow">Build & Cache</p><h2>Wirksame serverseitige Aufbewahrung</h2><div id="buildResourcePolicy"></div></section>
+      </section>
+
+      <section id="sourceRepositoriesView" class="admin-view hidden">
+        <section class="section-head panel">
+          <div>
+            <p class="eyebrow">Forgejo & Artifact Store</p>
+            <h2>Quellen, Builds und Releases</h2>
+            <p class="helper-text">Schreibgeschuetzte Betriebssicht auf Basissoftware, Produktquellen, Kundenprojekte und die dazugehoerigen Build-Artefakte.</p>
+          </div>
+          <button id="refreshSourceRepositoriesButton" type="button">Neu laden</button>
+        </section>
+        <section class="metrics-grid" id="sourceRepositoryMetrics"></section>
+        <section class="panel">
+          <p class="eyebrow">Systemverwaltet</p>
+          <h2>Basissoftware und Produkte</h2>
+          <div class="table-wrap"><table><thead><tr><th>Quelle</th><th>Typ</th><th>Forgejo</th><th>Freigegebener Commit</th><th>Status</th></tr></thead><tbody id="systemRepositoryRows"></tbody></table></div>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">Kunden- und Entwicklungsprojekte</p>
+          <h2>Private Projekt-Repositories</h2>
+          <div class="table-wrap"><table><thead><tr><th>Projekt</th><th>Account</th><th>Repository</th><th>Basissoftware</th><th>Builds</th><th>Artefakte</th><th>Status</th></tr></thead><tbody id="projectRepositoryRows"></tbody></table></div>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">Nachvollziehbarkeit</p>
+          <h2>Letzte Builds und Artefakte</h2>
+          <div class="table-wrap"><table><thead><tr><th>Zeit</th><th>Projekt / Build</th><th>Commit</th><th>Paket-Pruefsumme</th><th>Artefakte</th><th>Status</th></tr></thead><tbody id="repositoryBuildRows"></tbody></table></div>
+        </section>
       </section>
 
       <section id="llmConfigView" class="admin-layout admin-view hidden">

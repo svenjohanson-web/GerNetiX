@@ -8,7 +8,8 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "public/app/index.html"), "utf8");
 const app = readPlatformAppSource();
 const development = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
-const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
+const server = ["src/dev-server.js", "src/dev/builds/build-service.js", "src/dev/projects/project-configuration-service.js", "src/dev/projects/project-hardware-model.js"]
+  .map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 
 test("development platform builds all software units and uses target selection only for flash", () => {
   assert.match(html, /id="ideSoftwareUnitSelect"/);

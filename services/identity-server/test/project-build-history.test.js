@@ -6,7 +6,7 @@ const test = require("node:test");
 
 const app = readPlatformAppSource();
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
-const server = ["../src/dev-server.js", "../src/dev/server/build-routes.js"]
+const server = ["../src/dev-server.js", "../src/dev/server/build-routes.js", "../src/dev/builds/build-service.js"]
   .map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
 
 test("keeps build results inside the active project instead of a global operations page", () => {

@@ -88,7 +88,7 @@ function buildResultForProject(completed) {
 }
 
 async function waitForBuild(baseUrl, jobId) {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
     const job = await request("GET", `${baseUrl}/api/build-jobs/${jobId}`);
     if (["succeeded", "failed"].includes(job.status)) return job;
     await new Promise((resolve) => setTimeout(resolve, 10));

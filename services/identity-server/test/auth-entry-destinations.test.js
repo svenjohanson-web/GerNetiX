@@ -9,6 +9,7 @@ const authHtml = fs.readFileSync(path.join(identityRoot, "public", "app", "auth"
 const server = [
   path.join(identityRoot, "src", "dev-server.js"),
   path.join(identityRoot, "src", "dev", "server", "account-routes.js"),
+  path.join(identityRoot, "src", "dev", "auth", "identity-auth-handlers.js"),
 ].map((file) => fs.readFileSync(file, "utf8")).join("\n");
 const { sanitizeNextPath } = require("../src/dev/http-utils");
 
@@ -32,5 +33,6 @@ test("keeps the requested destination through every browser auth path", () => {
 
 test("returns only sanitized internal destinations after account creation and guest access", () => {
   assert.match(server, /path: "\/api\/account\/guest"[\s\S]*const body = await readJsonBody\(req\)[\s\S]*next: sanitizeNextPath\(body\.next\) \|\| "\/app\/dashboard\/"/);
-  assert.match(server, /handlePasskeyRegistrationVerify[\s\S]*message: "Konto wurde angelegt\.", next: sanitizeNextPath\(body\.next\) \|\| "\/app\/dashboard\/"/);
+  assert.match(server, /function next\(body\) \{ return sanitizeNextPath\(body\.next\) \|\| "\/app\/dashboard\/"; \}/);
+  assert.match(server, /handlePasskeyRegistrationVerify[\s\S]*message: "Konto wurde angelegt\.", next: next\(body\)/);
 });

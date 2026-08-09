@@ -68,7 +68,7 @@ function createHttpApp({ service, config }) {
 async function proxyAdminRequest(req, res, url, service, config) {
   const actor = await service.actorFor(readSessionToken(req));
   if (!actor) return sendJson(res, 401, { error: "not_authenticated" });
-  if (actor.role !== "administrator" && !url.pathname.startsWith("/api/admin/community/")) {
+  if (!canAccessAdminRoute(actor, url.pathname)) {
     return sendJson(res, 403, { error: "admin_role_required" });
   }
   if (!config.adminToolAccessToken) return sendJson(res, 503, { error: "admin_backend_not_configured" });
@@ -86,6 +86,15 @@ async function proxyAdminRequest(req, res, url, service, config) {
   const responseBody = Buffer.from(await response.arrayBuffer());
   res.writeHead(response.status, { "Content-Type": response.headers.get("content-type") || "application/json; charset=utf-8", "Cache-Control": "no-store" });
   res.end(responseBody);
+}
+
+function canAccessAdminRoute(actor, pathname) {
+  if (actor.role === "administrator") return true;
+  const capabilities = new Set(actor.capabilities || []);
+  if (!pathname.startsWith("/api/admin/community/")) return false;
+  if (pathname === "/api/admin/community/overview") return false;
+  if (pathname.startsWith("/api/admin/community/support-threads")) return capabilities.has("admin_community_support");
+  return capabilities.has("admin_community_moderation");
 }
 
 function readSessionToken(req) { return parseCookies(req.headers.cookie || "").gernetix_admin_session || ""; }

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "encoding": "signed-pcm8",
+  "channels": 1,
+  "sampleRateHz": 8000,
+  "assets": [
+    {
+      "id": "lumi-und-der-stern",
+      "file": "lumi-und-der-stern.pcm8",
+      "sampleCount": 74485,
+      "sha256": "219690ab846a737cec119192b537db2e8855a16f4381644ba96dcb08aec1f0b8"
+    },
+    {
+      "id": "milo-und-der-regentakt",
+      "file": "milo-und-der-regentakt.pcm8",
+      "sampleCount": 79051,
+      "sha256": "427164541a85f1c62e198a7bc3d11c0e91e9f3e007fe0d91fbf96a32f4c7c18f"
+    },
+    {
+      "id": "die-kleine-wolke",
+      "file": "die-kleine-wolke.pcm8",
+      "sampleCount": 75249,
+      "sha256": "1f917e5ccd924f46c99eac0d35f3a3d8743f386cbc58b926af732855c3ef72f0"
+    }
+  ]
+}

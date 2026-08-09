@@ -365,11 +365,25 @@ services:
       PROJECT_POSTGRES_DATABASE: gernetix_runtime
       PROJECT_POSTGRES_USER: gernetix_runtime
       PROJECT_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
+      PROJECT_REPOSITORY_STORE: forgejo
+      PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS: "true"
+      PROJECT_ADMIN_READ_TOKEN: ${PROJECT_ADMIN_READ_TOKEN:?PROJECT_ADMIN_READ_TOKEN muss gesetzt sein}
+      FORGEJO_INTERNAL_URL: http://forgejo:3000
+      FORGEJO_PROJECT_ORGANIZATION: gernetix-projects
+      FORGEJO_PROJECT_DEFAULT_BRANCH: main
+      FORGEJO_PROVISION_TOKEN: ${FORGEJO_PROVISION_TOKEN:?FORGEJO_PROVISION_TOKEN muss gesetzt sein}
+      FORGEJO_RUNTIME_TOKEN: ${FORGEJO_RUNTIME_TOKEN:?FORGEJO_RUNTIME_TOKEN muss gesetzt sein}
+      FORGEJO_ESP32_BASIS_COMMIT: ${FORGEJO_ESP32_BASIS_COMMIT:?FORGEJO_ESP32_BASIS_COMMIT muss gesetzt sein}
+      FORGEJO_ESP8266_BASIS_COMMIT: ${FORGEJO_ESP8266_BASIS_COMMIT:?FORGEJO_ESP8266_BASIS_COMMIT muss gesetzt sein}
+      FORGEJO_NEXI_COMMIT: ${FORGEJO_NEXI_COMMIT:?FORGEJO_NEXI_COMMIT muss gesetzt sein}
+      FORGEJO_FLASHBOX_COMMIT: ${FORGEJO_FLASHBOX_COMMIT:?FORGEJO_FLASHBOX_COMMIT muss gesetzt sein}
+      FORGEJO_GAME_COLLECTION_COMMIT: ${FORGEJO_GAME_COLLECTION_COMMIT:?FORGEJO_GAME_COLLECTION_COMMIT muss gesetzt sein}
     expose: ["4800"]
     ports:
       - "127.0.0.1:4800:4800"
     depends_on:
       project-postgres-migration: { condition: service_completed_successfully }
+      forgejo: { condition: service_healthy }
 
   compute-control-plane:
     <<: *node-service
@@ -517,7 +531,6 @@ services:
       PUBLIC_DEMO_POSTGRES_DATABASE: gernetix_runtime
       PUBLIC_DEMO_POSTGRES_USER: gernetix_runtime
       PUBLIC_DEMO_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
-      PUBLIC_DEMO_RUNTIME_DIR: /var/lib/gernetix/public-demos
       PUBLIC_DEMO_PUBLISHER_TOKEN: ${PUBLIC_DEMO_PUBLISHER_TOKEN:?PUBLIC_DEMO_PUBLISHER_TOKEN muss gesetzt sein}
       ARTIFACT_STORE_DIR: /var/lib/gernetix/build/artifacts
     expose: ["4920"]
@@ -747,6 +760,7 @@ services:
       LINK_INTEGRITY_INGEST_TOKEN: ${LINK_INTEGRITY_INGEST_TOKEN:?LINK_INTEGRITY_INGEST_TOKEN muss gesetzt sein}
       SECURITY_MONITOR_TOKEN: ${SECURITY_MONITOR_TOKEN:-}
       PROJECT_SERVER_BASE_URL: http://project-server:4800
+      PROJECT_ADMIN_READ_TOKEN: ${PROJECT_ADMIN_READ_TOKEN:?PROJECT_ADMIN_READ_TOKEN muss gesetzt sein}
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
       DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
       HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910

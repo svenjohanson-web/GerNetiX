@@ -9,6 +9,7 @@
     "tags": ["platform:esp32", "topic:audio", "topic:ai", "topic:privacy", "level:beginner"],
     "access_model": "subscription",
     "product_stage": "local_basic",
+    "system_source_id": "gernetix-product-nexi",
     "hardware_profile_id": "hardware.processor_board.waveshare_esp32_s3_audio_board",
     "default_device_id": "",
     "build_config": {

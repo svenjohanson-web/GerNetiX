@@ -75,6 +75,17 @@ class AdminService {
     };
   }
 
+  async sourceRepositories() {
+    if (!this.serviceClients?.projectServerBaseUrl) {
+      throw new AdminToolError("project_server_not_configured", "Der Project Server ist nicht konfiguriert.", 503);
+    }
+    return this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary", {
+      headers: this.serviceClients.projectAdminReadToken
+        ? { "X-GerNetiX-Project-Admin-Token": this.serviceClients.projectAdminReadToken }
+        : {},
+    });
+  }
+
   async syntheticChecks(filter = {}) {
     const items = await this.repository.listSyntheticCheckResults({ limit: filter.limit || 200 });
     return summarizeSyntheticCheckResults(items);
@@ -1138,7 +1149,7 @@ class AdminService {
   }
 
   async httpJson(baseUrl, pathname, options = {}) {
-    const response = await fetch(`${baseUrl}${pathname}`, {
+    const response = await this.fetchImpl(`${baseUrl}${pathname}`, {
       method: options.method || "GET",
       headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) },
       body: options.body ? JSON.stringify(options.body) : undefined,

@@ -1,12 +1,5 @@
-const fs = require("node:fs");
-const path = require("node:path");
 const modelData = require("./nexi-course.json");
 const projectAppManifest = require("./nexi-project-app-manifest.json");
-
-const voiceLabRoot = path.resolve(
-  __dirname,
-  "../../../../../projects/waveshare-voice-lab",
-);
 
 function createNexiCourseModel() {
   function createProject(project, step) {
@@ -25,7 +18,8 @@ function createNexiCourseModel() {
         hardware_profile_id: definition.hardware_profile_id,
         learning_category: definition.learning_category,
         product_stage: definition.product_stage,
-        source_files: createSources().map(({ path: sourcePath, role }) => ({
+        system_source_id: definition.system_source_id,
+        source_files: [...productSourceFiles(), ...createSources()].map(({ path: sourcePath, role }) => ({
           path: sourcePath,
           role,
         })),
@@ -43,7 +37,6 @@ function createNexiCourseModel() {
     const sources = clone(modelData.sources)
       .filter((source) => source.path !== "project-app/manifest.json");
     return [
-      ...loadNexiFirmwareSources(),
       ...sources,
       {
         path: "project-app/manifest.json",
@@ -56,36 +49,11 @@ function createNexiCourseModel() {
   return { createProject, createSources, createViewManifest, slug: modelData.slug };
 }
 
-function loadNexiFirmwareSources() {
-  const userSourcePath = modelData.project.build_config.user_source_path;
-  const componentRoot = userSourcePath.slice(0, userSourcePath.lastIndexOf("/src/"));
-  const sources = [{
-    path: userSourcePath,
-    role: "user_code",
-    content: fs.readFileSync(path.join(voiceLabRoot, "voice_lab.cpp"), "utf8"),
-  }];
-  for (const area of ["include", "src"]) {
-    for (const filePath of walkFiles(path.join(voiceLabRoot, area))) {
-      const relative = path.relative(path.join(voiceLabRoot, area), filePath)
-        .split(path.sep).join("/");
-      sources.push({
-        path: `${componentRoot}/${area}/${relative}`,
-        role: area === "include" ? "user_header" : "user_code",
-        content: fs.readFileSync(filePath, "utf8"),
-      });
-    }
-  }
-  return sources.sort((left, right) => left.path.localeCompare(right.path));
-}
-
-function walkFiles(root) {
-  return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
-    const filePath = path.join(root, entry.name);
-    if (entry.isDirectory()) return walkFiles(filePath);
-    return entry.isFile() && /\.(?:h|hpp|cc|cpp|cxx)$/i.test(entry.name)
-      ? [filePath]
-      : [];
-  });
+function productSourceFiles() {
+  return [
+    { path: modelData.project.build_config.user_source_path, role: "user_code" },
+    { path: "Komponenten/IoT-Device 1/include/nexi/voice_types.h", role: "user_header" },
+  ];
 }
 
 function clone(value) {

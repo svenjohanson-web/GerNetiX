@@ -257,6 +257,8 @@ class GitProjectRepositoryStore {
   }
 
   async configureIdentity(workspace) {
+    await this.git(["config", "core.autocrlf", "false"], workspace);
+    await this.git(["config", "core.safecrlf", "true"], workspace);
     await this.git(["config", "user.name", this.authorName], workspace);
     await this.git(["config", "user.email", this.authorEmail], workspace);
   }

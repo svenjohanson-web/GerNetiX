@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../src/modules/esp32-basissoftware-package");
@@ -79,7 +81,7 @@ test("packages the complete modular Nexi customer firmware behind the protected 
   );
   const files = composeEsp32BasissoftwarePackage({
     basisFiles: loadEsp32BasissoftwareFiles(),
-    projectSources: model.createSources(),
+    projectSources: loadNexiProductTestSources(),
     buildConfig: definition.build_config,
   });
 
@@ -95,6 +97,30 @@ test("packages the complete modular Nexi customer firmware behind the protected 
   assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /GERNETIX_PACKAGED_PROJECT_SOURCES/);
   assert.equal(files.some((file) => file.path.startsWith("Komponenten/")), false);
 });
+
+function loadNexiProductTestSources() {
+  const productRoot = path.resolve(__dirname, "../../../projects/waveshare-voice-lab");
+  const componentRoot = "Komponenten/IoT-Device 1";
+  const sources = [{
+    path: `${componentRoot}/src/user_main.cpp`,
+    content: fs.readFileSync(path.join(productRoot, "voice_lab.cpp"), "utf8"),
+  }];
+  for (const area of ["include", "src"]) {
+    for (const filePath of walkFiles(path.join(productRoot, area))) {
+      const relative = path.relative(path.join(productRoot, area), filePath).split(path.sep).join("/");
+      sources.push({ path: `${componentRoot}/${area}/${relative}`, content: fs.readFileSync(filePath, "utf8") });
+    }
+  }
+  return sources;
+}
+
+function walkFiles(root) {
+  return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const filePath = path.join(root, entry.name);
+    if (entry.isDirectory()) return walkFiles(filePath);
+    return entry.isFile() && /\.(?:h|hpp|cc|cpp|cxx)$/i.test(entry.name) ? [filePath] : [];
+  });
+}
 
 test("projects WLAN, MQTT topics and power states into the protected compiler header", () => {
   const files = composeEsp32BasissoftwarePackage({

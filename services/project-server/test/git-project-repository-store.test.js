@@ -14,6 +14,7 @@ test("creates and updates a real repository atomically with an expected head", a
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const remote = path.join(root, "remote");
   run(["init", "--initial-branch", "main", remote]);
+  run(["-C", remote, "config", "core.autocrlf", "false"]);
   run(["-C", remote, "config", "receive.denyCurrentBranch", "updateInstead"]);
   const fakeRemote = "https://forgejo.invalid/gernetix/project.git";
   const actualRunner = createGitCommandRunner({ gitBinary: "git" });
@@ -103,16 +104,24 @@ test("creates and updates a real repository atomically with an expected head", a
   assert.ok(invalidContentTree.includes("binary.dat"));
 
   fs.mkdirSync(path.join(root, "outside"));
-  fs.symlinkSync(path.join(root, "outside"), path.join(remote, "linked"));
-  run(["-C", remote, "add", "linked"]);
-  run(["-C", remote, "commit", "-m", "symlink fixture"]);
-  const symlinkHead = run(["-C", remote, "rev-parse", "HEAD"]).trim();
-  await assert.rejects(store.commit({
-    remote_url: fakeRemote,
-    expected_head_sha: symlinkHead,
-    changes: [{ path: "linked/escape.txt", content: "forbidden\n" }],
-  }), (error) => error.code === "repository_symlink_forbidden");
-  assert.equal(fs.existsSync(path.join(root, "outside", "escape.txt")), false);
+  let symlinkAvailable = true;
+  try {
+    fs.symlinkSync(path.join(root, "outside"), path.join(remote, "linked"));
+  } catch (error) {
+    if (error.code !== "EPERM") throw error;
+    symlinkAvailable = false;
+  }
+  if (symlinkAvailable) {
+    run(["-C", remote, "add", "linked"]);
+    run(["-C", remote, "commit", "-m", "symlink fixture"]);
+    const symlinkHead = run(["-C", remote, "rev-parse", "HEAD"]).trim();
+    await assert.rejects(store.commit({
+      remote_url: fakeRemote,
+      expected_head_sha: symlinkHead,
+      changes: [{ path: "linked/escape.txt", content: "forbidden\n" }],
+    }), (error) => error.code === "repository_symlink_forbidden");
+    assert.equal(fs.existsSync(path.join(root, "outside", "escape.txt")), false);
+  }
 });
 
 test("rejects traversal duplicate paths and oversized files before invoking Git", async () => {

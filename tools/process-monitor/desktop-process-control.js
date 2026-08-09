@@ -10,12 +10,38 @@ const VPN_SERVICE_NAME = "WireGuardTunnel$gernetix-vps";
 const MACOS_VPN_SERVICE_NAME = "gernetix-vps-mac";
 const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4700,4700],[4800,4800],[4900,4900],[4920,4920],[5001,5000],[5200,5200],[5500,5500],[5600,5600],[5800,5800]];
 const SECURITY_CACHE_MS = 60000;
+const VPS_SERVICE_PORTS = Object.freeze({
+  "runtime-postgres": "5432 intern · lokal 25432 per Tunnel",
+  forgejo: "3000 intern",
+  "project-server": "4800",
+  "compute-control-plane": "5700",
+  "build-deploy-server": "4400",
+  "build-router": "4400 intern · lokal 14400 per Tunnel",
+  "public-demo-server": "4920",
+  "device-management-server": "4700",
+  "telemetry-server": "5600",
+  "hardware-catalog": "4910",
+  "hardware-shop": "4900",
+  "ai-usage-server": "5000",
+  "device-voice-orchestrator": "5800",
+  "community-platform": "5200",
+  "ai-context-server": "5500",
+  "admin-tool": "4600",
+  "admin-access-server": "4610 · lokal 14600 per Tunnel",
+  "identity-server": "4300",
+  "mqtt-broker": "8883",
+  "private-dns": "53 TCP/UDP",
+  nginx: "8080 intern · lokal 14300 per Tunnel / 80 ACME",
+  "nginx-tls": "443",
+});
 let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, "../..");
 let securityCache = null;
 let linkIntegrityCache = null;
 let userActionAlertsCache = null;
 let stagingTunnel = null;
 let stagingTunnelError = "";
+let lastRemoteProcessItems = [];
+let lastRemoteProcessSuccessAt = "";
 const services = [
   service("project-server", "Project Server", 4800), service("build-deploy-server", "Build & Deploy Server", 4400),
   service("device-management-server", "Device Management Server", 4700), service("hardware-catalog", "Hardware Catalog", 4910, {PERSISTENCE_BACKEND:"memory"}),
@@ -199,14 +225,27 @@ async function remoteProcessStates(options={}) {
   const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps";
   try {
     const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:12000,maxBuffer:2*1024*1024});
-    return {configured:true,host,items:parseComposePs(stdout).filter(isVisibleVpsService),error:""};
+    const checkedAt=new Date().toISOString();
+    const items=parseComposePs(stdout).filter(isVisibleVpsService);
+    lastRemoteProcessItems=items;
+    lastRemoteProcessSuccessAt=checkedAt;
+    return {configured:true,host,items,checkedAt,lastSuccessfulAt:checkedAt,stale:false,error:""};
   } catch(error) {
-    return {configured:true,host,items:[],error:remoteError(error)};
+    const checkedAt=new Date().toISOString();
+    const knownItems=lastRemoteProcessItems.length
+      ? lastRemoteProcessItems
+      : services.filter((item)=>!item.local).map((item)=>({id:item.id,name:item.name,portLabel:vpsServicePortLabel(item.id)}));
+    const items=knownItems.map((item)=>({...item,healthy:false,state:"unknown",health:"",status:"Status nicht aktuell",stale:true,scope:"vps"}));
+    return {configured:true,host,items,checkedAt,lastSuccessfulAt:lastRemoteProcessSuccessAt,stale:true,error:remoteError(error)};
   }
 }
 
 function isVisibleVpsService(item) {
   return !item.id.endsWith("-migration");
+}
+
+function vpsServicePortLabel(id) {
+  return VPS_SERVICE_PORTS[id] || String(services.find((item)=>item.id===id)?.port || "");
 }
 
 async function remoteLinkIntegrity(options={}) {
@@ -454,10 +493,15 @@ async function securityRuleStates(options={}) {
 
 function serviceLogPath(id){return path.join(workspaceRoot,".runtime","process-logs",`${id}.log`);}
 function recentServiceLog(id){try{return fs.readFileSync(serviceLogPath(id),"utf8").trim().split(/\r?\n/).slice(-8).join(" ").slice(-1600);}catch{return "";}}
+function serviceNodeExecutable(runtime=process){
+  const configured=String(runtime.env?.GERNETIX_NODE_COMMAND||"").trim();
+  if(configured)return configured;
+  return runtime.versions?.electron?"node":runtime.execPath;
+}
 function launchLoggedService(item, env){
   fs.mkdirSync(path.dirname(serviceLogPath(item.id)),{recursive:true});
   const output=fs.openSync(serviceLogPath(item.id),"a");
-  try{return spawn(process.execPath,["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env,stdio:["ignore",output,output]});}
+  try{return spawn(serviceNodeExecutable(),["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env,stdio:["ignore",output,output]});}
   finally{fs.closeSync(output);}
 }
 function remoteIdentityEnvironment(){
@@ -554,7 +598,7 @@ function parseComposePs(output){
   return rows.map((row)=>{const state=String(row.State||row.state||"").toLowerCase();const health=String(row.Health||row.health||"").toLowerCase();return {
     id:String(row.Service||row.service||row.Name||row.name||"unknown"),
     name:String(row.Service||row.service||row.Name||row.name||"Unbekannter Container"),
-    container:String(row.Name||row.name||""),state:state||"unknown",health:health||"",status:String(row.Status||row.status||""),
+    container:String(row.Name||row.name||""),state:state||"unknown",health:health||"",status:String(row.Status||row.status||""),portLabel:vpsServicePortLabel(String(row.Service||row.service||row.Name||row.name||"unknown")),
     healthy:state==="running"&&(!health||health==="healthy"),scope:"vps"
   };});
 }
@@ -658,4 +702,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,dockerExecutable,interfaceStatistics,loadBuildWorkerConfig,mergeRuntimeAlerts,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,dockerExecutable,interfaceStatistics,loadBuildWorkerConfig,mergeRuntimeAlerts,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteIdentityEnvironment,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,runBuildWorkerAction,runtimeAlerts,securityRuleStates,serviceNodeExecutable,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

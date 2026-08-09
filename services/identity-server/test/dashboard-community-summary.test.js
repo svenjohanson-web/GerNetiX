@@ -7,7 +7,8 @@ const test = require("node:test");
 const { summarizeCommunityQuestions } = require("../src/dev/community-summary");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const app = readPlatformAppSource();
-const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const server = ["../src/dev-server.js", "../src/dev/platform/platform-service.js"]
+  .map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
 
 test("summarizes own community requests by visibility and lifecycle", () => {
   const summary = summarizeCommunityQuestions([

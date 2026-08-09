@@ -74,7 +74,11 @@ test("existing learning projects resolve lessons through references without copy
 });
 
 test("the shared project factory persists assignments and exposes lessons only as a resolved view", () => {
-  const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+  const server = [
+    "../src/dev-server.js",
+    "../src/dev/projects/project-view-model.js",
+    "../src/dev/projects/project-platform-mapper.js",
+  ].map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
   assert.match(server, /project_lesson_assignments: projectLessonAssignments/);
   assert.match(server, /developmentLessonCatalog\.resolveProjectLessons\(projectLessonAssignments\)/);
   assert.match(server, /projectLessonAssignments: project\.project_lesson_assignments \|\| \[\]/);

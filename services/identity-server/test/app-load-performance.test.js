@@ -12,7 +12,14 @@ const webRoutes = fs.readFileSync(path.join(root, "src", "dev", "server", "web-r
 const ide = fs.readFileSync(path.join(root, "public", "app", "app-ide-controller.js"), "utf8");
 const builds = fs.readFileSync(path.join(root, "public", "app", "app-device-build-controller.js"), "utf8");
 const projects = fs.readFileSync(path.join(root, "public", "app", "app-project-controller.js"), "utf8");
-const devServer = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const devServer = [
+  "dev-server.js",
+  path.join("dev", "account", "account-workspace-service.js"),
+  path.join("dev", "projects", "project-runtime-service.js"),
+  path.join("dev", "projects", "project-source-service.js"),
+  path.join("dev", "projects", "project-configuration-service.js"),
+]
+  .map((file) => fs.readFileSync(path.join(root, "src", file), "utf8")).join("\n");
 const shell = fs.readFileSync(path.join(root, "public", "app", "app-shell-controller.js"), "utf8");
 const guided = fs.readFileSync(path.join(root, "public", "app", "guided-project-view.js"), "utf8");
 const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
@@ -136,7 +143,7 @@ test("browser-only learning projects do not load build flash or board workbenche
 
 test("project file authorization does not reload every account project", () => {
   const accessStart = devServer.indexOf("async function requireSessionProject");
-  const accessEnd = devServer.indexOf("\nfunction sessionProjectNotFound", accessStart);
+  const accessEnd = devServer.indexOf("\n  function sessionProjectNotFound", accessStart);
   const accessBody = devServer.slice(accessStart, accessEnd);
   assert.match(accessBody, /projectServerJson\(`\/api\/projects\/\$\{encodeURIComponent\(requestedProjectId\)\}`\)/);
   assert.match(accessBody, /storedProject\.user_id !== accountId/);
@@ -144,23 +151,23 @@ test("project file authorization does not reload every account project", () => {
 });
 
 test("resource-plan reconciliation is shared briefly across bootstrap calls", () => {
-  assert.match(devServer, /const accountResourcePlanCache = new Map\(\)/);
-  assert.match(devServer, /const accountResourcePlanLoads = new Map\(\)/);
+  assert.match(devServer, /const resourcePlanCache = new Map\(\)/);
+  assert.match(devServer, /const resourcePlanLoads = new Map\(\)/);
   const planStart = devServer.indexOf("async function ensureAccountResourcePlan");
   const planEnd = devServer.indexOf("\nasync function updateAccountProjectSelection", planStart);
   const planBody = devServer.slice(planStart, planEnd);
   assert.match(planBody, /cached\.expires_at > Date\.now\(\)/);
-  assert.match(planBody, /accountResourcePlanLoads\.has\(cacheKey\)/);
+  assert.match(planBody, /resourcePlanLoads\.has\(cacheKey\)/);
 });
 
 test("generated architecture and hardware files use one repository commit", () => {
-  const helperStart = devServer.indexOf("async function persistGeneratedProjectSources");
-  const helperEnd = devServer.indexOf("\nasync function createCommunityProjectSnapshot", helperStart);
+  const helperStart = devServer.indexOf("async function persistGenerated");
+  const helperEnd = devServer.indexOf("\n  return { read, list, search, write, persistGenerated }", helperStart);
   const helper = devServer.slice(helperStart, helperEnd);
   assert.match(helper, /\/repository\/commits/);
   assert.match(helper, /expected_head_sha: binding\.head_sha/);
   assert.match(helper, /changes: sources\.map/);
-  assert.match(devServer, /persistGeneratedProjectSources\(project, sources, "Architekturansichten aktualisiert"\)/);
-  assert.match(devServer, /persistGeneratedProjectSources\(project, sources, "Hardwareansichten aktualisiert"\)/);
+  assert.match(devServer, /projectSources\.persistGenerated\(project, sources, "Architekturansichten aktualisiert"\)/);
+  assert.match(devServer, /projectSources\.persistGenerated\(project, sources, "Hardwareansichten aktualisiert"\)/);
   assert.match(devServer, /expected_head_sha: expectedHeadSha/);
 });

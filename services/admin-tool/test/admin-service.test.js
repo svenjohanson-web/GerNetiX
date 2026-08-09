@@ -464,6 +464,8 @@ test("system events remain available after reopening the Admin Tool SQLite", asy
     assert.equal(events.summary.total, 1);
     assert.equal(events.items[0].event_type, "passkey_login_failed");
     assert.equal(events.items[0].account_id, "acct-1");
+    first.repository.close();
+    second.repository.close();
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
@@ -493,6 +495,8 @@ test("synthetic check results remain available after reopening the Admin Tool SQ
     const persisted = await second.syntheticChecks();
     assert.deepEqual(persisted.summary, { total: 4, passed: 4, failed: 0, skipped: 0 });
     assert.equal(persisted.items.length, 4);
+    first.repository.close();
+    second.repository.close();
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

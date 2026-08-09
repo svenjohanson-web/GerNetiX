@@ -48,11 +48,18 @@ test("Waveshare Voice Lab uses the full basis software and the N16R8 target", ()
   assert.doesNotMatch(platformio, /HIESP|esp-sr|srmodels|nexi-wake/);
   assert.match(component, /if\(EXISTS "\$\{CMAKE_CURRENT_SOURCE_DIR\}\/\.\.\/include\/user_project"\)/);
   assert.match(component, /sources\.cmake/);
+  assert.match(component, /GERNETIX_PROJECT_EMBED_FILES/);
+  assert.match(component, /EMBED_FILES/);
   assert.match(projectSources, /src\/local_voice_entry\.cpp/);
   assert.match(projectSources, /src\/local_quiz_application\.cpp/);
   assert.match(projectSources, /src\/local_quiz_pack\.cpp/);
   assert.match(projectSources, /src\/local_tone_output\.cpp/);
-  assert.match(projectSources, /src\/generated_story_audio\.cpp/);
+  assert.match(projectSources, /src\/embedded_story_audio\.cpp/);
+  assert.doesNotMatch(projectSources, /src\/generated_story_audio\.cpp/);
+  assert.match(projectSources, /GERNETIX_PROJECT_EMBED_FILES/);
+  assert.match(projectSources, /lumi-und-der-stern\.pcm8/);
+  assert.match(projectSources, /milo-und-der-regentakt\.pcm8/);
+  assert.match(projectSources, /die-kleine-wolke\.pcm8/);
   assert.match(projectSources, /src\/local_story_application\.cpp/);
   assert.match(projectSources, /src\/local_story_pack\.cpp/);
   assert.match(projectSources, /src\/companion_state\.cpp/);
@@ -205,6 +212,7 @@ test("Nexi exposes hardware, audio, intent and application boundaries", () => {
     "include/nexi/local_quiz_pack.h",
     "include/nexi/local_quiz_feedback.h",
     "include/nexi/local_quiz_application.h",
+    "include/nexi/local_story_audio_assets.h",
     "include/nexi/local_story_pack.h",
     "include/nexi/local_story_feedback.h",
     "include/nexi/local_story_application.h",
@@ -326,6 +334,8 @@ test("Nexi Basic manifest and project guide describe the local product truthfull
   assert.match(manifest, /local_quiz_maximum_total_items: 48/);
   assert.match(manifest, /local_quiz_maximum_items: 12/);
   assert.match(manifest, /local_quiz_persistence: false/);
+  assert.match(manifest,
+    /local_story_audio: signed_pcm8_mono_8000_hz_embedded_binary_assets/);
   assert.match(manifest, /nexi\.sound-memory\.beginner\.de@1:6/);
   assert.match(manifest, /nexi\.sound-memory\.fast\.de@1:9/);
   assert.match(manifest, /nexi\.sound-memory\.deep\.de@1:9/);

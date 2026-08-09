@@ -8,7 +8,6 @@ const repoRoot = path.resolve(__dirname, "..", "..");
 const composeModels = [
   { file: "compose.vps.yaml", envFile: ".env.vps.example" },
   { file: "compose.build-worker.yaml", envFile: ".env.build-worker.example" },
-  { file: "compose.public-demo.vps.yaml", envFile: ".env.public-demo.vps.example" },
   { file: "compose.flashbox-build-test.yaml" },
   { file: "infra/dev/docker-compose.yml" },
   { file: "infra/system-test/compose.yaml" },

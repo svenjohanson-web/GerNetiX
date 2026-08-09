@@ -16,14 +16,17 @@ test("uses separate default SQLite files for projects and telemetry", () => {
 
 test("keeps SQL sources as the default and requires separated Forgejo credentials when enabled", () => {
   assert.equal(projectConfig({}).repositoryStoreBackend, "sql");
+  assert.equal(projectConfig({}).requireForgejoForNewProjects, false);
   const config = projectConfig({
     PROJECT_REPOSITORY_STORE: "forgejo",
+    PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS: "true",
     FORGEJO_INTERNAL_URL: "http://forgejo:3000",
     FORGEJO_PROVISION_TOKEN: "provision-token",
     FORGEJO_RUNTIME_TOKEN: "runtime-token",
   });
   assert.equal(config.forgejo.provisionToken, "provision-token");
   assert.equal(config.forgejo.runtimeToken, "runtime-token");
+  assert.equal(config.requireForgejoForNewProjects, true);
   assert.ok(createProjectRepositoryStore(config));
   assert.throws(() => createProjectRepositoryStore({ repositoryStoreBackend: "forgejo", forgejo: {} }), /configuration_incomplete/);
 });

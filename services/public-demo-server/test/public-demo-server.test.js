@@ -1,20 +1,28 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
 const http = require("node:http");
 const test = require("node:test");
 const { createHttpApp } = require("../src/http-app");
-const { SqlitePublicDemoRepository } = require("../src/repositories/sqlite-public-demo-repository");
+const { createConfig } = require("../src/config");
 const { PublicDemoService } = require("../src/services/public-demo-service");
+const { InMemoryPublicDemoRepository } = require("./support/in-memory-public-demo-repository");
+const path = require("node:path");
 const browserApp = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
 const browserPage = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
 const browserStyles = fs.readFileSync(path.join(__dirname, "..", "public", "app.css"), "utf8");
 
 function createRepository() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-public-demo-"));
-  return new SqlitePublicDemoRepository(path.join(root, "public-demos.sqlite"));
+  return new InMemoryPublicDemoRepository();
 }
+
+test("der Release-Katalog besitzt keinen lokalen Persistenz-Fallback", () => {
+  const config = createConfig({ PUBLIC_DEMO_POSTGRES_HOST: "runtime-postgres" });
+  assert.equal(config.persistenceBackend, "postgres");
+  assert.equal(config.postgres.host, "runtime-postgres");
+  assert.throws(() => createConfig({}), /PUBLIC_DEMO_POSTGRES_HOST/);
+  const serviceSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.js"), "utf8");
+  assert.doesNotMatch(serviceSource, /sqlite-public-demo-repository|SqlitePublicDemoRepository/);
+});
 
 function release(overrides = {}) {
   return {

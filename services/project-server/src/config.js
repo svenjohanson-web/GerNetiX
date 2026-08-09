@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { createSystemRepositoryCatalog } = require("./system-repository-catalog");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -18,9 +19,13 @@ function createConfig(env = process.env) {
     runtimeRoot,
     sqlitePath,
     repositoryStoreBackend: env.PROJECT_REPOSITORY_STORE || "sql",
+    requireForgejoForNewProjects: env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS === "true",
+    adminReadToken: env.PROJECT_ADMIN_READ_TOKEN || "",
+    systemRepositories: createSystemRepositoryCatalog(env),
     forgejo: {
       baseUrl: env.FORGEJO_INTERNAL_URL || "",
       organization: env.FORGEJO_PROJECT_ORGANIZATION || "gernetix-projects",
+      protectedOrganizations: ["gernetix-platform", "gernetix-products"],
       defaultBranch: env.FORGEJO_PROJECT_DEFAULT_BRANCH || "main",
       provisionToken: env.FORGEJO_PROVISION_TOKEN || "",
       runtimeToken: env.FORGEJO_RUNTIME_TOKEN || "",

@@ -28,7 +28,7 @@ function createTamagotchiEntryCourseModel({ readWorkspaceText }) {
     };
   }
 
-  function createSources(project, primarySourcePath) {
+  function createSources({ project, primarySourcePath }) {
     return modelData.sources.map((source) => ({
       path: source.path || primarySourcePath(project),
       role: source.role || "user_code",

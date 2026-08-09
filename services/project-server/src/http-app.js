@@ -1,9 +1,11 @@
+const crypto = require("node:crypto");
 const { ProjectServerError } = require("./errors");
 
 const prefix = "/api/projects";
 
 function createHttpApp(options) {
   const service = options.service;
+  const adminReadToken = String(options.adminReadToken || "");
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -11,6 +13,24 @@ function createHttpApp(options) {
 
     if (req.method === "GET" && path === "/health") {
       sendJson(res, 200, { status: "ok", service: "project-server" });
+      return;
+    }
+
+    if (req.method === "GET" && path === "/api/internal/repositories/summary") {
+      if (!validInternalToken(req.headers["x-gernetix-project-admin-token"], adminReadToken)) {
+        sendJson(res, 403, { error: "project_admin_access_denied" });
+        return;
+      }
+      sendJson(res, 200, await service.repositoryAdministrationSummary());
+      return;
+    }
+
+    if (req.method === "POST" && path === "/api/internal/repositories/migrations") {
+      if (!validInternalToken(req.headers["x-gernetix-project-admin-token"], adminReadToken)) {
+        sendJson(res, 403, { error: "project_admin_access_denied" });
+        return;
+      }
+      sendJson(res, 200, await service.migrateProjectRepositories(await readJsonBody(req)));
       return;
     }
 
@@ -295,6 +315,12 @@ function createHttpApp(options) {
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function validInternalToken(value, expected) {
+  const actual = Buffer.from(String(value || ""));
+  const required = Buffer.from(String(expected || ""));
+  return required.length > 0 && actual.length === required.length && crypto.timingSafeEqual(actual, required);
 }
 
 function readJsonBody(req) {

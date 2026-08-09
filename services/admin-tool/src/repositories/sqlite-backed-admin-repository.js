@@ -47,6 +47,10 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     }));
   }
 
+  close() {
+    this.store.close();
+  }
+
   createConsent(input) {
     const result = super.createConsent(input);
     this.persist();

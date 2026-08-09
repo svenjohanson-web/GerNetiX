@@ -87,19 +87,27 @@ Forgejo-Repository-Store werden alle betroffenen Dateien in genau einem
 Git-Commit mit erwartetem Head-SHA geschrieben. Im Standardbetrieb bleibt
 der SQL-Quellenpfad bis zum kontrollierten Cutover fuehrend.
 
-## Optionaler Forgejo-Repository-Store
+## Forgejo-Repository-Store und Cutover
 
-`PROJECT_REPOSITORY_STORE=forgejo` aktiviert den lokal implementierten
-Adapter. Neue Projekte erhalten dann ein privates Organisations-Repository
-und einen Initialcommit. Der Git-Adapter arbeitet ohne Shell in einem
-kurzlebigen Checkout und pusht Folgeaenderungen mit `force-with-lease` gegen
-den gespeicherten Head-SHA. Provisionierungs- und Git-Runtime-Token sind
-getrennt und werden weder in URLs noch in Git-Argumente eingebettet.
+`PROJECT_REPOSITORY_STORE=forgejo` aktiviert den Repository-Vertrag. Im
+VPS-Compose ist er zusammen mit `PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS=true`
+verbindlich vorbereitet: Neue Projekte erhalten ein privates Repository und
+einen Initialcommit mit Quellcode, Builddateien und Engineering-Konfiguration.
+Ohne erreichbares Forgejo wird kein neues Entwicklungsprojekt angelegt.
 
-Diese Schaltung ist noch kein produktiver Cutover: Der gepinnte und
-abgesicherte Forgejo-Container, Template-Repositories, Migration sowie die
-vollstaendige Umstellung aller Lese- und Buildpfade sind eigene offene
-Arbeitspakete.
+ESP32-/ESP8266-Basissoftware, Nexi, FlashBox und Spielesammlung werden mit
+`tools/publish-forgejo-system-repositories.js` in getrennte private
+System-Repositories importiert. Der Build akzeptiert die Basissoftware nur an
+dem serverseitig freigegebenen Commit; eine Kundenangabe kann Organisation,
+Repository oder Commit nicht ersetzen. Beim Start eines Nexi-Projekts liest der
+Project Server den freigegebenen Nexi-Commit, uebernimmt dessen Produktdateien
+als bearbeitbare Ausgangskopie in das private Kunden-Repository und speichert
+die nicht manipulierbare Herkunftsreferenz im Projektmanifest. Die
+Basissoftware selbst bleibt geschuetzt und wird nicht in den schreibbaren
+Projektkern kopiert. Bestehende SQL-Projekte werden mit
+`tools/migrate-projects-to-forgejo.js` zuerst geplant und erst mit `--apply`
+projektweise uebernommen. Ein Staging-/VPS-Lauf bleibt eine gesondert
+freizugebende Betriebsaktion.
 
 ## KI-abgeleitete Architekturstruktur
 
@@ -211,11 +219,14 @@ Konfiguration:
 - `PROJECT_SERVER_SQLITE_PATH` oder `PERSISTENCE_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `<Workspace>/.runtime/gernetix-projects.sqlite`
 - `PROJECT_SERVER_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `<Workspace>/.runtime`
 - `PROJECT_REPOSITORY_STORE`: `sql` (Standard) oder `forgejo`
+- `PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS`: verweigert neue Projekte ohne aktive Forgejo-Bindung
+- `PROJECT_ADMIN_READ_TOKEN`: separates internes Token fuer Admin-Sicht und kontrollierte Migration
 - `FORGEJO_INTERNAL_URL`: interne HTTP-Basisadresse des Forgejo-Dienstes
 - `FORGEJO_PROJECT_ORGANIZATION`, `FORGEJO_PROJECT_DEFAULT_BRANCH`: serverseitig feste Zielorganisation und Branch
 - `FORGEJO_PROVISION_TOKEN`: nur fuer Repository-Lifecycle
 - `FORGEJO_RUNTIME_TOKEN`: nur fuer Git-Lese-/Schreiboperationen
 - `FORGEJO_TIMEOUT_MS`, `PROJECT_GIT_TIMEOUT_MS`, `GIT_BINARY`: Adapter-Zeitlimits und Git-Programm
+- `FORGEJO_ESP32_BASIS_COMMIT`, `FORGEJO_ESP8266_BASIS_COMMIT`, `FORGEJO_NEXI_COMMIT`, `FORGEJO_FLASHBOX_COMMIT`, `FORGEJO_GAME_COLLECTION_COMMIT`: freigegebene System-Commits
 
 Accountgebundene Entwicklungsprojekte werden im gemeinsamen VPS-Betrieb in `gernetix_projects` gespeichert. Der einmalige Migrationscontainer uebernimmt alte Projektdaten transaktional aus der getrennten Projekt-SQLite oder, falls diese noch leer ist, aus der frueheren gemeinsamen Service-SQLite. Entwicklungsrechner verwenden den Project Server ueber HTTP und oeffnen keine Datenbankdatei. `memory`, `sqlite` und `json` sind nur fuer isolierte Tests oder lokale Fallbacks gedacht. Der Browser darf sich lokal das zuletzt geoeffnete Projekt merken; die Projektdaten selbst bleiben auf dem Project Server.
 

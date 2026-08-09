@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -29,7 +30,22 @@ test("versioned local story packs select and play bounded offline audio", (t) =>
 
 #include "nexi/application_manager.h"
 #include "nexi/local_story_application.h"
+#include "nexi/local_story_audio_assets.h"
 #include "nexi/local_story_pack.h"
+
+namespace nexi {
+const LocalStoryAudioAssets& builtInLocalStoryAudioAssets() {
+  static const int8_t lumi[] = {0, 1, -1};
+  static const int8_t milo[] = {0, 2, -2, 1};
+  static const int8_t wolke[] = {0, 3, -3, 2, -2};
+  static const LocalStoryAudioAssets assets = {
+      {lumi, sizeof(lumi)},
+      {milo, sizeof(milo)},
+      {wolke, sizeof(wolke)},
+  };
+  return assets;
+}
+}  // namespace nexi
 
 class Feedback final : public nexi::LocalStoryFeedback {
  public:
@@ -158,7 +174,6 @@ int main() {
     path.join(projectRoot, "src/intent.cpp"),
     path.join(projectRoot, "src/application_manager.cpp"),
     path.join(projectRoot, "src/capability_policy.cpp"),
-    path.join(projectRoot, "src/generated_story_audio.cpp"),
     path.join(projectRoot, "src/local_story_pack.cpp"),
     path.join(projectRoot, "src/local_story_application.cpp"),
     "-o",
@@ -193,14 +208,33 @@ test("local story core is bounded and excludes drivers, network and persistence"
 test("generated story assets match their original German source catalog", () => {
   const catalog = JSON.parse(fs.readFileSync(path.join(
     projectRoot, "assets/stories/stories.de.json"), "utf8"));
-  const implementation = fs.readFileSync(path.join(
-    projectRoot, "src/generated_story_audio.cpp"), "utf8");
+  const audioRoot = path.join(projectRoot, "assets/stories/audio");
+  const manifest = JSON.parse(fs.readFileSync(path.join(
+    audioRoot, "manifest.json"), "utf8"));
   const stories = catalog.packs.flatMap((pack) => pack.stories);
   assert.equal(catalog.schemaVersion, 1);
   assert.equal(catalog.sampleRateHz, 8000);
   assert.equal(stories.length, 3);
+  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.encoding, "signed-pcm8");
+  assert.equal(manifest.channels, 1);
+  assert.equal(manifest.sampleRateHz, catalog.sampleRateHz);
+  assert.equal(manifest.assets.length, stories.length);
+  const binding = fs.readFileSync(path.join(
+    projectRoot, "src/embedded_story_audio.cpp"), "utf8");
+  let totalSamples = 0;
   for (const story of stories) {
-    assert.match(implementation, new RegExp(`// ${story.id}; sha256=[a-f0-9]{64}`));
+    const asset = manifest.assets.find((candidate) => candidate.id === story.id);
+    assert.ok(asset, `missing binary audio asset for ${story.id}`);
+    const audio = fs.readFileSync(path.join(audioRoot, asset.file));
+    assert.equal(audio.length, asset.sampleCount);
+    assert.equal(crypto.createHash("sha256").update(audio).digest("hex"),
+      asset.sha256);
+    const linkerName = asset.file.replace(/[^A-Za-z0-9]/g, "_");
+    assert.match(binding, new RegExp(`_binary_${linkerName}_start`));
+    assert.match(binding, new RegExp(`_binary_${linkerName}_end`));
+    totalSamples += audio.length;
   }
-  assert.match(implementation, /Do not edit the sample arrays manually/);
+  assert.equal(totalSamples, 228785);
+  assert.ok(!fs.existsSync(path.join(projectRoot, "src/generated_story_audio.cpp")));
 });

@@ -48,7 +48,7 @@ features:
   local_story_maximum_total_stories: 12
   local_story_maximum_stories_per_pack: 4
   local_story_maximum_seconds: 120
-  local_story_audio: signed_pcm8_mono_8000_hz_flash
+  local_story_audio: signed_pcm8_mono_8000_hz_embedded_binary_assets
   local_story_persistence: firmware_assets_only
   local_story_packs:
     - nexi.stories.wonder.de@1:2

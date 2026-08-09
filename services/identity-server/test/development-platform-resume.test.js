@@ -16,6 +16,16 @@ const devServer = [
   "../src/dev/server/project-routes.js",
   "../src/dev/server/hardware-routes.js",
   "../src/dev-server.js",
+  "../src/dev/platform/platform-service.js",
+  "../src/dev/projects/project-configuration-service.js",
+  "../src/dev/projects/project-hardware-model.js",
+  "../src/dev/projects/project-view-model.js",
+  "../src/dev/projects/project-platform-mapper.js",
+  "../src/dev/projects/project-runtime-service.js",
+  "../src/dev/projects/project-catalog-seeding-service.js",
+  "../src/dev/builds/build-service.js",
+  "../src/dev/builds/build-runtime-utils.js",
+  "../src/dev/platform/account-runtime-service.js",
 ].map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
 const hardwareCatalogSeed = fs.readFileSync(path.resolve(__dirname, "../../hardware-catalog/src/seed.js"), "utf8");
 

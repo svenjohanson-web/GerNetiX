@@ -16,6 +16,34 @@ class ForgejoClient {
     return response;
   }
 
+  async getOrganization(name) {
+    return this.request("GET", `/api/v1/orgs/${segment(name)}`, { readRetries: 1, notFound: true });
+  }
+
+  async createOrganization(input = {}) {
+    const username = repositoryName(input.username);
+    return this.request("POST", "/api/v1/orgs", { body: {
+      username,
+      full_name: String(input.full_name || username).slice(0, 100),
+      description: String(input.description || "").slice(0, 255),
+      visibility: "private",
+      repo_admin_change_team_access: false,
+    } });
+  }
+
+  async ensureOrganization(name, input = {}) {
+    const existing = await this.getOrganization(name);
+    if (existing) return { organization: existing, created: false };
+    try {
+      return { organization: await this.createOrganization({ ...input, username: name }), created: true };
+    } catch (error) {
+      if (error.code !== "forgejo_conflict") throw error;
+      const concurrent = await this.getOrganization(name);
+      if (!concurrent) throw error;
+      return { organization: concurrent, created: false };
+    }
+  }
+
   async createOrganizationRepository(owner, input = {}) {
     const payload = {
       name: repositoryName(input.name),

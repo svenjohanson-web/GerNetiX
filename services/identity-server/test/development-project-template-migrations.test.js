@@ -1,9 +1,16 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  cameraDisplayTemplateMigrationProposal,
   migrateCameraTemplateDisplayGpioTypes,
   migrateCameraTemplateWifiArchitecture,
 } = require("../src/dev/development-project-template-migrations");
+
+test("keeps the camera/display migration as a consent-only proposal", () => {
+  assert.equal(cameraDisplayTemplateMigrationProposal.customer_consent_required, true);
+  assert.equal(cameraDisplayTemplateMigrationProposal.automatic_execution, false);
+  assert.equal(cameraDisplayTemplateMigrationProposal.target_runtime_model_version, 19);
+});
 
 test("replaces only the legacy direct camera-to-display processor connection", () => {
   const legacy = [

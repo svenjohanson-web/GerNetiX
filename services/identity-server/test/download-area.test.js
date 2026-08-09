@@ -7,6 +7,7 @@ const test = require("node:test");
 const appRoot = path.join(__dirname, "..", "public", "app");
 const serverSource = [
   "dev-server.js",
+  path.join("dev", "downloads", "download-service.js"),
   path.join("dev", "server", "download-routes.js"),
   path.join("dev", "server", "hardware-routes.js"),
 ].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");

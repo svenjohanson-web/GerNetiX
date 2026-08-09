@@ -31,6 +31,25 @@ Das Modul erzeugt unabhaengig vom Registrierungsweg immer genau einen internen `
 
 Die erste Implementierung verwendet ein In-Memory-Repository und Mock-Integrationen. Die Service-Grenzen sind so geschnitten, dass spaeter echte Persistenz, echter E-Mail-Versand und echte OAuth2/OIDC-Provider ergaenzt werden koennen.
 
+### Struktur des Dev-Servers
+
+`src/dev-server.js` ist der Composition Root: Dort werden Konfiguration, Adapter und fachliche Services zusammengesetzt und die HTTP-Routen registriert. Die eigentlichen Ablaufe liegen nach Verantwortungsbereich unter `src/dev/`:
+
+- `auth/`: lokale Anmeldung, Registrierung, externe Anmeldung, Passkeys und Offline-Recovery
+- `account/`: Abo-Auflösung, Berechtigungsprüfung, Workspace-Zustand und Account-Ressourcenplan
+- `session/`: Aufloesen, Zwischenspeichern und Aktualisieren angemeldeter Sitzungen
+- `platform/`: Bootstrap, Plattform-Zusammenfassung, Konto-/Geräte-Laufzeitdaten, Wissen und Community-Zusammenfassung
+- `learning/`: Lernprojekt-Katalog, Projektstart/-synchronisierung und Lernfortschritt
+- `projects/`: Projektzugriff und -cache, Katalog-Synchronisierung, Projektdateien, Entwicklungsprojekt-Konfiguration, Demo-Quellen, Architektur-/Hardwaremodell sowie die reine Abbildung von Project-Server-Daten in Plattformobjekte
+- `devices/`: Inventar, Claiming, Provisioning, Firmwareprofile und Recovery-Prüfungen
+- `builds/`: Build-Auftrag, Build-Ergebnis, Build-Vertragsaufbereitung und geschuetzte Artefakte
+- `downloads/`: Serial-Service-Pakete, öffentliche Flashbox-Firmware und Dev-Migrationen
+- `server/`: schlanke HTTP-Routenregistrierung ohne fachliche Implementierung
+
+Ein Lernprojekt ist kein eigenes JavaScript-/npm-Projekt. Die versionierten Kursdefinitionen und ihre Modelladapter liegen einzeln unter `src/dev/project-models/`; `src/dev/learning/learning-project-models.js` setzt sie zum gemeinsamen Katalog zusammen. Dadurch bleiben die Kurse getrennt pflegbar, ohne fuer jeden Kurs einen eigenen Serverprozess oder ein eigenes Paket zu benoetigen.
+
+Bestehende Entwicklungsprojekte werden beim Laden oder Öffnen nicht automatisch an neuere Entwicklungsprojekt-Templates angepasst. Kandidaten für spätere Template-Migrationen bleiben ohne Runtime-Anbindung erhalten und dürfen erst über einen versionierten Plan-/Apply-Ablauf mit projektspezifischer Kundenzustimmung ausgeführt werden. Der verbindliche Ablauf steht in [`docs/customer-approved-project-template-migrations.md`](../../docs/customer-approved-project-template-migrations.md).
+
 ## Tests
 
 ```text

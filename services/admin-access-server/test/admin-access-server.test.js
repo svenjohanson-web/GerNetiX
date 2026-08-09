@@ -81,3 +81,24 @@ test("Login-PWA setzt eine HttpOnly-Sitzung und schuetzt die Console", async () 
     assert.match(await consoleResponse.text(), /Operator Console/);
   } finally { await new Promise((resolve) => server.close(resolve)); runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true }); }
 });
+
+test("Admin-Proxy trennt Support und Moderation nach Capabilities", async () => {
+  const runtime = createRuntime(); await runtime.service.bootstrap();
+  const administrator = await runtime.service.login({ username: "operator", password: "ein-ausreichend-langes-admin-passwort" });
+  const support = await runtime.service.createAdministrator(administrator.token, { username: "support-team", password: "ein-weiteres-ausreichend-langes-passwort", role: "support" });
+  const moderator = await runtime.service.createAdministrator(administrator.token, { username: "community-team", password: "noch-ein-ausreichend-langes-passwort", role: "community_moderator" });
+  const supportLogin = await runtime.service.login({ username: support.username, password: "ein-weiteres-ausreichend-langes-passwort" });
+  const moderatorLogin = await runtime.service.login({ username: moderator.username, password: "noch-ein-ausreichend-langes-passwort" });
+  const app = createHttpApp({ service: runtime.service, config: { adminToolAccessToken: "proxy-token", adminToolBaseUrl: "http://127.0.0.1:1", cookieSecure: false } });
+  const server = http.createServer((req, res) => app(req, res).catch((error) => sendJson(res, error.status || 500, { error: "internal" })));
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const cookieFor = (login) => `gernetix_admin_session=${login.token}`;
+    assert.equal((await fetch(`${base}/api/admin/accounts`, { headers: { Cookie: cookieFor(supportLogin) } })).status, 403);
+    assert.equal((await fetch(`${base}/api/admin/community/questions`, { headers: { Cookie: cookieFor(supportLogin) } })).status, 403);
+    assert.equal((await fetch(`${base}/api/admin/community/support-threads`, { headers: { Cookie: cookieFor(supportLogin) } })).status, 500);
+    assert.equal((await fetch(`${base}/api/admin/community/support-threads`, { headers: { Cookie: cookieFor(moderatorLogin) } })).status, 403);
+    assert.equal((await fetch(`${base}/api/admin/community/questions`, { headers: { Cookie: cookieFor(moderatorLogin) } })).status, 500);
+  } finally { await new Promise((resolve) => server.close(resolve)); runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true }); }
+});

@@ -22,7 +22,7 @@ test("initial action failures expose the same support reference shown in Operati
 test("passkey login carries one action through browser requests and server failure correlation", () => {
   const html = read("public/app/auth/index.html");
   const client = read("public/app/auth/auth.js");
-  const server = read("src/dev-server.js");
+  const server = [read("src/dev-server.js"), read("src/dev/auth/identity-auth-handlers.js")].join("\n");
   assert.match(html, /data-action-type="identity\.login\.passkey"/);
   assert.match(client, /actionStep\(action, "auth\.options"/);
   assert.match(client, /actionStep\(action, "auth\.webauthn"/);
@@ -42,7 +42,7 @@ test("project setting save carries the action to Project Server", () => {
 
 test("project build carries the action through source, submit, worker and status", () => {
   const client = read("public/app/app-device-build-controller.js");
-  const server = read("src/dev-server.js");
+  const server = [read("src/dev-server.js"), read("src/dev/builds/build-service.js")].join("\n");
   const routes = read("src/dev/server/build-routes.js");
   assert.match(client, /begin\("project\.build\.start"/);
   for (const span of ["project.source.persist", "build.submit", "build.wait", "build.verify"]) assert.match(client, new RegExp(span.replace(".", "\\.")));
