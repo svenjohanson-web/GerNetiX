@@ -2,7 +2,7 @@
 
 #include <driver/gpio.h>
 #include <driver/i2c.h>
-#include <driver/i2s.h>
+#include <driver/i2s_std.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -18,6 +18,8 @@ constexpr uint8_t codecAddress = 0x18;
 constexpr i2c_port_t i2cPort = I2C_NUM_0;
 constexpr int16_t volume = 24000;
 constexpr size_t framesPerBuffer = 96;
+
+i2s_chan_handle_t audioChannel = nullptr;
 
 constexpr SoundDriver::Note startNotes[] = {{523, 55}, {659, 55}, {784, 80}};
 constexpr SoundDriver::Note moveNotes[] = {{520, 18}};
@@ -58,29 +60,25 @@ void SoundDriver::begin() {
   gpio_set_level(static_cast<gpio_num_t>(audioEnablePin), 0);
   vTaskDelay(pdMS_TO_TICKS(20));
 
-  i2s_config_t config = {};
-  config.mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_TX);
-  config.sample_rate = sampleRate;
-  config.bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT;
-  config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
-  config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
-  config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;
-  config.dma_buf_count = 4;
-  config.dma_buf_len = 128;
-  config.use_apll = true;
-  config.tx_desc_auto_clear = true;
-  config.fixed_mclk = sampleRate * 256;
-  if (i2s_driver_install(audioPort, &config, 0, nullptr) != ESP_OK) return;
+  i2s_chan_config_t channelConfig = I2S_CHANNEL_DEFAULT_CONFIG(audioPort, I2S_ROLE_MASTER);
+  channelConfig.dma_desc_num = 4;
+  channelConfig.dma_frame_num = 128;
+  if (i2s_new_channel(&channelConfig, &audioChannel, nullptr) != ESP_OK) return;
 
-  i2s_pin_config_t pins = {};
-  pins.mck_io_num = i2sMclkPin;
-  pins.bck_io_num = i2sBclkPin;
-  pins.ws_io_num = i2sLrclkPin;
-  pins.data_out_num = i2sDataPin;
-  pins.data_in_num = -1;
-  if (i2s_set_pin(audioPort, &pins) != ESP_OK ||
-      i2s_set_clk(audioPort, sampleRate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO) != ESP_OK) {
-    i2s_driver_uninstall(audioPort);
+  i2s_std_config_t streamConfig = {};
+  streamConfig.clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(sampleRate);
+  streamConfig.clk_cfg.mclk_multiple = I2S_MCLK_MULTIPLE_256;
+  streamConfig.slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(
+      I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+  streamConfig.gpio_cfg.mclk = static_cast<gpio_num_t>(i2sMclkPin);
+  streamConfig.gpio_cfg.bclk = static_cast<gpio_num_t>(i2sBclkPin);
+  streamConfig.gpio_cfg.ws = static_cast<gpio_num_t>(i2sLrclkPin);
+  streamConfig.gpio_cfg.dout = static_cast<gpio_num_t>(i2sDataPin);
+  streamConfig.gpio_cfg.din = GPIO_NUM_NC;
+  if (i2s_channel_init_std_mode(audioChannel, &streamConfig) != ESP_OK ||
+      i2s_channel_enable(audioChannel) != ESP_OK) {
+    i2s_del_channel(audioChannel);
+    audioChannel = nullptr;
     return;
   }
 
@@ -109,10 +107,11 @@ void SoundDriver::begin() {
       writeCodecRegister(0x32, 0xBF) && writeCodecRegister(0x37, 0x48) &&
       writeCodecRegister(0x45, 0x00) && writeCodecRegister(0x44, 0x50);
   if (!codecReady) {
-    i2s_driver_uninstall(audioPort);
+    i2s_channel_disable(audioChannel);
+    i2s_del_channel(audioChannel);
+    audioChannel = nullptr;
     return;
   }
-  i2s_zero_dma_buffer(audioPort);
   ready_ = true;
 }
 
@@ -121,12 +120,10 @@ void SoundDriver::play(SoundEffect effect) {
   const SoundSequence sequence = sequenceFor(effect);
   if (sequence.count == 0) return;
   for (uint8_t index = 0; index < sequence.count; ++index) writeNote(sequence.notes[index]);
-  i2s_zero_dma_buffer(audioPort);
 }
 
 void SoundDriver::setVolumePercent(uint8_t percent) {
   volumePercent_ = percent > 100 ? 100 : percent;
-  if (ready_ && volumePercent_ == 0) i2s_zero_dma_buffer(audioPort);
 }
 
 void SoundDriver::writeNote(const Note& note) {
@@ -150,7 +147,7 @@ void SoundDriver::writeNote(const Note& note) {
   // Ein 96-Frame-Paket hält bei 44,1 kHz nur rund 2 ms. Ein Timeout von 0
   // lässt deshalb Lücken im DMA-Strom entstehen; hörbar ist das als Knattern.
   // Der wartende Schreibvorgang hält den Stream dagegen kontinuierlich.
-    const esp_err_t result = i2s_write(audioPort, samples, frames * sizeof(int16_t) * 2, &bytesWritten, portMAX_DELAY);
+    const esp_err_t result = i2s_channel_write(audioChannel, samples, frames * sizeof(int16_t) * 2, &bytesWritten, portMAX_DELAY);
     if (result != ESP_OK || bytesWritten == 0) return;
     framesWritten += frames;
   }
