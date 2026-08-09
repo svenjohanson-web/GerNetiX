@@ -7,7 +7,7 @@
 #include <freertos/task.h>
 
 namespace {
-constexpr i2s_port_t audioPort = I2S_NUM_0;
+constexpr i2s_chan_id_t audioPort = I2S_NUM_0;
 constexpr uint32_t sampleRate = 44100;
 constexpr int audioEnablePin = 1;
 constexpr int i2sMclkPin = 4;
