@@ -1,6 +1,7 @@
 #include "arkanoid.h"
 #include "sound_driver.h"
 
+#include <cmath>
 #include <cstdio>
 
 namespace {
