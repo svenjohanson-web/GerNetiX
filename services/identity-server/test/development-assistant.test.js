@@ -1534,3 +1534,104 @@ test("does not synthesize architecture prompt rules when ai context prompt is mi
   assert.equal(payload.body.error, "development_assistant_unavailable");
   assert.match(payload.body.message, /AI Context Prompt-Grundlage/);
 });
+
+test("pins AI reads and applies a confirmed multi-file proposal in one repository commit", async () => {
+  const previousFetch = global.fetch;
+  const headSha = "a".repeat(40);
+  const nextHeadSha = "b".repeat(40);
+  const responses = [];
+  const projectCalls = [];
+  let providerStep = 0;
+  let conflictOnce = true;
+  global.fetch = async () => {
+    providerStep += 1;
+    return {
+      ok: true,
+      json: async () => providerStep === 1 ? {
+        id: "resp_search",
+        output: [{
+          type: "function_call",
+          name: "find_and_read_project_sources",
+          call_id: "call_search",
+          arguments: JSON.stringify({ query: "helper main", current_path: "src/main.cpp", source_kind: "code" }),
+        }],
+        usage: { input_tokens: 20, output_tokens: 5 },
+      } : {
+        id: "resp_done",
+        output_text: `Änderungen vorbereitet.<gernetix-file-edits>${JSON.stringify([
+          { path: "src/main.cpp", content: "int main() { return helper(); }\n" },
+          { path: "src/helper.cpp", content: "int helper() { return 0; }\n" },
+        ])}</gernetix-file-edits>`,
+        output: [],
+        usage: { input_tokens: 30, output_tokens: 10 },
+      },
+    };
+  };
+  const project = {
+    area: "custom_project",
+    project_server_id: "project-ai-commit",
+    repository_binding: { provider: "forgejo", state: "active", head_sha: headSha },
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: async () => ({ items: [{ route_task: "general_chat", content_kind: "system_prompt", content: "Coding-Agent-Testprompt." }] }),
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-test" }),
+      resolveRoute: () => ({ provider: "api", apiProvider: "openai-responses", apiBaseUrl: "https://api.openai.example/v1", apiModel: "gpt-test" }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async (req) => req.body || {},
+    requireProjectAccess: async () => project,
+    projectServerJson: async (path, options = {}) => {
+      projectCalls.push([path, options]);
+      if (path.includes("/sources/search?")) {
+        assert.match(path, new RegExp(`commit_sha=${headSha}`));
+        return { items: [
+          { path: "src/main.cpp", content: "int main() { return 1; }\n", score: 10 },
+          { path: "src/helper.cpp", content: "int helper() { return 1; }\n", score: 9 },
+        ] };
+      }
+      if (path.endsWith("/repository/commits")) {
+        if (conflictOnce) {
+          conflictOnce = false;
+          const error = new Error("Repository-Stand wurde geändert.");
+          error.code = "repository_head_conflict";
+          error.status = 409;
+          throw error;
+        }
+        return { commit: { head_sha: nextHeadSha } };
+      }
+      throw new Error(`unexpected project call: ${path}`);
+    },
+    sendJson: (_res, status, body) => responses.push({ status, body }),
+  });
+
+  try {
+    await assistant.handleChat({ body: {
+      projectId: "project-ai-commit",
+      assistantMode: "code_explorer",
+      messages: [{ role: "user", content: "Ändere beide Dateien." }],
+      codeContext: { path: "src/main.cpp", files: [] },
+    } }, {}, { account: { user_id: "usr_demo" } });
+    const proposal = responses[0].body.codeProposal;
+    assert.equal(responses[0].status, 200, JSON.stringify(responses[0].body));
+    assert.equal(responses[0].body.fileEdits.length, 2);
+    assert.equal(proposal.expectedHeadSha, headSha);
+
+    const applyRequest = { body: { projectId: "project-ai-commit", proposalId: proposal.proposalId } };
+    await assert.rejects(
+      assistant.handleApplyCodeProposal(applyRequest, {}, { account: { user_id: "usr_demo" } }),
+      (error) => error.code === "repository_head_conflict",
+    );
+    await assistant.handleApplyCodeProposal(applyRequest, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  const commitCalls = projectCalls.filter(([path]) => path.endsWith("/repository/commits"));
+  assert.equal(commitCalls.length, 2, "der Konflikt muss den unveränderten Vorschlag erneut bestätigbar lassen");
+  assert.equal(commitCalls[1][1].body.expected_head_sha, headSha);
+  assert.equal(commitCalls[1][1].body.changes.length, 2);
+  assert.deepEqual(commitCalls[1][1].body.changes.map((change) => change.path), ["src/main.cpp", "src/helper.cpp"]);
+  assert.equal(responses.at(-1).status, 201);
+  assert.equal(responses.at(-1).body.commit.head_sha, nextHeadSha);
+});

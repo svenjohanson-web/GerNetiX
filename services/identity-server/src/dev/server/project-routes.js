@@ -328,6 +328,13 @@ function registerProjectRoutes(dependencies) {
   });
   registry.register({
     method: "POST",
+    path: "/api/platform/development-assistant/code-proposals/apply",
+    handler: ({ req, res }) => withSession(req, res, async (session) => {
+      if (requireEntitlement(res, session, "ai_assistant")) await developmentAssistant.handleApplyCodeProposal(req, res, session);
+    }),
+  });
+  registry.register({
+    method: "POST",
     path: "/api/platform/help-assistant/chat",
     handler: ({ req, res }) => withSession(req, res, (session) => helpAssistant.handleChat(req, res, session)),
   });

@@ -22,7 +22,6 @@ const devServer = [
   "../src/dev/projects/project-view-model.js",
   "../src/dev/projects/project-platform-mapper.js",
   "../src/dev/projects/project-runtime-service.js",
-  "../src/dev/projects/project-catalog-seeding-service.js",
   "../src/dev/builds/build-service.js",
   "../src/dev/builds/build-runtime-utils.js",
   "../src/dev/platform/account-runtime-service.js",

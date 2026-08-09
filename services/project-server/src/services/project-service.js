@@ -1249,6 +1249,7 @@ class ProjectService {
       const commitSha = validateSha(job.commit_sha, "commit_sha");
       allSources = await this.repositoryFiles(project, commitSha);
       buildProject = projectFromRepositoryFiles(project, allSources);
+      assertBuildConfigurationProjection(buildProject, allSources);
     } else {
       allSources = await this.repository.listSources(project.project_id);
     }
@@ -2899,6 +2900,42 @@ function projectFromRepositoryFiles(project, sources) {
     build_config: activeSoftwareUnit?.build_config || null,
     view_manifest: repositoryViewManifest(project, documents, fileSet.files, hardwareAllocation),
   };
+}
+
+function assertBuildConfigurationProjection(project, sources) {
+  const actual = new Map(sources.map((source) => [source.path, String(source.content || "")]));
+  const expected = projectConfigurationSources(project);
+  for (const unit of softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit)) {
+    const sourcePath = [String(unit.source_root || "").replace(/\/$/, ""), "platformio.ini"].filter(Boolean).join("/");
+    expected.push({ path: sourcePath, content: renderPlatformioIni(unit.build_config) });
+  }
+  const driftedPaths = expected
+    .filter((source) => !actual.has(source.path) || !sameProjectedContent(source.path, actual.get(source.path), source.content))
+    .map((source) => source.path)
+    .sort();
+  if (driftedPaths.length) {
+    throw new ProjectServerError(
+      "build_configuration_drift",
+      "Der gebundene Commit enthält widersprüchliche erzeugte Projektdateien. Bitte die Projektkonfiguration erneut speichern.",
+      409,
+      { drifted_paths: driftedPaths },
+    );
+  }
+}
+
+function sameProjectedContent(sourcePath, actualContent, expectedContent) {
+  if (!sourcePath.endsWith(".json")) return String(actualContent) === String(expectedContent);
+  try {
+    return JSON.stringify(stableJsonValue(JSON.parse(actualContent))) === JSON.stringify(stableJsonValue(JSON.parse(expectedContent)));
+  } catch {
+    return false;
+  }
+}
+
+function stableJsonValue(value) {
+  if (Array.isArray(value)) return value.map(stableJsonValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stableJsonValue(value[key])]));
 }
 
 function repositoryViewManifest(project, documents, files, hardwareAllocation) {

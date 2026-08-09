@@ -1,5 +1,8 @@
+const crypto = require("node:crypto");
+
 const PROVIDER_TIMEOUT_MS = 180000;
 const CODE_EXPLORER_FILE_CONTEXT_CHARS = 24000;
+const CODE_PROPOSAL_TTL_MS = 30 * 60 * 1000;
 
 function isTouchscreenGameCollectionProject(project) {
   const manifest = project?.view_manifest || project?.viewManifest || {};
@@ -58,6 +61,7 @@ function projectBoardContext(project) {
 
 function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
   const responseFileContext = new Map();
+  const pendingCodeProposals = new Map();
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
@@ -182,6 +186,15 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const latestUserRequest = [...userMessages].reverse().find((message) => message.role === "user")?.content || "";
       const effectiveCodeContext = response.toolFiles?.length ? { ...codeContext, files: response.toolFiles } : codeContext;
       const codeResult = codeExplorerMode ? parseCodeExplorerResult(rawAssistantContent, effectiveCodeContext, latestUserRequest, project) : { content: rawAssistantContent, fileEdits: [] };
+      const codeProposal = codeExplorerMode && codeResult.fileEdits.length
+        ? rememberCodeProposal({
+            accountId: projectServerUserId(session),
+            projectId,
+            projectServerId: project?.project_server_id,
+            expectedHeadSha: response.repository_head_sha,
+            fileEdits: codeResult.fileEdits,
+          })
+        : null;
       const assistantContent = codeResult.content;
       sendJson(res, 200, {
         config: config({ contextSources: context.sources, requestProfile }),
@@ -191,6 +204,11 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           content: assistantContent,
         },
         fileEdits: codeResult.fileEdits,
+        codeProposal: codeProposal ? {
+          proposalId: codeProposal.proposalId,
+          expectedHeadSha: codeProposal.expectedHeadSha,
+          expiresAt: codeProposal.expiresAt,
+        } : null,
         architectureDiagram: codeExplorerMode ? undefined : buildArchitectureDiagram([...userMessages, { role: "assistant", content: assistantContent }], {
           contextSources: context.sources,
           model: activeConfig.provider === "api" ? activeConfig.apiModel : activeConfig.ollamaModel,
@@ -216,6 +234,66 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         routing: routingSummary(failedConfig, { complexity: "unknown" }),
       });
     }
+  }
+
+  async function handleApplyCodeProposal(req, res, session) {
+    const body = await readJsonBody(req);
+    const proposalId = String(body.proposalId || body.proposal_id || "").trim();
+    const projectId = cleanProjectId(body.projectId || body.project_id);
+    const proposal = pendingCodeProposals.get(proposalId);
+    if (!proposal || proposal.expiresAt <= Date.now()) {
+      if (proposal) pendingCodeProposals.delete(proposalId);
+      sendJson(res, 404, { error: "code_proposal_not_found", message: "Der Änderungsvorschlag ist nicht mehr verfügbar. Bitte die KI-Antwort neu erzeugen." });
+      return;
+    }
+    const accountId = projectServerUserId(session);
+    if (!projectId || proposal.projectId !== projectId || proposal.accountId !== accountId) {
+      sendJson(res, 404, { error: "code_proposal_not_found", message: "Der Änderungsvorschlag gehört nicht zu diesem Projekt." });
+      return;
+    }
+    const project = requireProjectAccess ? await requireProjectAccess(session, projectId) : null;
+    if (!project?.project_server_id || String(project.project_server_id) !== proposal.projectServerId) {
+      sendJson(res, 404, { error: "code_proposal_not_found", message: "Der Änderungsvorschlag gehört nicht zu diesem Projekt." });
+      return;
+    }
+    const result = await projectServerJson(`/api/projects/${encodeURIComponent(proposal.projectServerId)}/repository/commits`, {
+      method: "POST",
+      body: {
+        expected_head_sha: proposal.expectedHeadSha,
+        message: String(body.message || "Bestätigten KI-Vorschlag übernehmen").trim().slice(0, 200),
+        changes: proposal.fileEdits.map((edit) => ({
+          operation: "upsert",
+          path: edit.path,
+          content: edit.content,
+          content_type: /\.(?:h|hh|hpp|hxx)$/i.test(edit.path) ? "text/x-c++hdr" : "text/x-c++src",
+          role: /(^|\/)(?:treiber|drivers?)(\/|$)/i.test(edit.path) ? "ai_generated_driver" : "user_code",
+        })),
+      },
+    });
+    pendingCodeProposals.delete(proposalId);
+    sendJson(res, 201, {
+      applied: true,
+      proposal_id: proposalId,
+      changed_paths: proposal.fileEdits.map((edit) => edit.path),
+      commit: result.commit,
+    });
+  }
+
+  function rememberCodeProposal({ accountId, projectId, projectServerId, expectedHeadSha, fileEdits }) {
+    if (!projectServerId || !/^[a-f0-9]{40}$/i.test(String(expectedHeadSha || ""))) return null;
+    const proposalId = `code_proposal_${crypto.randomUUID()}`;
+    const proposal = {
+      proposalId,
+      accountId: String(accountId || ""),
+      projectId,
+      projectServerId: String(projectServerId),
+      expectedHeadSha: String(expectedHeadSha).toLowerCase(),
+      fileEdits: fileEdits.map((edit) => ({ path: edit.path, content: edit.content })),
+      expiresAt: Date.now() + CODE_PROPOSAL_TTL_MS,
+    };
+    pendingCodeProposals.set(proposalId, proposal);
+    while (pendingCodeProposals.size > 200) pendingCodeProposals.delete(pendingCodeProposals.keys().next().value);
+    return proposal;
   }
 
   function config(extra = {}) {
@@ -645,7 +723,12 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     if (!projectServerJson || !project?.project_server_id) throw new Error("Die agentischen Projektwerkzeuge sind nicht konfiguriert.");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
-    const toolFiles = new Map(loadResponseFileContext(responseFileContext, options.previousResponseId).map((file) => [file.path, file]));
+    const projectServerId = String(project.project_server_id);
+    const currentHeadSha = String(project.repository_binding?.head_sha || "").toLowerCase();
+    const previousContext = loadResponseFileContext(responseFileContext, options.previousResponseId, projectServerId);
+    const repositoryHeadSha = previousContext.repositoryHeadSha || currentHeadSha;
+    if (!/^[a-f0-9]{40}$/.test(repositoryHeadSha)) throw new Error("Das Projekt besitzt keinen gültigen Repository-Stand für den Coding Agent.");
+    const toolFiles = new Map(previousContext.files.map((file) => [file.path, file]));
     let input = responseInput(options.previousResponseId && options.latestUserMessage ? [options.latestUserMessage] : messages);
     let previousResponseId = options.previousResponseId || "";
     let totalInputTokens = 0;
@@ -683,12 +766,13 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         });
         const calls = (payload.output || []).filter((item) => item.type === "function_call");
         if (!calls.length) {
-          rememberResponseFileContext(responseFileContext, payload.id, toolFiles);
+          rememberResponseFileContext(responseFileContext, payload.id, toolFiles, projectServerId, repositoryHeadSha);
           return {
             message: { content: responseOutputText(payload) },
             prompt_eval_count: totalInputTokens,
             eval_count: totalOutputTokens,
             toolFiles: [...toolFiles.values()],
+            repository_head_sha: repositoryHeadSha,
             provider_response_id: payload.id || previousResponseId,
             usage_breakdown: { steps: usageSteps },
           };
@@ -696,7 +780,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         previousResponseId = payload.id;
         input = [];
         for (const call of calls) {
-          const output = await executeProjectSourceTool(call, project.project_server_id, toolFiles);
+          const output = await executeProjectSourceTool(call, project.project_server_id, toolFiles, repositoryHeadSha);
           input.push({ type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) });
         }
       }
@@ -725,23 +809,26 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     }];
   }
 
-  function loadResponseFileContext(cache, responseId) {
+  function loadResponseFileContext(cache, responseId, projectServerId) {
     const entry = cache.get(responseId);
-    if (!entry) return [];
+    if (!entry || entry.projectServerId !== projectServerId) return { files: [], repositoryHeadSha: "" };
     if (entry.expiresAt < Date.now()) {
       cache.delete(responseId);
-      return [];
+      return { files: [], repositoryHeadSha: "" };
     }
-    return entry.files;
+    return { files: entry.files, repositoryHeadSha: entry.repositoryHeadSha };
   }
 
-  function rememberResponseFileContext(cache, responseId, toolFiles) {
+  function rememberResponseFileContext(cache, responseId, toolFiles, projectServerId, repositoryHeadSha) {
     if (!responseId || !toolFiles.size) return;
-    cache.set(responseId, { files: [...toolFiles.values()], expiresAt: Date.now() + (30 * 60 * 1000) });
+    cache.set(responseId, {
+      files: [...toolFiles.values()], projectServerId, repositoryHeadSha,
+      expiresAt: Date.now() + CODE_PROPOSAL_TTL_MS,
+    });
     while (cache.size > 100) cache.delete(cache.keys().next().value);
   }
 
-  async function executeProjectSourceTool(call, projectServerId, toolFiles) {
+  async function executeProjectSourceTool(call, projectServerId, toolFiles, repositoryHeadSha) {
     let args = {};
     try { args = JSON.parse(call.arguments || "{}"); } catch { args = {}; }
     if (call.name === "find_and_read_project_sources") {
@@ -751,6 +838,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         q: sourceKind === "architecture" ? `${String(args.query || "")} Architektur PlantUML`.slice(0, 1000) : String(args.query || "").slice(0, 1000),
         current_path: projectSourceMatchesKind(currentPath, sourceKind) ? currentPath : "",
         source_kind: sourceKind,
+        commit_sha: repositoryHeadSha,
         limit: "20",
       });
       const result = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/search?${query}`);
@@ -1022,6 +1110,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
 
   return {
     config,
+    handleApplyCodeProposal,
     handleChat,
   };
 }

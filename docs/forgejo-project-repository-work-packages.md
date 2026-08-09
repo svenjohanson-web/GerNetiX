@@ -495,6 +495,15 @@ Abnahme:
 
 ## FG-08 - IDE und KI-Patchfluss
 
+Lokal umgesetzt: Der Coding Agent bindet Suche und Dateiinhalte an einen festen
+Repository-Head und behaelt diesen auch ueber `previous_response_id`-Folgen bei.
+Ein KI-Vorschlag wird serverseitig mit Account, Projekt, gelesenen Pfaden und
+`expected_head_sha` hinterlegt. Erst die ausdrueckliche Bestaetigung schreibt
+alle vorgeschlagenen Dateien atomar in einen Commit. Bei einem Head-Konflikt
+bleibt der Vorschlag erhalten; die IDE meldet den Konflikt und fuehrt keinen
+Teil-Commit aus. Agenten-, Routen- und UI-Contracts decken Pfadgrenzen,
+Mehrdatei-Commit, Bestaetigung und Konflikt ohne Datenverlust ab.
+
 Ziel:
 
 - IDE fuehrt den gelesenen Head-SHA mit und zeigt Konflikte verstaendlich.
@@ -722,10 +731,13 @@ Umgesetzt im ersten Schritt:
   Feldwirkung, No-op, Secret-Redaktion und unmittelbare Projektbaum-Aktualisierung
   ab.
 
-Noch offen sind die vollstaendige Laufzeitwirkung jeder Feldklasse, der
-Build-Drift-Abbruch und der End-to-End-Nachweis ueber alle Dialoge am echten
-Repository. Der atomare Forgejo-Commit mit `expected_head_sha` ist fuer die
-vorhandenen Projektionen lokal umgesetzt.
+Noch offen sind die vollstaendige Laufzeitwirkung jeder Feldklasse und der
+End-to-End-Nachweis ueber alle Dialoge am echten Repository. Der atomare
+Forgejo-Commit mit `expected_head_sha` ist fuer die vorhandenen Projektionen
+lokal umgesetzt. Ein Build-Drift-Gate rekonstruiert die Konfiguration aus dem
+gebundenen Commit und bricht mit `build_configuration_drift` ab, wenn
+eingecheckte erzeugte Konfigurations-, Header- oder PlatformIO-Dateien davon
+abweichen.
 
 Ziel:
 

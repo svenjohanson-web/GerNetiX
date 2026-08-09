@@ -179,6 +179,28 @@ test("pins a build to one repository commit and never stores source snapshots", 
   );
 });
 
+test("rejects a build when a generated repository file drifts from its commit configuration", async () => {
+  const store = new RecordingRepositoryStore();
+  const service = new ProjectService({ repository: new InMemoryProjectRepository(), projectRepositoryStore: store });
+  const project = await service.createProject({
+    project_id: "project-build-drift", user_id: "user-1", title: "Build Drift",
+    build_config: { platform: "espressif32", board: "esp32dev", framework: "arduino" },
+  });
+  const platformioPath = (await service.listSources(project.project_id)).find((source) => source.path.endsWith("/platformio.ini")).path;
+  const changed = await service.commitRepositoryChanges(project.project_id, {
+    expected_head_sha: project.repository_binding.head_sha,
+    message: "Erzeugte Builddatei absichtlich widersprüchlich machen",
+    changes: [{ path: platformioPath, content: "[env:manipulated]\nplatform = native\n" }],
+  });
+  const job = await service.createBuildJob(project.project_id, { commit_sha: changed.commit.head_sha });
+  await assert.rejects(
+    service.createBuildPackage(job.build_job_id),
+    (error) => error.code === "build_configuration_drift"
+      && error.status === 409
+      && error.details.drifted_paths.includes(platformioPath),
+  );
+});
+
 test("rejects a build commit that is not reachable in the bound project repository", async () => {
   const store = new RecordingRepositoryStore();
   const service = new ProjectService({ repository: new InMemoryProjectRepository(), projectRepositoryStore: store });

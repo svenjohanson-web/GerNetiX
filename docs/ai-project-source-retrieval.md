@@ -8,11 +8,11 @@ Diese Entscheidung orientiert sich am Arbeitsprinzip moderner Coding Agents wie 
 
 ## Ablauf und Forgejo-Ziel
 
-Der Werkzeugvertrag bleibt beim Forgejo-Cutover erhalten. Heute liest der
-Project Server die Quellen aus dem SQL-Altpfad; danach liest er denselben
-sichtbaren Projektbaum an einem festen Git-Commit aus dem privaten
-Forgejo-Repository. Ein Suchindex darf die Suche beschleunigen, ist aber nur
-eine abgeleitete Lesesicht und nie schreibbare Dateiwahrheit.
+Bei aktiver Projektbindung liest der Project Server den sichtbaren Projektbaum
+an einem festen Git-Commit aus dem privaten Forgejo-Repository. Der SQL-Altpfad
+bleibt nur fuer noch ungebundene Altprojekte als gekennzeichneter Lese-Fallback
+erhalten. Ein Suchindex darf die Suche beschleunigen, ist aber nur eine
+abgeleitete Lesesicht und nie schreibbare Dateiwahrheit.
 
 1. Der Nutzer formuliert seine konkrete Aufgabe im projektgebundenen KI-Chat.
 2. Die IDE uebergibt nur Aufgabe, Pfad der aktuell geoeffneten Datei und den gelesenen Projekt-Commit an die accountgeschuetzte Plattform-API.
@@ -34,9 +34,14 @@ eine abgeleitete Lesesicht und nie schreibbare Dateiwahrheit.
 ## Schnittstellen
 
 - Development Assistant: OpenAI Responses Function Tool `find_and_read_project_sources`
-- Project Server: `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&limit=3`
+- Project Server: `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&commit_sha={sha}&limit=3`
+- Bestaetigung: `POST /api/platform/development-assistant/code-proposals/apply`
 
-Die Project-Server-Suche liefert dem Agenten nur Treffer-Metadaten. Inhalte werden einzeln ueber das Lesewerkzeug geladen. Die allgemeine Quellenliste bleibt inhaltsmaskiert.
+Die kombinierte Project-Server-Suche liefert dem Agenten hoechstens drei
+Treffer mit Inhalt aus genau diesem Commit. Die allgemeine Quellenliste bleibt
+inhaltsmaskiert. Der Bestaetigungsendpunkt nimmt keine frei vom Browser
+gelieferten Dateiinhalte an, sondern materialisiert ausschliesslich den zuvor
+serverseitig validierten Vorschlag.
 
 ## Zielbild
 

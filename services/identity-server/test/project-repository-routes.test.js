@@ -5,7 +5,7 @@ const test = require("node:test");
 const { createRouteRegistry } = require("../src/dev/server/route-registry");
 const { registerProjectRoutes } = require("../src/dev/server/project-routes");
 
-function routeHarness({ requireSessionProject, handlePlatformProjectRead = async () => {} }) {
+function routeHarness({ requireSessionProject, handlePlatformProjectRead = async () => {}, developmentAssistant = { handleApplyCodeProposal: async () => {} } }) {
   const registry = createRouteRegistry();
   const calls = [];
   const responses = [];
@@ -23,11 +23,26 @@ function routeHarness({ requireSessionProject, handlePlatformProjectRead = async
       return { session: { debug_session_id: "debug-session-1" } };
     },
     projectRepositoryRead,
+    developmentAssistant,
+    requireEntitlement: () => true,
     handlePlatformProjectRead,
     sendJson: (_res, status, body) => responses.push([status, body]),
   });
   return { calls, registry, responses };
 }
+
+test("confirmed AI code proposals pass through the authenticated project route", async () => {
+  const applied = [];
+  const harness = routeHarness({
+    requireSessionProject: async () => ({ project_server_id: "stored-project-1" }),
+    developmentAssistant: { handleApplyCodeProposal: async (req, _res, session) => applied.push([req.body, session.account.user_id]) },
+  });
+  await harness.registry.dispatch({
+    req: { method: "POST", body: { projectId: "ui-project-1", proposalId: "proposal-1" } }, res: {},
+    url: new URL("http://localhost/api/platform/development-assistant/code-proposals/apply"),
+  });
+  assert.deepEqual(applied, [[{ projectId: "ui-project-1", proposalId: "proposal-1" }, "account-1"]]);
+});
 
 test("project detail route loads exactly the selected project", async () => {
   const reads = [];

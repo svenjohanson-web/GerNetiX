@@ -127,7 +127,7 @@ test("identity uses the same installed default Ollama model as the admin tool", 
   assert.match(devServer, /process\.env\.OLLAMA_MODEL \|\| "llama3\.2:3b"/);
 });
 
-test("discovers project sources server-side and applies confirmed edits through project source persistence", () => {
+test("discovers project sources server-side and applies confirmed edits through one repository commit", () => {
   assert.match(publicApp, /GuidedProjectView\.create\(\{[\s\S]*getJson,[\s\S]*putJson,/);
   assert.doesNotMatch(guidedView, /loadCodeExplorerProjectFiles/);
   assert.match(guidedView, /files: \[\]/);
@@ -143,8 +143,10 @@ test("discovers project sources server-side and applies confirmed edits through 
   assert.match(guidedView, /Änderung anzeigen/);
   assert.match(guidedView, /function buildCodeExplorerDiff/);
   assert.match(guidedView, /code-diff-line/);
-  assert.match(guidedView, /await putJson\(`\/api\/platform\/projects\/\$\{encodeURIComponent\(project\.id\)\}\/sources/);
-  assert.match(guidedView, /updateGuidedSourceContent\(project, edit\.path, edit\.content\)/);
+  assert.match(guidedView, /postJson\("\/api\/platform\/development-assistant\/code-proposals\/apply"/);
+  assert.match(guidedView, /updateGuidedSourceContent\(project, appliedEdit\.path, appliedEdit\.content\)/);
+  assert.match(guidedView, /message\.fileEdits[\s\S]*for \(const appliedEdit/);
+  assert.match(guidedView, /repository_head_conflict/);
   assert.doesNotMatch(guidedView, /delete state\.projectSourcesByProjectId\[project\.id\][\s\S]{0,300}updateGuidedSourceContent/);
   assert.match(guidedView, /renderIdeViewMode\(project\)/);
   assert.match(guidedView, /guidedView\.payload\.source = content/);
@@ -179,8 +181,9 @@ test("lets the coding agent discover structural targets instead of hard-coded co
   assert.match(assistant, /bearbeite nur dadurch gelesene Pfade/);
   assert.match(assistant, /toolFiles\.set\(item\.path/);
   assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
-  assert.match(assistant, /loadResponseFileContext\(responseFileContext, options\.previousResponseId\)/);
-  assert.match(assistant, /rememberResponseFileContext\(responseFileContext, payload\.id, toolFiles\)/);
+  assert.match(assistant, /loadResponseFileContext\(responseFileContext, options\.previousResponseId, projectServerId\)/);
+  assert.match(assistant, /rememberResponseFileContext\(responseFileContext, payload\.id, toolFiles, projectServerId, repositoryHeadSha\)/);
+  assert.match(assistant, /commit_sha: repositoryHeadSha/);
   assert.match(assistant, /Die KI hat keine übernehmbare Dateiänderung geliefert; es wurde nichts verändert/);
 });
 
@@ -189,7 +192,7 @@ test("previews and applies a validated new touchscreen game file only after conf
   assert.match(assistant, /isNewFile: !allowedPaths\.has\(edit\.path\)/);
   assert.match(guidedView, /edit\.isNewFile \? "Neue Datei/);
   assert.match(guidedView, /const source = edit\.isNewFile[\s\S]*\{ content: "" \}/);
-  assert.match(guidedView, /await putJson\(`\/api\/platform\/projects/);
+  assert.match(guidedView, /code-proposals\/apply/);
 });
 
 test("allows new AI-created files only in the game folder of the touchscreen template", () => {

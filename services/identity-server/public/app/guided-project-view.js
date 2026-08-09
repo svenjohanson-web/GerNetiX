@@ -196,6 +196,7 @@ const GuidedProjectView = (() => {
                     <strong>Zusammenfassung</strong>
                     <ul>${message.fileEdits.map((edit) => `<li><code>${escapeHtml(edit.path)}</code><span>${edit.isNewFile ? "Neue Datei, " : ""}Zeile ${edit.lineStart || 1}${edit.lineEnd && edit.lineEnd !== edit.lineStart ? `–${edit.lineEnd}` : ""}: ${escapeHtml(edit.changeSummary || "Inhalt geaendert")}${edit.applied ? " · übernommen" : " · geplant"}</span></li>`).join("")}</ul>
                   </section>
+                  ${message.applyError ? `<p class="helper-text is-error">${escapeHtml(message.applyError)}</p>` : ""}
                 </div>` : ""}
               </article>
             `).join("") : `<p class="helper-text">${gameProject ? "Beschreibe ein neues Spiel. Die KI liest Katalog und Auswahl, bereitet die neue Spieldatei vor und zeigt jede Änderung vor der Übernahme." : "Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten."}</p>`}
@@ -257,6 +258,7 @@ const GuidedProjectView = (() => {
         Object.assign(pendingMessage, {
           content: response.message?.content || "Keine Antwort erhalten.",
           fileEdits: response.fileEdits || [],
+          codeProposal: response.codeProposal || null,
           responseMeta: codeExplorerResponseMeta(response),
           pending: false,
         });
@@ -361,22 +363,41 @@ const GuidedProjectView = (() => {
       const message = codeChatMessages(project, view)[Number(messageIndex)];
       const edit = message?.fileEdits?.[editIndex];
       if (!edit || edit.applied) return;
-      const role = /(^|\/)(treiber|drivers?)(\/|$)/i.test(String(edit.path || "")) ? "ai_generated_driver" : "user_code";
-      await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`, { content: edit.content, role });
-      edit.applied = true;
-      const cachedSources = state.projectSourcesByProjectId[project.id] || [];
-      const cachedSource = cachedSources.find((source) => source.path === edit.path);
-      if (cachedSource) cachedSource.role = role;
-      else cachedSources.push({ path: edit.path, role });
-      state.projectSourcesByProjectId[project.id] = cachedSources.sort((left, right) => left.path.localeCompare(right.path));
-      updateGuidedSourceContent(project, edit.path, edit.content);
-      if (state.sourcePath === edit.path) {
-        document.querySelector("#sourceEditor").value = edit.content;
-        if (typeof renderIdeViewMode === "function") renderIdeViewMode(project);
+      if (!message.codeProposal?.proposalId) {
+        message.applyError = "Dieser Vorschlag besitzt keinen bestätigbaren Repository-Stand. Bitte die KI-Antwort neu erzeugen.";
+        renderProjectAssistant(project);
+        return;
       }
-      renderProjectViewManifest(project);
-      renderProjectAssistant(project);
-      if (state.ideViewMode === "driver-management" && typeof renderDriverManagement === "function") renderDriverManagement(project);
+      try {
+        await postJson("/api/platform/development-assistant/code-proposals/apply", {
+          projectId: project.id,
+          proposalId: message.codeProposal.proposalId,
+          message: `KI-Vorschlag übernehmen: ${message.fileEdits.map((item) => item.path).join(", ")}`,
+        });
+        message.applyError = "";
+        const cachedSources = state.projectSourcesByProjectId[project.id] || [];
+        for (const appliedEdit of message.fileEdits) {
+          const role = /(^|\/)(treiber|drivers?)(\/|$)/i.test(String(appliedEdit.path || "")) ? "ai_generated_driver" : "user_code";
+          appliedEdit.applied = true;
+          const cachedSource = cachedSources.find((source) => source.path === appliedEdit.path);
+          if (cachedSource) cachedSource.role = role;
+          else cachedSources.push({ path: appliedEdit.path, role });
+          updateGuidedSourceContent(project, appliedEdit.path, appliedEdit.content);
+          if (state.sourcePath === appliedEdit.path) {
+            document.querySelector("#sourceEditor").value = appliedEdit.content;
+            if (typeof renderIdeViewMode === "function") renderIdeViewMode(project);
+          }
+        }
+        state.projectSourcesByProjectId[project.id] = cachedSources.sort((left, right) => left.path.localeCompare(right.path));
+        renderProjectViewManifest(project);
+        renderProjectAssistant(project);
+        if (state.ideViewMode === "driver-management" && typeof renderDriverManagement === "function") renderDriverManagement(project);
+      } catch (error) {
+        message.applyError = error?.code === "repository_head_conflict"
+          ? "Das Projekt wurde inzwischen geändert. Der Vorschlag bleibt erhalten; bitte die KI-Antwort auf dem aktuellen Stand neu erzeugen."
+          : `Der Vorschlag konnte nicht übernommen werden: ${error.message}`;
+        renderProjectAssistant(project);
+      }
     }
 
     function updateGuidedSourceContent(project, sourcePath, content) {
