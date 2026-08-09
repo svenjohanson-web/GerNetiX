@@ -19,6 +19,7 @@ function createSystemRepositoryCatalog(env = process.env) {
     systemRepository("gernetix-product-game-collection-esp32", "Spielesammlung ESP32-S3 Touch", "product", "gernetix-products", "spielesammlung-esp32-s3-touch", env.FORGEJO_ESP32_GAME_COLLECTION_COMMIT, {
       target_root: "Komponenten/IoT-Device 1",
       path_mappings: { "src/main.cpp": "src/user_main.cpp" },
+      entrypoint_adapters: { "src/main.cpp": "touchscreen_game_basis" },
       excluded_paths: ["gernetix/system-repository.json", "platformio.ini"],
     }),
   ];
@@ -86,6 +87,14 @@ function normalizeMaterialization(input, sourceId) {
   return {
     target_root: targetRoot,
     path_mappings: mappings,
+    entrypoint_adapters: Object.fromEntries(Object.entries(input.entrypoint_adapters || {}).map(([sourcePath, adapter]) => {
+      const normalizedSourcePath = safeRelativePath(sourcePath, "entrypoint_source", sourceId);
+      const adapterId = String(adapter || "").trim();
+      if (!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(adapterId)) {
+        throw new Error(`project_system_repository_entrypoint_adapter_invalid:${sourceId}`);
+      }
+      return [normalizedSourcePath, adapterId];
+    })),
     excluded_paths: Array.from(new Set((input.excluded_paths || []).map((value) => safeRelativePath(value, "excluded_path", sourceId)))),
   };
 }

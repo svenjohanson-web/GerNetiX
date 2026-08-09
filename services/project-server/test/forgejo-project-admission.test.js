@@ -204,6 +204,31 @@ test("adds protected binary product assets to the immutable build package", asyn
   assert.equal(buildPackage.files.find((file) => file.path === "assets/story.pcm8").sha256, require("node:crypto").createHash("sha256").update(audio).digest("hex"));
 });
 
+test("adapts the touchscreen demo entrypoint to the protected basissoftware contract", async () => {
+  const approvedCommit = "f".repeat(40);
+  const service = new ProjectService({
+    repository: new InMemoryProjectRepository(),
+    systemRepositories: [{
+      source_id: "touch-game", title: "Touch-Spiel", kind: "product", provider: "forgejo",
+      organization: "gernetix-products", repository_name: "touch-game", default_branch: "main",
+      commit_sha: approvedCommit, protected: true,
+      materialization: {
+        target_root: "Komponenten/IoT-Device 1",
+        path_mappings: { "src/main.cpp": "src/user_main.cpp" },
+        entrypoint_adapters: { "src/main.cpp": "touchscreen_game_basis" },
+        excluded_paths: [],
+      },
+    }],
+    projectRepositoryStore: {
+      readProtectedFiles: async () => [{ path: "src/main.cpp", content: "void setup() {}\nvoid loop() {}\n" }],
+    },
+  });
+  const source = await service.loadProductSource("touch-game");
+  const entrypoint = source.sources.find((file) => file.path.endsWith("src/user_main.cpp"));
+  assert.match(entrypoint.content, /extern "C" void userMain\(\)/);
+  assert.doesNotMatch(entrypoint.content, /void setup\(\)/);
+});
+
 test("migrates legacy SQL project sources into a private Forgejo repository", async () => {
   const repository = new InMemoryProjectRepository();
   const legacyService = new ProjectService({ repository });

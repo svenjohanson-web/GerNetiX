@@ -2177,14 +2177,39 @@ function materializeProductSources(files, materialization = {}) {
     const repositoryPath = normalizeSourcePath(required(file.path, "path"));
     const mappedPath = mappings[repositoryPath] || repositoryPath;
     const sourcePath = normalizeSourcePath(targetRoot ? `${targetRoot}/${mappedPath}` : mappedPath);
+    const adapterContent = productEntrypointAdapter(materialization?.entrypoint_adapters?.[repositoryPath]);
     return {
       path: sourcePath,
-      ...(file.content_base64 ? { content_base64: String(file.content_base64) } : { content: String(file.content || "") }),
-      content_sha256: sourceContentSha256(file),
+      ...(adapterContent !== null ? { content: adapterContent } : file.content_base64 ? { content_base64: String(file.content_base64) } : { content: String(file.content || "") }),
+      content_sha256: adapterContent !== null ? sha256(adapterContent) : sourceContentSha256(file),
       content_type: file.content_type || contentType(sourcePath),
       role: file.role || inferSourceRole(sourcePath),
     };
   });
+}
+
+function productEntrypointAdapter(adapterId) {
+  if (!adapterId) return null;
+  if (adapterId === "touchscreen_game_basis") {
+    return [
+      '#include "user/user_app.h"',
+      '#include "user_project/game_application.h"',
+      "",
+      "namespace {",
+      "GameApplication application;",
+      "}",
+      "",
+      'extern "C" void userMain() {',
+      "  application.begin();",
+      "}",
+      "",
+      'extern "C" void userTick() {',
+      "  application.tick();",
+      "}",
+      "",
+    ].join("\n");
+  }
+  throw new ProjectServerError("protected_product_entrypoint_adapter_invalid", "Die Produktquelle verlangt einen unbekannten Einstiegspunkt-Adapter.", 503);
 }
 
 function mergeSourceSets(baseSources = [], overlaySources = []) {
