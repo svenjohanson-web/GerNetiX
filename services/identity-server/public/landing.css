@@ -822,3 +822,304 @@ footer {
 @media (max-width: 480px) {
   .plan-concept-grid { grid-template-columns: 1fr; }
 }
+
+/*
+ * Oeffentliche Seiten: ruhige, editorielle Lesefuehrung.
+ * Inhalt wird als zusammenhaengende Seite gezeigt, nicht als Sammlung
+ * gleichgewichtiger Karten. Hervorhebungen bleiben fuer Entscheidungen,
+ * Formulare und konkrete Handlungen reserviert.
+ */
+:root {
+  color-scheme: light;
+  --bg: #f6f3ed;
+  --panel: transparent;
+  --panel-soft: transparent;
+  --text: #20211d;
+  --muted: #5d5b54;
+  --line: #d8d2c6;
+  --accent: #8b3a2b;
+  --accent-strong: #763025;
+  --accent-soft: #f0e4d7;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+}
+
+main { max-width: 1120px; gap: 0; margin-top: 32px; }
+h1, h2, h3, h4, .brand, button, .primary-action, .secondary-action { font-family: "Segoe UI", system-ui, sans-serif; }
+h1 { max-width: 880px; font-size: clamp(32px, 4.2vw, 52px); font-weight: 650; letter-spacing: -.035em; }
+h2 { font-size: clamp(25px, 3vw, 36px); font-weight: 650; letter-spacing: -.025em; }
+h3 { font-weight: 650; }
+.eyebrow { color: #7a3328; font-size: 11px; font-weight: 750; letter-spacing: .1em; }
+.lead { max-width: 760px; color: #4f4e48; font-size: clamp(17px, 1.5vw, 19px); line-height: 1.7; }
+
+.panel,
+.home-entry,
+.shared-spaces,
+.nexi-home-feature,
+.home-purpose,
+.services-page > .panel,
+.services-extra-grid > .panel {
+  padding: clamp(36px, 6vw, 72px) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.panel + .panel,
+.home-entry + .panel,
+.panel + .home-entry { border-top: 1px solid var(--line); }
+
+.hero,
+.services-hero,
+.product-hero,
+.community-public-hero,
+.shop-public-hero {
+  min-height: 0;
+  background: transparent;
+  border-color: transparent;
+}
+.hero-copy, .nexi-home-copy, .home-purpose-copy, .services-section-head { max-width: 800px; }
+.hero, .services-hero { padding-top: clamp(30px, 5vw, 62px); }
+
+.primary-action, .secondary-action {
+  border: 1px solid #20211d;
+  border-radius: 0;
+  background: #20211d;
+  color: #fffdf8;
+  font-size: 14px;
+  font-weight: 650;
+}
+.secondary-action { background: transparent; color: #20211d; }
+.primary-action:hover { background: #763025; border-color: #763025; }
+.secondary-action:hover { background: #ece6dc; border-color: #20211d; color: #20211d; }
+.text-action, .services-text-link { color: #763025; font-weight: 700; }
+
+.home-area-grid,
+.shared-space-grid,
+.learning-path-grid,
+.services-learning-grid,
+.services-account-grid,
+.services-bundle-grid,
+.services-extra-grid,
+.product-principles,
+.product-card-grid,
+.product-plan-grid,
+.product-catalog-grid,
+.product-choice-grid,
+.plan-tier-grid,
+.plan-concept-grid {
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+.home-area-card,
+.shared-space-card,
+.learning-path-card,
+.services-offer-card,
+.services-account-card,
+.services-bundle-grid article,
+.services-extra-grid article,
+.product-principle,
+.product-card,
+.product-plan-grid article,
+.product-catalog-card,
+.product-choice-grid article,
+.plan-tier,
+.plan-concept-grid article {
+  min-height: 0;
+  padding: 28px 22px 32px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  box-shadow: none;
+  transition: none;
+}
+.home-area-card + .home-area-card,
+.shared-space-card + .shared-space-card,
+.learning-path-card + .learning-path-card,
+.services-offer-card + .services-offer-card,
+.services-account-card + .services-account-card,
+.services-bundle-grid article + article,
+.services-extra-grid article + article { border-left: 1px solid var(--line); }
+.shared-space-card:hover, .shared-space-card:focus-visible,
+.learning-path-card:hover, .learning-path-card:focus-visible { background: #eee9df; transform: none; }
+.home-area-card.development,
+.services-section.development,
+.services-offer-card.available,
+.services-offer-card.planned,
+.services-offer-card.bundle,
+.services-account-card.free,
+.services-account-card.basic,
+.services-account-card.premium,
+.services-bundle-grid article:last-child,
+.product-plan-grid .highlight,
+.product-catalog-card.featured,
+.product-path-card.featured { border-color: var(--line); background: transparent; }
+.home-area-badge, .shop-public-badge, .plan-status {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #7a3328;
+}
+.home-area-card li::before { background: #7a3328; box-shadow: none; }
+.shared-space-contexts span, .services-topic-list span { padding: 0; border: 0; border-radius: 0; color: var(--muted); }
+
+.nexi-home-feature, .home-purpose-layout, .services-hero { gap: clamp(30px, 7vw, 88px); }
+.nexi-home-options, .home-purpose-principles { border-left-color: #b9afa0; }
+.nexi-home-options span, .home-purpose-principles span { color: #7a3328; }
+.system-chain { gap: 0; border-top: 1px solid var(--line); }
+.system-chain li { padding: 20px 16px; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); background: transparent; }
+.system-chain li + li { border-left: 1px solid var(--line); }
+.system-chain li:not(:last-child)::after { display: none; }
+.system-chain span { color: #7a3328; }
+.scope-list { gap: 0; border-top: 1px solid var(--line); }
+.scope-list li { padding: 12px 0; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); background: transparent; font-weight: 500; }
+
+.services-honesty-note, .services-ai-box, .services-credit-note,
+.product-hero-path, .shop-public-note, .plan-detail, .plan-final-cta,
+.services-final-cta, .product-cta {
+  border: 0;
+  border-left: 3px solid #9c6a34;
+  border-radius: 0;
+  background: #efe8dc;
+  box-shadow: none;
+}
+.services-honesty-note strong, .services-ai-box span { color: #763025; }
+
+.site-header {
+  left: 0;
+  right: 0;
+  padding: 12px max(16px, calc((100vw - 1120px) / 2));
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: rgba(246, 243, 237, .96);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.brand img { border-radius: 0; }
+.menu-button, .public-language-switcher, .site-menu, .site-menu a, .site-menu-group > summary {
+  border-radius: 0;
+  background: #f6f3ed;
+  color: #20211d;
+}
+.menu-button, .public-language-switcher, .site-menu a, .site-menu-group > summary { border-color: #bdb5a8; }
+.menu-button span { background: #20211d; }
+.site-menu { box-shadow: 0 12px 28px rgba(45, 39, 30, .12); }
+.site-menu a:hover, .site-menu-group > summary:hover { border-color: #7a3328; background: #eee8dd; color: #20211d; }
+.site-menu a[href="/app/auth/"] { border-color: #20211d; background: #20211d; color: #fffdf8; }
+
+footer { width: min(1120px, calc(100% - 32px)); border-top: 1px solid var(--line); color: var(--muted); }
+.site-footer-links a { color: #4f4e48; }
+.site-footer-links a:hover { color: #763025; }
+
+@media (max-width: 720px) {
+  .panel, .home-entry, .shared-spaces, .nexi-home-feature, .home-purpose, .services-page > .panel, .services-extra-grid > .panel { padding: 36px 0; }
+  .home-area-card + .home-area-card, .shared-space-card + .shared-space-card, .learning-path-card + .learning-path-card, .services-offer-card + .services-offer-card, .services-account-card + .services-account-card, .services-bundle-grid article + article, .services-extra-grid article + article, .system-chain li + li { border-left: 0; }
+  .site-header { padding: 10px 12px; }
+}
+
+.public-theme-toggle { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #bdb5a8; border-radius: 0; background: #f6f3ed; color: #20211d; cursor: pointer; font: 700 20px/1 system-ui, sans-serif; }
+.public-theme-toggle:hover, .public-theme-toggle:focus-visible { border-color: #7a3328; background: #eee8dd; outline: none; }
+
+html[data-public-theme="dark"] { color-scheme: dark; --bg: #171715; --panel: transparent; --panel-soft: transparent; --text: #f3efe7; --muted: #cac3b7; --line: #494640; --accent: #eaa28d; --accent-strong: #d37d68; --accent-soft: #302722; }
+html[data-public-theme="dark"] body { background: var(--bg); color: var(--text); }
+html[data-public-theme="dark"] .lead { color: #ddd6ca; }
+html[data-public-theme="dark"] .eyebrow, html[data-public-theme="dark"] .text-action, html[data-public-theme="dark"] .services-text-link, html[data-public-theme="dark"] .nexi-home-options span, html[data-public-theme="dark"] .home-purpose-principles span, html[data-public-theme="dark"] .system-chain span, html[data-public-theme="dark"] .home-area-badge, html[data-public-theme="dark"] .shop-public-badge, html[data-public-theme="dark"] .plan-status { color: #f0a38d; }
+html[data-public-theme="dark"] .primary-action { border-color: #f3efe7; background: #f3efe7; color: #1b1a18; }
+html[data-public-theme="dark"] .primary-action:hover { border-color: #eaa28d; background: #eaa28d; }
+html[data-public-theme="dark"] .secondary-action { border-color: #cfc7bb; color: #f3efe7; }
+html[data-public-theme="dark"] .secondary-action:hover { border-color: #f3efe7; background: #2d2b27; color: #fffdf8; }
+html[data-public-theme="dark"] .shared-space-card:hover, html[data-public-theme="dark"] .shared-space-card:focus-visible, html[data-public-theme="dark"] .learning-path-card:hover, html[data-public-theme="dark"] .learning-path-card:focus-visible { background: #282622; }
+html[data-public-theme="dark"] .services-honesty-note, html[data-public-theme="dark"] .services-ai-box, html[data-public-theme="dark"] .services-credit-note, html[data-public-theme="dark"] .product-hero-path, html[data-public-theme="dark"] .shop-public-note, html[data-public-theme="dark"] .plan-detail, html[data-public-theme="dark"] .plan-final-cta, html[data-public-theme="dark"] .services-final-cta, html[data-public-theme="dark"] .product-cta { border-left-color: #d7a65d; background: #2a2722; }
+html[data-public-theme="dark"] .site-header { background: rgba(23, 23, 21, .96); }
+html[data-public-theme="dark"] .menu-button, html[data-public-theme="dark"] .public-language-switcher, html[data-public-theme="dark"] .site-menu, html[data-public-theme="dark"] .site-menu a, html[data-public-theme="dark"] .site-menu-group > summary, html[data-public-theme="dark"] .public-theme-toggle { border-color: #69645b; background: #1f1e1b; color: #f3efe7; }
+html[data-public-theme="dark"] .menu-button span { background: #f3efe7; }
+html[data-public-theme="dark"] .site-menu a:hover, html[data-public-theme="dark"] .site-menu-group > summary:hover, html[data-public-theme="dark"] .public-theme-toggle:hover, html[data-public-theme="dark"] .public-theme-toggle:focus-visible { border-color: #eaa28d; background: #302d28; color: #fffdf8; }
+html[data-public-theme="dark"] .site-menu a[href="/app/auth/"] { border-color: #f3efe7; background: #f3efe7; color: #1b1a18; }
+html[data-public-theme="dark"] .site-footer-links a { color: #ddd6ca; }
+html[data-public-theme="dark"] .site-footer-links a:hover { color: #f0a38d; }
+
+/* Editorial content hierarchy: prose first, labels and feature-card rhythm last. */
+main { max-width: 920px; }
+main .eyebrow,
+main .home-area-badge,
+main .shared-space-card > span,
+main .learning-path-card > span,
+main .product-card > span,
+main .product-principle > span,
+main .product-catalog-card > span,
+main .product-path-card > span,
+main .product-tool > span,
+main .services-card-head > .eyebrow { display: none; }
+
+h1, .hero h1, .services-hero h1 { max-width: 760px; font-size: clamp(30px, 3.6vw, 40px); font-weight: 620; letter-spacing: -.025em; }
+h2 { font-size: clamp(24px, 2.6vw, 31px); font-weight: 620; letter-spacing: -.018em; }
+h3, .home-area-card h3, .shared-space-card h3, .services-card-head h3 { font-size: clamp(19px, 2vw, 24px); font-weight: 620; }
+.lead, .home-entry-summary, .shared-spaces-intro p:not(.eyebrow), .nexi-home-copy p:not(.eyebrow), .home-purpose-copy p:not(.eyebrow), .services-section-head > p:last-child { font-size: 18px; line-height: 1.75; }
+
+.hero, .services-hero, .product-hero, .community-public-hero, .shop-public-hero { display: block; }
+.hero-copy, .nexi-home-copy, .home-purpose-copy, .services-section-head { display: block; }
+.hero-copy > *, .nexi-home-copy > *, .home-purpose-copy > *, .services-section-head > * { margin-bottom: 18px; }
+.hero-copy > *:last-child, .nexi-home-copy > *:last-child, .home-purpose-copy > *:last-child, .services-section-head > *:last-child { margin-bottom: 0; }
+
+.home-area-grid,
+.shared-space-grid,
+.learning-path-grid,
+.services-learning-grid,
+.services-account-grid,
+.services-bundle-grid,
+.services-extra-grid,
+.product-principles,
+.product-card-grid,
+.product-plan-grid,
+.product-catalog-grid,
+.product-choice-grid,
+.product-learning-path,
+.product-special-tools,
+.plan-tier-grid,
+.plan-concept-grid,
+.product-delivery-grid { display: block; border-top: 1px solid var(--line); }
+.home-area-card,
+.shared-space-card,
+.learning-path-card,
+.services-offer-card,
+.services-account-card,
+.services-bundle-grid article,
+.services-extra-grid article,
+.product-principle,
+.product-card,
+.product-plan-grid article,
+.product-catalog-card,
+.product-choice-grid article,
+.product-path-card,
+.product-tool,
+.product-delivery-grid article,
+.plan-tier,
+.plan-concept-grid article { display: block; padding: 28px 0 32px; border: 0; border-bottom: 1px solid var(--line); background: transparent; }
+.home-area-card + .home-area-card,
+.shared-space-card + .shared-space-card,
+.learning-path-card + .learning-path-card,
+.services-offer-card + .services-offer-card,
+.services-account-card + .services-account-card,
+.services-bundle-grid article + article,
+.services-extra-grid article + article { border-left: 0; }
+.home-area-card p, .shared-space-card p, .learning-path-card p, .services-offer-card p, .services-account-card p, .product-card p, .product-catalog-card p, .product-path-card p, .product-tool p { max-width: 720px; font-size: 17px; line-height: 1.72; }
+.home-area-card h3, .shared-space-card h3, .learning-path-card h3, .services-card-head h3, .services-bundle-grid h3, .product-card h3, .product-catalog-card h3, .product-path-card h3, .product-tool h3 { margin: 0 0 12px; }
+.home-area-card ul, .services-offer-card ul, .services-account-card ul, .product-card ul, .product-path-card ul { margin: 18px 0; line-height: 1.75; }
+.home-area-actions, .nexi-home-actions, .product-actions, .services-jump-links { margin-top: 22px; }
+
+.nexi-home-feature, .home-purpose-layout, .services-hero, .product-split-grid, .services-credit-note, .services-final-cta, .product-cta, .plan-final-cta { display: block; }
+.nexi-home-options, .home-purpose-principles { margin-top: 34px; padding-left: 22px; }
+.nexi-home-options li, .home-purpose-principles article { padding: 14px 0; }
+.system-chain { display: block; }
+.system-chain li, .system-chain li + li { padding: 16px 0; border-left: 0; }
+.scope-list { display: block; }
+.scope-list li { padding: 11px 0; }
+
+.services-honesty-note, .services-ai-box, .services-credit-note, .product-hero-path, .shop-public-note, .plan-detail, .plan-final-cta, .services-final-cta, .product-cta { margin-top: 28px; padding: 18px 20px; }
