@@ -685,6 +685,15 @@ Umgesetzter erster Umfang:
 - `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
   konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
   ausserhalb des GerNetiX-Infrastruktur-Repositories an.
+- Jedes freigegebene System- und Produkt-Repository besitzt einen einheitlichen
+  Windows-Einstieg `build.bat`. Er ruft keinen abweichenden Direktbau auf,
+  sondern den lokalen Adapter `tools/build-forgejo-project.js`. Dieser
+  materialisiert wie der Build Worker ein BuildPackage je Software-Einheit,
+  verwendet dessen `BuildPackageStore` und `FirmwareBuildJobRunner`, trennt
+  Kamera- und Display-Workspace und haelt alle technischen Caches unter
+  `.gernetix-build/` ausserhalb der Git-Historie. Produktquellen und
+  Basissoftware bleiben in getrennten Repositories und werden erst im
+  technischen BuildWorkspace zusammengefuehrt.
 - Tokens erscheinen weder in Clone-URLs noch in Projektdateien oder Logs.
 
 Branches, Pull Requests, weitere Kollaborationsrollen, SSO, Spiegelung nach

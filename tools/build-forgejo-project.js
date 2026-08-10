@@ -1,0 +1,211 @@
+"use strict";
+
+const fs = require("node:fs");
+const fsp = require("node:fs/promises");
+const path = require("node:path");
+const { BuildPackageStore } = require("../services/build-deploy-server/src/modules/build-package-store");
+const { FirmwareBuildJobRunner } = require("../services/build-deploy-server/src/modules/firmware-build-job-runner");
+const {
+  composeEsp32BasissoftwarePackage,
+  loadEsp32BasissoftwareFiles,
+} = require("../services/project-server/src/modules/esp32-basissoftware-package");
+
+const EXCLUDED_DIRECTORIES = new Set([
+  ".git", ".pio", ".gernetix-build", ".vscode", "managed_components", "node_modules", "test",
+]);
+const EXCLUDED_FILES = new Set(["build.bat", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
+
+async function main(argv = process.argv.slice(2)) {
+  const repositoryRoot = path.resolve(option(argv, "--repository") || process.cwd());
+  const checkOnly = argv.includes("--check");
+  const manifestPath = path.join(repositoryRoot, "gernetix", "system-repository.json");
+  const manifest = JSON.parse(await fsp.readFile(manifestPath, "utf8"));
+  const targets = Array.isArray(manifest.local_build?.targets) ? manifest.local_build.targets : [];
+  if (!targets.length) throw new Error("Im System-Repository fehlt gernetix/system-repository.json.local_build.targets.");
+
+  const platformioCommand = findPlatformio();
+  const cacheRoot = path.join(repositoryRoot, ".gernetix-build");
+  const packageStore = new BuildPackageStore({
+    tempDir: path.join(cacheRoot, "jobs"),
+    incrementalCacheDir: path.join(cacheRoot, "cache"),
+  });
+  const runner = new FirmwareBuildJobRunner({
+    runner: "platformio",
+    platformioCommand,
+    cacheDir: path.join(cacheRoot, "platformio-core"),
+  });
+
+  const results = [];
+  for (const target of targets) {
+    const files = await createBuildPackageFiles(repositoryRoot, manifest, target);
+    validatePackage(target, files);
+    if (checkOnly) {
+      results.push({ target: target.id, status: "checked", files: Object.keys(files).length });
+      continue;
+    }
+    const job = {
+      job_id: `local-${manifest.source_id}-${target.id}-${Date.now()}`,
+      project_id: manifest.source_id,
+      software_unit_id: target.id,
+      device_id: "local",
+      cache_generation: 0,
+      mode: "build",
+      build_package: { files },
+    };
+    const workspace = await packageStore.materialize(job);
+    const output = await runner.run(job, workspace.packageDir, {
+      buildDir: workspace.buildDir,
+      onProgress: (line) => process.stdout.write(`${line}\n`),
+    });
+    results.push({
+      target: target.id,
+      status: output.status,
+      workspace: workspace.packageDir,
+      artifacts: output.artifacts,
+    });
+  }
+  process.stdout.write(`${JSON.stringify({ repository: manifest.source_id, mode: checkOnly ? "check" : "build", targets: results }, null, 2)}\n`);
+}
+
+async function createBuildPackageFiles(repositoryRoot, manifest, target) {
+  if (target.type === "direct") {
+    const files = await readRepositoryFiles(repositoryRoot);
+    if (target.inject_runtime_core) await injectRuntimeCore(files);
+    return files;
+  }
+  if (target.type === "esp32-product") {
+    const projectSources = await productProjectSources(repositoryRoot, target);
+    const basisRoot = resolveSiblingRepository(repositoryRoot, target.basis_repository || "basissoftware-esp32");
+    const composed = composeEsp32BasissoftwarePackage({
+      basisFiles: loadEsp32BasissoftwareFiles(basisRoot),
+      projectSources,
+      buildConfig: target.build_config,
+    });
+    return Object.fromEntries(composed.map((file) => [
+      file.path,
+      file.content_base64 ? { base64: file.content_base64 } : file.content,
+    ]));
+  }
+  if (target.type === "esp8266-product") {
+    const basisRoot = resolveSiblingRepository(repositoryRoot, target.basis_repository || "basissoftware-esp8266");
+    const basisFiles = await readRepositoryFiles(basisRoot);
+    const productFiles = await readRepositoryFiles(repositoryRoot);
+    const files = { ...basisFiles, ...productFiles };
+    files["platformio.ini"] = String(files["platformio.ini"] || "")
+      .replace(/^src_dir\s*=.*$/m, "src_dir = src");
+    return files;
+  }
+  throw new Error(`Unbekannter lokaler Buildtyp: ${target.type}`);
+}
+
+async function injectRuntimeCore(files) {
+  const root = path.resolve(__dirname, "..", "firmware", "shared", "gernetix-runtime-core");
+  const coreFiles = await readRepositorySourceEntries(root);
+  for (const file of coreFiles) {
+    if (file.path !== "library.json" && !file.path.startsWith("include/") && !file.path.startsWith("src/")) continue;
+    files[`lib/gernetix-runtime-core/${file.path}`] = file.content;
+  }
+  for (const cmakePath of ["CMakeLists.txt", "src/CMakeLists.txt"]) {
+    if (!files[cmakePath]) continue;
+    files[cmakePath] = Buffer.from(String(files[cmakePath]).replaceAll(
+      "../../../firmware/shared/gernetix-runtime-core/",
+      "../lib/gernetix-runtime-core/",
+    ));
+  }
+}
+
+async function productProjectSources(repositoryRoot, target) {
+  const allFiles = await readRepositorySourceEntries(repositoryRoot);
+  const sourceRoot = normalizeRelativePath(target.source_root || "");
+  const prefix = sourceRoot ? `${sourceRoot}/` : "";
+  const materializeRoot = normalizeRelativePath(target.materialize_root || "");
+  const mappings = target.path_mappings || {};
+  return allFiles
+    .filter((file) => !prefix || file.path.startsWith(prefix))
+    .map((file) => {
+      const relative = prefix ? file.path.slice(prefix.length) : file.path;
+      const mapped = mappings[relative] || relative;
+      const projectPath = materializeRoot ? `${materializeRoot}/${mapped}` : mapped;
+      return { path: projectPath, content: file.content, content_type: contentType(projectPath) };
+    });
+}
+
+async function readRepositoryFiles(repositoryRoot) {
+  return Object.fromEntries((await readRepositorySourceEntries(repositoryRoot)).map((file) => [file.path, file.content]));
+}
+
+async function readRepositorySourceEntries(repositoryRoot) {
+  const entries = [];
+  await walk(repositoryRoot, repositoryRoot, entries);
+  return entries.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+async function walk(repositoryRoot, currentDirectory, entries) {
+  for (const entry of await fsp.readdir(currentDirectory, { withFileTypes: true })) {
+    if (entry.isDirectory() && EXCLUDED_DIRECTORIES.has(entry.name)) continue;
+    if (entry.isFile() && EXCLUDED_FILES.has(entry.name)) continue;
+    const absolutePath = path.join(currentDirectory, entry.name);
+    if (entry.isDirectory()) {
+      await walk(repositoryRoot, absolutePath, entries);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    const relativePath = path.relative(repositoryRoot, absolutePath).replace(/\\/g, "/");
+    if (relativePath === "gernetix/system-repository.json") continue;
+    entries.push({ path: relativePath, content: await fsp.readFile(absolutePath) });
+  }
+}
+
+function validatePackage(target, files) {
+  if (!target.id || !/^[a-z0-9][a-z0-9._-]*$/.test(target.id)) throw new Error("Buildziel besitzt keine sichere ID.");
+  if (!files["platformio.ini"]) throw new Error(`Buildziel ${target.id} enthaelt keine platformio.ini.`);
+  if (!Object.keys(files).some((filePath) => /^(?:src|lib)\//.test(filePath))) {
+    throw new Error(`Buildziel ${target.id} enthaelt keine Firmwarequellen.`);
+  }
+  const ini = String(files["platformio.ini"]);
+  if (/src_dir\s*=\s*.*(?:\.\.\/){2,}/i.test(ini)) {
+    throw new Error(`Buildziel ${target.id} verweist noch auf einen alten externen Quellpfad.`);
+  }
+}
+
+function resolveSiblingRepository(repositoryRoot, repositoryName) {
+  const resolved = path.resolve(repositoryRoot, "..", repositoryName);
+  if (!fs.existsSync(path.join(resolved, "gernetix", "system-repository.json"))) {
+    throw new Error(`Benoetigtes Nachbar-Repository fehlt: ${resolved}`);
+  }
+  return resolved;
+}
+
+function findPlatformio() {
+  if (process.env.PLATFORMIO_COMMAND) return process.env.PLATFORMIO_COMMAND;
+  const home = process.env.USERPROFILE || process.env.HOME || "";
+  const executable = process.platform === "win32" ? "platformio.exe" : "platformio";
+  const candidate = path.join(home, ".platformio", "penv", process.platform === "win32" ? "Scripts" : "bin", executable);
+  return fs.existsSync(candidate) ? candidate : executable;
+}
+
+function normalizeRelativePath(value) {
+  const normalized = String(value || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+  if (normalized.split("/").some((part) => part === "." || part === "..")) throw new Error(`Unsicherer relativer Pfad: ${value}`);
+  return normalized;
+}
+
+function contentType(filePath) {
+  if (/\.(?:c|cc|cpp|cxx)$/i.test(filePath)) return "text/x-c++src";
+  if (/\.(?:h|hh|hpp|hxx)$/i.test(filePath)) return "text/x-c++hdr";
+  return "text/plain";
+}
+
+function option(args, name) {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] || "" : "";
+}
+
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`Lokaler Forgejo-Build fehlgeschlagen: ${error.message}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { createBuildPackageFiles, main, productProjectSources, validatePackage };
