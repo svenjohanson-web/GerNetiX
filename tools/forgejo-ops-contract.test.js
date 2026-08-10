@@ -6,7 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.join(__dirname, "..");
-const compose = fs.readFileSync(path.join(root, "compose.vps.yaml"), "utf8");
+const compose = fs.readFileSync(path.join(root, "compose.vps.yaml"), "utf8").replace(/\r\n/g, "\n");
 const envExample = fs.readFileSync(path.join(root, ".env.vps.example"), "utf8");
 const backup = fs.readFileSync(path.join(root, "tools", "backup-forgejo.sh"), "utf8");
 
@@ -19,7 +19,7 @@ function serviceBlock(name) {
   return compose.slice(start, end);
 }
 
-test("pins a rootless Forgejo LTS service to the internal backend only", () => {
+test("pins a rootless Forgejo LTS service to the internal backend and VPS loopback only", () => {
   const forgejo = serviceBlock("forgejo");
   assert.match(forgejo, /image: codeberg\.org\/forgejo\/forgejo:15\.0\.6-rootless/);
   assert.match(forgejo, /user: "1000:1000"/);
@@ -28,7 +28,8 @@ test("pins a rootless Forgejo LTS service to the internal backend only", () => {
   assert.match(forgejo, /cap_drop:\n\s+- ALL/);
   assert.match(forgejo, /networks:\n\s+- backend/);
   assert.match(forgejo, /expose: \["3000"\]/);
-  assert.doesNotMatch(forgejo, /\n\s+ports:/);
+  assert.match(forgejo, /ports:\n\s+- "127\.0\.0\.1:3300:3000"/);
+  assert.doesNotMatch(forgejo, /(?:0\.0\.0\.0|10\.77\.0\.1):3300:3000/);
   assert.doesNotMatch(forgejo, /\n\s+- edge\s*$/m);
   assert.match(compose, /  backend:\n    internal: true\n/);
 });

@@ -77,6 +77,14 @@ class ForgejoClient {
     return this.request("PATCH", `/api/v1/repos/${segment(owner)}/${segment(name)}`, { body: { archived: true } });
   }
 
+  async addRepositoryCollaborator(owner, name, username, permission = "write") {
+    const normalizedPermission = String(permission || "write");
+    if (!["read", "write", "admin"].includes(normalizedPermission)) throw new Error("forgejo_collaborator_permission_invalid");
+    return this.request("PUT", `/api/v1/repos/${segment(owner)}/${segment(name)}/collaborators/${segment(username)}`, {
+      body: { permission: normalizedPermission },
+    });
+  }
+
   async request(method, pathname, options = {}) {
     const attempts = method === "GET" ? 1 + Number(options.readRetries || 0) : 1;
     let lastError;

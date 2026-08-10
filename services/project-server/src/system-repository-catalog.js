@@ -1,22 +1,30 @@
 "use strict";
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
+const SYSTEM_REPOSITORY_DEFINITIONS = Object.freeze([
+  Object.freeze({ source_id: "gernetix-runtime-basissoftware", title: "Basissoftware ESP32", kind: "basissoftware", organization: "gernetix-platform", repository_name: "basissoftware-esp32", commit_environment: "FORGEJO_ESP32_BASIS_COMMIT" }),
+  Object.freeze({ source_id: "gernetix-runtime-basissoftware-esp8266", title: "Basissoftware ESP8266", kind: "basissoftware", organization: "gernetix-platform", repository_name: "basissoftware-esp8266", commit_environment: "FORGEJO_ESP8266_BASIS_COMMIT" }),
+  Object.freeze({ source_id: "gernetix-product-nexi", title: "Nexi", kind: "product", organization: "gernetix-products", repository_name: "nexi", commit_environment: "FORGEJO_NEXI_COMMIT", local_directory: "nexi" }),
+  Object.freeze({ source_id: "gernetix-product-flashbox", title: "FlashBox", kind: "product", organization: "gernetix-products", repository_name: "flashbox", commit_environment: "FORGEJO_FLASHBOX_COMMIT", local_directory: "flashbox" }),
+  Object.freeze({ source_id: "gernetix-product-game-collection-esp8266", title: "Spielesammlung ESP8266 OLED", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp8266-oled", commit_environment: "FORGEJO_ESP8266_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp8266-oled" }),
+  Object.freeze({ source_id: "gernetix-product-game-collection-esp32", title: "Spielesammlung ESP32-S3 Touch", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp32-s3-touch", commit_environment: "FORGEJO_ESP32_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp32-s3-touch" }),
+]);
 
 function createSystemRepositoryCatalog(env = process.env) {
   const defaults = [
-    systemRepository("gernetix-runtime-basissoftware", "Basissoftware ESP32", "basissoftware", "gernetix-platform", "basissoftware-esp32", env.FORGEJO_ESP32_BASIS_COMMIT),
-    systemRepository("gernetix-runtime-basissoftware-esp8266", "Basissoftware ESP8266", "basissoftware", "gernetix-platform", "basissoftware-esp8266", env.FORGEJO_ESP8266_BASIS_COMMIT),
-    systemRepository("gernetix-product-nexi", "Nexi", "product", "gernetix-products", "nexi", env.FORGEJO_NEXI_COMMIT, {
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[0], env),
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[1], env),
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[2], env, {
       target_root: "Komponenten/IoT-Device 1",
       path_mappings: { "voice_lab.cpp": "src/user_main.cpp" },
       excluded_paths: ["gernetix/system-repository.json"],
     }),
-    systemRepository("gernetix-product-flashbox", "FlashBox", "product", "gernetix-products", "flashbox", env.FORGEJO_FLASHBOX_COMMIT),
-    systemRepository("gernetix-product-game-collection-esp8266", "Spielesammlung ESP8266 OLED", "product", "gernetix-products", "spielesammlung-esp8266-oled", env.FORGEJO_ESP8266_GAME_COLLECTION_COMMIT, {
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[3], env),
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[4], env, {
       target_root: "Komponenten/IoT-Device 1",
       excluded_paths: ["gernetix/system-repository.json", "platformio.ini"],
     }),
-    systemRepository("gernetix-product-game-collection-esp32", "Spielesammlung ESP32-S3 Touch", "product", "gernetix-products", "spielesammlung-esp32-s3-touch", env.FORGEJO_ESP32_GAME_COLLECTION_COMMIT, {
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[5], env, {
       target_root: "Komponenten/IoT-Device 1",
       path_mappings: { "src/main.cpp": "src/user_main.cpp" },
       entrypoint_adapters: { "src/main.cpp": "touchscreen_game_basis" },
@@ -27,6 +35,18 @@ function createSystemRepositoryCatalog(env = process.env) {
   const byId = new Map(defaults.map((item) => [item.source_id, item]));
   for (const item of configured) byId.set(item.source_id, item);
   return [...byId.values()];
+}
+
+function systemRepositoryDefinition(definition, env, materialization = null) {
+  return systemRepository(
+    definition.source_id,
+    definition.title,
+    definition.kind,
+    definition.organization,
+    definition.repository_name,
+    env[definition.commit_environment],
+    materialization,
+  );
 }
 
 function parseConfiguredRepositories(value) {
@@ -113,4 +133,4 @@ function identifier(value, field) {
   return normalized;
 }
 
-module.exports = { createSystemRepositoryCatalog, normalizeSystemRepository };
+module.exports = { SYSTEM_REPOSITORY_DEFINITIONS, createSystemRepositoryCatalog, normalizeSystemRepository };

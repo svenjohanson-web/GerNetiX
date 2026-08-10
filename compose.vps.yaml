@@ -114,6 +114,8 @@ services:
       FORGEJO__api__ENABLE_SWAGGER: "false"
       FORGEJO__metrics__ENABLED: "false"
     expose: ["3000"]
+    ports:
+      - "127.0.0.1:3300:3000"
     networks:
       - backend
     volumes:

@@ -65,6 +65,7 @@ COPY --chown=node:node tools/provision-build-worker-postgres.js ./tools/provisio
 COPY --chown=node:node tools/submit-flashbox-build-job.js ./tools/submit-flashbox-build-job.js
 COPY --chown=node:node tools/publish-nexi-release.js ./tools/publish-nexi-release.js
 COPY --chown=node:node tools/publish-forgejo-system-repositories.js ./tools/publish-forgejo-system-repositories.js
+COPY --chown=node:node tools/provision-forgejo-developer-access.js ./tools/provision-forgejo-developer-access.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js
 COPY --chown=node:node tools/usb-serial-helper ./tools/usb-serial-helper
 COPY --chown=node:node Demoanwendungen ./Demoanwendungen

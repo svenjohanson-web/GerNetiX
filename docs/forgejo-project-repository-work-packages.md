@@ -222,7 +222,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-12 | Board-Support-Repositories | offen | Katalog-/Commit-Vertrag |
 | FG-13 | Backup, Restore und Upgrade | Backupvertrag lokal, Restore offen | isolierter Restore-Test |
 | FG-14 | Monitoring, Quoten und Betrieb | Health lokal, Operations-Sicht offen | Operations-Sicht und Alarme |
-| FG-15 | Externer Git-Zugang und Zusammenarbeit | spaeter | eigene Produktentscheidung |
+| FG-15 | Privater Entwickler-Clone-/Push-Zugang | umgesetzt, Staging-Nachweis offen | Loopback-/Tunnel-, Berechtigungs- und Checkout-Vertrag |
 | FG-16 | Repository-Karte im Entwicklungsbereich | lokal umgesetzt | UI-/Autorisierungs-Contract |
 | FG-17 | Schablonen erzeugen eigene Kunden-Repositories | Repository-Materialisierung umgesetzt, Feldwirkung teilweise | Projektions-/Wirkungs-Contract |
 
@@ -673,18 +673,25 @@ Abnahme:
 
 Dieses Paket ist bewusst spaeter und nicht Voraussetzung fuer die Migration.
 
-Moegliche Inhalte:
+Umgesetzter erster Umfang:
 
-- direkter Clone/Push fuer Nutzer,
-- GerNetiX-SSO beziehungsweise kontrollierte Forgejo-Accounts,
-- SSH-Schluessel und persoenliche Tokens,
-- Branches, Pull Requests und Kollaborationsrollen,
-- Spiegelung oder Export nach GitHub/GitLab,
-- Git LFS fuer freigegebene grosse Projektdateien.
+- Forgejo bleibt ohne oeffentlichen Listener und bindet auf dem VPS nur an
+  `127.0.0.1:3300`.
+- `tools/connect-staging.js` transportiert diesen Port ausschliesslich durch
+  den bestehenden privaten SSH-/WireGuard-Weg nach `127.0.0.1:13300`.
+- Ein normales, nicht administratives Entwicklerkonto erhaelt Schreibrechte
+  nur auf die sechs freigegebenen System- und Produkt-Repositories.
+- `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
+  konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
+  ausserhalb des GerNetiX-Infrastruktur-Repositories an.
+- Tokens erscheinen weder in Clone-URLs noch in Projektdateien oder Logs.
 
-Vor Umsetzung ist eine eigene Produkt-, Berechtigungs- und
-Sicherheitsentscheidung erforderlich. Die interne Forgejo-Einfuehrung darf
-nicht stillschweigend einen neuen oeffentlichen Endpunkt schaffen.
+Branches, Pull Requests, weitere Kollaborationsrollen, SSO, Spiegelung nach
+GitHub/GitLab und Git LFS bleiben spaetere, getrennte Produktentscheidungen.
+
+Die Umsetzung schafft ausdrücklich keinen oeffentlichen Endpunkt. Eine spaetere
+Freigabe ausserhalb des privaten Tunnels benoetigt weiterhin eine eigene
+Produkt-, Berechtigungs- und Sicherheitsentscheidung.
 
 ## FG-16 - Repository-Karte im Entwicklungsbereich
 

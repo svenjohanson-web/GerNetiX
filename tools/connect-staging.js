@@ -29,6 +29,7 @@ function parseArgs(argv) {
       "--host", "--local-port", "--remote-port", "--platform-port", "--remote-platform-port",
       "--identity-db-port", "--remote-identity-db-port", "--remote-identity-db-host",
       "--build-router-port", "--remote-build-router-host", "--remote-build-router-port",
+      "--forgejo-port", "--remote-forgejo-port",
     ].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${argument} benoetigt einen Wert.`);
@@ -66,6 +67,7 @@ function sshTunnelArgs({
   host, localPort, remotePort, platformPort, remotePlatformPort,
   identityDbPort, remoteIdentityDbHost, remoteIdentityDbPort,
   buildRouterPort, remoteBuildRouterHost, remoteBuildRouterPort,
+  forgejoPort, remoteForgejoPort,
 }) {
   const args = [
     "-N",
@@ -77,6 +79,7 @@ function sshTunnelArgs({
     "-L", `127.0.0.1:${localPort}:127.0.0.1:${remotePort}`,
     "-L", `127.0.0.1:${identityDbPort}:${remoteIdentityDbHost}:${remoteIdentityDbPort}`,
     "-L", `127.0.0.1:${buildRouterPort}:${remoteBuildRouterHost}:${remoteBuildRouterPort}`,
+    "-L", `127.0.0.1:${forgejoPort}:127.0.0.1:${remoteForgejoPort}`,
   ];
   for (const [localServicePort, remoteServicePort] of REMOTE_DEV_SERVICE_FORWARDS) {
     args.push("-L", `127.0.0.1:${localServicePort}:127.0.0.1:${remoteServicePort}`);
@@ -99,10 +102,13 @@ function main() {
   const buildRouterPort = parsePort(args.buildRouterPort || config.GERNETIX_STAGING_LOCAL_BUILD_ROUTER_PORT || 14400, "Lokaler Build-Router-Port");
   const remoteBuildRouterHost = parseForwardHost(args.remoteBuildRouterHost || config.GERNETIX_STAGING_REMOTE_BUILD_ROUTER_HOST || "127.0.0.1", "Remote-Build-Router-Host");
   const remoteBuildRouterPort = parsePort(args.remoteBuildRouterPort || config.GERNETIX_STAGING_REMOTE_BUILD_ROUTER_PORT || 14400, "Remote-Build-Router-Port");
+  const forgejoPort = parsePort(args.forgejoPort || config.GERNETIX_STAGING_LOCAL_FORGEJO_PORT || 13300, "Lokaler Forgejo-Port");
+  const remoteForgejoPort = parsePort(args.remoteForgejoPort || config.GERNETIX_STAGING_REMOTE_FORGEJO_PORT || 3300, "Remote-Forgejo-Port");
   const sshArgs = sshTunnelArgs({
     host, localPort, remotePort, platformPort, remotePlatformPort,
     identityDbPort, remoteIdentityDbHost, remoteIdentityDbPort,
     buildRouterPort, remoteBuildRouterHost, remoteBuildRouterPort,
+    forgejoPort, remoteForgejoPort,
   });
   const adminUrl = `http://127.0.0.1:${localPort}/admin/`;
   const platformUrl = `http://127.0.0.1:${platformPort}/app/dashboard/`;
@@ -113,6 +119,7 @@ function main() {
   process.stdout.write(`Lokaler Admin-Diagnosetunnel: ${adminUrl}\n`);
   process.stdout.write(`Identity PostgreSQL fuer lokalen Port 4300: 127.0.0.1:${identityDbPort}\n`);
   process.stdout.write(`Build-Worker-Pool fuer lokale IDE: 127.0.0.1:${buildRouterPort}\n`);
+  process.stdout.write(`Forgejo fuer lokale Git-Arbeitskopien: http://127.0.0.1:${forgejoPort}/\n`);
   process.stdout.write(`Remote-Dev-Dienste: ${REMOTE_DEV_SERVICE_FORWARDS.map(([local, remote]) => `${local}->${remote}`).join(", ")}\n`);
   process.stdout.write("Dieses Terminal offen lassen. Verbindung mit Strg+C beenden.\n");
   if (args.dryRun) {

@@ -73,6 +73,24 @@ test("resumes provisioning idempotently when the exact initial tree already exis
   await assert.rejects(store.provisionProject({ project_id: "project-1", changes: [{ path: "README.md", content: "Anders" }] }), (error) => error.code === "repository_already_provisioned");
 });
 
+test("grants a named developer write access without changing repository ownership", async () => {
+  const calls = [];
+  const client = new ForgejoClient({
+    baseUrl: "https://forgejo.invalid",
+    token: "provision-token",
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      return response(204, null);
+    },
+  });
+
+  await client.addRepositoryCollaborator("gernetix-products", "nexi", "sven", "write");
+
+  assert.equal(calls[0].url, "https://forgejo.invalid/api/v1/repos/gernetix-products/nexi/collaborators/sven");
+  assert.equal(calls[0].options.method, "PUT");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { permission: "write" });
+});
+
 function response(status, payload) {
   return { status, ok: status >= 200 && status < 300, json: async () => payload };
 }
