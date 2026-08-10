@@ -26,12 +26,14 @@ test("pins a rootless Forgejo LTS service to the internal backend and VPS loopba
   assert.match(forgejo, /read_only: true/);
   assert.match(forgejo, /no-new-privileges:true/);
   assert.match(forgejo, /cap_drop:\n\s+- ALL/);
-  assert.match(forgejo, /networks:\n\s+- backend/);
+  assert.match(forgejo, /networks:\n\s+- backend\n\s+- forgejo-loopback-access/);
   assert.match(forgejo, /expose: \["3000"\]/);
   assert.match(forgejo, /ports:\n\s+- "127\.0\.0\.1:3300:3000"/);
   assert.doesNotMatch(forgejo, /(?:0\.0\.0\.0|10\.77\.0\.1):3300:3000/);
   assert.doesNotMatch(forgejo, /\n\s+- edge\s*$/m);
   assert.match(compose, /  backend:\n    internal: true\n/);
+  assert.match(compose, /  forgejo-loopback-access:\n/);
+  assert.equal((compose.match(/- forgejo-loopback-access/g) || []).length, 1);
 });
 
 test("keeps Forgejo state and health on dedicated contracts", () => {

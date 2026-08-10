@@ -118,6 +118,7 @@ services:
       - "127.0.0.1:3300:3000"
     networks:
       - backend
+      - forgejo-loopback-access
     volumes:
       - forgejo_data:/var/lib/gitea
     tmpfs:
@@ -1007,6 +1008,7 @@ networks:
   backend:
     internal: true
   loopback-access:
+  forgejo-loopback-access:
   runtime-postgres-access:
   worker-access:
 
