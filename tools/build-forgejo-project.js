@@ -17,7 +17,7 @@ const {
 const EXCLUDED_DIRECTORIES = new Set([
   ".git", ".pio", ".gernetix-build", ".vscode", "managed_components", "node_modules", "test",
 ]);
-const EXCLUDED_FILES = new Set(["build.bat", "flash.bat", "flash.sh", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
+const EXCLUDED_FILES = new Set(["build.bat", "build.sh", "flash.bat", "flash.sh", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
 
 async function main(argv = process.argv.slice(2)) {
   const repositoryRoot = path.resolve(option(argv, "--repository") || process.cwd());

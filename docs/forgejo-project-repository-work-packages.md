@@ -685,8 +685,8 @@ Umgesetzter erster Umfang:
 - `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
   konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
   ausserhalb des GerNetiX-Infrastruktur-Repositories an.
-- Jedes freigegebene System- und Produkt-Repository besitzt einen einheitlichen
-  Windows-Einstieg `build.bat`. Er ruft keinen abweichenden Direktbau auf,
+- Jedes freigegebene System- und Produkt-Repository besitzt die einheitlichen
+  Einstiege `build.bat` fuer Windows und `build.sh` fuer macOS. Sie rufen keinen abweichenden Direktbau auf,
   sondern den lokalen Adapter `tools/build-forgejo-project.js`. Dieser
   materialisiert wie der Build Worker ein BuildPackage je Software-Einheit,
   verwendet dessen `BuildPackageStore` und `FirmwareBuildJobRunner`, trennt
