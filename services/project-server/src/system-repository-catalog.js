@@ -8,6 +8,7 @@ const SYSTEM_REPOSITORY_DEFINITIONS = Object.freeze([
   Object.freeze({ source_id: "gernetix-product-flashbox", title: "FlashBox", kind: "product", organization: "gernetix-products", repository_name: "flashbox", commit_environment: "FORGEJO_FLASHBOX_COMMIT", local_directory: "flashbox" }),
   Object.freeze({ source_id: "gernetix-product-game-collection-esp8266", title: "Spielesammlung ESP8266 OLED", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp8266-oled", commit_environment: "FORGEJO_ESP8266_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp8266-oled" }),
   Object.freeze({ source_id: "gernetix-product-game-collection-esp32", title: "Spielesammlung ESP32-S3 Touch", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp32-s3-touch", commit_environment: "FORGEJO_ESP32_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp32-s3-touch" }),
+  Object.freeze({ source_id: "gernetix-product-camera-touch-display", title: "ESP32-Kamera auf Touchdisplay", kind: "product", organization: "gernetix-products", repository_name: "kamera-touchdisplay", commit_environment: "FORGEJO_CAMERA_TOUCH_DISPLAY_COMMIT", local_directory: "kamera-touchdisplay" }),
 ]);
 
 function createSystemRepositoryCatalog(env = process.env) {
@@ -29,6 +30,10 @@ function createSystemRepositoryCatalog(env = process.env) {
       path_mappings: { "src/main.cpp": "src/user_main.cpp" },
       entrypoint_adapters: { "src/main.cpp": "touchscreen_game_basis" },
       excluded_paths: ["gernetix/system-repository.json", "platformio.ini"],
+    }),
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[6], env, {
+      target_root: "",
+      excluded_paths: ["gernetix/system-repository.json"],
     }),
   ];
   const configured = parseConfiguredRepositories(env.PROJECT_SYSTEM_REPOSITORIES_JSON);
@@ -99,7 +104,9 @@ function normalizeSystemRepository(input = {}) {
 
 function normalizeMaterialization(input, sourceId) {
   if (!input || typeof input !== "object") throw new Error(`project_system_repository_materialization_invalid:${sourceId}`);
-  const targetRoot = safeRelativePath(input.target_root, "target_root", sourceId);
+  const targetRoot = String(input.target_root || "").trim()
+    ? safeRelativePath(input.target_root, "target_root", sourceId)
+    : "";
   const mappings = {};
   for (const [sourcePath, targetPath] of Object.entries(input.path_mappings || {})) {
     mappings[safeRelativePath(sourcePath, "mapping_source", sourceId)] = safeRelativePath(targetPath, "mapping_target", sourceId);

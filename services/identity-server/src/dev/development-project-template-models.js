@@ -189,6 +189,7 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
       ],
     },
     realization: {
+      systemSourceId: "gernetix-product-camera-touch-display",
       hardwareProfileId: "hardware.processor_board.waveshare_esp32_s3_cam_ov3660",
       hardwareConfiguration: {
         schema_version: 5,

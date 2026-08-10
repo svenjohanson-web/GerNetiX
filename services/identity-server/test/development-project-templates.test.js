@@ -12,7 +12,6 @@ const {
   templateHardwareProfileId,
   templateSoftwareUnits,
 } = require("../src/dev/development-project-templates");
-const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../../project-server/src/modules/esp32-basissoftware-package");
 const { developmentFirmwareStarterSources } = require("../src/dev/projects/project-configuration-service");
 const developmentComponentMetamodel = require("../public/app/development-component-metamodel");
 
@@ -221,69 +220,9 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.equal(units[1].build_config.framework, "espidf");
   assert.equal(units[1].build_config.board, "4d_systems_esp32s3_gen4_r8n16");
   assert.equal(units[1].build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
-  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/include/camera_host_state.h"), true);
-  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 2/include/display_client_state.h"), true);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT/);
-  const cameraSource = files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content;
-  assert.match(cameraSource, /#include "driver\/i2c_master\.h"/);
-  assert.match(cameraSource, /i2c_new_master_bus/);
-  assert.match(cameraSource, /i2c_master_transmit/);
-  assert.match(cameraSource, /deviceConfig\.scl_speed_hz = 100000/);
-  assert.match(cameraSource, /const uint8_t powerOff\[\] = \{ 0x03, 0x00 \}/);
-  assert.match(cameraSource, /Kein Kameramodul gefunden/);
-  assert.match(cameraSource, /writeProjectStatusJson/);
-  assert.match(cameraSource, /projectRootPageHtml/);
-  assert.match(cameraSource, /camera_not_found/);
-  assert.match(cameraSource, /streamPort.*GERNETIX_COMMUNICATION_ENDPOINT_PORT/s);
-  assert.match(cameraSource, /config\.stack_size = 8192/);
-  assert.match(cameraSource, /httpd_register_uri_handler\(cameraServer, &page\)/);
-  assert.match(cameraSource, /extern "C" void onProjectInit/);
-  assert.doesNotMatch(cameraSource, /#include "driver\/i2c\.h"|i2c_driver_install|i2c_master_write_to_device/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /multipart\/x-mixed-replace/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /fmt2rgb888/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /esp_lcd_panel_io_tx_color/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /MALLOC_CAP_DMA/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /io\.pclk_hz = 27000000/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /bus\.sclk_io_num = static_cast<gpio_num_t>\(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_SCLK\)/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /io\.cs_gpio_num = static_cast<gpio_num_t>\(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS\)/);
-  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /uint16_t line\[DISPLAY_WIDTH\]/);
-  assert.equal(files.filter((file) => file.path.endsWith("src/idf_component.yml")).length, 2);
-  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /mqtt/i);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /framework = espidf/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /partitions_full_16mb\.csv/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/platformio.ini").content, /GERNETIX_BASISSOFTWARE_PROFILE_FULL/);
-  assert.equal(files.some((file) => file.path === "Architektur/Kamera-zu-Display.md"), true);
-  assert.equal(files.some((file) => file.path.startsWith("Software/")), false);
-  assert.equal(files.some((file) => file.path.startsWith("Docs/")), false);
-
-  for (const unit of units) {
-    const prefix = `${unit.source_root}/`;
-    const projectSources = files.filter((file) => file.path.startsWith(prefix)).map((file) => ({ ...file, path: file.path.slice(prefix.length) }));
-    const boardConfiguration = {
-      source: "system_catalog",
-      name: unit.title,
-      base_board_profile_id: unit.hardware_profile_id,
-      board_features: unit.software_unit_id === "camera_sender"
-        ? { camera: { enabled: true, hardware: "ov3660", driver: "espressif_esp32_camera", connection: "parallel_dvp_sccb", pins: { xclk: 38 } } }
-        : { display: { enabled: true, hardware: "tft_lcd", driver: "ili9341", connection: "spi", pins: { mosi: 11 } } },
-    };
-    const composed = composeEsp32BasissoftwarePackage({
-      basisFiles: loadEsp32BasissoftwareFiles(),
-      projectSources,
-      buildConfig: { ...unit.build_config, board_configuration: boardConfiguration },
-    });
-    assert.equal(composed.some((file) => file.path === "src/main.cpp"), true);
-    assert.equal(composed.some((file) => file.path === "src/user/user_app.cpp"), true);
-    assert.equal(composed.some((file) => file.path === "include/gernetix_board_configuration.h"), true);
-    assert.match(composed.find((file) => file.path === "src/idf_component.yml").content, /esp32-camera/);
-    assert.equal(composed.some((file) => file.path === "sdkconfig.esp32-s3-n16r8"), true);
-    assert.match(composed.find((file) => file.path === "platformio.ini").content, /partitions_full_16mb\.csv/);
-    assert.match(composed.find((file) => file.path === "platformio.ini").content, /4d_systems_esp32s3_gen4_r8n16/);
-  }
+  assert.equal(template.realization.systemSourceId, "gernetix-product-camera-touch-display");
+  assert.deepEqual(files, []);
 });
-
 test("keeps confirmed custom games when the built-in game form is saved again", () => {
   const existing = `${mergeSelectedGamesHeader(["nibbles"], "")}
 #define GNX_GAME_ASTEROIDS_ENABLED 1

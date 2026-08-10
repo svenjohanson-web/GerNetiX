@@ -437,8 +437,9 @@ Seit 2026-08-09 ist lokal zusaetzlich umgesetzt:
 
 - ein harter Admission-Gate fuer neue Projekte ohne Forgejo-Store,
 - getrennte, geschuetzte Systemquellen fuer ESP32-/ESP8266-Basissoftware,
-  Nexi, FlashBox sowie die Spielesammlungen fuer ESP8266-OLED und ESP32-S3-Touch,
-- ein idempotenter Plan-/Importablauf fuer diese sechs Repositories,
+  Nexi, FlashBox, die Spielesammlungen fuer ESP8266-OLED und ESP32-S3-Touch
+  sowie das Kamera-Touchdisplay-Projekt in Vorlagenversion 20,
+- ein idempotenter Plan-/Importablauf fuer diese sieben Repositories,
 - eine nicht durch Kunden ueberschreibbare Basissoftware-Referenz auf einen
   serverseitig freigegebenen Forgejo-Commit,
 - Laden der Basissoftware aus genau diesem Commit statt aus dem lokalen
@@ -680,7 +681,7 @@ Umgesetzter erster Umfang:
 - `tools/connect-staging.js` transportiert diesen Port ausschliesslich durch
   den bestehenden privaten SSH-/WireGuard-Weg nach `127.0.0.1:13300`.
 - Ein normales, nicht administratives Entwicklerkonto erhaelt Schreibrechte
-  nur auf die sechs freigegebenen System- und Produkt-Repositories.
+  nur auf die sieben freigegebenen System- und Produkt-Repositories.
 - `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
   konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
   ausserhalb des GerNetiX-Infrastruktur-Repositories an.

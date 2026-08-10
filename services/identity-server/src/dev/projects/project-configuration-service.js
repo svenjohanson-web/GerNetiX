@@ -168,6 +168,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       hardware_profile_id: templateHardwareProfileId(template),
       device_id: null,
       build_config: buildConfig,
+      ...(systemSourceId ? { system_source_id: systemSourceId } : {}),
       ...(softwareUnits.length ? { software_units: softwareUnits, active_software_unit_id: softwareUnits[0].software_unit_id } : {}),
       view_manifest: developmentProjectViewManifest({
         title,

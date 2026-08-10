@@ -35,6 +35,10 @@
     {
       "name": "Spielesammlung ESP32-S3 Touch",
       "path": "../GerNetiX-Projekte/spielesammlung-esp32-s3-touch"
+    },
+    {
+      "name": "Kamera auf Touchdisplay",
+      "path": "../GerNetiX-Projekte/kamera-touchdisplay"
     }
   ],
   "settings": {
