@@ -1,0 +1,263 @@
+{
+  "slug": "avr-framework-resource-budget",
+  "project": {
+    "slug": "avr-framework-resource-budget",
+    "title": "Arduino oder direkt? Timer und Ressourcen auf dem AVR",
+    "area": "Embedded-Ausbaukurs",
+    "summary": "Untersuche an einem ATmega328P, welche Hardware-Ressourcen Arduino-Core und Bibliotheken implizit belegen, erstelle ein Timer-Budget und setze dieselbe Aufgabe mit Arduino, hybrid und direkt mit avr-libc um.",
+    "learning_category": "embedded",
+    "tags": ["platform:arduino", "platform:avr", "topic:bare-metal", "topic:embedded-c", "topic:interrupts", "level:advanced"],
+    "steps": [
+      { "title": "Wenn eine kleine Funktion plötzlich alles verändert", "text": "Starte mit einem realistischen Fehlerfall: Eine AVR-Firmware funktioniert, bis PWM, Ton, Servo oder eine Zeitfunktion ergänzt wird. Danach fehlt ein Timer, die Frequenz ändert sich oder eine andere Funktion fällt aus.", "insight": "Der sichtbare Funktionsaufruf ist klein; seine unsichtbaren Hardware-Abhängigkeiten können groß sein." },
+      { "title": "Board, Toolchain, Core und Bibliothek trennen", "text": "Ordne Arduino Nano, ATmega328P, avr-gcc, Arduino-Core und Zusatzbibliotheken als verschiedene Ebenen ein.", "insight": "Ein Arduino-kompatibles Board zwingt nicht zum Arduino-Framework." },
+      { "title": "Das Timer-Inventar des ATmega328P", "text": "Erstelle eine Hardwarekarte für Timer0, Timer1 und Timer2 mit Bitbreite, Kanälen, Compare-Ausgängen und möglichen Interrupts.", "insight": "Auf einem kleinen AVR sind drei Timer kein abstrakter Pool, sondern drei konkrete und unterschiedlich leistungsfähige Peripherieblöcke." },
+      { "title": "Implizite Besitzer sichtbar machen", "text": "Untersuche, welche Timer der Arduino-Core und verwendete Bibliotheken für millis, delay, PWM, tone oder Servo beanspruchen können.", "insight": "Nicht Arduino pauschal verbraucht für jede Funktion einen Timer; Core und Bibliotheken treffen konkrete, teilweise kollidierende Entscheidungen." },
+      { "title": "Den Konflikt reproduzierbar beschreiben", "text": "Formuliere einen Test, der vor und nach dem Hinzufügen einer Bibliothek Frequenz, Zeitbasis und Ausgangssignal misst.", "insight": "Eine Vermutung wird erst durch dokumentierte Konfiguration und Messung zu einer belastbaren Diagnose." },
+      { "title": "Ein Ressourcenbudget vor dem Code", "text": "Reserviere Timer, Compare-Kanäle, Pins, Interruptvektoren, Flash, SRAM und maximale ISR-Laufzeit in einer Tabelle.", "insight": "Peripherie wird wie Speicher budgetiert: mit Besitzer, Zweck, Konflikt und Ausweichstrategie." },
+      { "title": "Variante A: bewusst mit Arduino", "text": "Implementiere einen nicht blockierenden Ablauf mit millis und genau dokumentierter PWM-Nutzung. Verzichte auf Bibliotheken, deren Timervertrag ungeklärt ist.", "insight": "Arduino ist gut geeignet, wenn seine Abstraktionen zum Ressourcenbudget passen und überprüfbar bleiben." },
+      { "title": "Variante B: Arduino und direkte Register kombinieren", "text": "Behalte Initialisierung und Komfortfunktionen des Cores, übernimm aber Timer1 gezielt per Register und ISR. Dokumentiere, welche Arduino-Funktionen dadurch nicht mehr verwendet werden dürfen.", "insight": "Eine hybride Lösung kann sinnvoll sein, braucht aber eine harte Besitzgrenze." },
+      { "title": "Variante C: ohne Arduino-Core", "text": "Setze GPIO, Timer1-CTC, Interrupt und Hauptschleife direkt mit avr-libc um.", "insight": "Direkter Code entfernt implizite Besitzer, überträgt aber Initialisierung, Datenblattarbeit und Fehlerverantwortung vollständig auf dich." },
+      { "title": "Ein Hardware-Timer, mehrere Softwaretermine", "text": "Leite aus einem 1-ms-Tick mehrere Fälligkeiten für Taster, LED, Regelung und Diagnose ab, ohne jeder Funktion einen eigenen Hardware-Timer zu geben.", "insight": "Software-Scheduling vervielfacht Zeitaufgaben, nicht die physisch vorhandenen Timer." },
+      { "title": "Interruptlaufzeit und Jitter messen", "text": "Markiere ISR-Eintritt und -Austritt an einem Diagnosepin und bestimme mit Logikanalysator oder Oszilloskop Laufzeit und Schwankung.", "insight": "Zeitverhalten wird gemessen, nicht aus der Kürze des Quellcodes geraten." },
+      { "title": "Flash, SRAM und Wartbarkeit vergleichen", "text": "Vergleiche Buildgrößen, statischen SRAM, belegte Vektoren, Timerbesitz und Verständlichkeit der drei Varianten.", "insight": "Die kleinste Binärdatei ist nicht automatisch die beste Lösung; Kontrolle, Entwicklungszeit und Änderungsrisiko gehören in dieselbe Entscheidung." },
+      { "title": "Frameworkentscheidung begründen", "text": "Entscheide anhand von Hardwareknappheit, benötigten Bibliotheken, Echtzeitanforderungen, Teamwissen und Produktlebensdauer zwischen Arduino, hybrid und direkt.", "insight": "Frameworkwahl ist eine Architekturentscheidung und kein Glaubenssatz." },
+      { "title": "Abschluss: Ressourcenbewusster Statuscontroller", "text": "Baue oder plane dieselbe Taster-, LED- und Zeitsteuerung in allen drei Varianten und liefere Messwerte, Timerbudget und begründete Freigabeentscheidung.", "insight": "Du beherrschst die Abstraktion erst, wenn du ihre Kosten kennst und sie bei Bedarf kontrolliert ersetzen kannst." }
+    ],
+    "hardware_profile_id": "hardware.processor_board.arduino_nano_r3_atmega328p",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "docs/timer-und-ressourcenbudget.md", "role": "learning_guide" },
+      { "path": "src/arduino_version.cpp", "role": "user_code" },
+      { "path": "src/hybrid_version.cpp", "role": "example" },
+      { "path": "src/avr_version.c", "role": "example" },
+      { "path": "docs/timer-budget.md", "role": "worksheet" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Arduino oder direkt?",
+    "summary": "Drei Firmware-Architekturen auf derselben AVR-Hardware vergleichen und Timer als begrenzte Ressource beherrschen.",
+    "primary_source_path": "docs/timer-und-ressourcenbudget.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "timer-incident",
+        "type": "story_slide",
+        "title": "Die Firmware, der plötzlich ein Timer fehlt",
+        "summary": "Eine zusätzliche Komfortfunktion kann einen bereits benötigten Timer umkonfigurieren oder vollständig reservieren.",
+        "completion": { "type": "acknowledge", "label": "Fehlerbild verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Vorher", "text": "Taster, LED und Zeitsteuerung arbeiten scheinbar unabhängig." },
+          { "label": "Änderung", "text": "Eine Ton-, Servo- oder PWM-Funktion bringt eine Bibliothek mit eigenem Timervertrag hinzu." },
+          { "label": "Folge", "text": "Frequenz, millis-Zeitbasis, PWM-Ausgang oder Interruptverhalten ändern sich unerwartet." },
+          { "label": "Lernauftrag", "text": "Nicht raten, sondern Besitzer, Registerkonfiguration und Messsignal vor und nach der Änderung vergleichen." }
+        ] }
+      },
+      {
+        "id": "abstraction-layers",
+        "type": "explanation",
+        "title": "Arduino ist nicht der Mikrocontroller",
+        "summary": "Hardware, Compiler, Core und Bibliotheken erfüllen unterschiedliche Rollen.",
+        "completion": { "type": "acknowledge", "label": "Ebenen getrennt" },
+        "payload": { "cards": [
+          { "title": "Board", "text": "Arduino Nano beschreibt Platine, Anschlüsse, Takt, Bootloader und typischerweise einen ATmega328P." },
+          { "title": "Mikrocontroller", "text": "Der ATmega328P stellt CPU, Register, Timer, GPIO, UART, SPI und I²C als reale Hardware bereit." },
+          { "title": "Arduino-Core", "text": "Stellt setup, loop, millis, delay, digitalWrite und weitere Abstraktionen bereit und initialisiert dafür Hardware." },
+          { "title": "Bibliothek", "text": "Kann zusätzliche Timer, Pins, Interrupts oder Speicher reservieren. Ihr Vertrag muss separat geprüft werden." }
+        ] }
+      },
+      {
+        "id": "avr-timer-map",
+        "type": "story_slide",
+        "title": "Nur drei Timer – und keiner ist austauschbar",
+        "summary": "Der ATmega328P besitzt zwei 8-Bit-Timer und einen 16-Bit-Timer mit festen Ausgängen und Vektoren.",
+        "completion": { "type": "acknowledge", "label": "Timerkarte erstellt" },
+        "payload": { "model_lines": [
+          { "label": "Timer0", "text": "8 Bit; im Arduino-Core typischerweise Grundlage für millis, micros und delay; außerdem PWM-Bezug zu festen Pins." },
+          { "label": "Timer1", "text": "16 Bit; gut für präzise Perioden, Input Capture und längere Zählbereiche; häufig von Servo-Anwendungen beansprucht." },
+          { "label": "Timer2", "text": "8 Bit; eigene Vorteileroptionen und asynchrone Möglichkeiten; häufig relevant für tone oder PWM." },
+          { "label": "Datenblattregel", "text": "Die konkrete Zuordnung wird für Core-Version, Boarddefinition und Bibliotheksversion aus Primärquellen geprüft." }
+        ] }
+      },
+      {
+        "id": "implicit-ownership",
+        "type": "source_analysis",
+        "title": "Unsichtbare Timerbesitzer aufdecken",
+        "summary": "Analysiere die Arduino-Variante nicht nur nach Funktionsnamen, sondern nach der erzeugten Hardwarebelegung.",
+        "source_path": "src/arduino_version.cpp",
+        "payload": { "questions": [
+          "Welche Funktion benötigt die Arduino-Zeitbasis von Timer0?",
+          "Welcher Timer liegt beim ATmega328P hinter PWM auf Pin 9?",
+          "Welche Bibliothek würde Timer1 oder Timer2 zusätzlich beanspruchen?",
+          "Welche Funktion fällt aus oder ändert ihr Verhalten, wenn derselbe Timer neu konfiguriert wird?"
+        ] }
+      },
+      {
+        "id": "collision-experiment",
+        "type": "implementation_plan",
+        "title": "Timerkonflikt reproduzieren und messen",
+        "summary": "Ein kontrollierter Vorher-Nachher-Versuch trennt echte Ressourcenkollisionen von Vermutungen.",
+        "payload": { "tasks": [
+          "Ausgangsversion bauen und Compiler-, Flash- sowie SRAM-Bericht sichern",
+          "PWM-Frequenz und 1-ms-Zeitbasis an Diagnosepins messen",
+          "genau eine Bibliothek oder Komfortfunktion ergänzen",
+          "Buildbericht, Timerregister und Messsignal erneut erfassen",
+          "Abweichung einer konkreten Ressource und einem Besitzer zuordnen",
+          "keine allgemeine Aussage über Arduino treffen, die der konkrete Versuch nicht belegt"
+        ] }
+      },
+      {
+        "id": "resource-budget",
+        "type": "implementation_plan",
+        "title": "Das Timerbudget entsteht vor der Implementierung",
+        "summary": "Jede knappe Ressource erhält genau einen verantwortlichen Besitzer und bekannte Mitnutzer.",
+        "payload": { "tasks": [
+          "Timer0, Timer1 und Timer2 mit Modus, Frequenz und Besitzer eintragen",
+          "Compare-Kanäle und fest zugeordnete Ausgangspins ergänzen",
+          "Interruptvektoren, maximale ISR-Laufzeit und Prioritätsfolgen dokumentieren",
+          "Flash- und SRAM-Budget samt Stackreserve notieren",
+          "für jeden Konflikt Verzicht, Umlegung oder Software-Scheduling festlegen",
+          "Budget bei jeder neuen Bibliothek erneut prüfen"
+        ] }
+      },
+      {
+        "id": "arduino-version",
+        "type": "source_analysis",
+        "title": "Variante A: Arduino bewusst einsetzen",
+        "summary": "Komfort bleibt erlaubt, solange Zeitbasis, PWM und Bibliotheken im Budget stehen.",
+        "source_path": "src/arduino_version.cpp",
+        "payload": { "questions": [
+          "Warum blockiert die Hauptschleife trotz Zeitsteuerung nicht?",
+          "Welche Timer werden durch millis und analogWrite berührt?",
+          "Welche zusätzliche Funktion würde das aktuelle Budget vollständig belegen?",
+          "Welche Messung beweist, dass das gewünschte Zeitverhalten erhalten bleibt?"
+        ] }
+      },
+      {
+        "id": "hybrid-version",
+        "type": "source_analysis",
+        "title": "Variante B: Komfort mit harter Registergrenze",
+        "summary": "Der Core bleibt aktiv, Timer1 gehört aber ausdrücklich der Anwendung.",
+        "source_path": "src/hybrid_version.cpp",
+        "payload": { "questions": [
+          "Welche Register versetzen Timer1 in den CTC-Modus?",
+          "Warum darf analogWrite auf den Timer1-Pins 9 und 10 danach nicht verwendet werden?",
+          "Welche Arduino-Zeitfunktion bleibt über Timer0 weiterhin verfügbar?",
+          "Welche gemeinsame Variable verbindet ISR und loop und welche Atomaritätsregel gilt?"
+        ] }
+      },
+      {
+        "id": "bare-metal-version",
+        "type": "source_analysis",
+        "title": "Variante C: avr-libc ohne Arduino-Core",
+        "summary": "Startup, Register, ISR und Endlosschleife werden ohne Arduino-Abstraktion sichtbar.",
+        "source_path": "src/avr_version.c",
+        "payload": { "questions": [
+          "Wo werden GPIO-Richtung und Timer1 direkt konfiguriert?",
+          "Warum sind Timer0 und Timer2 in dieser Variante frei?",
+          "Welche Verantwortung übernimmt der Code jetzt selbst?",
+          "Warum darf main auch hier nicht in einen normalen Programmabschluss laufen?"
+        ] }
+      },
+      {
+        "id": "software-scheduler",
+        "type": "explanation",
+        "title": "Viele Termine brauchen nicht viele Hardware-Timer",
+        "summary": "Ein Basistick oder ein monotones Zeitmaß kann mehrere unabhängige Softwaretermine speisen.",
+        "completion": { "type": "acknowledge", "label": "Scheduling verstanden" },
+        "payload": { "cards": [
+          { "title": "Basistick", "text": "Ein Timer erzeugt beispielsweise alle 1 ms ein kleines Ereignis." },
+          { "title": "Fälligkeiten", "text": "Die Hauptschleife verwaltet nächste Termine für Taster, LED, Regelung und Diagnose als Zahlenwerte." },
+          { "title": "Kein delay", "text": "Zeitvergleiche lassen andere Aufgaben weiterlaufen und vermeiden verschachtelte Warteketten." },
+          { "title": "Grenze", "text": "Harte, sehr schnelle oder unabhängige Signalerzeugung kann weiterhin einen eigenen Hardwarekanal benötigen." }
+        ] }
+      },
+      {
+        "id": "timing-measurement",
+        "type": "implementation_plan",
+        "title": "Laufzeit, Frequenz und Jitter sichtbar machen",
+        "summary": "Ein Diagnosepin macht ISR-Zeit und Periodenschwankung extern messbar.",
+        "payload": { "tasks": [
+          "Diagnosepin direkt beim ISR-Eintritt setzen und vor dem Rücksprung löschen",
+          "Pulsbreite als ISR-Laufzeit messen",
+          "Abstand zwischen Pulsen als Periode und Jitter auswerten",
+          "Messung bei zusätzlicher Last und aktivierten Bibliotheken wiederholen",
+          "maximal zulässige Laufzeit vor dem Versuch festlegen",
+          "Messgerät und Firmwaretakt im Protokoll dokumentieren"
+        ] }
+      },
+      {
+        "id": "architecture-comparison",
+        "type": "explanation",
+        "title": "Drei Varianten, drei Kostenprofile",
+        "summary": "Abstraktion spart Entwicklungszeit, direkte Kontrolle spart nicht automatisch Gesamtkosten.",
+        "completion": { "type": "acknowledge", "label": "Varianten verglichen" },
+        "payload": { "cards": [
+          { "title": "Arduino", "text": "Schneller Einstieg und viele Bibliotheken; implizite Initialisierung und Ressourcenbesitz müssen geprüft werden." },
+          { "title": "Hybrid", "text": "Gezielte Kontrolle über kritische Peripherie; erhöhte Gefahr, dass Core und direkter Code dieselbe Ressource berühren." },
+          { "title": "avr-libc", "text": "Volle Sicht auf Register und Ressourcen; mehr Datenblatt-, Initialisierungs-, Test- und Wartungsverantwortung." },
+          { "title": "Entscheidung", "text": "Messwerte, Ressourcenreserve, Teamwissen, Bibliotheksbedarf und Produktlebensdauer gemeinsam bewerten." }
+        ] }
+      },
+      {
+        "id": "framework-decision",
+        "type": "implementation_plan",
+        "title": "Eine Frameworkentscheidung schreiben",
+        "summary": "Die Entscheidung benennt nicht nur das gewählte Werkzeug, sondern die überprüften Annahmen.",
+        "payload": { "tasks": [
+          "benötigte Timer, Pins, Interrupts, Flash und SRAM aufführen",
+          "Core- und Bibliotheksbesitzer mit Version und Quelle benennen",
+          "Messwerte für Buildgröße, Zeitverhalten und Jitter vergleichen",
+          "verbotene Funktionskombinationen oder Registerzugriffe festhalten",
+          "begründen, warum Arduino, hybrid oder avr-libc das kleinste Gesamtrisiko besitzt",
+          "Auslöser für eine spätere Neubewertung definieren"
+        ] }
+      },
+      {
+        "id": "resource-capstone",
+        "type": "implementation_plan",
+        "title": "Abschluss: Eine Funktion, drei Architekturen",
+        "summary": "Dasselbe beobachtbare Verhalten wird mit unterschiedlichen Abstraktionsgrenzen realisiert und verglichen.",
+        "payload": { "tasks": [
+          "Taster schaltet einen Status, LED signalisiert ihn und eine Zeitgrenze setzt ihn zurück",
+          "Arduino-Variante ohne blockierendes delay erstellen",
+          "Hybridvariante mit explizitem Timer1-Besitz erstellen",
+          "avr-libc-Variante mit direktem GPIO und Timer1-CTC erstellen",
+          "Timerbudget und Konfliktprüfung für alle Varianten ausfüllen",
+          "Flash, SRAM, ISR-Laufzeit, Periodenfehler und Jitter messen",
+          "eine Variante freigeben und die beiden Alternativen sachlich verwerfen"
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/timer-und-ressourcenbudget.md",
+      "role": "learning_guide",
+      "content": "# Arduino oder direkt? Timer und Ressourcen auf dem AVR\n\n## Ausgangslage\n\nEine kleine AVR-Anwendung kann lange unauffällig funktionieren. Erst eine weitere Komfortfunktion zeigt, dass Core und Bibliotheken dieselbe begrenzte Hardware benutzen. Das Problem ist nicht pauschal Arduino: Entscheidend ist, welcher konkrete Core oder welche Bibliothek welchen Timer in welchem Modus reserviert.\n\n## Arbeitsregel\n\nVor jeder neuen Bibliothek werden Timer, Compare-Kanäle, Pins, Interruptvektoren, Flash, SRAM und Stackreserve geprüft. Die Zuordnung wird aus Datenblatt, Core-Quellcode, Bibliotheksdokumentation, Buildbericht und Messung belegt.\n\n## Drei Varianten\n\n1. Arduino: Komfortfunktionen werden bewusst innerhalb des Budgets eingesetzt.\n2. Hybrid: Der Core bleibt, eine kritische Peripherie erhält aber einen ausdrücklich dokumentierten Registerbesitzer.\n3. avr-libc: Die Firmware initialisiert und betreibt die benötigte Hardware direkt.\n\n## Abschlussnachweis\n\nLiefere für alle drei Varianten dasselbe beobachtbare Verhalten, das ausgefüllte Timerbudget, Buildgrößen, eine Zeitmessung und eine begründete Architekturentscheidung.\n"
+    },
+    {
+      "path": "docs/timer-budget.md",
+      "role": "worksheet",
+      "content": "# Timer- und Ressourcenbudget\n\n| Ressource | Modus / Frequenz | Besitzer | Mitnutzer | Konflikt | Ausweichstrategie | Nachweis |\n| --- | --- | --- | --- | --- | --- | --- |\n| Timer0 | noch prüfen | | | | | |\n| Timer1 | noch prüfen | | | | | |\n| Timer2 | noch prüfen | | | | | |\n| INT0 / INT1 | noch prüfen | | | | | |\n| PCINT | noch prüfen | | | | | |\n| Flash | Budget: | | | | | Buildbericht |\n| SRAM / Stack | Budget: | | | | | Buildbericht / Stackmessung |\n\n## Freigabefragen\n\n- Ist jede Hardware-Ressource genau einem konfigurierenden Besitzer zugeordnet?\n- Sind alle Bibliotheksversionen und impliziten Abhängigkeiten dokumentiert?\n- Bleiben Reserven für Fehlerbehandlung und spätere Änderungen?\n- Belegen Messwerte die erwartete Frequenz, Laufzeit und Reaktionszeit?\n"
+    },
+    {
+      "path": "src/arduino_version.cpp",
+      "role": "user_code",
+      "content": "#include <Arduino.h>\n\nconstexpr uint8_t LED_PIN = 9;   // ATmega328P: PWM über Timer1\nconstexpr uint8_t BUTTON_PIN = 2;\nconstexpr uint32_t STATUS_MS = 1000U;\n\nbool active = false;\nuint32_t deactivate_at_ms = 0U;\n\nvoid setup() {\n  pinMode(LED_PIN, OUTPUT);\n  pinMode(BUTTON_PIN, INPUT_PULLUP);\n}\n\nvoid loop() {\n  const uint32_t now = millis(); // Arduino-Zeitbasis: typischerweise Timer0\n\n  if (digitalRead(BUTTON_PIN) == LOW) {\n    active = true;\n    deactivate_at_ms = now + STATUS_MS;\n  }\n\n  if (active && (int32_t)(now - deactivate_at_ms) >= 0) {\n    active = false;\n  }\n\n  analogWrite(LED_PIN, active ? 160 : 0); // Pin 9 nutzt Timer1-PWM\n}\n"
+    },
+    {
+      "path": "src/hybrid_version.cpp",
+      "role": "example",
+      "content": "#include <Arduino.h>\n#include <avr/interrupt.h>\n\nconstexpr uint8_t LED_PIN = 13;\nstatic volatile uint16_t pending_ms = 0U;\n\nISR(TIMER1_COMPA_vect) {\n  if (pending_ms < UINT16_MAX) {\n    pending_ms++;\n  }\n}\n\nstatic void configure_timer1_ctc_1khz() {\n  cli();\n  TCCR1A = 0U;\n  TCCR1B = _BV(WGM12) | _BV(CS11) | _BV(CS10);\n  OCR1A = 249U; // 16 MHz / 64 / (249 + 1) = 1 kHz\n  TIMSK1 = _BV(OCIE1A);\n  sei();\n}\n\nvoid setup() {\n  pinMode(LED_PIN, OUTPUT);\n  configure_timer1_ctc_1khz();\n  // Timer1 gehört jetzt der Anwendung: kein analogWrite an Pin 9/10,\n  // keine Servo-Bibliothek ohne erneute Ressourcenentscheidung.\n}\n\nvoid loop() {\n  uint16_t elapsed = 0U;\n  cli();\n  elapsed = pending_ms;\n  pending_ms = 0U;\n  sei();\n\n  while (elapsed-- > 0U) {\n    update_status_one_millisecond();\n  }\n  digitalWrite(LED_PIN, status_is_active() ? HIGH : LOW);\n}\n"
+    },
+    {
+      "path": "src/avr_version.c",
+      "role": "example",
+      "content": "#include <avr/io.h>\n#include <avr/interrupt.h>\n#include <stdint.h>\n\nstatic volatile uint16_t pending_ms = 0U;\n\nISR(TIMER1_COMPA_vect) {\n  if (pending_ms < UINT16_MAX) {\n    pending_ms++;\n  }\n}\n\nstatic void gpio_init(void) {\n  DDRB |= _BV(DDB5);   // Nano/Uno LED an PB5\n  PORTB &= (uint8_t)~_BV(PORTB5);\n}\n\nstatic void timer1_init(void) {\n  TCCR1A = 0U;\n  TCCR1B = _BV(WGM12) | _BV(CS11) | _BV(CS10);\n  OCR1A = 249U;\n  TIMSK1 = _BV(OCIE1A);\n}\n\nint main(void) {\n  gpio_init();\n  timer1_init();\n  sei();\n\n  for (;;) {\n    uint16_t elapsed;\n    cli();\n    elapsed = pending_ms;\n    pending_ms = 0U;\n    sei();\n\n    while (elapsed-- > 0U) {\n      update_status_one_millisecond();\n    }\n\n    if (status_is_active()) PORTB |= _BV(PORTB5);\n    else PORTB &= (uint8_t)~_BV(PORTB5);\n  }\n}\n"
+    }
+  ]
+}

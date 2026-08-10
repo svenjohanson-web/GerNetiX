@@ -856,3 +856,31 @@ test("catalog exposes the embedded C hardware-control course", () => {
   assert.equal(createEmbeddedCHardwareControlCourseModel().slug, "embedded-c-hardware-control");
   assert.match(learningModels, /createEmbeddedCHardwareControlCourseModel/);
 });
+
+test("catalog exposes the AVR framework and timer-resource course", () => {
+  const course = require("../src/dev/project-models/avr-framework-resource-budget-course.json");
+  const { createAvrFrameworkResourceBudgetCourseModel } = require("../src/dev/project-models/avr-framework-resource-budget-course");
+
+  assert.equal(course.project.title, "Arduino oder direkt? Timer und Ressourcen auf dem AVR");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.equal(course.project.access_model, "free");
+  assert.equal(course.project.hardware_profile_id, "hardware.processor_board.arduino_nano_r3_atmega328p");
+  assert.equal(course.project.steps.length, 14);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "timer-incident", "abstraction-layers", "avr-timer-map", "implicit-ownership",
+    "collision-experiment", "resource-budget", "arduino-version", "hybrid-version",
+    "bare-metal-version", "software-scheduler", "timing-measurement",
+    "architecture-comparison", "framework-decision", "resource-capstone",
+  ]);
+  const guide = course.sources.find((source) => source.path === "docs/timer-und-ressourcenbudget.md").content;
+  const worksheet = course.sources.find((source) => source.path === "docs/timer-budget.md").content;
+  const hybrid = course.sources.find((source) => source.path === "src/hybrid_version.cpp").content;
+  const bareMetal = course.sources.find((source) => source.path === "src/avr_version.c").content;
+  assert.match(guide, /Das Problem ist nicht pauschal Arduino/);
+  assert.match(worksheet, /Timer0[\s\S]*Timer1[\s\S]*Timer2/);
+  assert.match(hybrid, /TIMER1_COMPA_vect/);
+  assert.match(hybrid, /kein analogWrite an Pin 9\/10/);
+  assert.match(bareMetal, /for \(;;\)/);
+  assert.equal(createAvrFrameworkResourceBudgetCourseModel().slug, "avr-framework-resource-budget");
+  assert.match(learningModels, /createAvrFrameworkResourceBudgetCourseModel/);
+});
