@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const { createLearningProjectModels } = require("../src/dev/learning/learning-project-models");
+const { createProjectViewModel } = require("../src/dev/projects/project-view-model");
 
 const workspaceRoot = path.resolve(__dirname, "../../..");
 
@@ -90,5 +91,8 @@ test("every registered project provides sources through the same call shape", ()
 
 test("every registered project can be normalized with its catalog tags", () => {
   const { learningProjectRegistry } = createLearningProjectModels({ readWorkspaceText });
-  assert.doesNotThrow(() => learningProjectRegistry.createProjects(project, step));
+  const { normalizeLearningProjectTags } = createProjectViewModel({});
+  for (const definition of learningProjectRegistry.createProjects(project, step)) {
+    assert.doesNotThrow(() => normalizeLearningProjectTags(definition.tags), definition.slug);
+  }
 });

@@ -95,6 +95,7 @@ function normalizeLearningProjectCategory(value) {
 function normalizeLearningProjectTags(value) {
   const knownTags = [
     "client:mobile",
+    "level:advanced",
     "level:beginner",
     "platform:arduino",
     "platform:avr",
