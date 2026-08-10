@@ -14,7 +14,27 @@
     },
     {
       "name": "ESP32 Basissoftware",
-      "path": "basissoftware/esp32"
+      "path": "../GerNetiX-Projekte/basissoftware-esp32"
+    },
+    {
+      "name": "ESP8266 Basissoftware",
+      "path": "../GerNetiX-Projekte/basissoftware-esp8266"
+    },
+    {
+      "name": "Nexi",
+      "path": "../GerNetiX-Projekte/nexi"
+    },
+    {
+      "name": "FlashBox",
+      "path": "../GerNetiX-Projekte/flashbox"
+    },
+    {
+      "name": "Spielesammlung ESP8266 OLED",
+      "path": "../GerNetiX-Projekte/spielesammlung-esp8266-oled"
+    },
+    {
+      "name": "Spielesammlung ESP32-S3 Touch",
+      "path": "../GerNetiX-Projekte/spielesammlung-esp32-s3-touch"
     }
   ],
   "settings": {

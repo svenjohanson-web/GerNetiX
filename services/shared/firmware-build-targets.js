@@ -1,6 +1,6 @@
-// Build targets describe binary compatibility. They deliberately live next to
-// platformio.ini, not in the hardware catalog: a board references a target,
-// while this file owns compiler and partition settings.
+// Build targets describe binary compatibility. They are infrastructure metadata:
+// a board references a target, while the private Forgejo basissoftware repository
+// owns the compiler sources and partition files.
 
 const firmwareBuildTargets = Object.freeze([
   {

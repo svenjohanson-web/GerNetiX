@@ -26,14 +26,12 @@ function parseEnvFile(content) {
 }
 
 function parseArgs(argv) {
-  const result = { dryRun: false, plan: false, publicDemo: false, publishNexi: false, publishSystemRepositories: false, migrateArtifacts: false, forceFull: false };
+  const result = { dryRun: false, plan: false, publicDemo: false, migrateArtifacts: false, forceFull: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
     else if (argument === "--plan") result.plan = true;
     else if (argument === "--public-demo") result.publicDemo = true;
-    else if (argument === "--publish-nexi") result.publishNexi = true;
-    else if (argument === "--publish-system-repositories") result.publishSystemRepositories = true;
     else if (argument === "--migrate-artifacts") result.migrateArtifacts = true;
     else if (argument === "--force-full") result.forceFull = true;
     else if (["--host", "--remote-dir", "--branch"].includes(argument)) {
@@ -169,7 +167,7 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, publishNexi = false, publishSystemRepositories = false, migrateArtifacts = false, forcedPreviousCommit = "" }) {
+function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, migrateArtifacts = false, forcedPreviousCommit = "" }) {
   if (forcedPreviousCommit && !/^[0-9a-f]{40}$/.test(forcedPreviousCommit)) {
     throw new Error("Der erzwungene vorherige Commit ist ungueltig.");
   }
@@ -184,12 +182,6 @@ function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, pu
   if (migrateArtifacts) commands.push(
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T build-deploy-server node /app/tools/migrate-postgres-binaries-to-artifact-store.js --quarantine-untraceable-artifacts`,
     `docker compose --env-file .env.vps -f compose.vps.yaml exec -T build-deploy-server node /app/tools/audit-postgres-binaries.js`,
-  );
-  if (publishNexi) commands.push(
-    `docker compose --env-file .env.vps -f compose.vps.yaml exec -T -e NEXI_RELEASE_VERSION=${shellQuote(`0.1.0-${commit.slice(0, 12)}`)} -e NEXI_SOURCE_COMMIT=${shellQuote(commit)} public-demo-server sh -lc ${shellQuote("/opt/platformio/bin/platformio run --project-dir /app/basissoftware/esp32 -e waveshare-esp32-s3-audio-voice-lab && node /app/tools/publish-nexi-release.js")}`,
-  );
-  if (publishSystemRepositories) commands.push(
-    "./scripts/staging/publish-forgejo-system-repositories.sh .env.vps",
   );
   const lockedCommand = commands.join(" && ");
   return [
@@ -254,7 +246,7 @@ function main() {
   if (commit !== upstream) throw new Error("Der aktuelle Commit ist noch nicht zum Upstream-Branch gepusht.");
 
   const forcedPreviousCommit = args.forceFull ? run("git", ["rev-parse", "HEAD^"], { capture: true, quiet: true }) : "";
-  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, publishNexi: args.publishNexi, publishSystemRepositories: args.publishSystemRepositories, migrateArtifacts: args.migrateArtifacts, forcedPreviousCommit });
+  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, migrateArtifacts: args.migrateArtifacts, forcedPreviousCommit });
   process.stdout.write(`Staging-Deploy: ${branch} @ ${commit.slice(0, 12)} -> ${host}:${remoteDir}\n`);
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${host} ${command}\n`);

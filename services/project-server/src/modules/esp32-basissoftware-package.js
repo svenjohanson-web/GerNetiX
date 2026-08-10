@@ -3,7 +3,7 @@ const path = require("node:path");
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
 const { normalizeBasissoftwareConfiguration, POWER_STATE_IDS } = require("../../../shared/basissoftware-configuration");
 
-const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../..", "basissoftware", "esp32");
+const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../../..", "GerNetiX-Projekte", "basissoftware-esp32");
 const DEFAULT_RUNTIME_CORE_ROOT = path.resolve(__dirname, "../../../..", "firmware", "shared", "gernetix-runtime-core");
 const INCLUDED_ROOT_FILES = new Set([
   "CMakeLists.txt", "dependencies.lock", "platformio.ini", "sdkconfig.esp32dev",

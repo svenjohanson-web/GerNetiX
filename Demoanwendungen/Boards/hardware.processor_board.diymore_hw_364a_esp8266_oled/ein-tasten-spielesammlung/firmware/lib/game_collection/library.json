@@ -1,5 +1,0 @@
-{
-  "name": "GerNetiX HW-364A Game Collection",
-  "version": "0.1.0",
-  "build": { "flags": "-I src" }
-}

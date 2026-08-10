@@ -222,7 +222,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-12 | Board-Support-Repositories | offen | Katalog-/Commit-Vertrag |
 | FG-13 | Backup, Restore und Upgrade | Backupvertrag lokal, Restore offen | isolierter Restore-Test |
 | FG-14 | Monitoring, Quoten und Betrieb | Health lokal, Operations-Sicht offen | Operations-Sicht und Alarme |
-| FG-15 | Privater Entwickler-Clone-/Push-Zugang | umgesetzt, Staging-Nachweis offen | Loopback-/Tunnel-, Berechtigungs- und Checkout-Vertrag |
+| FG-15 | Privater Entwickler-Clone-/Push-Zugang | umgesetzt und auf Staging nachgewiesen | Loopback-/Tunnel-, Berechtigungs-, Checkout-, Integritaets- und Push-Dry-run-Vertrag |
 | FG-16 | Repository-Karte im Entwicklungsbereich | lokal umgesetzt | UI-/Autorisierungs-Contract |
 | FG-17 | Schablonen erzeugen eigene Kunden-Repositories | Repository-Materialisierung umgesetzt, Feldwirkung teilweise | Projektions-/Wirkungs-Contract |
 

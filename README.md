@@ -82,7 +82,7 @@ Markdown dient der Lesbarkeit und Dokumentation.
 
 ## Firmware und modellbasierte Entwicklung
 
-- [ESP32 Basissoftware](basissoftware/esp32/README.md)
+- ESP32-Basissoftware und Produktquellen: private Forgejo-Checkouts unter `../GerNetiX-Projekte/`
 - [Kopierschutz und Schutz der Basissoftware](docs/copy-protection-requirement.md)
 - [Struktur fuer Projektanpassungen](docs/firmware-project-structure.md)
 - [Inkrementelle Build-Strategie](docs/incremental-build-strategy.md)

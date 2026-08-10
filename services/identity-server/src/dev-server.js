@@ -125,7 +125,7 @@ const {
   knowledgeChapterHistory,
   unreadKnowledgeChapterReleases,
 } = require("./knowledge/knowledge-chapter-releases");
-const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
+const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../shared/firmware-build-targets");
 const { resolveIdentityRuntimePersistence } = require("./runtime-persistence-policy");
 const {
   generateRegistrationOptions,

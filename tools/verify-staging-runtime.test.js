@@ -18,7 +18,7 @@ const dockerIgnore = fs.readFileSync(path.join(repoRoot, ".dockerignore"), "utf8
 test("discovers Identity dependencies outside its service directory", () => {
   const paths = discoverIdentityRuntimePaths({ repoRoot });
   for (const expected of [
-    "basissoftware/esp32/firmware-build-targets.js",
+    "services/shared/firmware-build-targets.js",
     "docker/healthcheck.js",
     "services/recovery-tool/src/services/recovery-service.js",
     "services/shared/index.js",
@@ -63,7 +63,8 @@ test("rejects missing COPY sources in every staging runtime Dockerfile", () => {
   );
 });
 
-test("includes both protected Basissoftware source trees in the Docker build context", () => {
-  assert.match(dockerIgnore, /^!basissoftware\/esp32\/\*\*$/m);
-  assert.match(dockerIgnore, /^!basissoftware\/esp8266\/\*\*$/m);
+test("keeps protected project repositories out of the Docker build context", () => {
+  assert.match(dockerIgnore, /^basissoftware$/m);
+  assert.match(dockerIgnore, /^projects$/m);
+  assert.match(dockerIgnore, /^Demoanwendungen$/m);
 });

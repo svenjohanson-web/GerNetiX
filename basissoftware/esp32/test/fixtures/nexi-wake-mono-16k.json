@@ -1,8 +1,0 @@
-{
-  "format": "PCM16",
-  "channels": 1,
-  "sampleRateHz": 16000,
-  "sampleCount": 640,
-  "sampleValue": 0,
-  "purpose": "Four deterministic 10 ms frames for the scripted wake-word host pipeline"
-}

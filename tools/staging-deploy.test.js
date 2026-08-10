@@ -26,8 +26,6 @@ test("parses deploy arguments", () => {
     dryRun: true,
     plan: false,
     publicDemo: false,
-    publishNexi: false,
-    publishSystemRepositories: false,
     migrateArtifacts: false,
     forceFull: false,
     host: "deploy@example.test",
@@ -112,18 +110,6 @@ test("adds the verified PostgreSQL binary migration to staging only when request
   assert.match(command, /audit-postgres-binaries\.js/);
 });
 
-test("adds a committed Nexi release publication to the controlled staging deploy", () => {
-  const command = remoteDeployCommand({
-    branch: "main",
-    commit: "0123456789abcdef0123456789abcdef01234567",
-    remoteDir: "/opt/gernetix",
-    publishNexi: true,
-  });
-  assert.match(command, /NEXI_RELEASE_VERSION=.*0\.1\.0-0123456789ab/);
-  assert.match(command, /NEXI_SOURCE_COMMIT=.*0123456789abcdef0123456789abcdef01234567/);
-  assert.match(command, /platformio run --project-dir \/app\/basissoftware\/esp32 -e waveshare-esp32-s3-audio-voice-lab/);
-  assert.match(command, /publish-nexi-release\.js/);
-});
 
 test("rejects unsafe refs and ssh targets", () => {
   assert.throws(() => assertSafeGitRef("main; reboot"), /Unsicherer/);
@@ -166,9 +152,4 @@ test("uses a validated earlier commit to repeat a full deployment", () => {
     remoteDir: "/opt/gernetix",
     forcedPreviousCommit: "main; reboot",
   }), /ungueltig/);
-});
-
-test("runs the controlled Forgejo system-source publisher only when requested", () => {
-  const command = remoteDeployCommand({ branch: "main", commit: "0123456789abcdef0123456789abcdef01234567", remoteDir: "/opt/gernetix", publishSystemRepositories: true });
-  assert.match(command, /scripts\/staging\/publish-forgejo-system-repositories\.sh \.env\.vps/);
 });

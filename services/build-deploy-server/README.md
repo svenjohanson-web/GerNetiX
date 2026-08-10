@@ -71,12 +71,12 @@ Fuer den lokalen USB-MVP unterstuetzt der Server den Modus `build_and_usb_flash`
 
 ## Headless Flashbox-Buildkette
 
-Der headless Client `tools/submit-flashbox-build-job.js` prueft die vollstaendige serverseitige Kette ohne UI: Er legt das versionierte Flashbox-Projekt im Project Server an, uebergibt den daraus erzeugten BuildPackage-Snapshot an den Build-&-Deploy-Server und schreibt Status sowie Artefakte zurueck in die Projekt-Build-Historie.
+FlashBox-Quellen werden commitgenau aus dem privaten Forgejo-Repository geladen und ueber den normalen Project-Server-Buildpfad gebaut.
 
 Im VPS-Checkout wird er innerhalb des privaten Compose-Netzes gestartet:
 
 ```text
-docker compose --env-file .env.vps -f compose.vps.yaml exec project-server node /app/tools/submit-flashbox-build-job.js
+Der Build wird ueber das gebundene FlashBox-Projekt im Project Server gestartet.
 ```
 
 Der Aufruf nutzt den im Buildserver-Container konfigurierten echten Runner (`/opt/platformio/bin/platformio`); eine lokale PlatformIO-Installation des aufrufenden Rechners wird nicht verwendet. Der Test legt den technischen Projekt-Datensatz `system-flashbox-build-verification` und einen neuen BuildJob in der Projekt-SQLite an.
@@ -90,7 +90,7 @@ docker compose -f compose.flashbox-build-test.yaml up -d --build
 Danach denselben Headless-Job im Project-Server-Container starten:
 
 ```text
-docker compose -f compose.flashbox-build-test.yaml exec project-server node /app/tools/submit-flashbox-build-job.js
+Lokale Tests verwenden ebenfalls die private Forgejo-Projektbindung.
 ```
 
 Der lokale Test legt nur die Docker-Volumes `flashbox_project_state` und `flashbox_build_state` an. Beide sind technische Testdaten und enthalten keine fachliche Quelle der Wahrheit.

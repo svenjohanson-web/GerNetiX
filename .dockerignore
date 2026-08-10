@@ -11,14 +11,8 @@ model
 tools/yaml-graph-sqlite/out
 tools/architecture-docs
 generated
-projects/*
-!projects/waveshare-voice-lab/
-!projects/waveshare-voice-lab/**
-basissoftware/*
-!basissoftware/esp32
-!basissoftware/esp32/**
-!basissoftware/esp8266
-!basissoftware/esp8266/**
-basissoftware/esp32/managed_components
+projects
+basissoftware
+Demoanwendungen
 *.log
 .DS_Store

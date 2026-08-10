@@ -97,7 +97,7 @@ Ohne erreichbares Forgejo wird kein neues Entwicklungsprojekt angelegt.
 
 ESP32-/ESP8266-Basissoftware, Nexi, FlashBox sowie die getrennten
 Spielesammlungen fuer ESP8266-OLED und ESP32-S3-Touch werden mit
-`tools/publish-forgejo-system-repositories.js` in getrennte private
+Die Systemquellen werden direkt in getrennten privaten
 System-Repositories importiert. Der Build akzeptiert die Basissoftware nur an
 dem serverseitig freigegebenen Commit; eine Kundenangabe kann Organisation,
 Repository oder Commit nicht ersetzen. Beim Start eines Nexi-Projekts liest der

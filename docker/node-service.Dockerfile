@@ -43,9 +43,6 @@ RUN npm ci --omit=dev --prefix services/compute-control-plane
 RUN npm ci --omit=dev --prefix services/public-demo-server
 
 COPY --chown=node:node services ./services
-COPY --chown=node:node basissoftware ./basissoftware
-COPY --chown=node:node projects/waveshare-voice-lab ./projects/waveshare-voice-lab
-COPY --chown=node:node firmware/gernetix-flashbox ./firmware/gernetix-flashbox
 COPY --chown=node:node firmware/shared/gernetix-runtime-core ./firmware/shared/gernetix-runtime-core
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js
 COPY --chown=node:node tools/migrate-identity-sqlite-to-postgres.js ./tools/migrate-identity-sqlite-to-postgres.js
@@ -62,13 +59,9 @@ COPY --chown=node:node tools/migrate-postgres-binaries-to-artifact-store.js ./to
 COPY --chown=node:node tools/audit-postgres-binaries.js ./tools/audit-postgres-binaries.js
 COPY --chown=node:node tools/migrate-postgres-domains-to-runtime.js ./tools/migrate-postgres-domains-to-runtime.js
 COPY --chown=node:node tools/provision-build-worker-postgres.js ./tools/provision-build-worker-postgres.js
-COPY --chown=node:node tools/submit-flashbox-build-job.js ./tools/submit-flashbox-build-job.js
-COPY --chown=node:node tools/publish-nexi-release.js ./tools/publish-nexi-release.js
-COPY --chown=node:node tools/publish-forgejo-system-repositories.js ./tools/publish-forgejo-system-repositories.js
 COPY --chown=node:node tools/provision-forgejo-developer-access.js ./tools/provision-forgejo-developer-access.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js
 COPY --chown=node:node tools/usb-serial-helper ./tools/usb-serial-helper
-COPY --chown=node:node Demoanwendungen ./Demoanwendungen
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
 RUN npm run verify:runtime-deps --prefix services/identity-server

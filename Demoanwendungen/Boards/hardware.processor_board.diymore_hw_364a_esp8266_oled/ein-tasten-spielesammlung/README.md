@@ -22,7 +22,7 @@ Wichtig: Wird `FLASH` waehrend eines Resets gehalten, startet der ESP8266 techni
 ## Bauen
 
 ```text
-cd Demoanwendungen/Boards/hardware.processor_board.diymore_hw_364a_esp8266_oled/ein-tasten-spielesammlung/firmware
+cd ../GerNetiX-Projekte/spielesammlung-esp8266-oled
 platformio run -e diymore_hw_364a_games
 ```
 

@@ -38,9 +38,7 @@ test("binds Nexi Basic to its protected product source without claiming an activ
   assert.match(modelSource, /Ohne Provider/);
   assert.match(modelSource, /keine Aufnahme/);
   const dockerfile = fs.readFileSync(path.resolve(root, "../../docker/node-service.Dockerfile"), "utf8");
-  assert.match(dockerfile, /COPY --chown=node:node projects\/waveshare-voice-lab \.\/projects\/waveshare-voice-lab/);
-  const dockerignore = fs.readFileSync(path.resolve(root, "../../.dockerignore"), "utf8");
-  assert.match(dockerignore, /!projects\/waveshare-voice-lab\/\*\*/);
+  assert.doesNotMatch(dockerfile, /projects\/waveshare-voice-lab/);
 });
 
 test("defines every promised Nexi parent field in the versioned project app", () => {

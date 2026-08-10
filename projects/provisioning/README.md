@@ -2,7 +2,7 @@
 
 Dieses interne Hintergrundprojekt ist die konkrete Projekterweiterung fuer
 generische GerNetiX-Factory- und Provisioning-Firmware. Die geschuetzte
-Basissoftware bleibt unter `basissoftware/esp32/`; sie wird nicht hierher
+Basissoftware bleibt im privaten Forgejo-Repository `gernetix-platform/basissoftware-esp32`; sie wird nicht hierher
 kopiert.
 
 Direkte Factory-Builds der Basissoftware waehlen dieses Projekt ueber
