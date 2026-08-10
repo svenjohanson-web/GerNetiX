@@ -695,7 +695,7 @@ Umgesetzter erster Umfang:
   Basissoftware bleiben in getrennten Repositories und werden erst im
   technischen BuildWorkspace zusammengefuehrt.
 - Jedes dieser Repositories besitzt ausserdem einen bewussten Windows-Einstieg
-  `flash.bat`. Er verlangt immer einen ausdruecklichen seriellen Anschluss und
+  `flash.bat` fuer Windows und `flash.sh` fuer macOS. Beide verlangen immer einen ausdruecklichen seriellen Anschluss und
   bei Repositories mit mehreren Boards zusaetzlich das Software-Ziel. Der
   Adapter baut zuerst dasselbe materialisierte Worker-Paket und startet den
   PlatformIO-Upload anschliessend aus genau diesem isolierten Workspace. Dieses

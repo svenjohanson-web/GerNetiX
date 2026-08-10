@@ -17,7 +17,7 @@ const {
 const EXCLUDED_DIRECTORIES = new Set([
   ".git", ".pio", ".gernetix-build", ".vscode", "managed_components", "node_modules", "test",
 ]);
-const EXCLUDED_FILES = new Set(["build.bat", "flash.bat", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
+const EXCLUDED_FILES = new Set(["build.bat", "flash.bat", "flash.sh", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
 
 async function main(argv = process.argv.slice(2)) {
   const repositoryRoot = path.resolve(option(argv, "--repository") || process.cwd());
@@ -96,9 +96,9 @@ function selectTargets(targets, requestedTarget, flashRequested = false) {
   return targets;
 }
 
-function normalizeUploadPort(value) {
+function normalizeUploadPort(value, platform = process.platform) {
   const port = String(value || "").trim();
-  if (process.platform === "win32") {
+  if (platform === "win32") {
     if (!/^COM[1-9][0-9]{0,2}$/i.test(port)) throw new Error("Zum Flashen muss ein gueltiger COM-Port angegeben werden, zum Beispiel COM5.");
     return port.toUpperCase();
   }

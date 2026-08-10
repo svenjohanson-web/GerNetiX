@@ -19,10 +19,10 @@ test("rejects historical source paths outside the materialized worker package", 
 });
 
 test("requires an explicit safe upload port and one target for multi-device flashing", () => {
-  if (process.platform === "win32") {
-    assert.equal(normalizeUploadPort("com5"), "COM5");
-    assert.throws(() => normalizeUploadPort("COM5 & erase"), /gueltiger COM-Port/);
-  }
+  assert.equal(normalizeUploadPort("com5", "win32"), "COM5");
+  assert.throws(() => normalizeUploadPort("COM5 & erase", "win32"), /gueltiger COM-Port/);
+  assert.equal(normalizeUploadPort("/dev/cu.usbmodem1101", "darwin"), "/dev/cu.usbmodem1101");
+  assert.throws(() => normalizeUploadPort("/dev/../disk0", "darwin"), /gueltiger serieller Device-Pfad/);
   const targets = [{ id: "camera_sender" }, { id: "display_receiver" }];
   assert.throws(() => selectTargets(targets, "", true), /mehrere Flashziele/);
   assert.deepEqual(selectTargets(targets, "display_receiver", true), [{ id: "display_receiver" }]);
