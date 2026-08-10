@@ -694,6 +694,12 @@ Umgesetzter erster Umfang:
   `.gernetix-build/` ausserhalb der Git-Historie. Produktquellen und
   Basissoftware bleiben in getrennten Repositories und werden erst im
   technischen BuildWorkspace zusammengefuehrt.
+- Jedes dieser Repositories besitzt ausserdem einen bewussten Windows-Einstieg
+  `flash.bat`. Er verlangt immer einen ausdruecklichen seriellen Anschluss und
+  bei Repositories mit mehreren Boards zusaetzlich das Software-Ziel. Der
+  Adapter baut zuerst dasselbe materialisierte Worker-Paket und startet den
+  PlatformIO-Upload anschliessend aus genau diesem isolierten Workspace. Dieses
+  lokale USB-Flashen ist kein Worker-, Deploy- oder automatischer Buildschritt.
 - Tokens erscheinen weder in Clone-URLs noch in Projektdateien oder Logs.
 
 Branches, Pull Requests, weitere Kollaborationsrollen, SSO, Spiegelung nach

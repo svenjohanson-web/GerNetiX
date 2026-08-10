@@ -4,7 +4,11 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { BuildPackageStore } = require("../services/build-deploy-server/src/modules/build-package-store");
-const { FirmwareBuildJobRunner } = require("../services/build-deploy-server/src/modules/firmware-build-job-runner");
+const {
+  createPlatformioEnv,
+  FirmwareBuildJobRunner,
+  spawnAndCapture,
+} = require("../services/build-deploy-server/src/modules/firmware-build-job-runner");
 const {
   composeEsp32BasissoftwarePackage,
   loadEsp32BasissoftwareFiles,
@@ -13,15 +17,18 @@ const {
 const EXCLUDED_DIRECTORIES = new Set([
   ".git", ".pio", ".gernetix-build", ".vscode", "managed_components", "node_modules", "test",
 ]);
-const EXCLUDED_FILES = new Set(["build.bat", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
+const EXCLUDED_FILES = new Set(["build.bat", "flash.bat", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
 
 async function main(argv = process.argv.slice(2)) {
   const repositoryRoot = path.resolve(option(argv, "--repository") || process.cwd());
   const checkOnly = argv.includes("--check");
+  const flashRequested = argv.includes("--flash");
+  const uploadPort = flashRequested ? normalizeUploadPort(option(argv, "--port")) : "";
   const manifestPath = path.join(repositoryRoot, "gernetix", "system-repository.json");
   const manifest = JSON.parse(await fsp.readFile(manifestPath, "utf8"));
-  const targets = Array.isArray(manifest.local_build?.targets) ? manifest.local_build.targets : [];
-  if (!targets.length) throw new Error("Im System-Repository fehlt gernetix/system-repository.json.local_build.targets.");
+  const configuredTargets = Array.isArray(manifest.local_build?.targets) ? manifest.local_build.targets : [];
+  if (!configuredTargets.length) throw new Error("Im System-Repository fehlt gernetix/system-repository.json.local_build.targets.");
+  const targets = selectTargets(configuredTargets, option(argv, "--target"), flashRequested);
 
   const platformioCommand = findPlatformio();
   const cacheRoot = path.join(repositoryRoot, ".gernetix-build");
@@ -57,14 +64,48 @@ async function main(argv = process.argv.slice(2)) {
       buildDir: workspace.buildDir,
       onProgress: (line) => process.stdout.write(`${line}\n`),
     });
+    if (flashRequested) {
+      const env = createPlatformioEnv(path.join(cacheRoot, "platformio-core"), workspace.packageDir, workspace.buildDir);
+      const upload = await spawnAndCapture(platformioCommand, ["run", "-t", "upload", "--upload-port", uploadPort], {
+        cwd: workspace.packageDir,
+        env,
+        onOutput: (line) => process.stdout.write(`${line}\n`),
+      });
+      if (upload.exitCode !== 0) throw new Error(`PlatformIO-Upload fuer ${target.id} fehlgeschlagen.`);
+    }
     results.push({
       target: target.id,
-      status: output.status,
+      status: flashRequested ? "flashed" : output.status,
       workspace: workspace.packageDir,
       artifacts: output.artifacts,
     });
   }
-  process.stdout.write(`${JSON.stringify({ repository: manifest.source_id, mode: checkOnly ? "check" : "build", targets: results }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ repository: manifest.source_id, mode: checkOnly ? "check" : flashRequested ? "flash" : "build", targets: results }, null, 2)}\n`);
+}
+
+function selectTargets(targets, requestedTarget, flashRequested = false) {
+  const targetId = String(requestedTarget || "").trim();
+  if (targetId) {
+    const selected = targets.find((target) => target.id === targetId);
+    if (!selected) throw new Error(`Unbekanntes Buildziel: ${targetId}`);
+    return [selected];
+  }
+  if (flashRequested && targets.length > 1) {
+    throw new Error(`Dieses Projekt besitzt mehrere Flashziele. Waehle eines: ${targets.map((target) => target.id).join(", ")}`);
+  }
+  return targets;
+}
+
+function normalizeUploadPort(value) {
+  const port = String(value || "").trim();
+  if (process.platform === "win32") {
+    if (!/^COM[1-9][0-9]{0,2}$/i.test(port)) throw new Error("Zum Flashen muss ein gueltiger COM-Port angegeben werden, zum Beispiel COM5.");
+    return port.toUpperCase();
+  }
+  if (!/^\/dev\/[A-Za-z0-9._/-]+$/.test(port) || port.includes("..")) {
+    throw new Error("Zum Flashen muss ein gueltiger serieller Device-Pfad angegeben werden.");
+  }
+  return port;
 }
 
 async function createBuildPackageFiles(repositoryRoot, manifest, target) {
@@ -208,4 +249,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createBuildPackageFiles, main, productProjectSources, validatePackage };
+module.exports = { createBuildPackageFiles, main, normalizeUploadPort, productProjectSources, selectTargets, validatePackage };
