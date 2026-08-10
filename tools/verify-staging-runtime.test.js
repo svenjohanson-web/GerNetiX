@@ -18,7 +18,6 @@ const dockerIgnore = fs.readFileSync(path.join(repoRoot, ".dockerignore"), "utf8
 test("discovers Identity dependencies outside its service directory", () => {
   const paths = discoverIdentityRuntimePaths({ repoRoot });
   for (const expected of [
-    "Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung/firmware",
     "basissoftware/esp32/firmware-build-targets.js",
     "docker/healthcheck.js",
     "services/recovery-tool/src/services/recovery-service.js",

@@ -29,6 +29,7 @@ test("parses deploy arguments", () => {
     publishNexi: false,
     publishSystemRepositories: false,
     migrateArtifacts: false,
+    forceFull: false,
     host: "deploy@example.test",
     branch: "agent/test",
   });
@@ -131,6 +132,10 @@ test("rejects unsafe refs and ssh targets", () => {
   assert.equal(assertSafeSshTarget("gernetix-vps"), "gernetix-vps");
 });
 
+test("parses an explicit full-deployment recovery", () => {
+  assert.equal(parseArgs(["--force-full"]).forceFull, true);
+});
+
 test("quotes remote values and deploys an exact commit", () => {
   assert.equal(shellQuote("/opt/gernetix"), "'/opt/gernetix'");
   const command = remoteDeployCommand({
@@ -143,6 +148,24 @@ test("quotes remote values and deploys an exact commit", () => {
   assert.match(command, /git switch --detach .*0123456789abcdef/);
   assert.match(command, /remote-deploy\.sh "\$previous_commit"/);
   assert.match(command, /flock -E 75 -n \/var\/lock\/gernetix-staging-deploy\.lock/);
+});
+
+test("uses a validated earlier commit to repeat a full deployment", () => {
+  const previousCommit = "f".repeat(40);
+  const command = remoteDeployCommand({
+    branch: "main",
+    commit: "0".repeat(40),
+    remoteDir: "/opt/gernetix",
+    forcedPreviousCommit: previousCommit,
+  });
+  assert.match(command, /previous_commit=/);
+  assert.match(command, new RegExp(previousCommit));
+  assert.throws(() => remoteDeployCommand({
+    branch: "main",
+    commit: "0".repeat(40),
+    remoteDir: "/opt/gernetix",
+    forcedPreviousCommit: "main; reboot",
+  }), /ungueltig/);
 });
 
 test("runs the controlled Forgejo system-source publisher only when requested", () => {
