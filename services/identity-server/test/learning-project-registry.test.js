@@ -87,3 +87,8 @@ test("every registered project provides sources through the same call shape", ()
     assert.ok(sources.length > 0, `${item.slug} must provide at least one source`);
   }
 });
+
+test("every registered project can be normalized with its catalog tags", () => {
+  const { learningProjectRegistry } = createLearningProjectModels({ readWorkspaceText });
+  assert.doesNotThrow(() => learningProjectRegistry.createProjects(project, step));
+});
