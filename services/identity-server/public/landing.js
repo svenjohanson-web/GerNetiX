@@ -1,5 +1,6 @@
 const menuButton = document.querySelector("#publicMenuButton");
 const menu = document.querySelector("#publicMenu");
+const publicLoginLink = document.querySelector("#publicLoginLink");
 let publicI18n = null;
 
 initializePublicTheme();
@@ -86,6 +87,11 @@ function showAuthenticatedPublicNavigation(account) {
     createNavigationLink("/app/messages/", "Nachrichten"),
     logoutLink,
   );
+  if (publicLoginLink) {
+    publicLoginLink.href = "/app/dashboard/";
+    publicLoginLink.textContent = "Zum Dashboard";
+    publicLoginLink.dataset.i18n = "landing.header.dashboard_action";
+  }
   publicI18n?.translateDocument();
   document.body.classList.add("public-session-authenticated");
 }

@@ -14,7 +14,9 @@ const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
 
 test("serves the GerNetiX homepage publicly before authentication", () => {
   assert.match(server, /path: "\/", handler: \(\{ res \}\) => serveStatic\(res, publicDir, "\/index\.html"\)/);
-  assert.match(html, /href="\/app\/auth\/">Anmelden/);
+  assert.match(html, /id="publicLoginLink" class="header-login-link" href="\/app\/auth\/"[\s\S]*Anmelden/);
+  assert.match(css, /\.header-login-link, \.menu-button, \.public-language-switcher, \.public-theme-toggle \{[\s\S]*background: linear-gradient\(180deg, #f0ece5 0%, #e6ded2 100%\);[\s\S]*box-shadow:/);
+  assert.match(client, /publicLoginLink\.href = "\/app\/dashboard\/";[\s\S]*publicLoginLink\.textContent = "Zum Dashboard";/);
   assert.doesNotMatch(html, /Jetzt starten/);
 });
 
@@ -23,17 +25,18 @@ test("puts engineering thinking, freedom and manageable complexity at the top of
   assert.match(html, /nimmt dir Komplexität nicht einfach weg[\s\S]*nachvollziehbaren Schritten[\s\S]*eigene Hardware einbindest[\s\S]*verteilte Systeme frei gestalten/);
 });
 
-test("introduces learning and development as the two GerNetiX areas", () => {
-  assert.match(html, /href="#learning-paths"[\s\S]*Zum Lernbereich/);
-  assert.match(html, /href="#ide"[\s\S]*Zum Entwicklungsbereich/);
-  assert.doesNotMatch(html, /direkt mit Projekten zum Nachbauen starten|Drei Bereiche/);
+test("does not interrupt the opening with a disconnected area choice", () => {
+  assert.doesNotMatch(html, /Wo möchtest du beginnen|id="gernetix-overview"|class="home-area-card/);
+  assert.doesNotMatch(html, /href="#learning-paths"|href="#ide"/);
 });
 
-test("integrates motivation and the complete system scope into one closing story", () => {
+test("places motivation and the complete system scope directly below the hero", () => {
   assert.match(html, /class="panel home-purpose"[\s\S]*Verstehen macht dich unabhängig/);
   assert.match(html, /class="panel home-purpose"[\s\S]*id="scope" class="home-scope"/);
   assert.match(html, /Ein zusammenhängendes System[\s\S]*Vom Embedded-Gerät bis zur Anwendung/);
-  assert.match(html, /class="system-chain"[\s\S]*Embedded-System[\s\S]*Lokaler Server[\s\S]*Cloud &amp; Dienste[\s\S]*Anwendung/);
+  assert.match(html, /class="system-flow-visual"[\s\S]*src="\/images\/gernetix-system-flow\.png"[\s\S]*alt="[^"]*Embedded-Elektronik[^"]*lokalen Server[^"]*Cloud-Dienste[^"]*Anwendung/);
+  assert.ok(fs.existsSync(path.join(publicRoot, "images", "gernetix-system-flow.png")));
+  assert.doesNotMatch(html, /class="system-chain"|<svg[^>]*class="system-flow-visual"/);
   assert.match(html, /Embedded Systems &amp; Elektronik/);
   assert.match(html, /Kommunikation &amp; Netzwerke/);
   assert.match(html, /Apps &amp; Benutzeroberflächen/);
@@ -41,6 +44,8 @@ test("integrates motivation and the complete system scope into one closing story
   assert.match(html, /Verteilte Systeme &amp; Systemarchitektur/);
   assert.match(html, /KI als Entwicklungswerkzeug/);
   assert.doesNotMatch(html, /id="platform-title"|Unsere Plattform|class="scope-uml"/);
+  assert.ok(html.indexOf('id="hero-title"') < html.indexOf('id="motivation"'));
+  assert.ok(html.indexOf('id="motivation"') < html.indexOf('id="shared-spaces"'));
 });
 
 test("uses the GerNetiX corporate design and responsive homepage grids", () => {
@@ -50,30 +55,21 @@ test("uses the GerNetiX corporate design and responsive homepage grids", () => {
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);
   assert.match(css, /\.hero h1 \{ font-size: clamp\(26px, 3vw, 34px\); \}/);
   assert.match(css, /\.home-area-grid \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(css, /\.shared-space-grid \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(css, /\.system-chain \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.shared-spaces \{ grid-template-columns: minmax\(190px, \.55fr\) minmax\(0, 1\.45fr\);[\s\S]*padding: 30px 0;/);
+  assert.match(css, /\.shared-space-links \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.system-flow-visual \{[\s\S]*overflow: hidden;[\s\S]*border: 1px solid/);
+  assert.match(css, /\.system-flow-visual img \{ display: block; width: 100%; height: auto; \}/);
   assert.match(css, /@media \(max-width: 1040px\)[\s\S]*\.nexi-home-feature,[\s\S]*\.home-purpose-layout \{ grid-template-columns: 1fr; \}/);
-  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.home-area-grid \{ grid-template-columns: 1fr; \}[\s\S]*\.shared-space-grid,[\s\S]*\.system-chain \{ grid-template-columns: 1fr; \}/);
-});
-
-test("gives learning and development equal, direct entry cards", () => {
-  assert.match(html, /id="gernetix-overview"[\s\S]*Wo möchtest du beginnen/);
-  assert.equal((html.match(/class="home-area-card /g) || []).length, 2);
-  assert.match(html, /id="learning-paths" class="home-area-card learning"[\s\S]*id="ide" class="home-area-card development"/);
-  assert.match(html, /Lernbereich[\s\S]*Verstehen, ausprobieren, weiterbauen/);
-  assert.match(html, /Entwicklungsbereich[\s\S]*Eigene Systeme an einem Ort entwickeln/);
-  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Flearn%2F"[\s\S]*Lernbereich öffnen/);
-  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fdevelopment-platform%2F"[\s\S]*Entwicklungsbereich öffnen/);
-  assert.doesNotMatch(html, /home-area-card nexi|Für Fortgeschrittene/);
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.shared-spaces \{ grid-template-columns: 1fr;[\s\S]*\.shared-space-links \{ grid-template-columns: 1fr; \}/);
 });
 
 test("shows the knowledge portal and community as shared companions", () => {
-  assert.match(html, /id="shared-spaces"[\s\S]*Für beide Bereiche/);
-  assert.match(html, /Wissensportal und Community sind keine weiteren Wege[\s\S]*beim Lernen genauso wie beim Entwickeln/);
-  assert.match(html, /class="shared-space-card" href="\/wissen\/"[\s\S]*Wissensportal/);
-  assert.match(html, /class="shared-space-card" href="\/community\/"[\s\S]*Community/);
-  assert.equal((html.match(/class="shared-space-card"/g) || []).length, 2);
-  assert.ok(html.indexOf('id="ide"') < html.indexOf('id="shared-spaces"'));
+  assert.match(html, /id="shared-spaces"[\s\S]*Wissen und Austausch/);
+  assert.match(html, /class="shared-space-link" href="\/wissen\/"[\s\S]*Wissensportal/);
+  assert.match(html, /class="shared-space-link" href="\/community\/"[\s\S]*Community/);
+  assert.equal((html.match(/class="shared-space-link"/g) || []).length, 2);
+  assert.doesNotMatch(html, /Für beide Bereiche|keine weiteren Wege|shared-space-contexts|Wissensportal öffnen|Community öffnen/);
+  assert.ok(html.indexOf('id="motivation"') < html.indexOf('id="shared-spaces"'));
   assert.ok(html.indexOf('id="shared-spaces"') < html.indexOf('id="nexi"'));
 });
 
@@ -87,14 +83,16 @@ test("keeps the GerNetiX motivation concise and connected to both areas", () => 
 });
 
 test("keeps Nexi as a concrete example instead of a third platform area", () => {
-  assert.match(html, /Ein Beispiel, beide Bereiche/);
-  assert.match(html, /Mit Nexi erst verstehen – und dann selbst weiterentwickeln/);
+  assert.match(html, /class="project-example-label"[\s\S]*Beispiel aus den Nachbauprojekten/);
+  assert.match(html, /id="nexi-home-title"[\s\S]*Nexi: Sprachassistent zum Nachbauen/);
   assert.match(html, /Nachbauen und ausprobieren[\s\S]*Im Lernbereich verstehen[\s\S]*Im Entwicklungsbereich erweitern/);
-  assert.match(html, /href="\/nachbauprojekte\/nexi-sprachassistent\/"[\s\S]*Nexi nachbauen/);
-  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fnexi%2F"[\s\S]*Nexi persönlich einrichten/);
+  assert.match(html, /href="\/nachbauprojekte\/nexi-sprachassistent\/"[\s\S]*Nexi ansehen/);
+  assert.match(html, /href="\/nachbauprojekte\/"[\s\S]*Alle Nachbauprojekte/);
+  assert.doesNotMatch(html, /Nexi persönlich einrichten/);
+  assert.match(css, /\.nexi-home-copy #nexi-home-title \{[\s\S]*font-size: clamp\(21px, 2\.3vw, 27px\);/);
   assert.match(css, /\.nexi-home-options \{ display: grid;[\s\S]*border-left: 1px solid/);
   assert.match(css, /\.nexi-home-options li \{ display: grid;/);
-  assert.ok(html.indexOf('id="nexi"') < html.indexOf('id="motivation"'));
+  assert.ok(html.indexOf('id="motivation"') < html.indexOf('id="nexi"'));
 });
 
 test("does not single out the UML learning project on the homepage", () => {

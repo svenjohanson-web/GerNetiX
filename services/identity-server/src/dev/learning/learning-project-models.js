@@ -21,6 +21,8 @@ const { createRadioTechnologiesCourseModel } = require("../project-models/radio-
 const { createMeasurementToolsBasicsCourseModel } = require("../project-models/measurement-tools-basics-course");
 const { createEsp32CameraStreamingCourseModel } = require("../project-models/esp32-camera-streaming-course");
 const { createPlantWateringControlCourseModel } = require("../project-models/plant-watering-control-course");
+const { createEmbeddedRuntimeAndInterruptsCourseModel } = require("../project-models/embedded-runtime-and-interrupts-course");
+const { createEmbeddedCHardwareControlCourseModel } = require("../project-models/embedded-c-hardware-control-course");
 
 const definitions = [
   ["arduinoBlinkCourseModel", () => createArduinoBlinkCourseModel()],
@@ -43,6 +45,8 @@ const definitions = [
   ["measurementToolsBasicsCourseModel", () => createMeasurementToolsBasicsCourseModel()],
   ["esp32CameraStreamingCourseModel", () => createEsp32CameraStreamingCourseModel()],
   ["plantWateringControlCourseModel", () => createPlantWateringControlCourseModel()],
+  ["embeddedRuntimeAndInterruptsCourseModel", () => createEmbeddedRuntimeAndInterruptsCourseModel()],
+  ["embeddedCHardwareControlCourseModel", () => createEmbeddedCHardwareControlCourseModel()],
 ];
 
 function createLearningProjectModels({ readWorkspaceText }) {

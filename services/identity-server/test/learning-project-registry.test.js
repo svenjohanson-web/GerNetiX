@@ -43,6 +43,8 @@ test("all active learning projects use one registry contract", () => {
     "measurement-tools-basics",
     "esp32-camera-streaming",
     "plant-watering-control",
+    "embedded-runtime-and-interrupts",
+    "embedded-c-hardware-control",
   ];
 
   assert.deepEqual(learningProjectRegistry.models.map((model) => model.slug), expectedSlugs);
@@ -59,11 +61,15 @@ test("registry creates every project including programming fundamentals", () => 
   const { learningProjectRegistry } = createLearningProjectModels({ readWorkspaceText });
   const projects = learningProjectRegistry.createProjects(project, step);
 
-  assert.equal(projects.length, 20);
+  assert.equal(projects.length, 22);
   assert.equal(projects.find((item) => item.slug === "programming-fundamentals")?.title,
     "Grundlagen der Programmierung");
   assert.equal(projects.find((item) => item.slug === "arduino-blink")?.access_model, "free");
   assert.equal(projects.find((item) => item.slug === "plant-watering-control")?.access_model, "purchased");
+  assert.equal(projects.find((item) => item.slug === "embedded-runtime-and-interrupts")?.title,
+    "Mikrocontroller intern: Programmstart, Speicher und Interrupts");
+  assert.equal(projects.find((item) => item.slug === "embedded-c-hardware-control")?.title,
+    "Embedded C: Hardware sicher steuern");
 });
 
 test("every registered project provides sources through the same call shape", () => {

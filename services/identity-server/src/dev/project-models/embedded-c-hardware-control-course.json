@@ -1,0 +1,147 @@
+{
+  "slug": "embedded-c-hardware-control",
+  "project": {
+    "slug": "embedded-c-hardware-control",
+    "title": "Embedded C: Hardware sicher steuern",
+    "area": "Embedded-Ausbaukurs",
+    "summary": "Lerne C dort, wo es auf Mikrocontrollern zählt: feste Datentypen, Speicher, Pointer, Bitmasken, Register, volatile, Interrupts und die kritische Prüfung von KI-Code.",
+    "learning_category": "embedded",
+    "tags": ["topic:embedded-c", "topic:memory", "topic:registers", "topic:interrupts", "level:advanced"],
+    "steps": [
+      { "title": "C als Vertrag zwischen Hardware und Programm", "text": "Lies ein kleines LED- und Tasterprogramm und unterscheide fachliche Logik, Hardware-Abstraktion und registernahe Operationen.", "insight": "C ist im Embedded-Bereich wertvoll, weil Speicher, Datenrepräsentation und Seiteneffekte präzise sichtbar bleiben." },
+      { "title": "Feste Datentypen und Überläufe", "text": "Wähle uint8_t, int16_t, uint32_t und bool aus einer fachlichen Werte- und Grenzbeschreibung aus und beobachte einen absichtlichen Überlauf.", "insight": "Datentypen beschreiben einen Wertebereich; sie sind keine bloße Schreibweise für Zahlen." },
+      { "title": "Speicherdauer und const", "text": "Ordne lokale, globale, statische und konstante Daten nach Lebensdauer, Änderbarkeit und Speicherbedarf ein.", "insight": "const ist ein Teil des Schnittstellenvertrags: Es schützt davor, Daten versehentlich über einen falschen Zugriff zu verändern." },
+      { "title": "Pointer als Adresse mit Verantwortung", "text": "Verfolge einen Pointer auf eine Struktur, prüfe Null, Lebensdauer und gültigen Bereich und ersetze einen unklaren Zugriff durch eine sichere Schnittstelle.", "insight": "Ein Pointer macht keinen Speicher sicher; die Verantwortung für Gültigkeit und Eigentum bleibt beim Entwurf." },
+      { "title": "Strukturen und Zustände ausdrücken", "text": "Modelliere Sensorwert, Zeitstempel und Status als struct und verwende enum für klar benannte Betriebszustände.", "insight": "Gute C-Strukturen reduzieren verstreute globale Variablen und machen zusammengehörende Daten sichtbar." },
+      { "title": "Bits und Register gezielt ändern", "text": "Setze, lösche und teste einzelne Bits mit Bitmasken, ohne andere Registerbits zu verändern. Lies dazu die Bedeutung eines Datenblattregisters.", "insight": "Ein Registerzugriff ist eine Hardwareaktion; eine falsche Maske kann andere Funktionen unbemerkt ändern." },
+      { "title": "volatile richtig einordnen", "text": "Vergleiche eine normale Variable mit einem Wert, der durch Hardware oder ISR verändert wird. Entscheide, wann volatile nötig ist und was es nicht löst.", "insight": "volatile erzwingt sichtbare Lese- und Schreibzugriffe, aber keine atomaren Operationen und keine korrekte Synchronisation." },
+      { "title": "Interruptdaten sicher übergeben", "text": "Verbinde eine kurze Taster-ISR mit der Hauptschleife über Ereignisflag und Zähler. Begründe, wann ein kritischer Abschnitt nötig wird.", "insight": "Der zuverlässige Weg ist klein: ISR erfasst, Hauptschleife verarbeitet, gemeinsam genutzte Daten haben klare Regeln." },
+      { "title": "KI-Code wie einen Hardwarevorschlag prüfen", "text": "Prüfe einen KI-generierten C-Ausschnitt auf Wertebereich, Nebenwirkungen, Bitmasken, blockierende Aufrufe und ISR-Tauglichkeit.", "insight": "KI beschleunigt das Schreiben; Verantwortung entsteht durch gezieltes Lesen, Testen und Messen." },
+      { "title": "Abschluss: Robuster Statuscontroller", "text": "Entwirf einen kleinen Controller mit Taster, LED, Timer und Zustandsautomat. Lege Datentypen, Speicherorte, ISR-Regeln und Tests fest.", "insight": "Embedded C ist dann beherrscht, wenn Hardwareverhalten begründet, überprüfbar und änderbar bleibt." }
+    ],
+    "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "docs/embedded-c-sicher-steuern.md", "role": "learning_guide" },
+      { "path": "src/status_controller.c", "role": "user_code" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Embedded C: Hardware sicher steuern",
+    "summary": "C lesen, begründen und sicher ändern, wenn Speicher, Zeit und Hardwarezustand begrenzt sind.",
+    "primary_source_path": "docs/embedded-c-sicher-steuern.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "c-boundary", "type": "story_slide", "title": "Warum Embedded C weiterhin zählt", "summary": "KI kann C-Code vorschlagen. Für die Freigabe müssen Menschen aber Speicher, Zeit und Hardwarewirkung beurteilen können.",
+        "completion": { "type": "acknowledge", "label": "Kursziel verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Lesen", "text": "Welche Daten werden verändert, welche Hardware wird angesprochen und welche Annahmen macht der Code?" },
+          { "label": "Begründen", "text": "Datentyp, Speicherbereich und Ablauf müssen aus der Aufgabe folgen." },
+          { "label": "Prüfen", "text": "Compilerwarnungen, Unit-Tests, Messwerte und Hardwarebeobachtung ergänzen einander." },
+          { "label": "Ändern", "text": "Kleine, nachvollziehbare Änderungen sind sicherer als ein unkontrolliert übernommener großer Vorschlag." }
+        ] }
+      },
+      {
+        "id": "integer-ranges", "type": "explanation", "title": "Zahlen haben feste Grenzen", "summary": "Auf Mikrocontrollern ist der Wertebereich ein sichtbarer Entwurfsbestandteil.",
+        "completion": { "type": "acknowledge", "label": "Datentypen eingeordnet" },
+        "payload": { "cards": [
+          { "title": "uint8_t", "text": "0 bis 255: sinnvoll für kleine Zähler, Byteprotokolle oder PWM-Werte, wenn der Bereich wirklich genügt." },
+          { "title": "int16_t und uint32_t", "text": "Vorzeichen und Reichweite aus der fachlichen Bedeutung ableiten. Zeitdauern brauchen oft mehr als einen Bytewert." },
+          { "title": "Überlauf", "text": "Unsigned-Werte laufen modulo ihrer Bitbreite um. Ein Sicherheitsgrenzwert darf daher nicht nur auf gutartige Eingaben vertrauen." },
+          { "title": "Einheiten", "text": "Ein Name wie temperature_deci_c oder timeout_ms macht Skalierung und Einheit sichtbar." }
+        ] }
+      },
+      {
+        "id": "storage", "type": "story_slide", "title": "Lebensdauer entscheidet über Speicher", "summary": "Nicht jede Variable gehört global und nicht jede Konstante lebt im RAM.",
+        "completion": { "type": "acknowledge", "label": "Speicherregeln verstanden" },
+        "payload": { "model_lines": [
+          { "label": "lokal", "text": "Existiert nur während eines Funktionsaufrufs und liegt typischerweise im Stack." },
+          { "label": "static / global", "text": "Existiert während der ganzen Laufzeit; gehört in Data oder BSS und braucht eine klare Eigentümerschaft." },
+          { "label": "const", "text": "Unveränderliche Tabellen und Konfigurationen können im Programmspeicher liegen; die konkrete Platzierung ist toolchainabhängig." },
+          { "label": "Heap", "text": "Dynamische Reservierung ist möglich, kann aber in dauerhaften Firmwares Fragmentierung und schwer reproduzierbare Fehler erzeugen." }
+        ] }
+      },
+      {
+        "id": "pointers-and-structs", "type": "explanation", "title": "Pointer und Strukturen mit klaren Grenzen", "summary": "Adresse, Gültigkeit und Eigentum müssen beim Funktionsaufruf verständlich sein.",
+        "completion": { "type": "acknowledge", "label": "Pointer-Schnittstelle verstanden" },
+        "payload": { "cards": [
+          { "title": "Pointer", "text": "Ein Pointer enthält eine Adresse. Vor Dereferenzierung müssen Null, Lebensdauer und erlaubter Bereich geklärt sein." },
+          { "title": "const SensorState *", "text": "Die Funktion darf den Zustand lesen, aber nicht verändern; das schützt die Schnittstelle bereits beim Kompilieren." },
+          { "title": "struct", "text": "Zusammengehörende Werte wie Messwert, Zeit und Status bleiben als eine Einheit sichtbar." },
+          { "title": "enum", "text": "Benannte Zustände sind lesbarer und prüfbarer als verstreute Zahlen wie 0, 1 oder 2." }
+        ] }
+      },
+      {
+        "id": "register-bits", "type": "implementation_plan", "title": "Bits ändern, ohne Nachbarn zu zerstören", "summary": "Register werden mit Datenblatt, Maske und gezielter Lese-Änderungs-Schreib-Operation behandelt.",
+        "payload": { "tasks": [
+          "für ein gewünschtes Registerbit eine lesbare Maske definieren",
+          "zum Setzen: register |= MASKE verwenden",
+          "zum Löschen: register &= ~MASKE verwenden",
+          "zum Prüfen: (register & MASKE) != 0 auswerten",
+          "vor jeder Änderung Datenblattbedeutung, schreibgeschützte Bits und Seiteneffekte prüfen",
+          "bei hardwarespezifischen Atomaritätsregeln die Dokumentation der Plattform beachten"
+        ] }
+      },
+      {
+        "id": "volatile", "type": "explanation", "title": "volatile ist keine Synchronisation", "summary": "Hardware und Interrupts können Werte außerhalb des sichtbaren Hauptablaufs verändern.",
+        "completion": { "type": "acknowledge", "label": "volatile korrekt eingeordnet" },
+        "payload": { "cards": [
+          { "title": "Nötig", "text": "Für Memory-Mapped-Register und Werte, die ISR oder Hardware sichtbar verändern können." },
+          { "title": "Nicht gelöst", "text": "volatile verhindert weder verlorene Updates noch halb gelesene mehrbyteige Werte." },
+          { "title": "Keine Sperre", "text": "Mehrere Schritte wie Lesen, Erhöhen und Schreiben bleiben mehrere Schritte." },
+          { "title": "Folge", "text": "Atomare Zugriffe, kurze kritische Abschnitte oder eine passende Ereignisübergabe bleiben erforderlich." }
+        ] }
+      },
+      {
+        "id": "isr-handoff", "type": "story_slide", "title": "Tasterinterrupt: kurz erfassen, später handeln", "summary": "Die ISR setzt ein Flag; die Hauptschleife entscheidet über Entprellung, Zustand und LED-Ausgabe.",
+        "completion": { "type": "acknowledge", "label": "ISR-Übergabe verstanden" },
+        "payload": { "model_lines": [
+          { "label": "ISR", "text": "Quittiert die Interruptquelle und setzt button_event oder erhöht einen kleinen Zähler." },
+          { "label": "Hauptschleife", "text": "Liest das Ereignis, entprellt, ändert den Zustandsautomaten und aktualisiert die Ausgabe." },
+          { "label": "Gemeinsame Daten", "text": "Größe, Atomarität und Schutzregel werden dokumentiert – besonders bei mehr als einem Byte." },
+          { "label": "Grenze", "text": "Kein delay, kein Netzwerk, keine Anzeige und keine große Berechnung in der ISR." }
+        ] }
+      },
+      {
+        "id": "ai-code-review", "type": "implementation_plan", "title": "KI-Vorschlag als Code-Review behandeln", "summary": "Bevor Hardwarecode übernommen wird, werden Annahmen und Fehlerfälle sichtbar gemacht.",
+        "payload": { "tasks": [
+          "Datentypen gegen Wertebereich, Einheit und Überlauf prüfen",
+          "Pointer auf Null, Lebensdauer, Ausrichtung und Eigentum prüfen",
+          "Bitmasken gegen das Datenblatt und unerwünschte Nachbarbits prüfen",
+          "ISR auf Laufzeit, blockierende Aufrufe und gemeinsame Daten prüfen",
+          "Compilerwarnungen als Fehler behandeln und Grenzfälle testen",
+          "erst danach auf einem ungefährlichen Aufbau messen und beobachten"
+        ] }
+      },
+      {
+        "id": "embedded-c-capstone", "type": "implementation_plan", "title": "Abschluss: Statuscontroller", "summary": "Ein Taster schaltet Betriebszustände, ein Timer überwacht Zeitgrenzen und eine LED zeigt den Zustand an.",
+        "payload": { "tasks": [
+          "enum für mindestens drei Betriebszustände definieren",
+          "struct für den gemeinsam benötigten Status festlegen",
+          "Datentypen und Einheiten für Zähler und Zeitgrenzen begründen",
+          "Timer- und Taster-ISR mit minimaler Ereigniserfassung schreiben oder skizzieren",
+          "Hauptschleife ohne blockierendes Warten entwerfen",
+          "alle Registermasken und volatile-Zugriffe dokumentieren",
+          "einen KI-Vorschlag anhand der Kurs-Checkliste überprüfen und mindestens einen Testfall ergänzen"
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/embedded-c-sicher-steuern.md",
+      "role": "learning_guide",
+      "content": "# Embedded C: Hardware sicher steuern\n\n## Lernziel\n\nDieser Kurs lehrt nicht, möglichst viel C auswendig zu schreiben. Er lehrt, C-Code zu lesen, seine Hardwarewirkung zu begründen und Vorschläge – auch KI-Vorschläge – sicher zu prüfen.\n\n## Review-Checkliste\n\n1. Passt jeder Datentyp zu Wertebereich, Vorzeichen und Einheit?\n2. Ist klar, wo Daten leben und wer sie verändern darf?\n3. Sind Pointer gültig, nicht null und nur innerhalb ihrer Lebensdauer benutzt?\n4. Ändert eine Bitmaske ausschließlich die beabsichtigten Registerbits?\n5. Ist volatile nur dort verwendet, wo Hardware oder ISR den Wert verändern können?\n6. Ist die ISR kurz und sind gemeinsame Daten atomar oder geschützt?\n7. Gibt es Grenzwert-, Überlauf- und Fehlerfalltests?\n\n## Sicherheitsgrenze\n\nDer Kurs verwendet nur berührungssichere Kleinspannung und Simulationen. Er steuert keine Netzspannung, keine sicherheitskritische Maschine und keine Hochenergieaktoren.\n"
+    },
+    {
+      "path": "src/status_controller.c",
+      "role": "user_code",
+      "content": "#include <stdint.h>\n#include <stdbool.h>\n\ntypedef enum {\n  STATUS_IDLE,\n  STATUS_ACTIVE,\n  STATUS_TIMEOUT\n} StatusMode;\n\ntypedef struct {\n  StatusMode mode;\n  uint32_t active_ms;\n} StatusController;\n\nstatic volatile bool button_event = false;\nstatic volatile uint32_t timer_ticks = 0;\n\nvoid button_interrupt_handler(void) {\n  // Kurz halten: Quelle quittieren und Ereignis übergeben.\n  button_event = true;\n}\n\nvoid timer_interrupt_handler(void) {\n  timer_ticks++;\n}\n\nstatic void set_led_bit(volatile uint32_t *output_register, uint32_t mask) {\n  *output_register |= mask;\n}\n\nint main(void) {\n  StatusController controller = { .mode = STATUS_IDLE, .active_ms = 0U };\n  initialise_hardware();\n\n  for (;;) {\n    if (button_event) {\n      button_event = false;\n      controller.mode = STATUS_ACTIVE;\n      controller.active_ms = 0U;\n    }\n\n    if (timer_ticks > 0U) {\n      timer_ticks--;\n      controller.active_ms += 1U;\n    }\n\n    update_status_output(&controller);\n  }\n}\n"
+    }
+  ]
+}

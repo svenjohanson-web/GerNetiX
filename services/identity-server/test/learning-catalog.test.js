@@ -815,3 +815,44 @@ test("does not expose the retired ESP32 OTA basis software as a learning project
   assert.doesNotMatch(server, /project\("esp32-ota-bootstrap-firmware"/);
   assert.match(server, /isRetiredCatalogProject/);
 });
+
+test("catalog exposes the embedded runtime and interrupts course", () => {
+  const course = require("../src/dev/project-models/embedded-runtime-and-interrupts-course.json");
+  const { createEmbeddedRuntimeAndInterruptsCourseModel } = require("../src/dev/project-models/embedded-runtime-and-interrupts-course");
+
+  assert.equal(course.project.title, "Mikrocontroller intern: Programmstart, Speicher und Interrupts");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.equal(course.project.access_model, "free");
+  assert.equal(course.project.steps.length, 9);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "reset-start", "c-runtime", "memory-map", "superloop", "interrupt-flow",
+    "isr-boundary", "shared-state", "memory-risks", "runtime-capstone",
+  ]);
+  const guide = course.sources.find((source) => source.path === "docs/programmstart-und-interrupts.md").content;
+  const source = course.sources.find((item) => item.path === "src/main.c").content;
+  assert.match(guide, /In der Sprache C kann `main` zurückkehren/);
+  assert.match(guide, /`volatile` macht eine Variable nicht atomar/);
+  assert.match(source, /for \(;;\)/);
+  assert.match(source, /timer_interrupt_handler/);
+  assert.equal(createEmbeddedRuntimeAndInterruptsCourseModel().slug, "embedded-runtime-and-interrupts");
+  assert.match(learningModels, /createEmbeddedRuntimeAndInterruptsCourseModel/);
+});
+
+test("catalog exposes the embedded C hardware-control course", () => {
+  const course = require("../src/dev/project-models/embedded-c-hardware-control-course.json");
+  const { createEmbeddedCHardwareControlCourseModel } = require("../src/dev/project-models/embedded-c-hardware-control-course");
+
+  assert.equal(course.project.title, "Embedded C: Hardware sicher steuern");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.equal(course.project.steps.length, 10);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "c-boundary", "integer-ranges", "storage", "pointers-and-structs", "register-bits",
+    "volatile", "isr-handoff", "ai-code-review", "embedded-c-capstone",
+  ]);
+  const source = course.sources.find((item) => item.path === "src/status_controller.c").content;
+  assert.match(source, /typedef enum/);
+  assert.match(source, /volatile uint32_t timer_ticks/);
+  assert.match(source, /for \(;;\)/);
+  assert.equal(createEmbeddedCHardwareControlCourseModel().slug, "embedded-c-hardware-control");
+  assert.match(learningModels, /createEmbeddedCHardwareControlCourseModel/);
+});

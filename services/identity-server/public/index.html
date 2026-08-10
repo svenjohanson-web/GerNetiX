@@ -15,6 +15,7 @@
       <a class="brand" href="/" aria-label="GerNetiX Startseite">
         <img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" />
       </a>
+      <a id="publicLoginLink" class="header-login-link" href="/app/auth/" data-i18n="nav.login">Anmelden</a>
       <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu">
         <span></span>
         <span></span>
@@ -42,89 +43,7 @@
           <p class="eyebrow" data-i18n="landing.hero.eyebrow">Schritt für Schritt zum eigenen System.</p>
           <h1 id="hero-title" data-i18n="landing.hero.title">Ingenieurdenken lernen. Technik frei gestalten.</h1>
           <p class="lead" data-i18n="landing.hero.lead">GerNetiX nimmt dir Komplexität nicht einfach weg. Du lernst sie in nachvollziehbaren Schritten zu verstehen und zu beherrschen – damit du Hardware und Software bewusst auswählst, eigene Hardware einbindest und verteilte Systeme frei gestalten kannst.</p>
-          <div class="hero-actions">
-            <a class="primary-action" href="#learning-paths" data-i18n="landing.hero.learning_action">Zum Lernbereich ↓</a>
-            <a class="secondary-action" href="#ide" data-i18n="landing.hero.development_action">Zum Entwicklungsbereich ↓</a>
-          </div>
         </div>
-      </section>
-
-      <section id="gernetix-overview" class="home-entry" aria-labelledby="gernetix-overview-title">
-        <div class="home-entry-intro">
-          <p class="eyebrow" data-i18n="landing.overview.eyebrow">Zwei Bereiche</p>
-          <h2 id="gernetix-overview-title" data-i18n="landing.overview.title">Wo möchtest du beginnen?</h2>
-          <p class="home-entry-summary" data-i18n="landing.overview.text">Lernen und Entwickeln sind keine getrennten Welten. Du kannst in einem Bereich starten und jederzeit in den anderen wechseln.</p>
-        </div>
-        <div class="home-area-grid">
-          <article id="learning-paths" class="home-area-card learning" aria-labelledby="learning-area-title">
-            <span class="home-area-badge" data-i18n="landing.overview.learning.badge">Lernbereich</span>
-            <h3 id="learning-area-title" data-i18n="landing.overview.learning.title">Verstehen, ausprobieren, weiterbauen.</h3>
-            <p data-i18n="landing.overview.learning.text">Geführte Lernprojekte verbinden verständliche Grundlagen mit praktischen Schritten – vom ersten Experiment bis zum ganzen System.</p>
-            <ul>
-              <li data-i18n="landing.overview.learning.item1">In deinem Tempo lernen</li>
-              <li data-i18n="landing.overview.learning.item2">Wissen direkt praktisch anwenden</li>
-              <li data-i18n="landing.overview.learning.item3">Schritt für Schritt Zusammenhänge verstehen</li>
-            </ul>
-            <div class="home-area-actions">
-              <a class="primary-action" href="/app/auth/?next=%2Fapp%2Flearn%2F" data-i18n="landing.overview.learning.action">Lernbereich öffnen →</a>
-              <a class="text-action" href="/nachbauprojekte/" data-i18n="landing.overview.learning.secondary_action">Öffentliche Nachbauprojekte ansehen</a>
-            </div>
-          </article>
-          <article id="ide" class="home-area-card development" aria-labelledby="development-area-title">
-            <span class="home-area-badge" data-i18n="landing.overview.ide.badge">Entwicklungsbereich</span>
-            <h3 id="development-area-title" data-i18n="landing.overview.ide.title">Eigene Systeme an einem Ort entwickeln.</h3>
-            <p data-i18n="landing.overview.ide.text">Plane, konfiguriere und entwickle dein Projekt mit eigener Hardware als zusammenhängendes System – vom Mikrocontroller über die Anwendung bis zum Backend.</p>
-            <ul>
-              <li data-i18n="landing.overview.ide.item1">Embedded-Geräte und Firmware</li>
-              <li data-i18n="landing.overview.ide.item2">Apps und Benutzeroberflächen</li>
-              <li data-i18n="landing.overview.ide.item3">Backend, Dienste und Cloud</li>
-            </ul>
-            <div class="home-area-actions">
-              <a class="primary-action" href="/app/auth/?next=%2Fapp%2Fdevelopment-platform%2F" data-i18n="landing.overview.ide.action">Entwicklungsbereich öffnen →</a>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section id="shared-spaces" class="panel shared-spaces" aria-labelledby="shared-spaces-title">
-        <div class="shared-spaces-intro">
-          <p class="eyebrow" data-i18n="landing.shared.eyebrow">Für beide Bereiche</p>
-          <h2 id="shared-spaces-title" data-i18n="landing.shared.title">Wissen und Austausch, wann immer du sie brauchst.</h2>
-          <p data-i18n="landing.shared.text">Wissensportal und Community sind keine weiteren Wege, zwischen denen du dich entscheiden musst. Sie unterstützen dich beim Lernen genauso wie beim Entwickeln.</p>
-        </div>
-        <div class="shared-space-grid">
-          <a class="shared-space-card" href="/wissen/">
-            <span data-i18n="landing.shared.knowledge.label">Nachschlagewerk</span>
-            <h3 data-i18n="landing.shared.knowledge.title">Wissensportal</h3>
-            <p data-i18n="landing.shared.knowledge.text">Begriffe, Grundlagen und Methoden nachschlagen – mitten im Lernprojekt oder bei einer konkreten Entwicklungsfrage.</p>
-            <div class="shared-space-contexts" aria-hidden="true"><span data-i18n="landing.shared.learning">Lernen</span><span data-i18n="landing.shared.development">Entwickeln</span></div>
-            <strong data-i18n="landing.shared.knowledge.action">Wissensportal öffnen →</strong>
-          </a>
-          <a class="shared-space-card" href="/community/">
-            <span data-i18n="landing.shared.community.label">Austausch</span>
-            <h3 data-i18n="landing.shared.community.title">Community</h3>
-            <p data-i18n="landing.shared.community.text">Fragen stellen, Erfahrungen teilen und Projekte zeigen – unabhängig davon, ob du gerade lernst oder bereits selbst entwickelst.</p>
-            <div class="shared-space-contexts" aria-hidden="true"><span data-i18n="landing.shared.learning">Lernen</span><span data-i18n="landing.shared.development">Entwickeln</span></div>
-            <strong data-i18n="landing.shared.community.action">Community öffnen →</strong>
-          </a>
-        </div>
-      </section>
-
-      <section id="nexi" class="panel nexi-home-feature" aria-labelledby="nexi-home-title">
-        <div class="nexi-home-copy">
-          <p class="eyebrow" data-i18n="landing.nexi.eyebrow">Ein Beispiel, beide Bereiche</p>
-          <h2 id="nexi-home-title" data-i18n="landing.nexi.title">Mit Nexi erst verstehen – und dann selbst weiterentwickeln.</h2>
-          <p data-i18n="landing.nexi.text">Baue den Sprachassistenten öffentlich nach, verstehe seine Technik im Lernbereich und nutze den Entwicklungsbereich, wenn daraus deine eigene Idee werden soll.</p>
-          <div class="nexi-home-actions">
-            <a class="primary-action" href="/nachbauprojekte/nexi-sprachassistent/" data-i18n="landing.nexi.build_action">Nexi nachbauen →</a>
-            <a class="secondary-action" href="/app/auth/?next=%2Fapp%2Fnexi%2F" data-i18n="landing.nexi.configure_action">Nexi persönlich einrichten</a>
-          </div>
-        </div>
-        <ol class="nexi-home-options">
-          <li><span>01</span><strong data-i18n="landing.nexi.step1.title">Nachbauen und ausprobieren</strong><p data-i18n="landing.nexi.step1.text">Ohne Konto mit Hardware und lokaler Firmware starten.</p></li>
-          <li><span>02</span><strong data-i18n="landing.nexi.step2.title">Im Lernbereich verstehen</strong><p data-i18n="landing.nexi.step2.text">Bausteine und Zusammenhänge Schritt für Schritt kennenlernen.</p></li>
-          <li><span>03</span><strong data-i18n="landing.nexi.step3.title">Im Entwicklungsbereich erweitern</strong><p data-i18n="landing.nexi.step3.text">Eigene Funktionen als vollständiges System umsetzen.</p></li>
-        </ol>
       </section>
 
       <section id="motivation" class="panel home-purpose" aria-labelledby="motivation-title">
@@ -132,8 +51,21 @@
           <div class="home-purpose-copy">
             <p class="eyebrow" data-i18n="landing.motivation.eyebrow">Warum GerNetiX?</p>
             <h2 id="motivation-title" data-i18n="landing.motivation.title">Verstehen macht dich unabhängig.</h2>
+            <div class="software-evolution-gallery" aria-label="Vom Lochkartenprogramm zur KI-gestützten Entwicklung">
+              <figure>
+                <img src="/images/software-evolution-punched-cards.png" width="1254" height="1254" loading="lazy" decoding="async" alt="Historischer Lochkartenleser mit einer Karte mit der Aufschrift GerNetiX.">
+              </figure>
+              <figure>
+                <img src="/images/software-evolution-basic.png" width="1254" height="1254" loading="lazy" decoding="async" alt="Früher Heimcomputer mit einem BASIC-Programm, das GerNetiX ausgibt.">
+              </figure>
+              <figure>
+                <img src="/images/software-evolution-ai.png" width="1254" height="1254" loading="lazy" decoding="async" alt="Laptop mit Planungs- und Codeansichten, verbunden durch ein abstraktes Netzwerk-Gehirn als Symbol für KI-gestützte Entwicklung.">
+              </figure>
+            </div>
             <p data-i18n="landing.motivation.text1">Technologien verändern sich ständig. Wer die grundlegenden Zusammenhänge versteht, bleibt unabhängig von einzelnen Herstellern, Programmiersprachen und Trends.</p>
             <p data-i18n="landing.motivation.text2">Deshalb gehören Lernen und Entwickeln bei GerNetiX zusammen: Du baust Wissen auf, wendest es praktisch an und kannst begründete Entscheidungen für dein eigenes System treffen.</p>
+            <p data-i18n="landing.motivation.evolution">Softwareentwicklung wurde mit jeder Abstraktion schneller: von Lochkarten über Assembler und höhere Sprachen wie Fortran, BASIC oder Pascal bis zu C/C++, Java und Python. Bibliotheken und Frameworks machten wiederverwendbare Technik verfügbar – etwa Fenster mit MFC oder Qt, später Anwendungen im Browser ohne klassische Installation.</p>
+            <p data-i18n="landing.motivation.ai">KI ist der nächste Sprung: Sie kann aus einer guten Beschreibung Entwürfe, Code und Tests ableiten. Sie nimmt aber nicht ab, das richtige Vorhaben zu klären, Folgen abzuwägen und das Ergebnis zu prüfen. Werkzeuge werden schneller – Denken und Verantwortung bleiben.</p>
             <p class="conclusion" data-i18n="landing.motivation.conclusion">Denn wer versteht, kann entwickeln. Und wer entwickeln kann, kann erschaffen.</p>
           </div>
           <aside class="home-purpose-principles">
@@ -148,12 +80,15 @@
             <h3 id="scope-title" data-i18n="landing.scope.title">Vom Embedded-Gerät bis zur Anwendung</h3>
             <p data-i18n="landing.scope.text">Im Lernbereich verstehst du die Bausteine. Im Entwicklungsbereich führst du sie zu einem eigenen System zusammen.</p>
           </div>
-          <ol class="system-chain">
-            <li><span>01</span><strong data-i18n="landing.scope.device.title">Embedded-System</strong><small data-i18n="landing.scope.device.text">Firmware · Sensoren · Aktoren</small></li>
-            <li><span>02</span><strong data-i18n="landing.scope.gateway.title">Lokaler Server</strong><small data-i18n="landing.scope.gateway.text">Gateway · Regeln · lokale Daten</small></li>
-            <li><span>03</span><strong data-i18n="landing.scope.cloud.title">Cloud &amp; Dienste</strong><small data-i18n="landing.scope.cloud.text">APIs · Synchronisierung · Konten</small></li>
-            <li><span>04</span><strong data-i18n="landing.scope.app.title">Anwendung</strong><small data-i18n="landing.scope.app.text">Web · Mobil · Bedienung</small></li>
-          </ol>
+          <figure class="system-flow-visual">
+            <img src="/images/gernetix-system-flow.png" width="1536" height="1024" loading="lazy" decoding="async" alt="Ein zusammenhängendes technisches System: Embedded-Elektronik ist über einen lokalen Server und Cloud-Dienste mit einer Anwendung auf Laptop und Smartphone verbunden.">
+          </figure>
+          <div class="system-flow-explainer">
+            <article><h4 data-i18n="landing.scope.device.title">Embedded-System</h4><p data-i18n="landing.scope.device.text">Ein Embedded-System liest Sensoren, steuert Aktoren und führt die Firmware nah an der Hardware aus.</p></article>
+            <article><h4 data-i18n="landing.scope.gateway.title">Lokaler Server</h4><p data-i18n="landing.scope.gateway.text">Ein lokaler Server verbindet Geräte im eigenen Netz, bündelt Daten und lässt Regeln auch ohne Internet laufen.</p></article>
+            <article><h4 data-i18n="landing.scope.cloud.title">Cloud &amp; Dienste</h4><p data-i18n="landing.scope.cloud.text">Cloud-Dienste stellen sichere APIs, Synchronisierung und kontoübergreifende Funktionen bereit, wenn sie gebraucht werden.</p></article>
+            <article><h4 data-i18n="landing.scope.app.title">Anwendung</h4><p data-i18n="landing.scope.app.text">Web- und Mobil-Apps machen Zustände und Steuerung verständlich bedienbar. KI kann Entwicklung und Analyse unterstützen – Verantwortung bleibt beim Menschen.</p></article>
+          </div>
           <ul class="scope-list">
             <li>Embedded Systems &amp; Elektronik</li>
             <li>Kommunikation &amp; Netzwerke</li>
@@ -164,6 +99,40 @@
           </ul>
         </div>
       </section>
+
+      <section id="shared-spaces" class="panel shared-spaces" aria-labelledby="shared-spaces-title">
+        <div class="shared-spaces-intro">
+          <h2 id="shared-spaces-title" data-i18n="landing.shared.title">Wissen und Austausch</h2>
+        </div>
+        <nav class="shared-space-links" aria-labelledby="shared-spaces-title">
+          <a class="shared-space-link" href="/wissen/">
+            <span class="shared-space-link-copy"><strong data-i18n="landing.shared.knowledge.title">Wissensportal</strong><small data-i18n="landing.shared.knowledge.text">Begriffe, Grundlagen und Methoden nachschlagen.</small></span>
+            <span class="shared-space-link-arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="shared-space-link" href="/community/">
+            <span class="shared-space-link-copy"><strong data-i18n="landing.shared.community.title">Community</strong><small data-i18n="landing.shared.community.text">Fragen stellen, Erfahrungen teilen und Projekte zeigen.</small></span>
+            <span class="shared-space-link-arrow" aria-hidden="true">→</span>
+          </a>
+        </nav>
+      </section>
+
+      <section id="nexi" class="panel nexi-home-feature" aria-labelledby="nexi-home-title">
+        <div class="nexi-home-copy">
+          <p class="project-example-label" data-i18n="landing.nexi.eyebrow">Beispiel aus den Nachbauprojekten</p>
+          <h2 id="nexi-home-title" data-i18n="landing.nexi.title">Nexi: Sprachassistent zum Nachbauen</h2>
+          <p data-i18n="landing.nexi.text">Baue den Sprachassistenten öffentlich nach, verstehe seine Technik im Lernbereich und nutze den Entwicklungsbereich, wenn daraus deine eigene Idee werden soll.</p>
+          <div class="nexi-home-actions">
+            <a class="primary-action" href="/nachbauprojekte/nexi-sprachassistent/" data-i18n="landing.nexi.build_action">Nexi ansehen →</a>
+            <a class="secondary-action" href="/nachbauprojekte/" data-i18n="landing.nexi.overview_action">Alle Nachbauprojekte</a>
+          </div>
+        </div>
+        <ol class="nexi-home-options">
+          <li><span>01</span><strong data-i18n="landing.nexi.step1.title">Nachbauen und ausprobieren</strong><p data-i18n="landing.nexi.step1.text">Ohne Konto mit Hardware und lokaler Firmware starten.</p></li>
+          <li><span>02</span><strong data-i18n="landing.nexi.step2.title">Im Lernbereich verstehen</strong><p data-i18n="landing.nexi.step2.text">Bausteine und Zusammenhänge Schritt für Schritt kennenlernen.</p></li>
+          <li><span>03</span><strong data-i18n="landing.nexi.step3.title">Im Entwicklungsbereich erweitern</strong><p data-i18n="landing.nexi.step3.text">Eigene Funktionen als vollständiges System umsetzen.</p></li>
+        </ol>
+      </section>
+
     </main>
 
     <footer>

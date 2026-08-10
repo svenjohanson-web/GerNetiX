@@ -1,0 +1,144 @@
+{
+  "slug": "embedded-runtime-and-interrupts",
+  "project": {
+    "slug": "embedded-runtime-and-interrupts",
+    "title": "Mikrocontroller intern: Programmstart, Speicher und Interrupts",
+    "area": "Embedded-Ausbaukurs",
+    "summary": "Verfolge den Weg vom Reset bis zur ersten C-Zeile, ordne Flash, RAM und Stack ein und baue eine reaktionsfähige Firmware mit Hauptschleife und Interrupts.",
+    "learning_category": "embedded",
+    "tags": ["topic:embedded-runtime", "topic:interrupts", "topic:memory", "level:advanced"],
+    "steps": [
+      { "title": "Reset ist der wirkliche Programmbeginn", "text": "Verfolge, was beim Einschalten oder Reset geschieht: Die CPU liest keinen Dateinamen, sondern eine Startadresse aus dem Vector Table und springt in den Startcode.", "insight": "Die erste C-Zeile ist nicht die erste ausgeführte Maschineninstruktion." },
+      { "title": "Vom Reset-Handler zu main", "text": "Ordne Reset-Handler, Kopieren initialisierter Daten nach RAM, Nullsetzen von BSS, Initialisierung der C-Laufzeit und erst danach den Aufruf von main ein.", "insight": "Der Startcode schafft erst die Voraussetzungen, damit C-Variablen und Funktionen korrekt funktionieren." },
+      { "title": "Flash, RAM, Stack und Heap", "text": "Lege globale konstante Daten, globale veränderliche Daten, lokale Variablen und dynamische Reservierungen an die passenden Speicherbereiche.", "insight": "Der Speicherort folgt Lebensdauer und Änderbarkeit der Daten, nicht dem Wunsch nach einer bestimmten Variablenart." },
+      { "title": "Die Hauptschleife hält die Firmware am Leben", "text": "Baue eine kleine Superloop mit wiederkehrenden Aufgaben und ohne blockierendes Warten auf. Erkläre, was passieren würde, wenn main zurückkehrt.", "insight": "C erlaubt return aus main, aber eine Firmware hat kein Betriebssystem, zu dem sie sinnvoll zurückkehren könnte." },
+      { "title": "Interrupts als dringende Ereignisse", "text": "Unterscheide normalen Programmablauf von einem Timer- oder Tasterinterrupt: Die CPU unterbricht die aktuelle Aufgabe, sichert Kontext, führt kurz eine ISR aus und kehrt zurück.", "insight": "Ein Interrupt ersetzt keine Architektur; er liefert ein Ereignis mit hoher Priorität." },
+      { "title": "ISR und Hauptschleife sicher verbinden", "text": "Lass die ISR nur ein flüchtiges Ereignisflag oder einen Zähler setzen. Die Hauptschleife liest und verarbeitet die Daten ohne lange Arbeit im Interrupt.", "insight": "Kurz, vorhersagbar und nebenwirkungsarm ist die wichtigste Regel für Interrupt-Service-Routinen." },
+      { "title": "Nebenläufigkeit und kritische Abschnitte", "text": "Untersuche, warum eine mehrbyteige Variable oder eine Warteschlange gleichzeitig von ISR und Hauptschleife beschädigt werden kann, und wähle atomaren Zugriff oder einen kurzen geschützten Abschnitt.", "insight": "volatile verhindert keine verlorenen Updates und macht eine Datenstruktur nicht automatisch sicher." },
+      { "title": "Stackverbrauch und Fehlerbilder", "text": "Erkenne Stacküberlauf, Rekursion, große lokale Arrays und Speicherfragmentierung als typische Embedded-Risiken. Leite aus einem Fehlerbild eine Mess- oder Prüfstrategie ab.", "insight": "Auf kleinen Mikrocontrollern ist Speicherplanung ein Entwurfsentscheid und kein nachträgliches Optimierungsdetail." },
+      { "title": "Abschluss: reaktionsfähiger Taster-Timer", "text": "Plane eine Firmware, deren Timer tickt, deren Tasterinterrupt ein Ereignis meldet und deren Hauptschleife Anzeige und Zustandslogik verarbeitet. Begründe Speicherbereiche und Interrupt-Grenzen.", "insight": "Ein robuster Embedded-Ablauf trennt Boot, Ereigniserfassung, Zustandsverarbeitung und Ausgabe." }
+    ],
+    "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "docs/programmstart-und-interrupts.md", "role": "learning_guide" },
+      { "path": "src/main.c", "role": "user_code" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Mikrocontroller intern",
+    "summary": "Vom Resetvektor zur Hauptschleife: Speicher, Interrupts und ein Ablauf, der unter Last verständlich bleibt.",
+    "primary_source_path": "docs/programmstart-und-interrupts.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "reset-start", "type": "story_slide", "title": "Ein Mikrocontroller startet nicht bei main", "summary": "Nach Reset beginnt die CPU an einer durch die Architektur festgelegten Adresse und arbeitet zunächst Startcode ab.",
+        "completion": { "type": "acknowledge", "label": "Resetpfad verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Reset", "text": "Einschalten, Reset-Taster oder Watchdog setzen die CPU in einen definierten Anfangszustand." },
+          { "label": "Vector Table", "text": "Enthält Startadressen für Reset und Interrupts; die genaue Form ist pro Mikrocontrollerfamilie verschieden." },
+          { "label": "Reset-Handler", "text": "Erste ausgeführte Startup-Routine. Sie bereitet Speicher und C-Laufzeit vor." },
+          { "label": "main", "text": "Wird erst danach als normale C-Funktion aufgerufen." }
+        ] }
+      },
+      {
+        "id": "c-runtime", "type": "explanation", "title": "Was der Startcode vor main erledigt", "summary": "Globale C-Variablen müssen ihren versprochenen Anfangszustand besitzen, bevor der Anwendungscode darauf zugreift.",
+        "completion": { "type": "acknowledge", "label": "C-Start verstanden" },
+        "payload": { "cards": [
+          { "title": "Data kopieren", "text": "Initialisierte globale und statische Variablen liegen als Anfangswerte im Flash und werden beim Start in ihren RAM-Bereich kopiert." },
+          { "title": "BSS nullen", "text": "Nicht initialisierte globale und statische Variablen werden auf 0 gesetzt; diese Daten brauchen dafür keinen Inhalt im Flash." },
+          { "title": "Stack setzen", "text": "Der Stackpointer erhält eine gültige Startposition für Rücksprungadressen und lokale Variablen." },
+          { "title": "Plattform starten", "text": "Je nach Runtime folgen Takt, Hardware-Abstraktion oder Scheduler. Erst dann darf main die Anwendung initialisieren." }
+        ] }
+      },
+      {
+        "id": "memory-map", "type": "story_slide", "title": "Der Speicher ist nicht ein großer Topf", "summary": "Flash und RAM erfüllen verschiedene Aufgaben; im RAM konkurrieren Data, BSS, Heap und Stack um begrenzten Platz.",
+        "completion": { "type": "acknowledge", "label": "Speicherkarte verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Flash / Programmspeicher", "text": "Programminstruktionen, konstante Daten und Anfangswerte. Bleibt ohne Strom erhalten." },
+          { "label": "Data", "text": "Globale oder statische Variablen mit explizitem Anfangswert im RAM." },
+          { "label": "BSS", "text": "Globale oder statische Variablen ohne expliziten Anfangswert im RAM; Startwert ist 0." },
+          { "label": "Stack", "text": "Lokale Variablen, Funktionsaufrufe und Interrupt-Kontext; wächst mit verschachtelten Aufrufen." },
+          { "label": "Heap", "text": "Dynamische Reservierungen. In langlebiger Firmware nur bewusst einsetzen, weil Fragmentierung droht." }
+        ] }
+      },
+      {
+        "id": "superloop", "type": "implementation_plan", "title": "Die Hauptschleife als Taktgeber", "summary": "Eine Superloop bearbeitet kurze Aufgaben immer wieder und wartet nicht blind auf ein einzelnes Ereignis.",
+        "payload": { "tasks": [
+          "Hardware und Zustand einmalig initialisieren",
+          "in der Hauptschleife Ereignisflags lesen",
+          "Zustände, Anzeige und Kommunikation in kleinen Schritten aktualisieren",
+          "lange Wartezeiten durch Zeitvergleich oder Zustandsautomaten ersetzen",
+          "main nicht zurückkehren lassen; bei unerwartetem Ende in einen definierten Fehlerpfad wechseln"
+        ] }
+      },
+      {
+        "id": "interrupt-flow", "type": "story_slide", "title": "Was ein Interrupt mit der CPU macht", "summary": "Ein Interrupt unterbricht den normalen Ablauf kontrolliert und führt eine zugeordnete kurze Routine aus.",
+        "completion": { "type": "acknowledge", "label": "Interruptablauf verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Ereignis", "text": "Timer, GPIO, UART oder ein anderer Peripherieblock meldet eine Interrupt-Anforderung." },
+          { "label": "Kontext", "text": "Die CPU sichert den nötigen Rückkehrzustand, häufig auf dem Stack; Details sind architekturabhängig." },
+          { "label": "ISR", "text": "Die Interrupt-Service-Routine quittiert die Quelle und hält ihre Arbeit kurz." },
+          { "label": "Rückkehr", "text": "Nach der ISR läuft die zuvor unterbrochene Anweisungskette weiter." }
+        ] }
+      },
+      {
+        "id": "isr-boundary", "type": "explanation", "title": "Die ISR meldet – die Hauptschleife verarbeitet", "summary": "Eine gute Interrupt-Routine erfasst nur das Dringende und überlässt langsame, komplexe Arbeit dem normalen Ablauf.",
+        "completion": { "type": "acknowledge", "label": "ISR-Grenze verstanden" },
+        "payload": { "cards": [
+          { "title": "Gut in der ISR", "text": "Hardware-Flag quittieren, Zeitstempel oder kleinen Zähler sichern, Ereignisflag setzen, Byte in einen vorbereiteten Puffer schreiben." },
+          { "title": "Nicht in der ISR", "text": "Lange Berechnungen, Delay, blockierende Ein-/Ausgabe, dynamische Speicherverwaltung oder komplexe Benutzeroberflächen." },
+          { "title": "Warum", "text": "Während eine ISR läuft, können gleich- oder niedriger priorisierte Ereignisse verspätet verarbeitet werden." },
+          { "title": "Übergabe", "text": "Flag, Zähler oder klar definierter Ringpuffer bilden die Schnittstelle zwischen ISR und Hauptschleife." }
+        ] }
+      },
+      {
+        "id": "shared-state", "type": "explanation", "title": "Gemeinsame Daten sicher lesen", "summary": "Hauptschleife und ISR können dieselbe Variable zu unterschiedlichen Zeitpunkten verändern.",
+        "completion": { "type": "acknowledge", "label": "Nebenläufigkeit verstanden" },
+        "payload": { "cards": [
+          { "title": "volatile", "text": "Sagt dem Compiler, dass sich ein Wert außerhalb des sichtbaren Programmablaufs ändern kann. Es ist keine Sperre." },
+          { "title": "Atomar", "text": "Ein Zugriff darf nicht in beobachtbare Teiloperationen zerfallen. Das hängt von CPU und Datengröße ab." },
+          { "title": "Kritischer Abschnitt", "text": "Interrupts nur so kurz wie nötig sperren, um eine zusammenhängende Datenkopie zu schützen." },
+          { "title": "Besseres Design", "text": "Daten klein halten, Eigentümerschaft festlegen und Ereignisse statt große gemeinsame Strukturen übergeben." }
+        ] }
+      },
+      {
+        "id": "memory-risks", "type": "implementation_plan", "title": "Speicherfehler gezielt suchen", "summary": "Fehler müssen nicht sofort am Absturzort entstanden sein; Stack und Speichergrenzen brauchen Beobachtung.",
+        "payload": { "tasks": [
+          "große lokale Arrays und Rekursion zuerst suchen",
+          "Stackreserve und verschachtelte Interrupts berücksichtigen",
+          "globale Puffergrößen gegen verfügbares RAM prüfen",
+          "dynamische Reservierungen und Freigaben auf Fragmentierung prüfen",
+          "bei sporadischen Fehlern Stackmarker, Resetgrund und einen minimalen Reproduktionsfall erfassen"
+        ] }
+      },
+      {
+        "id": "runtime-capstone", "type": "implementation_plan", "title": "Abschluss: Taster, Timer und Anzeige", "summary": "Entwirf eine kleine Firmware, die auf Ereignisse reagiert, ohne ihren Ablauf oder Speicherzustand aus den Augen zu verlieren.",
+        "payload": { "tasks": [
+          "Timerinterrupt erzeugt einen Tick-Zähler oder setzt ein Zeitflag",
+          "Tasterinterrupt erfasst nur Ereignis und Entprellstrategie",
+          "Hauptschleife verarbeitet die Flags und aktualisiert den Zustandsautomaten",
+          "alle gemeinsam genutzten Variablen mit Eigentümer, Größe und Schutzregel dokumentieren",
+          "begründen, welche Daten im Flash, Data, BSS oder Stack liegen",
+          "erklären, warum main nicht normal endet und welcher Fehlerpfad bei einem unerwarteten Rücksprung gilt"
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/programmstart-und-interrupts.md",
+      "role": "learning_guide",
+      "content": "# Mikrocontroller intern: Programmstart, Speicher und Interrupts\n\n## Der Weg zur ersten C-Zeile\n\n1. Ein Reset setzt die CPU in einen definierten Startzustand.\n2. Die CPU liest die Reset-Startadresse aus der für ihre Architektur vorgesehenen Vektortabelle.\n3. Der Reset-Handler richtet den Stack ein, kopiert initialisierte globale Daten aus dem Flash nach RAM und setzt den BSS-Bereich auf null.\n4. Die Plattforminitialisierung konfiguriert nur die für die Runtime nötigen Grundlagen.\n5. Erst danach wird `main()` aufgerufen.\n\nDie genaue Vektortabelle und der Startup-Code unterscheiden sich bei AVR, ARM, ESP32 und Arduino-Runtimes. Das Prinzip bleibt: C benötigt bereits vorbereiteten Speicher.\n\n## Warum main nicht normal enden darf\n\nIn der Sprache C kann `main` zurückkehren. Auf einem PC übernimmt dann ein Betriebssystem die Rückgabe. In einer Firmware gibt es normalerweise kein solches Ziel. Deshalb enthält eine Firmware meist eine Endlosschleife oder ein Laufzeitsystem, das die Anwendung immer weiter aufruft. Falls `main` trotzdem zurückkehrt, ist das plattformabhängig und muss in einen definierten Fehler-, Halt- oder Resetpfad führen – nicht in normalen Programmbetrieb.\n\n## Interrupt-Regeln\n\n- Eine ISR ist kurz, quittiert die Quelle und übergibt nur ein kleines Ereignis.\n- Keine Wartezeiten, keine blockierende Ein-/Ausgabe und keine langen Berechnungen in der ISR.\n- `volatile` macht eine Variable nicht atomar und schützt keine zusammengesetzten Änderungen.\n- Gemeinsame Daten zwischen Hauptschleife und ISR brauchen eine klare Schutzregel.\n\n## Abschlussnachweis\n\nDokumentiere den Resetpfad, eine Speicherkarte, die ISR-Hauptschleifen-Schnittstelle und ein begründetes Verhalten für einen unerwarteten Rücksprung aus `main`.\n"
+    },
+    {
+      "path": "src/main.c",
+      "role": "user_code",
+      "content": "#include <stdint.h>\n#include <stdbool.h>\n\nstatic volatile uint32_t timer_ticks = 0;\nstatic volatile bool button_event = false;\n\nvoid timer_interrupt_handler(void) {\n  // Kurz: Ereignis erfassen; keine Anzeige und kein delay in der ISR.\n  timer_ticks++;\n}\n\nvoid button_interrupt_handler(void) {\n  // Kurz: Die Hauptschleife verarbeitet die Aktion später.\n  button_event = true;\n}\n\nint main(void) {\n  // Startup-Code hat Data, BSS und Stack bereits vorbereitet.\n  initialise_hardware();\n\n  for (;;) {\n    if (button_event) {\n      button_event = false;\n      handle_button_action();\n    }\n\n    if (timer_ticks > 0) {\n      timer_ticks--;\n      update_state_machine();\n    }\n\n    update_display_without_blocking();\n  }\n}\n"
+    }
+  ]
+}
