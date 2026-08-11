@@ -9,7 +9,11 @@ const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte"
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const radarRoomPresence = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "index.html"), "utf8");
+const radarRoomPresencePlatformio = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "platformio.ini"), "utf8");
 const radarRoomPresenceSource = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "src", "main.cpp"), "utf8");
+const pirMotionDetector = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "index.html"), "utf8");
+const pirMotionDetectorPlatformio = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "platformio.ini"), "utf8");
+const pirMotionDetectorSource = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "src", "main.cpp"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
@@ -100,17 +104,24 @@ test("publishes the HW-364A one-button game collection as an additional rebuild 
   assert.match(hw364aGames, /öffentlicher WebSerial-Download wird hier ergänzt/);
 });
 
-test("publishes a source-first ESP32 radar room-presence rebuild project", () => {
+test("publishes a source-first ESP32 and Arduino Nano radar room-presence rebuild project", () => {
   assert.match(server, /path: "\/nachbauprojekte\/radar-raumpraesenz"[\s\S]*redirect\(res, "\/nachbauprojekte\/radar-raumpraesenz\/"\)/);
   assert.match(server, /path: "\/nachbauprojekte\/radar-raumpraesenz\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/radar-raumpraesenz\/index\.html"\)/);
   assert.match(page, /href="\/nachbauprojekte\/radar-raumpraesenz\/"/);
-  assert.match(page, /Raumpräsenz mit Radar und ESP32 erkennen/);
+  assert.match(page, /Raumpräsenz mit Radar, ESP32 oder Arduino Nano erkennen/);
   assert.match(page, /Quellprojekt · Hardware-Abnahme offen/);
   assert.match(radarRoomPresence, /Raumpräsenz zuverlässig erkennen – ohne Kamera/);
   assert.match(radarRoomPresence, /HLK-LD2410C/);
   assert.match(radarRoomPresence, /VCC → ESP32 5V\/VIN/);
   assert.match(radarRoomPresence, /UART_TX → ESP32 GPIO16 \/ RX2/);
   assert.match(radarRoomPresence, /OUT → ESP32 GPIO27/);
+  assert.match(radarRoomPresence, /klassischer Arduino Nano \(ATmega328P\)/);
+  assert.match(radarRoomPresence, /LD2410C OUT → Nano D2/);
+  assert.match(radarRoomPresence, /UART_TX und UART_RX:[\s\S]*zunächst nicht verbinden/);
+  assert.match(radarRoomPresence, /nanoatmega328[\s\S]*nanoatmega328new/);
+  assert.match(radarRoomPresencePlatformio, /\[env:esp32dev\][\s\S]*GERNETIX_RADAR_OUT_PIN=27/);
+  assert.match(radarRoomPresencePlatformio, /\[env:nanoatmega328\][\s\S]*board = nanoatmega328[\s\S]*GERNETIX_RADAR_OUT_PIN=2/);
+  assert.match(radarRoomPresencePlatformio, /\[env:nanoatmega328new\][\s\S]*board = nanoatmega328new[\s\S]*GERNETIX_RADAR_OUT_PIN=2/);
   assert.match(radarRoomPresence, /mindestens 200 mA/);
   assert.match(radarRoomPresence, /Leerer Raum[\s\S]*ruhiges Sitzen[\s\S]*Ventilator[\s\S]*Nachbarraum/);
   assert.match(radarRoomPresence, /href="\/wissen\/#sensor-fmcw-radar"/);
@@ -119,6 +130,8 @@ test("publishes a source-first ESP32 radar room-presence rebuild project", () =>
   assert.match(radarRoomPresenceSource, /PRESENCE_CONFIRM_MS = 150U/);
   assert.match(radarRoomPresenceSource, /ABSENCE_HOLD_MS = 5000U/);
   assert.match(radarRoomPresenceSource, /static_cast<uint32_t>\(now - since\)/);
+  assert.match(radarRoomPresenceSource, /GERNETIX_RADAR_OUT_PIN/);
+  assert.doesNotMatch(radarRoomPresenceSource, /Serial\.printf/);
   assert.doesNotMatch(radarRoomPresence, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });
 

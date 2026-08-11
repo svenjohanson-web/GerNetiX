@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Kamerafreie Raumpräsenz mit einem ESP32 und dem 24-GHz-Radarmodul HLK-LD2410C nachbauen, messen und zuverlässig einstellen." />
+  <meta name="description" content="Kamerafreie Raumpräsenz mit ESP32 oder Arduino Nano und dem 24-GHz-Radarmodul HLK-LD2410C nachbauen, messen und zuverlässig einstellen." />
   <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
-  <title>Raumpräsenz mit Radar und ESP32 erkennen · GerNetiX</title>
+  <title>Raumpräsenz mit Radar, ESP32 oder Arduino Nano erkennen · GerNetiX</title>
   <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
 </head>
 <body>
@@ -23,9 +23,9 @@
 
     <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
       <div>
-        <p class="eyebrow">Nachbauprojekt · ESP32 &amp; 24-GHz-Radar</p>
+        <p class="eyebrow">Nachbauprojekt · ESP32 oder Arduino Nano &amp; 24-GHz-Radar</p>
         <h1 id="project-title">Raumpräsenz zuverlässig erkennen – ohne Kamera.</h1>
-        <p class="lead">Ein ESP32 wertet ein HLK-LD2410C-Präsenzradar lokal aus. Das Projekt zeigt nicht nur den Anschluss, sondern auch, wie du Stillstand, Fehlalarme, Nachbarraum und Montage systematisch prüfst.</p>
+        <p class="lead">Ein ESP32 oder klassischer Arduino Nano wertet ein HLK-LD2410C-Präsenzradar lokal aus. Das Projekt zeigt nicht nur den Anschluss, sondern auch, wie du Stillstand, Fehlalarme, Nachbarraum und Montage systematisch prüfst.</p>
         <p><strong>Lieferstatus:</strong> Quellprojekt und Aufbauanleitung vorhanden. Ein direkt flashbarer Release folgt erst nach der realen Hardware-Abnahme.</p>
       </div>
     </section>
@@ -33,7 +33,7 @@
     <section class="panel" aria-labelledby="purpose-title">
       <p class="eyebrow">Was das Projekt kann</p>
       <h2 id="purpose-title">Anwesenheit erkennen, nicht Menschen identifizieren.</h2>
-      <p>Das Radarmodul meldet Bewegung und – abhängig von Montage und Einstellung – auch sehr kleine Bewegungen einer nahezu still sitzenden Person. Der ESP32 stabilisiert das digitale Präsenzsignal und stellt einen verständlichen lokalen Zustand bereit.</p>
+      <p>Das Radarmodul meldet Bewegung und – abhängig von Montage und Einstellung – auch sehr kleine Bewegungen einer nahezu still sitzenden Person. Der Mikrocontroller stabilisiert das digitale Präsenzsignal und stellt einen verständlichen lokalen Zustand bereit.</p>
       <ul>
         <li>keine Kamera, kein Mikrofon und keine Gesichtserkennung</li>
         <li>lokale Verarbeitung ohne notwendige Cloud-Verbindung</li>
@@ -47,7 +47,7 @@
       <p class="eyebrow">Material zuerst</p>
       <h2 id="material-title">Das brauchst du für die erste Stufe.</h2>
       <ul>
-        <li>ESP32 DevKit mit frei zugänglichen GPIO16, GPIO17 und GPIO27</li>
+        <li>wahlweise ESP32 DevKit mit GPIO27 oder klassischer Arduino Nano mit ATmega328P und Digitalpin D2</li>
         <li>ein echtes Hi-Link HLK-LD2410C 24-GHz-Präsenzradarmodul</li>
         <li>stabile 5-V-Versorgung mit mindestens 200 mA Reserve für das Radarmodul</li>
         <li>Breadboard oder sichere Steckverbinder, Jumperleitungen und USB-Datenkabel</li>
@@ -58,7 +58,8 @@
 
     <section class="panel" id="verdrahtung" aria-labelledby="wiring-title">
       <p class="eyebrow">Verdrahtung</p>
-      <h2 id="wiring-title">Versorgung und Signale sauber trennen.</h2>
+      <h2 id="wiring-title">Zwei Boardvarianten, ein zuverlässiges OUT-Signal.</h2>
+      <h3>Variante A: ESP32 DevKit</h3>
       <ul>
         <li><strong>LD2410C VCC → ESP32 5V/VIN:</strong> nur an einem Board-Pin, der bei USB-Versorgung tatsächlich 5 V bereitstellt.</li>
         <li><strong>LD2410C GND → ESP32 GND:</strong> gemeinsame Masse ist Pflicht.</li>
@@ -67,12 +68,20 @@
         <li><strong>LD2410C OUT → ESP32 GPIO27:</strong> digitales 3,3-V-Präsenzsignal für die erste Projektstufe.</li>
       </ul>
       <p><strong>Nicht aus dem ESP32-3,3-V-Pin versorgen:</strong> Laut Hersteller arbeitet das LD2410C an 5 V und benötigt eine ausreichend belastbare Versorgung. Vor dem Einschalten Pinfolge, Spannung und gemeinsame Masse noch einmal prüfen.</p>
+      <h3>Variante B: klassischer Arduino Nano (ATmega328P)</h3>
+      <ul>
+        <li><strong>LD2410C VCC → stabile externe 5-V-Versorgung:</strong> plane mindestens 200 mA Reserve für das Radarmodul ein.</li>
+        <li><strong>LD2410C GND → Nano GND und Netzteil-GND:</strong> alle Beteiligten benötigen dieselbe Masse.</li>
+        <li><strong>LD2410C OUT → Nano D2:</strong> die erste Nano-Stufe verwendet ausschließlich das digitale Präsenzsignal.</li>
+        <li><strong>LD2410C UART_TX und UART_RX:</strong> zunächst nicht verbinden und sicher isolieren.</li>
+      </ul>
+      <p><strong>Warum beim Nano zunächst ohne UART?</strong> Der klassische Nano arbeitet mit 5-V-Logik, das Radarmodul mit 3,3-V-Logik. Besonders die Leitung vom Nano zum Radar benötigt deshalb eine saubere Pegelanpassung. Für die robuste Grundfunktion ist sie nicht nötig.</p>
     </section>
 
     <section class="maker-project-categories" aria-labelledby="stages-title">
       <h2 id="stages-title">Vier nachvollziehbare Ausbaustufen</h2>
       <div class="maker-project-list">
-        <article class="panel maker-project-tile" id="stufe-1"><h3>1. Präsenzsignal lesen</h3><p>Der ESP32 liest ausschließlich den OUT-Pin. Eine kurze Einschaltbestätigung und eine längere Ausschaltverzögerung machen aus dem Rohsignal einen stabilen Raumzustand.</p></article>
+        <article class="panel maker-project-tile" id="stufe-1"><h3>1. Präsenzsignal lesen</h3><p>ESP32 oder Arduino Nano lesen ausschließlich den OUT-Pin. Eine kurze Einschaltbestätigung und eine längere Ausschaltverzögerung machen aus dem Rohsignal einen stabilen Raumzustand.</p></article>
         <article class="panel maker-project-tile" id="stufe-2"><h3>2. UART sichtbar machen</h3><p>Mit 256000 Baud werden Status- und Distanzinformationen protokolliert. Erst danach werden Zonen oder Empfindlichkeiten verändert.</p></article>
         <article class="panel maker-project-tile" id="stufe-3"><h3>3. Raum und Fehlalarme vermessen</h3><p>Leerer Raum, Eintritt, ruhiges Sitzen, Türbewegung, Ventilator, Haustier und Nachbarraum werden mit identischem Versuchsprotokoll geprüft.</p></article>
         <article class="panel maker-project-tile" id="stufe-4"><h3>4. Lokal weiterverwenden</h3><p>Erst ein belastbarer Präsenzzustand darf Licht, Lüftung oder eine lokale Hausautomation beeinflussen. Sicherheits- und Alarmfunktionen bleiben ausgeschlossen.</p></article>
@@ -86,10 +95,12 @@
       <p><a class="secondary-action" href="platformio.ini" download>platformio.ini herunterladen</a> <a class="secondary-action" href="src/main.cpp" download>src/main.cpp herunterladen</a></p>
       <ol>
         <li>Lege beide Dateien in ein neues PlatformIO-Projekt mit derselben Ordnerstruktur.</li>
-        <li>Baue die Firmware und flashe sie per USB auf den ESP32.</li>
+        <li>Wähle <code>esp32dev</code>, <code>nanoatmega328</code> für den älteren Nano-Bootloader oder <code>nanoatmega328new</code> für den neuen Bootloader.</li>
+        <li>Baue die Firmware und flashe sie per USB auf das gewählte Board.</li>
         <li>Öffne den seriellen Monitor mit 115200 Baud.</li>
         <li>Beobachte Rohsignal und stabilisierten Zustand in allen Testsituationen.</li>
       </ol>
+      <p>Die Nano-Umgebungen setzen den Sensoreingang automatisch auf D2; beim ESP32 bleibt er auf GPIO27. Die gemeinsame Quelldatei vermeidet ESP32-spezifisches <code>Serial.printf</code> und passt damit auch in die 2 KB RAM des ATmega328P.</p>
     </section>
 
     <section class="panel" id="testplan" aria-labelledby="test-title">

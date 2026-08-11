@@ -1,10 +1,11 @@
-# Nachbauprojekt: Raumpräsenz mit Radar und ESP32
+# Nachbauprojekt: Raumpräsenz mit Radar, ESP32 oder Arduino Nano
 
 ## Ziel
 
 Das öffentliche Nachbauprojekt führt von einem konkret benannten
-HLK-LD2410C-24-GHz-Radarmodul und einem ESP32 zu einer lokal ausgewerteten,
-kamerafreien Raumpräsenz. Es ergänzt das allgemeinere Lernprojekt
+HLK-LD2410C-24-GHz-Radarmodul und wahlweise einem ESP32 oder klassischen
+Arduino Nano mit ATmega328P zu einer lokal ausgewerteten, kamerafreien
+Raumpräsenz. Es ergänzt das allgemeinere Lernprojekt
 `build-your-own-proximity-sensor`: Der Nachbau liefert einen konkreten Aufbau,
 das Lernprojekt vermittelt Modulidentifikation, Radarvergleich und Messmethode.
 
@@ -20,12 +21,20 @@ Fehlalarmprüfung und Freigabe des exakten Hardwareprofils erscheinen.
 
 - LD2410C-Versorgung: 5 V mit mindestens 200 mA verfügbarer Kapazität.
 - OUT- und UART-Logik: 3,3 V laut Herstellerunterlagen.
-- erste Firmwarestufe: OUT an GPIO27, 150 ms Einschaltbestätigung und 5 s
+- erste Firmwarestufe ESP32: OUT an GPIO27;
+- erste Firmwarestufe Arduino Nano: OUT an D2; UART bleibt wegen der
+  5-V-/3,3-V-Pegelgrenze zunächst unverbunden;
+- gemeinsame Filterung: 150 ms Einschaltbestätigung und 5 s
   Ausschaltverzögerung;
 - spätere Stufe: UART2 an GPIO16/GPIO17 mit 256000 Baud und Auswertung des
   versionierten Herstellerprotokolls;
 - keine Cloud, Kamera, Identifikation oder automatische sicherheitskritische
   Aktion.
+
+Die PlatformIO-Konfiguration enthält `esp32dev`, `nanoatmega328` für den
+älteren Nano-Bootloader und `nanoatmega328new` für den neuen Nano-Bootloader.
+Die gemeinsame Firmware vermeidet ESP32-spezifisches `Serial.printf` und legt
+konstante Texte auf AVR mit `F()` im Programmspeicher ab.
 
 ## Abnahme
 
