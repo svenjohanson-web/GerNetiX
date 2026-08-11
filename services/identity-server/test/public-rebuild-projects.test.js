@@ -8,6 +8,8 @@ const page = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "index
 const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "einfache-elektromotoren", "index.html"), "utf8");
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
+const radarRoomPresence = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "index.html"), "utf8");
+const radarRoomPresenceSource = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "src", "main.cpp"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
@@ -96,6 +98,28 @@ test("publishes the HW-364A one-button game collection as an additional rebuild 
   assert.match(hw364aGames, /SDA GPIO14 und SCL GPIO12/);
   assert.match(hw364aGames, /Build geprüft, Hardware-Abnahme noch offen/);
   assert.match(hw364aGames, /öffentlicher WebSerial-Download wird hier ergänzt/);
+});
+
+test("publishes a source-first ESP32 radar room-presence rebuild project", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/radar-raumpraesenz"[\s\S]*redirect\(res, "\/nachbauprojekte\/radar-raumpraesenz\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/radar-raumpraesenz\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/radar-raumpraesenz\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/radar-raumpraesenz\/"/);
+  assert.match(page, /Raumpräsenz mit Radar und ESP32 erkennen/);
+  assert.match(page, /Quellprojekt · Hardware-Abnahme offen/);
+  assert.match(radarRoomPresence, /Raumpräsenz zuverlässig erkennen – ohne Kamera/);
+  assert.match(radarRoomPresence, /HLK-LD2410C/);
+  assert.match(radarRoomPresence, /VCC → ESP32 5V\/VIN/);
+  assert.match(radarRoomPresence, /UART_TX → ESP32 GPIO16 \/ RX2/);
+  assert.match(radarRoomPresence, /OUT → ESP32 GPIO27/);
+  assert.match(radarRoomPresence, /mindestens 200 mA/);
+  assert.match(radarRoomPresence, /Leerer Raum[\s\S]*ruhiges Sitzen[\s\S]*Ventilator[\s\S]*Nachbarraum/);
+  assert.match(radarRoomPresence, /href="\/wissen\/#sensor-fmcw-radar"/);
+  assert.match(radarRoomPresence, /catalog=build-your-own-proximity-sensor/);
+  assert.match(radarRoomPresence, /platformio\.ini[\s\S]*src\/main\.cpp/);
+  assert.match(radarRoomPresenceSource, /PRESENCE_CONFIRM_MS = 150U/);
+  assert.match(radarRoomPresenceSource, /ABSENCE_HOLD_MS = 5000U/);
+  assert.match(radarRoomPresenceSource, /static_cast<uint32_t>\(now - since\)/);
+  assert.doesNotMatch(radarRoomPresence, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });
 
 test("publishes Nexi as a complete, prebuilt and directly flashable rebuild project", () => {

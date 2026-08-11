@@ -107,6 +107,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/radar-raumpraesenz", handler: ({ res }) => redirect(res, "/nachbauprojekte/radar-raumpraesenz/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/radar-raumpraesenz/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/radar-raumpraesenz/index.html") });
   registry.register({
     method: "GET",
     pattern: /^\/nachbauprojekte\/nexi-sprachassistent\/api\//,

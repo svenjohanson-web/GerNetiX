@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Kamerafreie Raumpräsenz mit einem ESP32 und dem 24-GHz-Radarmodul HLK-LD2410C nachbauen, messen und zuverlässig einstellen." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <title>Raumpräsenz mit Radar und ESP32 erkennen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>Radar-Raumpräsenz</span>
+    </nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Nachbauprojekt · ESP32 &amp; 24-GHz-Radar</p>
+        <h1 id="project-title">Raumpräsenz zuverlässig erkennen – ohne Kamera.</h1>
+        <p class="lead">Ein ESP32 wertet ein HLK-LD2410C-Präsenzradar lokal aus. Das Projekt zeigt nicht nur den Anschluss, sondern auch, wie du Stillstand, Fehlalarme, Nachbarraum und Montage systematisch prüfst.</p>
+        <p><strong>Lieferstatus:</strong> Quellprojekt und Aufbauanleitung vorhanden. Ein direkt flashbarer Release folgt erst nach der realen Hardware-Abnahme.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="purpose-title">
+      <p class="eyebrow">Was das Projekt kann</p>
+      <h2 id="purpose-title">Anwesenheit erkennen, nicht Menschen identifizieren.</h2>
+      <p>Das Radarmodul meldet Bewegung und – abhängig von Montage und Einstellung – auch sehr kleine Bewegungen einer nahezu still sitzenden Person. Der ESP32 stabilisiert das digitale Präsenzsignal und stellt einen verständlichen lokalen Zustand bereit.</p>
+      <ul>
+        <li>keine Kamera, kein Mikrofon und keine Gesichtserkennung</li>
+        <li>lokale Verarbeitung ohne notwendige Cloud-Verbindung</li>
+        <li>bewusste Einschalt- und Ausschaltverzögerung gegen Flattern</li>
+        <li>Messplan für Fehlalarme durch Türen, Nachbarräume, Ventilatoren und Reflexionen</li>
+      </ul>
+      <p><strong>Wichtig:</strong> „Präsenz erkannt“ bedeutet nur, dass die konfigurierte Radarregel angeschlagen hat. Das ist keine sichere Aussage über Identität, Anzahl oder Notlage einer Person.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="material-title">
+      <p class="eyebrow">Material zuerst</p>
+      <h2 id="material-title">Das brauchst du für die erste Stufe.</h2>
+      <ul>
+        <li>ESP32 DevKit mit frei zugänglichen GPIO16, GPIO17 und GPIO27</li>
+        <li>ein echtes Hi-Link HLK-LD2410C 24-GHz-Präsenzradarmodul</li>
+        <li>stabile 5-V-Versorgung mit mindestens 200 mA Reserve für das Radarmodul</li>
+        <li>Breadboard oder sichere Steckverbinder, Jumperleitungen und USB-Datenkabel</li>
+        <li>optional Logikanalysator oder Oszilloskop für UART- und Reaktionszeitmessungen</li>
+      </ul>
+      <p>Prüfe die exakte Modulbezeichnung auf Platine und Datenblatt. Ähnlich aussehende LD2410-Varianten können andere Pinreihenfolgen, Versorgungsvorgaben oder Funktionen besitzen.</p>
+    </section>
+
+    <section class="panel" id="verdrahtung" aria-labelledby="wiring-title">
+      <p class="eyebrow">Verdrahtung</p>
+      <h2 id="wiring-title">Versorgung und Signale sauber trennen.</h2>
+      <ul>
+        <li><strong>LD2410C VCC → ESP32 5V/VIN:</strong> nur an einem Board-Pin, der bei USB-Versorgung tatsächlich 5 V bereitstellt.</li>
+        <li><strong>LD2410C GND → ESP32 GND:</strong> gemeinsame Masse ist Pflicht.</li>
+        <li><strong>LD2410C UART_TX → ESP32 GPIO16 / RX2:</strong> Sender und Empfänger werden gekreuzt.</li>
+        <li><strong>LD2410C UART_RX ← ESP32 GPIO17 / TX2:</strong> für spätere Konfiguration und Protokollabfragen.</li>
+        <li><strong>LD2410C OUT → ESP32 GPIO27:</strong> digitales 3,3-V-Präsenzsignal für die erste Projektstufe.</li>
+      </ul>
+      <p><strong>Nicht aus dem ESP32-3,3-V-Pin versorgen:</strong> Laut Hersteller arbeitet das LD2410C an 5 V und benötigt eine ausreichend belastbare Versorgung. Vor dem Einschalten Pinfolge, Spannung und gemeinsame Masse noch einmal prüfen.</p>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="stages-title">
+      <h2 id="stages-title">Vier nachvollziehbare Ausbaustufen</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile" id="stufe-1"><h3>1. Präsenzsignal lesen</h3><p>Der ESP32 liest ausschließlich den OUT-Pin. Eine kurze Einschaltbestätigung und eine längere Ausschaltverzögerung machen aus dem Rohsignal einen stabilen Raumzustand.</p></article>
+        <article class="panel maker-project-tile" id="stufe-2"><h3>2. UART sichtbar machen</h3><p>Mit 256000 Baud werden Status- und Distanzinformationen protokolliert. Erst danach werden Zonen oder Empfindlichkeiten verändert.</p></article>
+        <article class="panel maker-project-tile" id="stufe-3"><h3>3. Raum und Fehlalarme vermessen</h3><p>Leerer Raum, Eintritt, ruhiges Sitzen, Türbewegung, Ventilator, Haustier und Nachbarraum werden mit identischem Versuchsprotokoll geprüft.</p></article>
+        <article class="panel maker-project-tile" id="stufe-4"><h3>4. Lokal weiterverwenden</h3><p>Erst ein belastbarer Präsenzzustand darf Licht, Lüftung oder eine lokale Hausautomation beeinflussen. Sicherheits- und Alarmfunktionen bleiben ausgeschlossen.</p></article>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="software-title">
+      <p class="eyebrow">Quellprojekt</p>
+      <h2 id="software-title">Mit dem einfachen OUT-Signal beginnen.</h2>
+      <p>Die erste Firmware nutzt bewusst noch nicht das binäre UART-Protokoll. So kannst du Versorgung, Montage und Grundverhalten prüfen, bevor zusätzliche Protokolllogik die Fehlersuche erschwert.</p>
+      <p><a class="secondary-action" href="platformio.ini" download>platformio.ini herunterladen</a> <a class="secondary-action" href="src/main.cpp" download>src/main.cpp herunterladen</a></p>
+      <ol>
+        <li>Lege beide Dateien in ein neues PlatformIO-Projekt mit derselben Ordnerstruktur.</li>
+        <li>Baue die Firmware und flashe sie per USB auf den ESP32.</li>
+        <li>Öffne den seriellen Monitor mit 115200 Baud.</li>
+        <li>Beobachte Rohsignal und stabilisierten Zustand in allen Testsituationen.</li>
+      </ol>
+    </section>
+
+    <section class="panel" id="testplan" aria-labelledby="test-title">
+      <p class="eyebrow">Abnahme statt Bauchgefühl</p>
+      <h2 id="test-title">Ein Raum gilt erst nach einem Testprotokoll als eingerichtet.</h2>
+      <ol>
+        <li>Raum mindestens fünf Minuten leer beobachten.</li>
+        <li>Aus mehreren Richtungen eintreten und Reaktionszeit notieren.</li>
+        <li>Mindestens zehn Minuten möglichst still sitzen.</li>
+        <li>Tür, Vorhang, Ventilator und bewegte Gegenstände einzeln prüfen.</li>
+        <li>Flur, Nebenraum und dünne Trennwände auf unerwünschte Erfassung prüfen.</li>
+        <li>Montageposition oder Radarparameter jeweils nur einzeln verändern und den Versuch wiederholen.</li>
+      </ol>
+      <p>Dokumentiere falsch positive und falsch negative Ergebnisse. Ein einzelner erfolgreicher Durchlauf ist keine Freigabe.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="limits-title">
+      <p class="eyebrow">Grenzen und Datenschutz</p>
+      <h2 id="limits-title">Kamerafrei bedeutet nicht folgenlos.</h2>
+      <ul>
+        <li>Radar kann durch bestimmte nichtmetallische Abdeckungen und dünne Wände reagieren; die reale Raumgrenze muss gemessen werden.</li>
+        <li>Reflexionen, bewegte Objekte und ungünstige Montage können Fehlalarme erzeugen.</li>
+        <li>Das Projekt ist weder Einbruchmeldeanlage noch medizinischer Notruf- oder Sicherheitssensor.</li>
+        <li>Auch reine Präsenz- und Zeitdaten können Rückschlüsse auf Verhalten erlauben. Speichere und übertrage sie nur mit klarem Zweck.</li>
+        <li>Es wird ausschließlich mit berührungssicherer Kleinspannung gearbeitet; Netzspannungsleuchten werden nicht direkt angeschlossen.</li>
+      </ul>
+    </section>
+
+    <section class="panel product-cta maker-download-cta">
+      <div><p class="eyebrow">Technik verstehen</p><h2>Wie Radar Entfernung und Bewegung erkennt.</h2><p>Das Wissensportal erklärt FMCW-Radar, Reflexionen und den Unterschied zu PIR, Ultraschall und optischen Sensoren. Das Lernprojekt führt anschließend tiefer in Modulidentifikation und Messplanung.</p></div>
+      <div><a class="primary-action" href="/wissen/#sensor-fmcw-radar">Radarwissen öffnen →</a> <a class="secondary-action" href="/app/learn/?catalog=build-your-own-proximity-sensor">Radar-Lernprojekt →</a></div>
+    </section>
+  </main>
+  <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span></footer>
+  <script src="/landing.js?v=20260808-session-menu-1"></script>
+</body>
+</html>
