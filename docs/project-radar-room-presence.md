@@ -35,6 +35,10 @@ Die PlatformIO-Konfiguration enthält `esp32dev`, `nanoatmega328` für den
 älteren Nano-Bootloader und `nanoatmega328new` für den neuen Nano-Bootloader.
 Die gemeinsame Firmware vermeidet ESP32-spezifisches `Serial.printf` und legt
 konstante Texte auf AVR mit `F()` im Programmspeicher ab.
+Die Starter `build.bat`, `build.sh` und `build.command` bieten dieselbe
+Boardauswahl unter Windows, Linux und macOS, können mit `all` alle Varianten
+bauen und halten ein per Doppelklick geöffnetes Terminal für die Ergebnismeldung
+offen.
 
 ## Abnahme
 

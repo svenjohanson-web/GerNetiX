@@ -92,15 +92,18 @@
       <p class="eyebrow">Quellprojekt</p>
       <h2 id="software-title">Mit dem einfachen OUT-Signal beginnen.</h2>
       <p>Die erste Firmware nutzt bewusst noch nicht das binäre UART-Protokoll. So kannst du Versorgung, Montage und Grundverhalten prüfen, bevor zusätzliche Protokolllogik die Fehlersuche erschwert.</p>
-      <p><a class="secondary-action" href="platformio.ini" download>platformio.ini herunterladen</a> <a class="secondary-action" href="src/main.cpp" download>src/main.cpp herunterladen</a></p>
+      <p><a class="secondary-action" href="platformio.ini" download>platformio.ini</a> <a class="secondary-action" href="src/main.cpp" download>src/main.cpp</a></p>
+      <p><a class="secondary-action" href="build.bat" download>Windows-Build</a> <a class="secondary-action" href="build.sh" download>Linux-Build</a> <a class="secondary-action" href="build.command" download>macOS-Build</a></p>
       <ol>
         <li>Lege beide Dateien in ein neues PlatformIO-Projekt mit derselben Ordnerstruktur.</li>
         <li>Wähle <code>esp32dev</code>, <code>nanoatmega328</code> für den älteren Nano-Bootloader oder <code>nanoatmega328new</code> für den neuen Bootloader.</li>
-        <li>Baue die Firmware und flashe sie per USB auf das gewählte Board.</li>
+        <li>Starte unter Windows <code>build.bat</code>, unter Linux <code>build.sh</code> oder unter macOS <code>build.command</code> und wähle das Board. Die Starter können mit <code>all</code> auch alle drei Umgebungen nacheinander bauen.</li>
+        <li>Flashe die gebaute Firmware anschließend per USB auf das gewählte Board.</li>
         <li>Öffne den seriellen Monitor mit 115200 Baud.</li>
         <li>Beobachte Rohsignal und stabilisierten Zustand in allen Testsituationen.</li>
       </ol>
       <p>Die Nano-Umgebungen setzen den Sensoreingang automatisch auf D2; beim ESP32 bleibt er auf GPIO27. Die gemeinsame Quelldatei vermeidet ESP32-spezifisches <code>Serial.printf</code> und passt damit auch in die 2 KB RAM des ATmega328P.</p>
+      <p>Bei einem Git-Checkout sind die Unix-Starter ausführbar. Nach einem einzelnen Browserdownload kann unter Linux oder macOS einmalig <code>chmod +x build.sh build.command</code> nötig sein. Alle drei Starter warten vor dem Schließen, damit die Buildmeldung lesbar bleibt.</p>
     </section>
 
     <section class="panel" id="testplan" aria-labelledby="test-title">

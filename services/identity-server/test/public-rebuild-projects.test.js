@@ -11,9 +11,9 @@ const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte",
 const radarRoomPresence = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "index.html"), "utf8");
 const radarRoomPresencePlatformio = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "platformio.ini"), "utf8");
 const radarRoomPresenceSource = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "src", "main.cpp"), "utf8");
-const pirMotionDetector = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "index.html"), "utf8");
-const pirMotionDetectorPlatformio = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "platformio.ini"), "utf8");
-const pirMotionDetectorSource = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "src", "main.cpp"), "utf8");
+const radarRoomPresenceBuildWindows = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "build.bat"), "utf8");
+const radarRoomPresenceBuildLinux = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "build.sh"), "utf8");
+const radarRoomPresenceBuildMac = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz", "build.command"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
@@ -122,6 +122,17 @@ test("publishes a source-first ESP32 and Arduino Nano radar room-presence rebuil
   assert.match(radarRoomPresencePlatformio, /\[env:esp32dev\][\s\S]*GERNETIX_RADAR_OUT_PIN=27/);
   assert.match(radarRoomPresencePlatformio, /\[env:nanoatmega328\][\s\S]*board = nanoatmega328[\s\S]*GERNETIX_RADAR_OUT_PIN=2/);
   assert.match(radarRoomPresencePlatformio, /\[env:nanoatmega328new\][\s\S]*board = nanoatmega328new[\s\S]*GERNETIX_RADAR_OUT_PIN=2/);
+  assert.match(radarRoomPresence, /href="build\.bat"[\s\S]*href="build\.sh"[\s\S]*href="build\.command"/);
+  for (const buildScript of [radarRoomPresenceBuildWindows, radarRoomPresenceBuildLinux]) {
+    assert.match(buildScript, /esp32dev/);
+    assert.match(buildScript, /nanoatmega328/);
+    assert.match(buildScript, /nanoatmega328new/);
+    assert.match(buildScript, /all/i);
+  }
+  assert.match(radarRoomPresenceBuildWindows, /pause/);
+  assert.match(radarRoomPresenceBuildLinux, /Zum Schließen Eingabetaste drücken/);
+  assert.match(radarRoomPresenceBuildMac, /GERNETIX_NO_PAUSE=1 sh \.\/build\.sh/);
+  assert.match(radarRoomPresenceBuildMac, /Zum Schließen Eingabetaste drücken/);
   assert.match(radarRoomPresence, /mindestens 200 mA/);
   assert.match(radarRoomPresence, /Leerer Raum[\s\S]*ruhiges Sitzen[\s\S]*Ventilator[\s\S]*Nachbarraum/);
   assert.match(radarRoomPresence, /href="\/wissen\/#sensor-fmcw-radar"/);
