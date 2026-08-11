@@ -187,6 +187,24 @@ test("registers the camera touch display v20 repository as a protected product s
   });
 });
 
+test("registers radar room presence as a protected Forgejo product source", () => {
+  const approvedCommit = "d".repeat(40);
+  const source = createSystemRepositoryCatalog({
+    FORGEJO_RADAR_ROOM_PRESENCE_COMMIT: approvedCommit,
+  }).find((entry) => entry.source_id === "gernetix-product-radar-room-presence");
+
+  assert.equal(source.kind, "product");
+  assert.equal(source.organization, "gernetix-products");
+  assert.equal(source.repository_name, "radar-raumpraesenz");
+  assert.equal(source.commit_sha, approvedCommit);
+  assert.deepEqual(source.materialization, {
+    target_root: "",
+    path_mappings: {},
+    entrypoint_adapters: {},
+    excluded_paths: ["gernetix/system-repository.json"],
+  });
+});
+
 test("copies a protected product commit into the customer repository and fixes its origin reference", async () => {
   const approvedCommit = "e".repeat(40);
   let protectedReference;

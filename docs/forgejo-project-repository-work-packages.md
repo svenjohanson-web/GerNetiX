@@ -681,7 +681,9 @@ Umgesetzter erster Umfang:
 - `tools/connect-staging.js` transportiert diesen Port ausschliesslich durch
   den bestehenden privaten SSH-/WireGuard-Weg nach `127.0.0.1:13300`.
 - Ein normales, nicht administratives Entwicklerkonto erhaelt Schreibrechte
-  nur auf die sieben freigegebenen System- und Produkt-Repositories.
+  nur auf die freigegebenen System- und Produkt-Repositories. Sieben Quellen
+  sind auf Staging nachgewiesen; Radar-Raumpraesenz ist als achte Quelle lokal
+  vorbereitet, aber noch nicht provisioniert oder gepusht.
 - `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
   konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
   ausserhalb des GerNetiX-Infrastruktur-Repositories an.

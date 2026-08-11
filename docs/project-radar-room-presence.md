@@ -11,8 +11,8 @@ das Lernprojekt vermittelt Modulidentifikation, Radarvergleich und Messmethode.
 
 ## Lieferstatus
 
-Die Seite liefert Material, Verdrahtung, PlatformIO-Konfiguration, eine erste
-Firmware für den digitalen OUT-Pin und einen Abnahmeplan. Sie ist als
+Die Seite liefert Material, Verdrahtung, den Verweis auf das getrennte
+Forgejo-Produktprojekt und einen Abnahmeplan. Sie ist als
 `Quellprojekt · Hardware-Abnahme offen` gekennzeichnet. Ein unveränderlicher,
 direkt flashbarer Public Release darf erst nach realem Boardtest, dokumentierter
 Fehlalarmprüfung und Freigabe des exakten Hardwareprofils erscheinen.
@@ -31,14 +31,22 @@ Fehlalarmprüfung und Freigabe des exakten Hardwareprofils erscheinen.
 - keine Cloud, Kamera, Identifikation oder automatische sicherheitskritische
   Aktion.
 
-Die PlatformIO-Konfiguration enthält `esp32dev`, `nanoatmega328` für den
+Die einzige Firmware-Quellkopie liegt im eigenständigen lokalen Repository
+`GerNetiX-Projekte/radar-raumpraesenz`. Das GerNetiX-Infrastruktur-Repository
+enthält weder `src/main.cpp` noch `platformio.ini` oder Build-/Flash-Starter.
+
+Die PlatformIO-Konfiguration im Produkt-Repository enthält `esp32dev`, `nanoatmega328` für den
 älteren Nano-Bootloader und `nanoatmega328new` für den neuen Nano-Bootloader.
 Die gemeinsame Firmware vermeidet ESP32-spezifisches `Serial.printf` und legt
 konstante Texte auf AVR mit `F()` im Programmspeicher ab.
-Die Starter `build.bat`, `build.sh` und `build.command` bieten dieselbe
-Boardauswahl unter Windows, Linux und macOS, können mit `all` alle Varianten
-bauen und halten ein per Doppelklick geöffnetes Terminal für die Ergebnismeldung
-offen.
+Die Starter `build.bat`, `build.sh` und `build.command` rufen den lokalen
+Forgejo-Adapter auf. Das Manifest definiert drei direkte Worker-Ziele; jedes
+Ziel erhält beim Materialisieren seine eigene PlatformIO-Umgebung. Ergänzend
+stehen bewusste Flash-Einstiege für Windows, Linux und macOS bereit, die Port
+und Ziel ausdrücklich verlangen.
+
+Der lokale Repository-Commit ist vorbereitet. Provisionierung und Push des
+neuen Forgejo-Remotes sowie ein öffentlicher Quellzugang stehen noch aus.
 
 ## Abnahme
 

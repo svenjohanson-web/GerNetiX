@@ -9,6 +9,7 @@ const SYSTEM_REPOSITORY_DEFINITIONS = Object.freeze([
   Object.freeze({ source_id: "gernetix-product-game-collection-esp8266", title: "Spielesammlung ESP8266 OLED", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp8266-oled", commit_environment: "FORGEJO_ESP8266_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp8266-oled" }),
   Object.freeze({ source_id: "gernetix-product-game-collection-esp32", title: "Spielesammlung ESP32-S3 Touch", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp32-s3-touch", commit_environment: "FORGEJO_ESP32_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp32-s3-touch" }),
   Object.freeze({ source_id: "gernetix-product-camera-touch-display", title: "ESP32-Kamera auf Touchdisplay", kind: "product", organization: "gernetix-products", repository_name: "kamera-touchdisplay", commit_environment: "FORGEJO_CAMERA_TOUCH_DISPLAY_COMMIT", local_directory: "kamera-touchdisplay" }),
+  Object.freeze({ source_id: "gernetix-product-radar-room-presence", title: "Radar-Raumpräsenz", kind: "product", organization: "gernetix-products", repository_name: "radar-raumpraesenz", commit_environment: "FORGEJO_RADAR_ROOM_PRESENCE_COMMIT", local_directory: "radar-raumpraesenz" }),
 ]);
 
 function createSystemRepositoryCatalog(env = process.env) {
@@ -32,6 +33,10 @@ function createSystemRepositoryCatalog(env = process.env) {
       excluded_paths: ["gernetix/system-repository.json", "platformio.ini"],
     }),
     systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[6], env, {
+      target_root: "",
+      excluded_paths: ["gernetix/system-repository.json"],
+    }),
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[7], env, {
       target_root: "",
       excluded_paths: ["gernetix/system-repository.json"],
     }),

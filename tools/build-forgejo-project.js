@@ -17,7 +17,7 @@ const {
 const EXCLUDED_DIRECTORIES = new Set([
   ".git", ".pio", ".gernetix-build", ".vscode", "managed_components", "node_modules", "test",
 ]);
-const EXCLUDED_FILES = new Set(["build.bat", "build.sh", "flash.bat", "flash.sh", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
+const EXCLUDED_FILES = new Set(["build.bat", "build.sh", "build.command", "flash.bat", "flash.sh", "flash.command", "dependencies.lock", "sdkconfig", "sdkconfig.old"]);
 
 async function main(argv = process.argv.slice(2)) {
   const repositoryRoot = path.resolve(option(argv, "--repository") || process.cwd());
@@ -111,6 +111,7 @@ function normalizeUploadPort(value, platform = process.platform) {
 async function createBuildPackageFiles(repositoryRoot, manifest, target) {
   if (target.type === "direct") {
     const files = await readRepositoryFiles(repositoryRoot);
+    configureDirectEnvironment(files, target);
     if (target.inject_runtime_core) await injectRuntimeCore(files);
     return files;
   }
@@ -137,6 +138,39 @@ async function createBuildPackageFiles(repositoryRoot, manifest, target) {
     return files;
   }
   throw new Error(`Unbekannter lokaler Buildtyp: ${target.type}`);
+}
+
+function configureDirectEnvironment(files, target) {
+  const environment = String(target.environment || "").trim();
+  if (!environment) return files;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(environment)) {
+    throw new Error(`Buildziel ${target.id} besitzt eine unsichere PlatformIO-Umgebung.`);
+  }
+  let ini = String(files["platformio.ini"] || "");
+  const environmentHeader = `[env:${environment}]`;
+  if (!ini.split(/\r?\n/).some((line) => line.trim() === environmentHeader)) {
+    throw new Error(`Buildziel ${target.id} verweist auf die fehlende PlatformIO-Umgebung ${environment}.`);
+  }
+  const lines = ini.split(/\r?\n/);
+  const platformioIndex = lines.findIndex((line) => line.trim() === "[platformio]");
+  if (platformioIndex === -1) {
+    ini = `[platformio]\ndefault_envs = ${environment}\n\n${ini}`;
+  } else {
+    let sectionEnd = lines.length;
+    for (let index = platformioIndex + 1; index < lines.length; index += 1) {
+      if (/^\s*\[.+\]\s*$/.test(lines[index])) {
+        sectionEnd = index;
+        break;
+      }
+    }
+    const defaultIndex = lines.findIndex((line, index) =>
+      index > platformioIndex && index < sectionEnd && /^\s*default_envs\s*=/.test(line));
+    if (defaultIndex === -1) lines.splice(platformioIndex + 1, 0, `default_envs = ${environment}`);
+    else lines[defaultIndex] = `default_envs = ${environment}`;
+    ini = lines.join("\n");
+  }
+  files["platformio.ini"] = Buffer.from(ini);
+  return files;
 }
 
 async function injectRuntimeCore(files) {
@@ -249,4 +283,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createBuildPackageFiles, main, normalizeUploadPort, productProjectSources, selectTargets, validatePackage };
+module.exports = { configureDirectEnvironment, createBuildPackageFiles, main, normalizeUploadPort, productProjectSources, selectTargets, validatePackage };
