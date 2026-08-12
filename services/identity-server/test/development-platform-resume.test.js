@@ -70,7 +70,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260808-guided-sequence-17/);
+  assert.match(publicHtml, /app\.css\?v=20260812-knowledge-library-1/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -328,6 +328,11 @@ test("requires an explicit template choice before entering project details", () 
   assert.doesNotMatch(projectDetails, /data-development-project-back/);
 });
 
+test("preselects a requested rebuild template from the protected development link", () => {
+  assert.match(publicController, /new URLSearchParams\(window\.location\.search\)\.get\("template"\)/);
+  assert.match(publicController, /showProjectPanel\("new-template"\)[\s\S]*select\.value = requestedTemplateId[\s\S]*applyProjectTemplate\(\)/);
+});
+
 test("opens every selected template directly in component configuration", () => {
   assert.doesNotMatch(publicHtml, /data-create-and-continue/);
   assert.match(publicController, /const startsInConfiguration = selectedTemplateId && selectedTemplateId !== "empty"/);
@@ -385,7 +390,7 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicRuntimeUtils, /skinparam backgroundColor transparent/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBackgroundColor #1E3A5F/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBorderColor #67E8F9/);
-  assert.match(publicHtml, /app\.css\?v=20260808-guided-sequence-17/);
+  assert.match(publicHtml, /app\.css\?v=20260812-knowledge-library-1/);
   assert.match(publicCss, /\.development-workspace-active \.development-page-actions button \{[\s\S]*font-size: 12px/);
 });
 

@@ -61,6 +61,10 @@ Die ersten dauerhaft kaufbaren thematischen Lernpakete, ihre enthaltenen
 kostenlosen und kostenpflichtigen Courses sowie faire Kauf- und Upgrade-Regeln
 sind unter [Lernkurs-Pakete](learning-course-bundles.md) beschrieben.
 
+Die verbindliche Trennung zwischen wiederverwendbaren Lernprojekten, Courses,
+Learning Paths und kaufbaren Bundles sowie die Bestandsordnung stehen im
+[Katalogvertrag fuer Lernangebote](learning-catalog-governance.md).
+
 Die verbindliche Trennung des Plattform-Startpfads in kritischen Bootstrap,
 routenbezogene Summary-Abschnitte, eigene Domaenenendpunkte und lazy geladene
 Browsermodule steht im

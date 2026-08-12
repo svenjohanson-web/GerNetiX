@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Lokalen PIR-Bewegungsmelder mit ESP32 oder Arduino Nano und HC-SR501 nachbauen." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <title>PIR-Bewegungsmelder mit ESP32 oder Arduino Nano · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen"><a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>PIR-Bewegungsmelder</span></nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Nachbauprojekt · ESP32 oder Arduino Nano · PIR</p>
+        <h1 id="project-title">Bewegung erkennen – lokal, einfach und ohne Kamera.</h1>
+        <p class="lead">Ein ESP32 oder klassischer Arduino Nano liest das digitale Signal eines HC-SR501-PIR-Sensors. Du lernst den sicheren Anschluss, die passende Nachlaufzeit und wie du Fehlmeldungen systematisch prüfst.</p>
+        <p><strong>Lieferstatus:</strong> Quellprojekt und Aufbauanleitung vorhanden. Ein direkt flashbarer Release folgt erst nach der realen Hardware-Abnahme.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="purpose-title">
+      <p class="eyebrow">Was das Projekt kann</p>
+      <h2 id="purpose-title">Bewegung erfassen, keine Personen überwachen.</h2>
+      <ul>
+        <li>lokale Verarbeitung ohne Cloud, Kamera oder Mikrofon</li>
+        <li>ein stabilisierter Bewegungszustand statt eines flackernden Rohsignals</li>
+        <li>einstellbare Empfindlichkeit und Nachlaufzeit direkt am PIR-Modul</li>
+        <li>Messplan gegen Fehlmeldungen durch Wärmequellen, Sonne und Luftströmung</li>
+      </ul>
+      <p><strong>Wichtig:</strong> Ein PIR-Sensor reagiert auf Änderungen der Wärmestrahlung. Er erkennt Bewegung, aber keine Präsenz: Eine still sitzende Person kann deshalb als „ruhig“ gelten.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="material-title">
+      <p class="eyebrow">Material zuerst</p>
+      <h2 id="material-title">Das brauchst du für die erste Stufe.</h2>
+      <ul>
+        <li>wahlweise ESP32 DevKit oder klassischer Arduino Nano mit ATmega328P</li>
+        <li>ein HC-SR501-PIR-Bewegungssensor mit BISS0001-Controller</li>
+        <li>Breadboard oder sichere Steckverbinder, Jumperleitungen und USB-Datenkabel</li>
+        <li>eine stabile 5-V-USB-Versorgung; das Modulsignal OUT bleibt für beide Boards ein Digitaleingang</li>
+      </ul>
+      <p>Viele PIR-Module sehen ähnlich aus, besitzen aber andere Pinreihenfolgen. Lies immer die Beschriftung auf deinem konkreten Modul, bevor du es mit Spannung versorgst.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="wiring-title">
+      <p class="eyebrow">Verdrahtung</p>
+      <h2 id="wiring-title">Zwei Boardvarianten, ein digitales Bewegungssignal.</h2>
+      <h3>Variante A: ESP32 DevKit</h3>
+      <ul>
+        <li><strong>HC-SR501 VCC → ESP32 5V/VIN:</strong> nicht den 3,3-V-Pin verwenden.</li>
+        <li><strong>HC-SR501 GND → ESP32 GND:</strong> gemeinsame Masse ist Pflicht.</li>
+        <li><strong>HC-SR501 OUT → ESP32 GPIO27:</strong> digitales Bewegungssignal.</li>
+      </ul>
+      <h3>Variante B: klassischer Arduino Nano (ATmega328P)</h3>
+      <ul>
+        <li><strong>HC-SR501 VCC → Nano 5V</strong> und <strong>GND → Nano GND</strong>.</li>
+        <li><strong>HC-SR501 OUT → Nano D2:</strong> digitales Bewegungssignal.</li>
+      </ul>
+      <p>Vor dem Test zwei bis drei Minuten warten: PIR-Module brauchen nach dem Einschalten eine Aufwärm- und Stabilisierungszeit. Berühre die empfindliche Sensorlinse nicht und richte sie nicht auf Sonne, Heizkörper oder Klimageräte.</p>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="stages-title">
+      <h2 id="stages-title">Vier überschaubare Ausbaustufen</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile"><h3>1. Signal lesen</h3><p>OUT an GPIO27 beziehungsweise D2 anschließen und die Meldungen im seriellen Monitor beobachten.</p></article>
+        <article class="panel maker-project-tile"><h3>2. Ruhiges Ausschalten</h3><p>Eine kurze Einschaltbestätigung und fünf Sekunden Nachlaufzeit verhindern hektische Statuswechsel.</p></article>
+        <article class="panel maker-project-tile"><h3>3. Montage prüfen</h3><p>Empfindlichkeit, Nachlaufzeit und Blickrichtung jeweils nur einzeln verändern.</p></article>
+        <article class="panel maker-project-tile"><h3>4. Lokal weiterverwenden</h3><p>Erst ein gemessener Bewegungszustand darf eine harmlose Kleinspannungsanzeige oder lokale Automation beeinflussen.</p></article>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="software-title">
+      <p class="eyebrow">Quellprojekt</p>
+      <h2 id="software-title">ESP32 und Arduino Nano bleiben getrennte Softwareeinheiten.</h2>
+      <p>Die Projektquellen liegen führend im privaten, vom GerNetiX Project Server gebundenen Forgejo-Repository. Die öffentliche Identity-Seite enthält keine zweite Kopie der Firmware.</p>
+      <h3>ESP32-Bewegungsmelder</h3>
+      <ul>
+        <li>eigene Komponente unter <code>Komponenten/ESP32-Bewegungsmelder/</code></li>
+        <li>Buildziel <code>esp32dev</code>, PIR-Ausgang an GPIO27</li>
+        <li>Projekt-Hook auf der geschützten GerNetiX-ESP32-Basissoftware</li>
+      </ul>
+      <h3>Arduino-Nano-Bewegungsmelder</h3>
+      <ul>
+        <li>eigene Komponente unter <code>Komponenten/Arduino-Nano-Bewegungsmelder/</code></li>
+        <li>Buildziel <code>nanoatmega328</code>, PIR-Ausgang an D2</li>
+        <li>eigenständige Arduino-/PlatformIO-Firmware für den ATmega328P</li>
+      </ul>
+      <p>Ein öffentlicher Quellarchiv- oder Installationsweg wird erst ergänzt, wenn GerNetiX den konkreten Forgejo-Commit kontrolliert und ohne direkten Forgejo-Zugang ausliefern kann.</p>
+    </section>
+
+    <section class="panel product-cta maker-download-cta" aria-labelledby="develop-title">
+      <div><p class="eyebrow">Mit Konto weiterentwickeln</p><h2 id="develop-title">Passe die Firmware in deinem eigenen Projekt an.</h2><p>Mit einem GerNetiX-Konto kannst du aus dem Template „IoT-Device mit Sensor“ ein eigenes Projekt erzeugen und die ESP32- oder Arduino-Nano-Firmware im Entwicklungsbereich verändern. Falls du noch nicht angemeldet bist, führt dich GerNetiX zuerst zur Anmeldung.</p></div>
+      <div><a class="primary-action" href="/app/development-platform/?template=esp32_device_only">Firmware im Entwicklungsbereich ändern →</a></div>
+    </section>
+
+    <section class="panel" aria-labelledby="test-title">
+      <p class="eyebrow">Abnahme statt Bauchgefühl</p>
+      <h2 id="test-title">Prüfe jede Montage mit einem kurzen Protokoll.</h2>
+      <ol>
+        <li>Sensor nach der Aufwärmzeit fünf Minuten in einem leeren Raum beobachten.</li>
+        <li>Aus mehreren Richtungen und Entfernungen am Sensor vorbeigehen.</li>
+        <li>Sonnenlicht, Heizkörper, Ventilator, Vorhang und offene Tür jeweils einzeln testen.</li>
+        <li>Haustiere und den Bereich außerhalb des gewünschten Erfassungsfeldes prüfen.</li>
+        <li>Empfindlichkeit, Nachlaufzeit oder Montageposition immer nur einzeln verändern.</li>
+      </ol>
+      <p>Das Projekt ist keine Einbruchmeldeanlage, kein Notrufsystem und schaltet weder Netzspannung noch sicherheitskritische Aktoren.</p>
+    </section>
+
+    <section class="panel product-cta maker-download-cta"><div><p class="eyebrow">Sensoren verstehen</p><h2>Warum PIR Bewegung, aber keine Präsenz erkennt.</h2><p>Im Wissensportal lernst du die Unterschiede zwischen PIR, Radar, Ultraschall und optischen Sensoren kennen.</p></div><div><a class="primary-action" href="/wissen/#sensor-pir">PIR-Wissen öffnen →</a> <a class="secondary-action" href="/nachbauprojekte/radar-raumpraesenz/">Radar-Projekt ansehen →</a></div></section>
+  </main>
+  <footer><span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span></footer>
+  <script src="/landing.js?v=20260808-session-menu-1"></script>
+</body>
+</html>

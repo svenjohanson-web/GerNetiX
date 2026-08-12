@@ -18,6 +18,7 @@ function developmentProjectTemplateCatalog() {
     required_entitlements: template.requiredEntitlements || [],
     board_selection_required: Boolean(template.boardSelectionRequired),
     model_schema_version: template.schemaVersion,
+    ...(template.baseTemplateId ? { base_template_id: template.baseTemplateId } : {}),
   }));
 }
 

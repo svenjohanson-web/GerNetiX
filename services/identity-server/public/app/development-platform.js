@@ -3,6 +3,7 @@ const DevelopmentPlatform = (() => {
   let projectTemplates = {};
   let projectTemplateCatalog = [];
   let projectTemplatePreviews = {};
+  let requestedTemplateApplied = false;
 
   function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, loadProjectDetail, navigate, escapeHtml, escapeAttribute, openHelpTopic, repositoryCard }) {
     let initialized = false;
@@ -107,6 +108,13 @@ const DevelopmentPlatform = (() => {
         `<option value="">Template waehlen</option>`,
         ...catalog.map((template) => `<option value="${escapeAttribute(template.id)}" ${template.id === "empty" ? "hidden" : ""} ${template.available === false ? "disabled" : ""}>${escapeHtml(template.title)}${template.available === false ? " · Premium" : ""}</option>`),
       ].join("");
+      const requestedTemplateId = new URLSearchParams(window.location.search).get("template") || "";
+      if (!requestedTemplateApplied && requestedTemplateId && projectTemplates[requestedTemplateId] && requestedTemplateId !== "empty") {
+        requestedTemplateApplied = true;
+        showProjectPanel("new-template");
+        select.value = requestedTemplateId;
+        applyProjectTemplate();
+      }
     }
 
     function openDevelopmentTemplateHelp() {

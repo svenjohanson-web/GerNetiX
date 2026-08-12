@@ -48,6 +48,25 @@ und Ziel ausdrücklich verlangen.
 Der lokale Repository-Commit ist vorbereitet. Provisionierung und Push des
 neuen Forgejo-Remotes sowie ein öffentlicher Quellzugang stehen noch aus.
 
+## Entwicklungs-Template
+
+Der Entwicklungsbereich führt `iot_device_radar` als Spezialisierung des
+technologieneutralen Basistemplates `esp32_device_only`, das in der Oberfläche
+als `IoT-Device mit Sensor` erscheint. Die Spezialisierung übernimmt die
+Radar-Architektur, das geschützte Forgejo-Produktprojekt und die drei
+PlatformIO-Ziele `esp32dev`, `nanoatmega328` und `nanoatmega328new`.
+
+Die öffentlichen PIR- und Radar-Seiten verlinken kontogebunden in den
+Entwicklungsbereich und wählen das passende Template vor. Ohne Sitzung führt
+der bestehende geschützte App-Einstieg zuerst über die Anmeldung und danach
+zum angeforderten Template zurück.
+
+Das Radar-Template kann erst auf Staging materialisiert werden, wenn das
+Produkt-Repository in Forgejo provisioniert, der vorbereitete Commit gepusht
+und dessen Commit-SHA serverseitig als geschützte Produktquelle freigegeben
+ist. Bis dahin bleibt die Template-Definition lokal nachgewiesen, ohne eine
+zweite Firmware-Quellkopie im Infrastruktur-Repository anzulegen.
+
 ## Abnahme
 
 Der Testplan umfasst leeren Raum, Eintritt, ruhiges Sitzen, Tür, Vorhang,

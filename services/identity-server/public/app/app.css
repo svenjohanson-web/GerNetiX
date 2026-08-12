@@ -561,6 +561,19 @@ button.danger:hover {
   justify-content: center;
   gap: 24px;
 }
+.knowledge-library { display: grid; gap: 20px; max-width: 1120px; margin: 0 auto; }
+.knowledge-library-head { max-width: 680px; padding: 4px 2px 0; }
+.knowledge-library-head h3 { margin: 3px 0 0; font-size: clamp(22px, 2.5vw, 30px); }
+.knowledge-library-head p:last-child { margin: 8px 0 0; color: var(--muted); line-height: 1.55; }
+.knowledge-book-shelf { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.knowledge-book-card { display: grid; grid-template-rows: auto auto 1fr auto auto; gap: 9px; min-height: 230px; }
+.knowledge-book-card p, .knowledge-book-card h4 { margin: 0; }
+.knowledge-book-card h4 { font-size: 19px; line-height: 1.3; }
+.knowledge-book-card > p:not(.knowledge-book-card-number) { color: var(--muted); line-height: 1.5; }
+.knowledge-book-card-number { color: var(--accent); font-size: 12px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.knowledge-book-card small { color: var(--muted); font-weight: 750; }
+.knowledge-book-card button { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 4px; }
+.knowledge-book-card button span { font-size: 18px; }
 .knowledge-book-navigation {
   position: sticky;
   top: 16px;
@@ -569,6 +582,9 @@ button.danger:hover {
   max-height: calc(100dvh - 32px);
   overflow: auto;
 }
+.knowledge-library-link { color: var(--accent); font-size: 13px; font-weight: 800; }
+.knowledge-part-title { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; min-width: 0; }
+.knowledge-part-title > span { color: var(--accent); font-variant-numeric: tabular-nums; }
 .knowledge-book-toc-content { display: grid; gap: 14px; padding: 0 2px 2px; }
 .knowledge-part-link { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; width: 100%; border: 0; border-radius: 7px; padding: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; text-align: left; }
 .knowledge-part-link:hover { background: var(--soft); color: var(--accent); }
@@ -875,6 +891,7 @@ button.danger:hover {
   .knowledge-part-toc > summary,
   .knowledge-chapter-toc > summary,
   .knowledge-part-link,
+  .knowledge-part-title,
   .knowledge-chapter-title-link {
     min-width: 0;
   }
@@ -883,6 +900,7 @@ button.danger:hover {
     grid-template-columns: minmax(0, 1fr);
   }
   .knowledge-part-link,
+  .knowledge-part-title,
   .knowledge-chapter-title-link,
   .knowledge-subchapter-link {
     overflow-wrap: anywhere;

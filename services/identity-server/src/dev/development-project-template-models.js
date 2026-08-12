@@ -26,7 +26,7 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
   }),
   esp32_device_only: templateModel({
     id: "esp32_device_only",
-    title: "IoT-Device only",
+    title: "IoT-Device mit Sensor",
     description: "Eigenstaendiges IoT-Device mit lokaler Sensorik, ohne Webserver und ohne Internet-Abhaengigkeit.",
     hint: "IoT-Device und Sensoren als logische Bausteine.",
     architecture: {
@@ -38,6 +38,59 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
       relations: [
         relation("user", "device", "lokale Bedienung"),
         relation("sensors", "device", "Messwerte"),
+      ],
+    },
+  }),
+  iot_device_radar: templateModel({
+    id: "iot_device_radar",
+    schemaVersion: 1,
+    baseTemplateId: "esp32_device_only",
+    title: "IoT-Device mit Radar",
+    defaultTitle: "Meine Radar-Raumpräsenz",
+    description: "Spezialisierung des IoT-Device-mit-Sensor-Templates für lokale Raumpräsenz mit einem HLK-LD2410C-Radarsensor.",
+    hint: "Kamerafreie, lokale Präsenzerkennung mit getrennten Buildzielen für ESP32 und Arduino Nano.",
+    architecture: {
+      elements: [
+        element("environment", "Beobachteter Raum", "actor", { stereotype: "physical environment" }),
+        element("radar", "HLK-LD2410C Radarsensor", "sensor"),
+        element("device", "IoT-Device 1", "iot_device"),
+        element("user", "Nutzer", "actor"),
+      ],
+      relations: [
+        relation("environment", "radar", "erzeugt Radarreflexionen"),
+        relation("radar", "device", "liefert Präsenzsignal"),
+        relation("user", "device", "prüft lokalen Präsenzzustand"),
+      ],
+    },
+    realization: {
+      systemSourceId: "gernetix-product-radar-room-presence",
+      hardwareProfileId: "hardware.processor_board.generic_esp_wroom32",
+      hardwareConfiguration: {
+        schema_version: 5,
+        components: [
+          {
+            component_id: "device",
+            label: "IoT-Device 1",
+            plantuml_type: "rectangle",
+            abstract_type: "iot_device",
+            board_profile_id: "hardware.processor_board.generic_esp_wroom32",
+          },
+          {
+            component_id: "radar",
+            label: "HLK-LD2410C Radarsensor",
+            plantuml_type: "rectangle",
+            abstract_type: "sensor",
+            concrete_type: "hlk_ld2410c",
+            sensor_category: "presence_radar",
+            signal_type: "digital",
+            target_device_id: "device",
+          },
+        ],
+      },
+      softwareUnits: [
+        radarSoftwareUnit("radar_esp32", "Radar-Raumpräsenz · ESP32 DevKit", "espressif32", "esp32dev", 27, "hardware.processor_board.generic_esp_wroom32"),
+        radarSoftwareUnit("radar_nano_old_bootloader", "Radar-Raumpräsenz · Arduino Nano · alter Bootloader", "atmelavr", "nanoatmega328", 2, "hardware.processor_board.arduino_nano_r3_atmega328p"),
+        radarSoftwareUnit("radar_nano_new_bootloader", "Radar-Raumpräsenz · Arduino Nano · neuer Bootloader", "atmelavr", "nanoatmega328new", 2, "hardware.processor_board.arduino_nano_r3_atmega328p"),
       ],
     },
   }),
@@ -432,6 +485,34 @@ function templateModel(input) {
     realization: null,
     ...input,
   });
+}
+
+function radarSoftwareUnit(id, title, platform, environment, pin, hardwareProfileId) {
+  return {
+    software_unit_id: id,
+    title,
+    software_kind: "embedded_firmware",
+    build_system: "platformio",
+    source_root: "Komponenten/IoT-Device 1",
+    entrypoint: "src/main.cpp",
+    hardwareProfileId,
+    buildConfig: {
+      platform,
+      framework: "arduino",
+      board: environment,
+      environment,
+      monitor_speed: 115200,
+      upload_protocol: platform === "espressif32" ? "esptool" : "avrdude",
+      build_flags: [`-D GERNETIX_RADAR_OUT_PIN=${pin}`],
+      platformio_options: {},
+      firmware_basis_id: "",
+      firmware_basis_version: "",
+      firmware_basis_variant: "",
+      user_source_path: "src/main.cpp",
+      user_target_path: "src/main.cpp",
+      libraries: [],
+    },
+  };
 }
 
 function element(id, label, kind, options = {}) {

@@ -7,6 +7,8 @@ const contentTypes = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".ico": "image/x-icon",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".puml": "text/plain; charset=utf-8",
@@ -39,7 +41,7 @@ function serveStatic(res, rootDir, requestPath, options = {}) {
 
 function staticCacheControl(filePath, options = {}) {
   const extension = path.extname(filePath).toLowerCase();
-  const immutableAsset = options.versioned === true && [".css", ".ico", ".js", ".png", ".svg"].includes(extension);
+  const immutableAsset = options.versioned === true && [".css", ".ico", ".js", ".jpg", ".jpeg", ".png", ".svg"].includes(extension);
   return immutableAsset ? "public, max-age=31536000, immutable" : "no-store";
 }
 

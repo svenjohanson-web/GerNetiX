@@ -37,7 +37,7 @@ function createSystemRepositoryCatalog(env = process.env) {
       excluded_paths: ["gernetix/system-repository.json"],
     }),
     systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[7], env, {
-      target_root: "",
+      target_root: "Komponenten/IoT-Device 1",
       excluded_paths: ["gernetix/system-repository.json"],
     }),
   ];

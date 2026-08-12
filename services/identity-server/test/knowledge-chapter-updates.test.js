@@ -170,3 +170,14 @@ test("shows knowledge releases in the extensible dashboard news area and marks o
   assert.match(informationView, /knowledge-new-badge/);
   assert.match(informationView, /notifyKnowledgeChapterOpen/);
 });
+
+test("organizes the knowledge portal as a library with one foundations book and individual lessons", () => {
+  assert.match(informationView, /function renderKnowledgeLibrary\(topics\)/);
+  assert.match(informationView, /Wähle ein Buch/);
+  assert.match(informationView, /GerNetiX Grundlagen/);
+  assert.match(informationView, /knowledge-book-foundations/);
+  assert.match(informationView, /data-knowledge-book/);
+  assert.match(informationView, /data-knowledge-library/);
+  assert.match(css, /\.knowledge-book-shelf/);
+  assert.match(css, /\.knowledge-book-card/);
+});

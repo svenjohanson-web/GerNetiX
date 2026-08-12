@@ -186,6 +186,10 @@ function initializePublicTheme() {
   const applyTheme = (nextTheme) => {
     theme = nextTheme;
     root.dataset.publicTheme = theme;
+    document.querySelectorAll("[data-theme-image]").forEach((image) => {
+      const nextSource = image.dataset[`theme${theme === "dark" ? "Dark" : "Light"}Src`];
+      if (nextSource && image.getAttribute("src") !== nextSource) image.src = nextSource;
+    });
     const button = document.querySelector("#publicThemeToggle");
     if (!button) return;
     const nextLabel = theme === "dark" ? "Helles Design einschalten" : "Dunkles Design einschalten";

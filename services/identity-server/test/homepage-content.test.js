@@ -34,8 +34,8 @@ test("places motivation and the complete system scope directly below the hero", 
   assert.match(html, /class="panel home-purpose"[\s\S]*Verstehen macht dich unabhängig/);
   assert.match(html, /class="panel home-purpose"[\s\S]*id="scope" class="home-scope"/);
   assert.match(html, /Ein zusammenhängendes System[\s\S]*Vom Embedded-Gerät bis zur Anwendung/);
-  assert.match(html, /class="system-flow-visual"[\s\S]*src="\/images\/gernetix-system-flow\.png"[\s\S]*alt="[^"]*Embedded-Elektronik[^"]*lokalen Server[^"]*Cloud-Dienste[^"]*Anwendung/);
-  assert.ok(fs.existsSync(path.join(publicRoot, "images", "gernetix-system-flow.png")));
+  assert.match(html, /class="system-flow-visual"[\s\S]*data-theme-image[\s\S]*data-theme-dark-src="\/images\/gernetix-system-flow\.jpg[^"]*"[\s\S]*data-theme-light-src="\/images\/gernetix-system-flow-light\.png[^"]*"[\s\S]*alt="[^"]*Embedded-Elektronik[^"]*lokalen Server[^"]*Cloud-Dienste[^"]*Anwendung/);
+  assert.ok(fs.existsSync(path.join(publicRoot, "images", "gernetix-system-flow-light.png")));
   assert.doesNotMatch(html, /class="system-chain"|<svg[^>]*class="system-flow-visual"/);
   assert.match(html, /Embedded Systems &amp; Elektronik/);
   assert.match(html, /Kommunikation &amp; Netzwerke/);
@@ -46,6 +46,16 @@ test("places motivation and the complete system scope directly below the hero", 
   assert.doesNotMatch(html, /id="platform-title"|Unsere Plattform|class="scope-uml"/);
   assert.ok(html.indexOf('id="hero-title"') < html.indexOf('id="motivation"'));
   assert.ok(html.indexOf('id="motivation"') < html.indexOf('id="shared-spaces"'));
+});
+
+test("switches homepage images and their background surfaces with the public reading theme", () => {
+  assert.equal((html.match(/data-theme-image/g) || []).length, 4);
+  assert.match(html, /data-theme-light-src="\/images\/software-evolution-punched-cards-light\.png/);
+  assert.match(html, /data-theme-light-src="\/images\/software-evolution-basic-light\.png/);
+  assert.match(html, /data-theme-light-src="\/images\/software-evolution-ai-light\.png/);
+  assert.match(client, /document\.querySelectorAll\("\[data-theme-image\]"\)/);
+  assert.match(client, /theme === "dark" \? "Dark" : "Light"/);
+  assert.match(css, /html\[data-public-theme="light"\] \.software-evolution-gallery figure,[\s\S]*\.system-flow-visual \{ background: #efe8dc; \}/);
 });
 
 test("uses the GerNetiX corporate design and responsive homepage grids", () => {

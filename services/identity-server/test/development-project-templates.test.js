@@ -30,7 +30,7 @@ test("separates semantic template models from rendered views", () => {
 
 test("exposes one UI catalog without architecture or realization internals", () => {
   const catalog = developmentProjectTemplateCatalog();
-  assert.equal(catalog.length, 11);
+  assert.equal(catalog.length, 12);
   assert.equal(catalog.find((template) => template.id === "empty").default_title, "");
   assert.deepEqual(catalog.find((template) => template.id === "sensor_actuator_control"), {
     id: "sensor_actuator_control",
@@ -317,6 +317,22 @@ test("IoT-device-only template remains logical until hardware realization", () =
   assert.equal(buildConfig, null);
   assert.deepEqual(sources, []);
   assert.deepEqual(templateFirmwareSources(developmentProjectTemplate("empty"), "Leer"), []);
+});
+
+test("specializes the sensor IoT-device template for radar room presence", () => {
+  const template = developmentProjectTemplate("iot_device_radar");
+  const catalogItem = developmentProjectTemplateCatalog().find((item) => item.id === template.id);
+  const source = templateArchitecturePlantUml(template, template.title);
+  const units = templateSoftwareUnits(template);
+
+  assert.equal(template.baseTemplateId, "esp32_device_only");
+  assert.equal(catalogItem.base_template_id, "esp32_device_only");
+  assert.equal(template.realization.systemSourceId, "gernetix-product-radar-room-presence");
+  assert.match(source, /HLK-LD2410C Radarsensor/);
+  assert.match(source, /liefert Präsenzsignal/);
+  assert.deepEqual(units.map((unit) => unit.build_config.environment), ["esp32dev", "nanoatmega328", "nanoatmega328new"]);
+  assert.equal(units.every((unit) => unit.source_root === "Komponenten/IoT-Device 1"), true);
+  assert.deepEqual(templateFirmwareSources(template, template.title), []);
 });
 
 test("materializes a buildable starter source when a logical IoT device receives its board", () => {

@@ -45,6 +45,7 @@ test("platform scripts download in parallel and route-only knowledge assets stay
   assert.equal(scripts.every((match) => match[2].includes("?v=")), true);
   assert.match(webRoutes, /versioned: url\.searchParams\.has\("v"\)/);
   assert.equal(staticCacheControl("/app/app.js", { versioned: true }), "public, max-age=31536000, immutable");
+  assert.equal(staticCacheControl("/images/software-evolution-ai.jpg", { versioned: true }), "public, max-age=31536000, immutable");
   assert.equal(staticCacheControl("/app/app.js"), "no-store");
   assert.equal(staticCacheControl("/app/index.html", { versioned: true }), "no-store");
 });

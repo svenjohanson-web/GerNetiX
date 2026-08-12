@@ -1168,6 +1168,8 @@ html[data-public-theme="dark"] .project-example-label { color: #f0a38d; }
   height: auto;
   border: 1px solid var(--line);
 }
+html[data-public-theme="light"] .software-evolution-gallery figure,
+html[data-public-theme="light"] .system-flow-visual { background: #efe8dc; }
 @media (max-width: 620px) {
   .software-evolution-gallery { grid-template-columns: 1fr; max-width: 420px; }
   .system-flow-explainer { grid-template-columns: 1fr; }

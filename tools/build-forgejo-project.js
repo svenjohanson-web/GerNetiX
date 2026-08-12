@@ -24,8 +24,7 @@ async function main(argv = process.argv.slice(2)) {
   const checkOnly = argv.includes("--check");
   const flashRequested = argv.includes("--flash");
   const uploadPort = flashRequested ? normalizeUploadPort(option(argv, "--port")) : "";
-  const manifestPath = path.join(repositoryRoot, "gernetix", "system-repository.json");
-  const manifest = JSON.parse(await fsp.readFile(manifestPath, "utf8"));
+  const manifest = await loadBuildManifest(repositoryRoot);
   const configuredTargets = Array.isArray(manifest.local_build?.targets) ? manifest.local_build.targets : [];
   if (!configuredTargets.length) throw new Error("Im System-Repository fehlt gernetix/system-repository.json.local_build.targets.");
   const targets = selectTargets(configuredTargets, option(argv, "--target"), flashRequested);
@@ -83,6 +82,43 @@ async function main(argv = process.argv.slice(2)) {
   process.stdout.write(`${JSON.stringify({ repository: manifest.source_id, mode: checkOnly ? "check" : flashRequested ? "flash" : "build", targets: results }, null, 2)}\n`);
 }
 
+async function loadBuildManifest(repositoryRoot) {
+  const systemManifestPath = path.join(repositoryRoot, "gernetix", "system-repository.json");
+  if (fs.existsSync(systemManifestPath)) return JSON.parse(await fsp.readFile(systemManifestPath, "utf8"));
+  const projectManifestPath = path.join(repositoryRoot, "gernetix", "project.json");
+  if (!fs.existsSync(projectManifestPath)) {
+    throw new Error("Es fehlt gernetix/system-repository.json oder gernetix/project.json.");
+  }
+  const project = JSON.parse(await fsp.readFile(projectManifestPath, "utf8"));
+  const unitsRoot = path.join(repositoryRoot, "gernetix", "software-units");
+  const unitFiles = (await fsp.readdir(unitsRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const units = await Promise.all(unitFiles.map(async (entry) => JSON.parse(await fsp.readFile(path.join(unitsRoot, entry.name), "utf8"))));
+  const targets = units
+    .filter((unit) => unit.build_system === "platformio" && unit.software_unit_id && unit.source_root)
+    .map((unit) => ({
+      id: unit.software_unit_id,
+      title: unit.title || unit.software_unit_id,
+      type: unit.build?.firmware_basis_id ? "esp32-product" : "direct",
+      source_root: unit.source_root,
+      environment: unit.build?.environment || "",
+      ...(unit.build?.firmware_basis_id ? {
+        basis_repository: unit.build.firmware_basis_id === "gernetix-runtime-basissoftware"
+          ? "basissoftware-esp32"
+          : unit.build.firmware_basis_id,
+        build_config: unit.build,
+      } : {}),
+    }));
+  return {
+    schema_version: 1,
+    source_id: project.project_id,
+    title: project.title,
+    kind: "project",
+    local_build: { schema_version: 1, runner: "gernetix-build-worker-platformio", targets },
+  };
+}
+
 function selectTargets(targets, requestedTarget, flashRequested = false) {
   const targetId = String(requestedTarget || "").trim();
   if (targetId) {
@@ -110,7 +146,9 @@ function normalizeUploadPort(value, platform = process.platform) {
 
 async function createBuildPackageFiles(repositoryRoot, manifest, target) {
   if (target.type === "direct") {
-    const files = await readRepositoryFiles(repositoryRoot);
+    const files = target.source_root
+      ? Object.fromEntries((await productProjectSources(repositoryRoot, target)).map((file) => [file.path, file.content]))
+      : await readRepositoryFiles(repositoryRoot);
     configureDirectEnvironment(files, target);
     if (target.inject_runtime_core) await injectRuntimeCore(files);
     return files;
@@ -283,4 +321,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { configureDirectEnvironment, createBuildPackageFiles, main, normalizeUploadPort, productProjectSources, selectTargets, validatePackage };
+module.exports = { configureDirectEnvironment, createBuildPackageFiles, loadBuildManifest, main, normalizeUploadPort, productProjectSources, selectTargets, validatePackage };

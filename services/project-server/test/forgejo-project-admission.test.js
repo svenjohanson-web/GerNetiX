@@ -198,7 +198,7 @@ test("registers radar room presence as a protected Forgejo product source", () =
   assert.equal(source.repository_name, "radar-raumpraesenz");
   assert.equal(source.commit_sha, approvedCommit);
   assert.deepEqual(source.materialization, {
-    target_root: "",
+    target_root: "Komponenten/IoT-Device 1",
     path_mappings: {},
     entrypoint_adapters: {},
     excluded_paths: ["gernetix/system-repository.json"],

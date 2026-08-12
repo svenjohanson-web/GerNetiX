@@ -2,6 +2,8 @@
 
 Lernprojekte erhalten genau eine stabile Hauptkategorie und beliebig viele kontrollierte Tags. Die Klassifikation dient ausschließlich der Darstellung und Filterung im Lernprojekt-Katalog.
 
+Der verbindliche Katalogvertrag fuer die Trennung zwischen Lernprojekt, Course, Learning Path und Bundle steht in [Katalogvertrag fuer Lernangebote](learning-catalog-governance.md). Ein Lernprojekt kann ueber geordnete Zuordnungen in mehreren Courses und Learning Paths erscheinen; Kategorie und Tags bleiben dabei stabil am Lernprojekt.
+
 ## Kategorien
 
 - `software_engineering`: Software Engineering

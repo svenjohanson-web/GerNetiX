@@ -10,6 +10,7 @@ const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbaupro
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const radarRoomPresenceRoot = path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz");
 const radarRoomPresence = fs.readFileSync(path.join(radarRoomPresenceRoot, "index.html"), "utf8");
+const pirMotionDetector = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "index.html"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
@@ -127,7 +128,27 @@ test("publishes a Forgejo-backed ESP32 and Arduino Nano radar room-presence rebu
   assert.match(radarRoomPresence, /Leerer Raum[\s\S]*ruhiges Sitzen[\s\S]*Ventilator[\s\S]*Nachbarraum/);
   assert.match(radarRoomPresence, /href="\/wissen\/#sensor-fmcw-radar"/);
   assert.match(radarRoomPresence, /catalog=build-your-own-proximity-sensor/);
+  assert.match(radarRoomPresence, /Spezialisierung von „IoT-Device mit Sensor“/);
+  assert.match(radarRoomPresence, /href="\/app\/development-platform\/\?template=iot_device_radar"/);
   assert.doesNotMatch(radarRoomPresence, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
+});
+
+test("publishes a source-first PIR motion-detector rebuild project for ESP32 and Arduino Nano", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/pir-bewegungsmelder"[\s\S]*redirect\(res, "\/nachbauprojekte\/pir-bewegungsmelder\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/pir-bewegungsmelder\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/pir-bewegungsmelder\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/pir-bewegungsmelder\/"/);
+  assert.match(page, /Bewegung mit PIR, ESP32 oder Arduino Nano erkennen/);
+  assert.match(pirMotionDetector, /HC-SR501/);
+  assert.match(pirMotionDetector, /GPIO27/);
+  assert.match(pirMotionDetector, /Nano D2/);
+  assert.match(pirMotionDetector, /keine Präsenz/);
+  assert.match(pirMotionDetector, /Komponenten\/ESP32-Bewegungsmelder/);
+  assert.match(pirMotionDetector, /Komponenten\/Arduino-Nano-Bewegungsmelder/);
+  assert.match(pirMotionDetector, /führend im privaten[\s\S]*Forgejo-Repository/);
+  assert.match(pirMotionDetector, /Mit einem GerNetiX-Konto/);
+  assert.match(pirMotionDetector, /href="\/app\/development-platform\/\?template=esp32_device_only"/);
+  assert.doesNotMatch(pirMotionDetector, /href="platformio\.ini"|href="src\/main\.cpp"/);
+  assert.doesNotMatch(pirMotionDetector, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });
 
 test("publishes Nexi as a complete, prebuilt and directly flashable rebuild project", () => {

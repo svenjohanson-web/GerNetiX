@@ -109,6 +109,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/radar-raumpraesenz", handler: ({ res }) => redirect(res, "/nachbauprojekte/radar-raumpraesenz/") });
   registry.register({ method: "*", path: "/nachbauprojekte/radar-raumpraesenz/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/radar-raumpraesenz/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/pir-bewegungsmelder", handler: ({ res }) => redirect(res, "/nachbauprojekte/pir-bewegungsmelder/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/pir-bewegungsmelder/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/pir-bewegungsmelder/index.html") });
   registry.register({
     method: "GET",
     pattern: /^\/nachbauprojekte\/nexi-sprachassistent\/api\//,
@@ -119,7 +121,7 @@ function registerWebRoutes({
   registry.register({ method: "*", pattern: /^\/community\/questions\/[^/]+\/?$/, handler: ({ res }) => serveStatic(res, publicDir, "/community/question.html") });
   for (const routePath of ["/flashbox-einrichten", "/flashbox-einrichten/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/flashbox-einrichten/index.html") });
   registry.register({ method: "*", path: "/", handler: ({ res }) => serveStatic(res, publicDir, "/index.html") });
-  registry.register({ method: "*", pattern: /^\//, handler: ({ res, url }) => serveStatic(res, publicDir, url.pathname) });
+  registry.register({ method: "*", pattern: /^\//, handler: ({ res, url }) => serveStatic(res, publicDir, url.pathname, { versioned: url.searchParams.has("v") }) });
 }
 
 module.exports = { registerWebRoutes };

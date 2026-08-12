@@ -150,7 +150,13 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         project_id: templateProjectId, user_id: "system", title: template.title, description: template.description,
         learning_project_id: "system_template", hardware_profile_id: templateHardwareProfileId(template), build_config: buildConfig,
         ...(softwareUnits.length ? { software_units: softwareUnits, active_software_unit_id: softwareUnits[0].software_unit_id } : {}),
-        status: "template", view_manifest: { template_id: template.id, template_ref: { version: template.schemaVersion } },
+        status: "template", view_manifest: {
+          template_id: template.id,
+          template_ref: {
+            version: template.schemaVersion,
+            ...(template.baseTemplateId ? { base_template_id: template.baseTemplateId } : {}),
+          },
+        },
         ...(systemSourceId ? { system_source_id: systemSourceId } : {}), sources,
       },
     });

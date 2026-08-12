@@ -25,6 +25,7 @@ const InformationView = (() => {
     const portal = surface === "knowledge";
     const requested = window.location.hash.replace(/^#/, "");
     const requestedChapter = portal ? content.findChapterForAnchor(requested) : null;
+    const requestedBook = portal && requested === "knowledge-book-foundations";
     if (requestedChapter) selectedTopicId = requestedChapter.id;
     else if (requested && visibleTopics.some((topic) => topic.children?.some((child) => child.id === requested))) selectedTopicId = requested;
     if (!visibleTopics.some((topic) => topic.children?.some((child) => child.id === selectedTopicId))) selectedTopicId = visibleTopics[0]?.children?.[0]?.id || "quick-start";
@@ -40,7 +41,9 @@ const InformationView = (() => {
         </div>
       </header>
       ${portal && access.showKnowledgeHistory ? renderKnowledgeHistory() : ""}
-      ${portal ? renderKnowledgeBook(visibleTopics, selected, article) : `<div class="help-layout">
+      ${portal ? (requestedBook || !requested
+        ? renderKnowledgeLibrary(visibleTopics)
+        : renderKnowledgeBook(visibleTopics, selected, article)) : `<div class="help-layout">
         <nav class="panel help-topic-navigation" aria-label="${portal ? "Wissensportal-Themen" : "Hilfethemen"}">
           <p class="eyebrow">${portal ? "Themenbereiche" : "Hilfethemen"}</p>
           ${visibleTopics.map(renderTopic).join("")}
@@ -142,11 +145,12 @@ const InformationView = (() => {
     const chapterNumber = `${topicIndex + 1}.${chapterIndex + 1}`;
     return `<div class="knowledge-book-layout">
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
-        <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary><a class="knowledge-part-link" href="#knowledge-part-${escapeHtml(topic.id)}" data-knowledge-part="${escapeHtml(topic.id)}"><span>${topicIndex + 1}</span><strong>${escapeHtml(topic.title)}</strong></a></summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
+        <a class="knowledge-library-link" href="#knowledge-book-foundations" data-knowledge-library>← Alle Bücher</a>
+        <div class="knowledge-book-toc-content">${topics.map((entry, entryIndex) => `<details class="knowledge-part-toc" ${entry.id === topic.id ? "open" : ""}><summary><span class="knowledge-part-title"><span>${entryIndex + 1}</span><strong>${escapeHtml(entry.title)}</strong></span></summary><div>${(entry.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, entryIndex, childIndex)).join("")}</div></details>`).join("")}</div>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         <section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}">
-          <header><p class="eyebrow">Hauptkapitel ${topicIndex + 1}</p><h2>${topicIndex + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>
+          <header><p class="eyebrow">GerNetiX Grundlagen · Teil ${topicIndex + 1}</p><h2>${topicIndex + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>
           <article id="${escapeHtml(selectedChapter.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(selectedChapter.id)}">
             <div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderNewChapterBadge(selectedChapter.id)}</div>
             ${article ? renderArticle(article, selectedChapter, { showRelated: false, chapterNumber }) : renderKnowledgeArticleLoading(selectedChapter)}
@@ -162,6 +166,24 @@ const InformationView = (() => {
     }
     const metadata = KnowledgeContent.articles[chapter.articleId];
     return `<section class="knowledge-chapter-load-state" aria-live="polite" aria-busy="true"><p class="eyebrow">Kapitel wird geladen</p><h3>${escapeHtml(metadata?.title || chapter.title)}</h3><p>${escapeHtml(metadata?.summary || "Der Inhalt wird vorbereitet.")}</p><span class="knowledge-loading-bar" aria-hidden="true"></span></section>`;
+  }
+
+  function renderKnowledgeLibrary(topics) {
+    const lessonCount = topics.reduce((count, topic) => count + (topic.children || []).length, 0);
+    return `<section class="knowledge-library" aria-label="Bücher im Wissensportal">
+      <header class="knowledge-library-head">
+        <p class="eyebrow">Bibliothek</p>
+        <h3>Wähle ein Buch</h3>
+        <p>Jedes Buch ist ein eigenes Thema. Darin findest du kurze, einzeln öffnende Lektionen statt eines langen Dokuments.</p>
+      </header>
+      <div class="knowledge-book-shelf"><article class="panel knowledge-book-card">
+        <p class="knowledge-book-card-number">Band 1</p>
+        <h4>GerNetiX Grundlagen</h4>
+        <p>Technik, Software, Elektronik und vernetzte Systeme verständlich aufbauen – als ein zusammenhängendes Grundlagenbuch.</p>
+        <small>${lessonCount} Lektionen in ${topics.length} Teilen</small>
+        <button type="button" data-knowledge-book="foundations">Buch öffnen <span aria-hidden="true">→</span></button>
+      </article></div>
+    </section>`;
   }
 
   function renderKnowledgeChapterToc(chapter, topicIndex, chapterIndex) {
@@ -485,6 +507,18 @@ const InformationView = (() => {
         event.stopPropagation();
         const firstChapter = KnowledgeContent.topics.find((topic) => topic.id === knowledgePart.dataset.knowledgePart)?.children?.[0];
         if (firstChapter) selectTopic(firstChapter.id);
+        return;
+      }
+      const knowledgeBook = event.target.closest("[data-knowledge-book]");
+      if (knowledgeBook) {
+        const firstChapter = KnowledgeContent.topics[0]?.children?.[0];
+        if (firstChapter) selectTopic(firstChapter.id);
+        return;
+      }
+      if (event.target.closest("[data-knowledge-library]")) {
+        event.preventDefault();
+        history.replaceState({}, "", "/wissen/#knowledge-book-foundations");
+        render();
         return;
       }
       const knowledgeTopic = event.target.closest("[data-knowledge-topic]");

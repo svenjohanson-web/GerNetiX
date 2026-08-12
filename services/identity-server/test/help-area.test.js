@@ -715,13 +715,13 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.match(informationView, /findContentForTopic/);
   assert.match(informationView, /"\/wissen\/"/);
   assert.match(informationView, /function renderKnowledgeBook/);
-  assert.match(informationView, /Hauptkapitel \$\{topicIndex \+ 1\}/);
+  assert.match(informationView, /GerNetiX Grundlagen · Teil \$\{topicIndex \+ 1\}/);
   assert.match(informationView, /const chapterNumber = `\$\{topicIndex \+ 1\}\.\$\{chapterIndex \+ 1\}`/);
   assert.match(informationView, /knowledge-chapter-number/);
   assert.match(informationView, /knowledge-subchapter-link/);
   assert.match(informationView, /knowledge-subchapter-number/);
   assert.match(informationView, /data-knowledge-subchapter/);
-  assert.match(informationView, /<details class="knowledge-part-toc" open>/);
+  assert.match(informationView, /<details class="knowledge-part-toc" \$\{entry\.id === topic\.id \? "open" : ""\}>/);
   assert.match(informationView, /<details class="knowledge-chapter-toc">/);
   assert.match(informationView, /function renderKnowledgeChapterToc/);
   assert.match(informationView, /knowledge-chapter-title-link/);
