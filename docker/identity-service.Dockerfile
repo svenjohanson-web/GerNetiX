@@ -4,7 +4,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 COPY --chown=node:node services/identity-server/package.json services/identity-server/package-lock.json ./services/identity-server/
-RUN npm ci --prefix services/identity-server
+RUN npm ci --include=dev --prefix services/identity-server
 
 COPY --chown=node:node services/identity-server ./services/identity-server
 COPY --chown=node:node modules/virtual-electronics-lab ./modules/virtual-electronics-lab
