@@ -1545,6 +1545,20 @@
           </footer>
         </form>
       </dialog>
+      <dialog id="sessionRevokedDialog" class="runtime-dialog session-revoked-dialog" aria-labelledby="sessionRevokedTitle" aria-describedby="sessionRevokedDescription">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">Sitzung beendet</p>
+            <h2 id="sessionRevokedTitle">Dieses Konto wurde auf einem anderen Gerät übernommen</h2>
+          </div>
+        </div>
+        <p id="sessionRevokedDescription">Diese Sitzung hat keinen Zugriff mehr. Nicht gespeicherte Eingaben oder laufende Bearbeitungen in diesem Browser können verloren gegangen sein. Bereits gespeicherte Projekte und laufende Serveraufträge bleiben erhalten.</p>
+        <div class="session-revoked-actions">
+          <a class="button-link primary" href="/app/auth/">Erneut anmelden</a>
+          <a class="button-link" href="/app/auth/?next=%2Fapp%2Faccount-setup%2F%3Fsecurity%3Dreview">Konto sichern</a>
+          <a class="button-link" href="/">Zur Startseite</a>
+        </div>
+      </dialog>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
         <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
@@ -1553,7 +1567,8 @@
 
     <script defer src="/app/i18n/i18n.js?v=20260726-01"></script>
     <script defer src="/app/action-observability.js?v=20260807-four-action-chains-1"></script>
-    <script defer src="/app/api-client.js?v=20260807-action-observability-1"></script>
+    <script defer src="/app/api-client.js?v=20260814-single-session-1"></script>
+    <script defer src="/app/session-state.js?v=20260814-single-session-1"></script>
     <script defer src="/app/dom-utils.js?v=20260803-performance-1"></script>
     <script defer src="/app/ai-chat-pattern.js?v=20260805-standard-ai-chat-4"></script>
     <script defer src="/app/serial-service-client.js?v=20260807-helper-progress-1"></script>

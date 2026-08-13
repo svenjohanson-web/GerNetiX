@@ -306,7 +306,7 @@ class PostgresIdentityRepository {
     return this.markTokenUsed("identity_offline_recovery_transactions", tokenId);
   }
 
-  async createSession({ userId, tokenHash, expiresAt, jwtId = null }) {
+  async createSession({ userId, tokenHash, expiresAt, jwtId = null, status = "active", pendingExpiresAt = null }) {
     const now = this.nowIso();
     const session = {
       id: createId("ses"),
@@ -314,7 +314,11 @@ class PostgresIdentityRepository {
       token_hash: tokenHash,
       jwt_id: jwtId,
       expires_at: expiresAt,
+      status,
+      pending_expires_at: pendingExpiresAt,
       revoked_at: null,
+      revoked_reason: null,
+      replaced_by_session_id: null,
       created_at: now,
     };
     await this.pool.query(`
@@ -322,6 +326,44 @@ class PostgresIdentityRepository {
       VALUES ($1, $2, $3, $4, $5)
     `, [session.id, userId, tokenHash, session, now]);
     return clone(session);
+  }
+
+  async createLoginSession(input) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await lockAccountSessions(client, input.userId);
+      const active = await client.query(`
+        SELECT 1 FROM identity_sessions
+        WHERE user_id=$1
+          AND raw_json->>'revoked_at' IS NULL
+          AND COALESCE(raw_json->>'status', 'active')='active'
+          AND (raw_json->>'expires_at')::timestamptz > now()
+        LIMIT 1
+      `, [input.userId]);
+      const now = this.nowIso();
+      await client.query(`
+        UPDATE identity_sessions
+        SET raw_json = raw_json || jsonb_build_object(
+              'status', 'revoked', 'revoked_at', $2::text,
+              'revoked_reason', 'superseded_pending_login'
+            ), updated_at=$2
+        WHERE user_id=$1 AND raw_json->>'status'='pending' AND raw_json->>'revoked_at' IS NULL
+      `, [input.userId, now]);
+      const session = sessionRecord({
+        ...input,
+        status: active.rowCount ? "pending" : "active",
+        pendingExpiresAt: active.rowCount ? input.pendingExpiresAt : null,
+      }, now);
+      await insertSession(client, session, now);
+      await client.query("COMMIT");
+      return clone(session);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async findSessionById(sessionId) {
@@ -338,15 +380,152 @@ class PostgresIdentityRepository {
     ));
   }
 
-  async revokeSession(sessionId) {
+  async revokeSession(sessionId, reason = "logout", replacedBySessionId = null) {
     const current = await this.findSessionById(sessionId);
     if (!current) return null;
-    const next = { ...current, revoked_at: this.nowIso() };
+    const next = {
+      ...current,
+      status: "revoked",
+      revoked_at: this.nowIso(),
+      revoked_reason: reason,
+      replaced_by_session_id: replacedBySessionId,
+    };
     await this.pool.query(
       "UPDATE identity_sessions SET raw_json=$2, updated_at=$3 WHERE id=$1",
       [sessionId, next, next.revoked_at],
     );
     return clone(next);
+  }
+
+  async activatePendingSessionByTokenHash(tokenHash) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      let result = await client.query(
+        "SELECT raw_json FROM identity_sessions WHERE token_hash=$1",
+        [tokenHash],
+      );
+      let pending = first(result);
+      if (!pending) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      await lockAccountSessions(client, pending.user_id);
+      result = await client.query(
+        "SELECT raw_json FROM identity_sessions WHERE token_hash=$1 FOR UPDATE",
+        [tokenHash],
+      );
+      pending = first(result);
+      if (!isUsablePendingSession(pending, this.clock())) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const now = this.nowIso();
+      await client.query(`
+        UPDATE identity_sessions
+        SET raw_json = raw_json || jsonb_build_object(
+              'status', 'revoked', 'revoked_at', $3::text,
+              'revoked_reason', 'replaced', 'replaced_by_session_id', $2::text
+            ), updated_at=$3
+        WHERE user_id=$1 AND id<>$2
+          AND raw_json->>'revoked_at' IS NULL
+          AND COALESCE(raw_json->>'status', 'active')='active'
+      `, [pending.user_id, pending.id, now]);
+      const activated = {
+        ...pending,
+        status: "active",
+        pending_expires_at: null,
+        activated_at: now,
+      };
+      await client.query(
+        "UPDATE identity_sessions SET raw_json=$2, updated_at=$3 WHERE id=$1",
+        [pending.id, activated, now],
+      );
+      await client.query("COMMIT");
+      return clone({ ...activated, replaced_session: true });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async cancelPendingSessionByTokenHash(tokenHash) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      let result = await client.query("SELECT raw_json FROM identity_sessions WHERE token_hash=$1", [tokenHash]);
+      let pending = first(result);
+      if (!pending) { await client.query("ROLLBACK"); return null; }
+      await lockAccountSessions(client, pending.user_id);
+      result = await client.query("SELECT raw_json FROM identity_sessions WHERE token_hash=$1 FOR UPDATE", [tokenHash]);
+      pending = first(result);
+      if (!isUsablePendingSession(pending, this.clock())) { await client.query("ROLLBACK"); return null; }
+      const now = this.nowIso();
+      const cancelled = { ...pending, status: "revoked", revoked_at: now, revoked_reason: "cancelled_pending_login" };
+      await client.query("UPDATE identity_sessions SET raw_json=$2, updated_at=$3 WHERE id=$1", [pending.id, cancelled, now]);
+      await client.query("COMMIT");
+      return clone(cancelled);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async secureAccountByPendingTokenHash(tokenHash) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      let result = await client.query(
+        "SELECT raw_json FROM identity_sessions WHERE token_hash=$1",
+        [tokenHash],
+      );
+      let pending = first(result);
+      if (!pending) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      await lockAccountSessions(client, pending.user_id);
+      result = await client.query(
+        "SELECT raw_json FROM identity_sessions WHERE token_hash=$1 FOR UPDATE",
+        [tokenHash],
+      );
+      pending = first(result);
+      if (!isUsablePendingSession(pending, this.clock())) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const now = this.nowIso();
+      const revoked = await client.query(`
+        UPDATE identity_sessions
+        SET raw_json = raw_json || jsonb_build_object(
+              'status', 'revoked', 'revoked_at', $2::text,
+              'revoked_reason', 'account_security_requested',
+              'replaced_by_session_id', $3::text
+            ), updated_at=$2
+        WHERE user_id=$1 AND id<>$3 AND raw_json->>'revoked_at' IS NULL
+      `, [pending.user_id, now, pending.id]);
+      const activated = {
+        ...pending,
+        status: "active",
+        pending_expires_at: null,
+        activated_at: now,
+      };
+      await client.query(
+        "UPDATE identity_sessions SET raw_json=$2, updated_at=$3 WHERE id=$1",
+        [pending.id, activated, now],
+      );
+      await client.query("COMMIT");
+      return clone({ ...activated, revoked_sessions: revoked.rowCount });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async revokeSessionsByUserId(userId) {
@@ -486,6 +665,29 @@ async function upsertRaw(pool, tableName, idColumn, id, document, updatedAt) {
       raw_json=EXCLUDED.raw_json,
       updated_at=EXCLUDED.updated_at
   `, [id, document, updatedAt]);
+}
+
+function sessionRecord({ userId, tokenHash, expiresAt, jwtId = null, status = "active", pendingExpiresAt = null }, now) {
+  return {
+    id: createId("ses"), user_id: userId, token_hash: tokenHash, jwt_id: jwtId,
+    expires_at: expiresAt, status, pending_expires_at: pendingExpiresAt,
+    revoked_at: null, revoked_reason: null, replaced_by_session_id: null, created_at: now,
+  };
+}
+
+async function insertSession(client, session, now) {
+  await client.query(`
+    INSERT INTO identity_sessions (id, user_id, token_hash, raw_json, updated_at)
+    VALUES ($1, $2, $3, $4, $5)
+  `, [session.id, session.user_id, session.token_hash, session, now]);
+}
+
+async function lockAccountSessions(client, userId) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`identity-session:${userId}`]);
+}
+
+function isUsablePendingSession(session, now = new Date()) {
+  return Boolean(session && !session.revoked_at && session.status === "pending" && new Date(session.pending_expires_at).getTime() > now.getTime());
 }
 
 async function importRawCollection(client, tableName, idColumn, documents = []) {

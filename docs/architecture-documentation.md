@@ -37,6 +37,10 @@ variablen, versionierten Tarif-, Speicher-, Artefakt- und Lifecycle-Werten
 steht in der
 [Account-Speicher- und Lifecycle-Policy](account-storage-and-lifecycle-policy.md).
 
+Die persoenliche Ein-Sitzungs-Regel, der ausdrueckliche Geraetewechsel, die
+Kontosicherung bei unbekannter Anmeldung und die testbaren Arbeitspakete
+stehen in [Eine aktive Kontositzung pro Einzelkonto](single-active-account-session.md).
+
 Die beschlossene Ablösung der PostgreSQL-Projektquellen durch private
 Forgejo-Repositories, die Speichergrenze zu PostgreSQL und Artifact Store sowie
 die testbaren Migrationsschritte stehen in

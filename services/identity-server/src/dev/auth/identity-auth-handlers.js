@@ -53,10 +53,26 @@ function createIdentityAuthHandlers({
   }
   function establish(res, login) { sessions.set(login.session.token, { account: login.account, expiresAt: login.session.expires_at }); setSessionCookie(res, login.session.token, login.session.expires_at); }
   function next(body) { return sanitizeNextPath(body.next) || "/app/dashboard/"; }
+  function completeLogin(res, login, body, extra = {}) {
+    const destination = next(body);
+    if (login.requires_session_takeover) {
+      sendJson(res, 409, {
+        error: "active_session_exists",
+        message: "Für dieses Konto ist bereits eine andere Sitzung aktiv.",
+        pending_login_token: login.pending_login_token,
+        pending_login_expires_at: login.pending_login_expires_at,
+        next: destination,
+        ...extra,
+      });
+      return;
+    }
+    establish(res, login);
+    sendJson(res, 200, { account: login.account, next: destination, ...extra });
+  }
 
   async function handleLogin(req, res) {
     const body = await readJsonBody(req);
-    try { const login = await auth().login_local(body.identifier, body.password); if (body.locale) login.account = await auth().update_preferred_locale(login.account.user_id, body.locale); establish(res, login); sendJson(res, 200, { account: login.account, next: next(body) }); }
+    try { const login = await auth().login_local(body.identifier, body.password); if (body.locale) login.account = await auth().update_preferred_locale(login.account.user_id, body.locale); completeLogin(res, login, body); }
     catch (error) { sendJson(res, error.status || 401, { error: error.code || "invalid_login", message: "Login fehlgeschlagen." }); }
   }
   async function handleRegister(req, res) {
@@ -77,12 +93,54 @@ function createIdentityAuthHandlers({
     try {
       if (!provider) throw new Error("provider_required"); if (!email) throw new Error("email_required");
       const login = await auth().login_external(provider, { provider, provider_user_id: body.provider_user_id || `${provider}:${email}`, email, email_verified: body.email_verified !== false, username: username || email.split("@")[0] });
-      if (!login.session) { sendJson(res, 202, { account: login.account, requires_email_verification: true, message: "Account erstellt, E-Mail-Verifizierung erforderlich." }); return; }
-      establish(res, login); sendJson(res, 200, { account: login.account, provider, next: next(body) });
+      if (!login.session && !login.requires_session_takeover) { sendJson(res, 202, { account: login.account, requires_email_verification: true, message: "Account erstellt, E-Mail-Verifizierung erforderlich." }); return; }
+      completeLogin(res, login, body, { provider });
     } catch (error) { sendJson(res, error.status || 400, { error: error.code || "external_login_failed", message: externalLoginMessage(error) }); }
   }
   async function handleLogout(req, res) { const token = readSessionToken(req); if (token) { sessions.delete(token); await auth().logout(token); } clearSessionCookie(res); sendJson(res, 200, { logged_out: true }); }
-  async function handleSession(req, res) { const session = await readSession(req); if (!session) { sendJson(res, 401, { authenticated: false }); return; } sendJson(res, 200, { authenticated: true, account: session.account, expires_at: session.expiresAt }); }
+  async function handleSession(req, res) {
+    const session = await readSession(req);
+    if (!session) {
+      const token = readSessionToken(req);
+      const described = token ? await auth().describe_session_token(token) : null;
+      sendJson(res, 401, {
+        authenticated: false,
+        ...(described?.status === "revoked" ? { error: "session_revoked", reason: described.reason || "revoked" } : {}),
+      });
+      return;
+    }
+    sendJson(res, 200, { authenticated: true, account: session.account, expires_at: session.expiresAt });
+  }
+  async function handleSessionTakeover(req, res) {
+    try {
+      const body = await readJsonBody(req);
+      const login = await auth().complete_session_takeover(body.pending_login_token);
+      evictCachedSessionsForUser(login.account.user_id);
+      establish(res, login);
+      sendJson(res, 200, { account: login.account, next: next(body), replaced_session: true });
+    } catch (error) {
+      sendJson(res, error.status || 401, { error: error.code || "invalid_pending_login", message: "Sitzungswechsel ist abgelaufen oder ungültig." });
+    }
+  }
+  async function handleSessionTakeoverCancel(req, res) {
+    try {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await auth().cancel_session_takeover(body.pending_login_token));
+    } catch (error) {
+      sendJson(res, error.status || 401, { error: error.code || "invalid_pending_login", message: "Sitzungswechsel ist abgelaufen oder ungültig." });
+    }
+  }
+  async function handleSessionSecure(req, res) {
+    try {
+      const body = await readJsonBody(req);
+      const secured = await auth().secure_account_from_pending_login(body.pending_login_token);
+      evictCachedSessionsForUser(secured.account.user_id);
+      establish(res, secured);
+      sendJson(res, 200, { secured: true, recovery_required: false, next: "/app/account-setup/?security=review" });
+    } catch (error) {
+      sendJson(res, error.status || 401, { error: error.code || "invalid_pending_login", message: "Kontosicherung konnte nicht gestartet werden." });
+    }
+  }
 
   async function handlePasskeyRegistrationOptions(req, res) {
     try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); if (username.length < 3) throw new Error("invalid_username"); const config = passkeyConfiguration(req); const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userName: username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" } }); storeChallenge("register", username, options.challenge, config); sendJson(res, 200, options); }
@@ -99,7 +157,7 @@ function createIdentityAuthHandlers({
   }
   async function handlePasskeyAuthenticationVerify(req, res) {
     let account = null; const actionContext = readUserActionContext(req, "identity.login.passkey");
-    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); account = username ? await auth().get_passkey_login_candidate(username) : await auth().get_passkey_login_candidate_by_credential_id(body.credential?.id); const challenge = readChallenge("authenticate", username); const verification = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true, credential: { id: account.passkey_credential_id, publicKey: Buffer.from(account.passkey_public_key, "base64url"), counter: Number(account.passkey_counter || 0), transports: account.passkey_transports || [] } }); if (!verification.verified) throw new Error("passkey_authentication_not_verified"); const login = await auth().login_passkey_by_credential_id(account.passkey_credential_id, verification.authenticationInfo.newCounter); if (body.locale) login.account = await auth().update_preferred_locale(login.account.user_id, body.locale); establish(res, login); sendJson(res, 200, { account: login.account, next: next(body) }); }
+    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); account = username ? await auth().get_passkey_login_candidate(username) : await auth().get_passkey_login_candidate_by_credential_id(body.credential?.id); const challenge = readChallenge("authenticate", username); const verification = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true, credential: { id: account.passkey_credential_id, publicKey: Buffer.from(account.passkey_public_key, "base64url"), counter: Number(account.passkey_counter || 0), transports: account.passkey_transports || [] } }); if (!verification.verified) throw new Error("passkey_authentication_not_verified"); const login = await auth().login_passkey_by_credential_id(account.passkey_credential_id, verification.authenticationInfo.newCounter); if (body.locale) login.account = await auth().update_preferred_locale(login.account.user_id, body.locale); completeLogin(res, login, body); }
     catch (error) { await recordPasskeyLoginFailure("verification", error, account, actionContext?.actionId); const clientError = passkeyClientError("verification", error); sendJson(res, clientError.status, clientError); }
   }
   async function handleOfflineRecoveryStart(req, res) {
@@ -129,7 +187,7 @@ function createIdentityAuthHandlers({
     if (error.code === "external_email_conflict") return "Diese E-Mail-Adresse gehört bereits zu einem anderen Konto.";
     return "Externer Login fehlgeschlagen.";
   }
-  return { handleLogin, handleRegister, handleExternalLogin, handleLogout, handleSession, handlePasskeyRegistrationOptions, handlePasskeyRegistrationVerify, handlePasskeyAuthenticationOptions, handlePasskeyAuthenticationVerify, handleOfflineRecoveryStart, handleOfflineRecoveryPasskeyOptions, handleOfflineRecoveryPasskeyVerify };
+  return { handleLogin, handleRegister, handleExternalLogin, handleLogout, handleSession, handleSessionTakeover, handleSessionTakeoverCancel, handleSessionSecure, handlePasskeyRegistrationOptions, handlePasskeyRegistrationVerify, handlePasskeyAuthenticationOptions, handlePasskeyAuthenticationVerify, handleOfflineRecoveryStart, handleOfflineRecoveryPasskeyOptions, handleOfflineRecoveryPasskeyVerify };
 }
 
 module.exports = { createIdentityAuthHandlers };

@@ -1,5 +1,23 @@
 # GerNetiX Serverprozesse und Applikationen
 
+## Eine aktive persoenliche Kontositzung
+
+Der Identity Server laesst fuer ein persoenliches Einzelkonto genau eine
+aktive interaktive Browser- oder App-Sitzung zu. Ein neuer erfolgreicher Login
+bleibt ohne Fachdatenzugriff in einem begrenzten Uebernahmezustand, solange
+bereits eine aktive Sitzung besteht. Der Nutzer kann abbrechen, die alte
+Sitzung unter ausdruecklichem Hinweis auf moegliche ungespeicherte Eingaben
+atomar abmelden oder bei einer unbekannten Anmeldung alle anderen Sitzungen
+widerrufen und mit der frisch authentifizierten Sitzung das Konto sichern.
+IP-Adresse, Standort, VPN-Erkennung und invasives
+Browser-Fingerprinting sind kein Bestandteil der Entscheidung.
+
+Die Regel erweitert den vorhandenen Identity-Prozess und dessen PostgreSQL-
+Sitzungspersistenz. Sie erzeugt keinen neuen Serverprozess, Port oder
+Datenspeicher; das SVG-Komponentendiagramm bleibt deshalb strukturell
+unveraendert. Der vollstaendige Fach-, Integritaets- und Nachweisvertrag steht
+unter [Eine aktive Kontositzung pro Einzelkonto](single-active-account-session.md).
+
 ## Zugriffsentscheidung fuer Premium-Funktionen
 
 Der Identity Server ermittelt die Account-Entitlements fuer jede Plattform-Antwort. Die Entwicklungsplattform sperrt KI-Eingaben und nicht freigegebene Projekttemplates sichtbar. Unabhaengig davon prueft der Identity Server KI-Chat-Anfragen und die Anlage eines Templates erneut; die Client-Sperre ist damit keine alleinige Sicherheitsgrenze.

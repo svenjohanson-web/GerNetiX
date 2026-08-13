@@ -9,6 +9,7 @@ const ApiClient = (() => {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      notifyRevokedSession(response, payload);
       const error = new Error(payload.message || payload.error || `Request failed: ${url}`);
       error.status = response.status;
       error.code = payload.error || "";
@@ -34,6 +35,7 @@ const ApiClient = (() => {
     const response = await fetch(url, { method: "DELETE" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      notifyRevokedSession(response, payload);
       const error = new Error(payload.message || payload.error || `Request failed: ${url}`);
       error.status = response.status;
       error.code = payload.error || "";
@@ -56,6 +58,7 @@ const ApiClient = (() => {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      notifyRevokedSession(response, payload);
       const error = new Error(payload.message || payload.error || `Request failed: ${url}`);
       error.status = response.status;
       error.code = payload.error || "";
@@ -63,6 +66,13 @@ const ApiClient = (() => {
       throw error;
     }
     return payload;
+  }
+
+  function notifyRevokedSession(response, payload) {
+    if (response.status !== 401 || payload?.error !== "session_revoked") return;
+    window.dispatchEvent(new CustomEvent("gernetix:session-revoked", {
+      detail: { reason: payload.reason || "revoked" },
+    }));
   }
 
   return {

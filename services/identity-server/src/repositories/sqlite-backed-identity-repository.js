@@ -7,6 +7,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     this.store = store;
     this.store.ensureSchema?.(identitySchema());
     ensureIdentityUserAccountColumns(this.store);
+    ensureIdentitySessionColumns(this.store);
     this.knowledgeChapterReads = new Map(this.store.db.prepare(
       "SELECT account_id, chapter_id, chapter_version, seen_at FROM identity_knowledge_chapter_reads",
     ).all().map((item) => [`${item.account_id}:${item.chapter_id}`, item]));
@@ -40,7 +41,11 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
   createOfflineRecoveryTransaction(token) { const result = super.createOfflineRecoveryTransaction(token); this.persist(); return result; }
   markOfflineRecoveryTransactionUsed(tokenId) { const result = super.markOfflineRecoveryTransactionUsed(tokenId); this.persist(); return result; }
   createSession(input) { const result = super.createSession(input); this.persist(); return result; }
-  revokeSession(sessionId) { const result = super.revokeSession(sessionId); this.persist(); return result; }
+  createLoginSession(input) { const result = super.createLoginSession(input); this.persist(); return result; }
+  revokeSession(sessionId, reason, replacedBySessionId) { const result = super.revokeSession(sessionId, reason, replacedBySessionId); this.persist(); return result; }
+  activatePendingSessionByTokenHash(tokenHash) { const result = super.activatePendingSessionByTokenHash(tokenHash); this.persist(); return result; }
+  cancelPendingSessionByTokenHash(tokenHash) { const result = super.cancelPendingSessionByTokenHash(tokenHash); this.persist(); return result; }
+  secureAccountByPendingTokenHash(tokenHash) { const result = super.secureAccountByPendingTokenHash(tokenHash); this.persist(); return result; }
   revokeSessionsByUserId(userId) { const result = super.revokeSessionsByUserId(userId); this.persist(); return result; }
   listKnowledgeChapterReads(accountId) {
     return this.store.db.prepare(`
@@ -104,7 +109,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
         "id", "user_id", "token_hash", "expires_at", "used_at", "created_at",
       ]));
       this.store.replaceTable("identity_sessions", state.sessions, identityColumns([
-        "id", "user_id", "token_hash", "jwt_id", "expires_at", "revoked_at", "created_at",
+        "id", "user_id", "token_hash", "jwt_id", "expires_at", "status", "pending_expires_at", "revoked_at", "revoked_reason", "replaced_by_session_id", "created_at",
       ]));
     }
   }
@@ -118,7 +123,7 @@ function identitySchema() {
     `CREATE TABLE IF NOT EXISTS identity_verification_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_password_reset_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_offline_recovery_transactions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
-    `CREATE TABLE IF NOT EXISTS identity_sessions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, jwt_id TEXT, expires_at TEXT, revoked_at TEXT, created_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_sessions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, jwt_id TEXT, expires_at TEXT, status TEXT, pending_expires_at TEXT, revoked_at TEXT, revoked_reason TEXT, replaced_by_session_id TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_knowledge_chapter_reads (account_id TEXT NOT NULL, chapter_id TEXT NOT NULL, chapter_version TEXT NOT NULL, seen_at TEXT NOT NULL, PRIMARY KEY (account_id, chapter_id));`,
   ];
 }
@@ -143,6 +148,17 @@ function ensureIdentityUserAccountColumns(store) {
   };
   for (const [name, type] of Object.entries(columns)) {
     if (!existing.has(name)) store.db.exec(`ALTER TABLE identity_user_accounts ADD COLUMN ${name} ${type}`);
+  }
+}
+
+function ensureIdentitySessionColumns(store) {
+  if (!store?.db) return;
+  const existing = new Set(store.db.prepare("PRAGMA table_info(identity_sessions)").all().map((column) => column.name));
+  const columns = {
+    status: "TEXT", pending_expires_at: "TEXT", revoked_reason: "TEXT", replaced_by_session_id: "TEXT",
+  };
+  for (const [name, type] of Object.entries(columns)) {
+    if (!existing.has(name)) store.db.exec(`ALTER TABLE identity_sessions ADD COLUMN ${name} ${type}`);
   }
 }
 

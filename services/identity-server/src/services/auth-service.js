@@ -207,7 +207,7 @@ class AuthService {
 
   async login_passkey_account(account, counter) {
     const updated = await this.repository.updateUserAccount(account.id, { passkey_counter: Number(counter || account.passkey_counter || 0) });
-    return this.createSessionResponse(updated);
+    return this.createInteractiveSessionResponse(updated);
   }
 
   async upgrade_guest_to_base(userId, username, password, accepted_terms, passkey_credential_id, offline_recovery_set_confirmed, offline_recovery_set) {
@@ -309,7 +309,7 @@ class AuthService {
     }
 
     assertAccountCanLogin(account);
-    return this.createSessionResponse(account);
+    return this.createInteractiveSessionResponse(account);
   }
 
   async login_external(providerName, providerTokenOrMockPayload) {
@@ -328,7 +328,7 @@ class AuthService {
       await this.repository.touchExternalIdentity(existingIdentity.id);
       const existingAccount = await this.repository.findUserById(existingIdentity.user_id);
       assertAccountCanLogin(existingAccount);
-      return this.createSessionResponse(existingAccount);
+      return this.createInteractiveSessionResponse(existingAccount);
     }
 
     const username = await this.suggestUniqueUsername(providerIdentity);
@@ -378,7 +378,7 @@ class AuthService {
       };
     }
 
-    return this.createSessionResponse(account);
+    return this.createInteractiveSessionResponse(account);
   }
 
   async logout(sessionIdOrToken) {
@@ -396,7 +396,7 @@ class AuthService {
 
   async resolve_session_token(rawToken) {
     const session = await this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
-    if (!session || session.revoked_at || isExpired(session.expires_at)) return null;
+    if (!session || session.revoked_at || session.status === "pending" || isExpired(session.expires_at)) return null;
     const account = await this.repository.findUserById(session.user_id);
     if (!account || account.status !== USER_STATUS.VERIFIED || isGuestExpired(account)) return null;
     return {
@@ -406,6 +406,54 @@ class AuthService {
         user_id: session.user_id,
         expires_at: session.expires_at,
       },
+    };
+  }
+
+  async describe_session_token(rawToken) {
+    const session = await this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
+    if (!session) return null;
+    return {
+      status: session.revoked_at ? "revoked" : session.status || "active",
+      reason: session.revoked_reason || null,
+      expires_at: session.expires_at,
+    };
+  }
+
+  async complete_session_takeover(pendingLoginToken) {
+    const session = await this.repository.activatePendingSessionByTokenHash(
+      this.tokenService.hashToken(pendingLoginToken),
+    );
+    if (!session) throw new AuthError("invalid_pending_login", "Pending login is invalid or expired.", 401);
+    const account = await this.repository.findUserById(session.user_id);
+    assertAccountCanLogin(account);
+    return {
+      account: toPublicAccount(account, this.clock()),
+      session: { id: session.id, user_id: session.user_id, token: pendingLoginToken, expires_at: session.expires_at },
+      replaced_session: true,
+    };
+  }
+
+  async cancel_session_takeover(pendingLoginToken) {
+    const session = await this.repository.cancelPendingSessionByTokenHash(
+      this.tokenService.hashToken(pendingLoginToken),
+    );
+    if (!session) throw new AuthError("invalid_pending_login", "Pending login is invalid or expired.", 401);
+    return { cancelled: true };
+  }
+
+  async secure_account_from_pending_login(pendingLoginToken) {
+    const session = await this.repository.secureAccountByPendingTokenHash(
+      this.tokenService.hashToken(pendingLoginToken),
+    );
+    if (!session) throw new AuthError("invalid_pending_login", "Pending login is invalid or expired.", 401);
+    const account = await this.repository.findUserById(session.user_id);
+    assertAccountCanLogin(account);
+    return {
+      secured: true,
+      recovery_required: false,
+      account: toPublicAccount(account, this.clock()),
+      session: { id: session.id, user_id: session.user_id, token: pendingLoginToken, expires_at: session.expires_at },
+      revoked_sessions: session.revoked_sessions,
     };
   }
 
@@ -503,6 +551,35 @@ class AuthService {
         token: rawToken,
         expires_at: session.expires_at,
       },
+    };
+  }
+
+  async createInteractiveSessionResponse(account) {
+    const activityAt = this.clock().toISOString();
+    account = await this.repository.updateUserAccount(account.id, {
+      last_meaningful_activity_at: activityAt,
+    });
+    const rawToken = this.tokenService.createRawToken();
+    const now = this.clock().getTime();
+    const expiresAt = new Date(now + 12 * 60 * 60 * 1000).toISOString();
+    const pendingExpiresAt = new Date(now + 5 * 60 * 1000).toISOString();
+    const session = await this.repository.createLoginSession({
+      userId: account.id,
+      tokenHash: this.tokenService.hashToken(rawToken),
+      expiresAt,
+      pendingExpiresAt,
+    });
+    if (session.status === "pending") {
+      return {
+        account: toPublicAccount(account, this.clock()),
+        requires_session_takeover: true,
+        pending_login_token: rawToken,
+        pending_login_expires_at: session.pending_expires_at,
+      };
+    }
+    return {
+      account: toPublicAccount(account, this.clock()),
+      session: { id: session.id, user_id: session.user_id, token: rawToken, expires_at: session.expires_at },
     };
   }
 

@@ -363,7 +363,57 @@ test("social login creates exactly one internal account and reuses it on next lo
   });
 
   assert.equal(second.account.user_id, first.account.user_id);
-  assert.notEqual(second.session.id, first.session.id);
+  assert.equal(second.requires_session_takeover, true);
+  assert.ok(second.pending_login_token);
+});
+
+test("interactive login requires an explicit takeover and atomically revokes the previous session", async () => {
+  const { auth, emailService } = createModule();
+  await auth.register_local("single-session", "single@example.com", "correct horse battery", true);
+  await auth.verify_email(extractToken(emailService.sentMessages[0].link));
+
+  const first = await auth.login_local("single-session", "correct horse battery");
+  const pending = await auth.login_local("single-session", "correct horse battery");
+
+  assert.equal(pending.requires_session_takeover, true);
+  assert.equal(await auth.resolve_session_token(pending.pending_login_token), null);
+  assert.equal((await auth.resolve_session_token(first.session.token)).account.user_id, first.account.user_id);
+
+  const takenOver = await auth.complete_session_takeover(pending.pending_login_token);
+  assert.equal(takenOver.replaced_session, true);
+  assert.equal(await auth.resolve_session_token(first.session.token), null);
+  assert.equal((await auth.resolve_session_token(takenOver.session.token)).account.user_id, first.account.user_id);
+  assert.deepEqual(await auth.describe_session_token(first.session.token), {
+    status: "revoked",
+    reason: "replaced",
+    expires_at: first.session.expires_at,
+  });
+});
+
+test("cancelling a pending takeover preserves the active session", async () => {
+  const { auth, emailService } = createModule();
+  await auth.register_local("cancel-session", "cancel@example.com", "correct horse battery", true);
+  await auth.verify_email(extractToken(emailService.sentMessages[0].link));
+  const first = await auth.login_local("cancel-session", "correct horse battery");
+  const pending = await auth.login_local("cancel-session", "correct horse battery");
+
+  assert.deepEqual(await auth.cancel_session_takeover(pending.pending_login_token), { cancelled: true });
+  assert.equal((await auth.resolve_session_token(first.session.token)).account.user_id, first.account.user_id);
+  await assert.rejects(auth.complete_session_takeover(pending.pending_login_token), /invalid or expired/i);
+});
+
+test("securing an account revokes every other session without locking out a passkey-only account", async () => {
+  const { auth, emailService } = createModule();
+  await auth.register_local("secure-session", "secure@example.com", "correct horse battery", true);
+  await auth.verify_email(extractToken(emailService.sentMessages[0].link));
+  const first = await auth.login_local("secure-session", "correct horse battery");
+  const pending = await auth.login_local("secure-session", "correct horse battery");
+
+  const secured = await auth.secure_account_from_pending_login(pending.pending_login_token);
+  assert.equal(secured.secured, true);
+  assert.equal(secured.recovery_required, false);
+  assert.equal(await auth.resolve_session_token(first.session.token), null);
+  assert.equal((await auth.resolve_session_token(pending.pending_login_token)).account.user_id, first.account.user_id);
 });
 
 test("unverified external email creates pending account without productive session", async () => {

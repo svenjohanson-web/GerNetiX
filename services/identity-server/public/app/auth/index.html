@@ -57,6 +57,18 @@
           <label class="check-line" for="register-accepted-terms"><input id="register-accepted-terms" name="accepted_terms" type="checkbox" required /><span data-i18n="auth.register.terms">Ich akzeptiere Datenschutz und Nutzungsbedingungen.</span></label>
           <button class="primary" type="submit" data-i18n="auth.register.submit">Passkey einrichten und Konto erstellen</button>
         </form>
+        <dialog id="active-session-dialog" class="active-session-dialog" aria-labelledby="active-session-title" aria-describedby="active-session-description">
+          <p class="step-label">Sitzungswechsel</p>
+          <h2 id="active-session-title">Eine weitere Sitzung ist aktiv</h2>
+          <p id="active-session-description">Für dieses persönliche GerNetiX-Konto ist nur eine aktive Sitzung gleichzeitig zulässig. So bleiben Projektstände, Gerätezuordnungen und Änderungen eindeutig.</p>
+          <p class="session-loss-warning"><strong>Wenn du fortfährst, wird die andere Sitzung abgemeldet.</strong> Dort noch nicht gespeicherte Eingaben oder laufende Bearbeitungen können verloren gehen. Bereits gespeicherte Projekte und laufende Serveraufträge bleiben erhalten.</p>
+          <div class="active-session-actions">
+            <button type="button" id="cancel-session-takeover">Abbrechen</button>
+            <button type="button" id="confirm-session-takeover" class="primary">Andere Sitzung abmelden und fortfahren</button>
+            <button type="button" id="secure-account" class="secure-account-button">Diese Anmeldung nicht erkannt – Konto sichern</button>
+          </div>
+          <p id="active-session-status" class="status" role="status"></p>
+        </dialog>
         <section class="guest-access" aria-labelledby="guest-access-title">
           <p id="guest-access-title" data-i18n="auth.guest.title">Ohne Konto ausprobieren</p>
           <button type="button" class="guest-button" id="guest-access-button" data-i18n="auth.guest.start">Als Gast starten</button>
@@ -73,6 +85,6 @@
     <script src="/app/i18n/i18n.js?v=20260726-01"></script>
     <script src="/landing.js?v=20260808-session-menu-1"></script>
     <script src="/app/action-observability.js?v=20260807-four-action-chains-1"></script>
-    <script src="/app/auth/auth.js?v=20260807-action-observability-1"></script>
+    <script src="/app/auth/auth.js?v=20260814-single-session-1"></script>
   </body>
 </html>

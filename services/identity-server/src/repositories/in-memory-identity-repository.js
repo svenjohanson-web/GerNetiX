@@ -250,7 +250,7 @@ class InMemoryIdentityRepository {
     return { ...next };
   }
 
-  createSession({ userId, tokenHash, expiresAt, jwtId = null }) {
+  createSession({ userId, tokenHash, expiresAt, jwtId = null, status = "active", pendingExpiresAt = null }) {
     const now = this.nowIso();
     const session = {
       id: createId("ses"),
@@ -258,12 +258,32 @@ class InMemoryIdentityRepository {
       token_hash: tokenHash,
       jwt_id: jwtId,
       expires_at: expiresAt,
+      status,
+      pending_expires_at: pendingExpiresAt,
       revoked_at: null,
+      revoked_reason: null,
+      replaced_by_session_id: null,
       created_at: now,
     };
     this.sessions.set(session.id, session);
     this.sessionTokenIndex.set(tokenHash, session.id);
     return { ...session };
+  }
+
+  createLoginSession(input) {
+    const active = Array.from(this.sessions.values()).find((session) => (
+      session.user_id === input.userId && isActiveSession(session, this.clock())
+    ));
+    for (const session of this.sessions.values()) {
+      if (session.user_id === input.userId && session.status === "pending" && !session.revoked_at) {
+        this.revokeSession(session.id, "superseded_pending_login");
+      }
+    }
+    return this.createSession({
+      ...input,
+      status: active ? "pending" : "active",
+      pendingExpiresAt: active ? input.pendingExpiresAt : null,
+    });
   }
 
   findSessionById(sessionId) {
@@ -275,12 +295,60 @@ class InMemoryIdentityRepository {
     return id ? this.findSessionById(id) : null;
   }
 
-  revokeSession(sessionId) {
+  revokeSession(sessionId, reason = "logout", replacedBySessionId = null) {
     const current = this.sessions.get(sessionId);
     if (!current) return null;
-    const next = { ...current, revoked_at: this.nowIso() };
+    const next = {
+      ...current,
+      status: "revoked",
+      revoked_at: this.nowIso(),
+      revoked_reason: reason,
+      replaced_by_session_id: replacedBySessionId,
+    };
     this.sessions.set(sessionId, next);
     return { ...next };
+  }
+
+  activatePendingSessionByTokenHash(tokenHash) {
+    const pending = this.findSessionByTokenHash(tokenHash);
+    if (!isUsablePendingSession(pending, this.clock())) return null;
+    for (const session of this.sessions.values()) {
+      if (session.user_id !== pending.user_id || session.id === pending.id || !isActiveSession(session, this.clock())) continue;
+      this.revokeSession(session.id, "replaced", pending.id);
+    }
+    const activated = {
+      ...pending,
+      status: "active",
+      pending_expires_at: null,
+      activated_at: this.nowIso(),
+    };
+    this.sessions.set(activated.id, activated);
+    return { ...activated, replaced_session: true };
+  }
+
+  cancelPendingSessionByTokenHash(tokenHash) {
+    const pending = this.findSessionByTokenHash(tokenHash);
+    if (!isUsablePendingSession(pending, this.clock())) return null;
+    return this.revokeSession(pending.id, "cancelled_pending_login");
+  }
+
+  secureAccountByPendingTokenHash(tokenHash) {
+    const pending = this.findSessionByTokenHash(tokenHash);
+    if (!isUsablePendingSession(pending, this.clock())) return null;
+    let revoked = 0;
+    for (const session of this.sessions.values()) {
+      if (session.user_id !== pending.user_id || session.id === pending.id || session.revoked_at) continue;
+      this.revokeSession(session.id, "account_security_requested", pending.id);
+      revoked += 1;
+    }
+    const activated = {
+      ...pending,
+      status: "active",
+      pending_expires_at: null,
+      activated_at: this.nowIso(),
+    };
+    this.sessions.set(activated.id, activated);
+    return { ...activated, revoked_sessions: revoked };
   }
 
   revokeSessionsByUserId(userId) {
@@ -309,6 +377,14 @@ class InMemoryIdentityRepository {
     this.knowledgeChapterReads.set(knowledgeReadKey(read.account_id, read.chapter_id), read);
     return clone(read);
   }
+}
+
+function isActiveSession(session, now = new Date()) {
+  return Boolean(session && !session.revoked_at && session.status !== "pending" && new Date(session.expires_at).getTime() > now.getTime());
+}
+
+function isUsablePendingSession(session, now = new Date()) {
+  return Boolean(session && !session.revoked_at && session.status === "pending" && new Date(session.pending_expires_at).getTime() > now.getTime());
 }
 
 function createId(prefix) {

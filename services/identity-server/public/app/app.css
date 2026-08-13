@@ -5171,6 +5171,34 @@ textarea:read-only {
   box-shadow: var(--shadow);
   padding: 18px;
 }
+
+.session-revoked-dialog {
+  width: min(520px, calc(100vw - 32px));
+  border-color: #b45309;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.session-revoked-dialog::backdrop {
+  background: rgba(2, 6, 23, .82);
+  backdrop-filter: blur(3px);
+}
+
+.session-revoked-dialog > p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.session-revoked-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.session-revoked-actions .button-link {
+  justify-content: center;
+  text-align: center;
+}
 .runtime-dialog-header {
   display: flex;
   justify-content: space-between;

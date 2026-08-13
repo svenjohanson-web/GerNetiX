@@ -348,6 +348,66 @@ button.secondary {
 
 }
 
+.active-session-dialog {
+  width: min(500px, calc(100vw - 32px));
+  border: 1px solid #475569;
+  border-radius: 12px;
+  padding: 24px;
+  color: #e5e7eb;
+  background: #111827;
+}
+
+.active-session-dialog[open] {
+  display: grid;
+  gap: 14px;
+}
+
+.active-session-dialog::backdrop {
+  background: rgba(2, 6, 23, .82);
+  backdrop-filter: blur(3px);
+}
+
+.active-session-dialog h2,
+.active-session-dialog p {
+  margin: 0;
+}
+
+.active-session-dialog h2 {
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.active-session-dialog > p:not(.step-label) {
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.session-loss-warning {
+  border-left: 3px solid #f59e0b;
+  padding: 11px 12px;
+  background: rgba(245, 158, 11, .1);
+}
+
+.active-session-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.active-session-actions .primary {
+  margin-top: 0;
+}
+
+.secure-account-button {
+  border-color: #b45309;
+  color: #fde68a;
+  background: rgba(120, 53, 15, .32);
+}
+
+.secure-account-button:hover {
+  background: rgba(146, 64, 14, .48);
+}
+
 /* The public header stores the selected theme on the document element. */
 html[data-public-theme="light"] { color-scheme: light; background: #f6f3ed; color: #20211d; }
 html[data-public-theme="light"] body, html[data-public-theme="light"] .login-shell { background: #f6f3ed; }
@@ -368,5 +428,9 @@ html[data-public-theme="light"] .separator::before, html[data-public-theme="ligh
 html[data-public-theme="light"] .recovery-set, html[data-public-theme="light"] .registration-step, html[data-public-theme="light"] .recovery-choice { border-color: #d8d2c6; background: #faf7f1; }
 html[data-public-theme="light"] .recovery-set p { color: #4f4e48; }
 html[data-public-theme="light"] .recovery-set code { background: #eee8dd; color: #20211d; }
+html[data-public-theme="light"] .active-session-dialog > p:not(.step-label) { color: #4f4e48; }
+html[data-public-theme="light"] .active-session-dialog { border-color: #d8d2c6; color: #20211d; background: #fffdf8; }
+html[data-public-theme="light"] .session-loss-warning { border-color: #b45309; background: #fff7e6; }
+html[data-public-theme="light"] .secure-account-button { border-color: #9a3412; color: #7c2d12; background: #fff7ed; }
 html[data-public-theme="light"] .auth-site-footer { color: #5d5b54; }
 html[data-public-theme="light"] .auth-site-footer a { color: #4f4e48; }

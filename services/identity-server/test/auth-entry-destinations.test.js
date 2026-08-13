@@ -28,7 +28,7 @@ test("keeps the requested destination through every browser auth path", () => {
   assert.match(authClient, /registration\/verify"[\s\S]*next: nextUrl/);
   assert.match(authClient, /offline\/passkey\/verify"[\s\S]*next: nextUrl/);
   assert.match(authClient, /postJson\("\/api\/account\/guest", \{ next: nextUrl, locale: currentLocale\(\) \}\)/);
-  assert.match(authHtml, /auth\.js\?v=20260807-action-observability-1/);
+  assert.match(authHtml, /auth\.js\?v=20260814-single-session-1/);
 });
 
 test("returns only sanitized internal destinations after account creation and guest access", () => {

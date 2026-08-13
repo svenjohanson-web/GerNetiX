@@ -5,7 +5,10 @@ const modeToggle = document.querySelector("#auth-mode-toggle");
 const recoveryModeToggle = document.querySelector("#recovery-mode-toggle");
 const guestAccessButton = document.querySelector("#guest-access-button");
 const guestAccess = document.querySelector(".guest-access");
+const activeSessionDialog = document.querySelector("#active-session-dialog");
+const activeSessionStatus = document.querySelector("#active-session-status");
 let i18n = null;
+let pendingLogin = null;
 
 function tr(key, fallback, variables = {}) {
   return i18n ? i18n.t(key, variables, fallback) : fallback;
@@ -21,8 +24,10 @@ const identifierField = document.querySelector("#login-identifier-field");
 const query = new URLSearchParams(window.location.search);
 const nextUrl = query.get("next") || "/app/dashboard/";
 let mode = query.get("mode") === "register" ? "register" : query.get("mode") === "recovery" ? "recovery" : "login";
+const securingAccount = false;
 
 initializeI18n();
+activeSessionDialog.addEventListener("cancel", (event) => event.preventDefault());
 
 async function initializeI18n() {
   i18n = window.GerNetiXPublicI18n || null;
@@ -64,10 +69,31 @@ loginForm.addEventListener("submit", async (event) => {
     window.location.href = result.next || "/app/dashboard/";
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error, action);
+    if (error?.code === "active_session_exists" && error?.payload?.pending_login_token) {
+      action?.succeed();
+      showActiveSessionDialog(error.payload);
+      return;
+    }
     action?.fail(actionStage === "options" ? "authentication_options_failed" : passkeyActionReason(error));
     const message = passkeyLoginFailureMessage(error);
     statusElement.textContent = action?.failureMessage(message) || message;
   }
+});
+
+document.querySelector("#cancel-session-takeover").addEventListener("click", async () => {
+  await completePendingSessionAction("/api/session/takeover/cancel", "Anmeldung wurde abgebrochen.", () => hideActiveSessionDialog());
+});
+
+document.querySelector("#confirm-session-takeover").addEventListener("click", async () => {
+  await completePendingSessionAction("/api/session/takeover", "Sitzung wird gewechselt …", (result) => {
+    window.location.href = result.next || pendingLogin?.next || nextUrl;
+  });
+});
+
+document.querySelector("#secure-account").addEventListener("click", async () => {
+  await completePendingSessionAction("/api/session/secure", "Andere Sitzungen werden beendet …", (result) => {
+    window.location.href = result.next || "/app/account-setup/?security=review";
+  });
 });
 
 document.querySelector("#show-identifier-login").addEventListener("click", () => {
@@ -150,6 +176,10 @@ function applyMode(updateUrl) {
     : recovery
       ? tr("auth.recovery.title", "Zugang wiederherstellen")
       : tr("auth.login.title", "Anmelden");
+  if (recovery && securingAccount) {
+    titleElement.textContent = "Konto sichern";
+    recoveryForm.querySelector(".form-hint").textContent = "Alle bisherigen Sitzungen wurden beendet. Bestätige jetzt dein Offline-Recovery-Set und richte anschließend einen neuen Passkey ein.";
+  }
   modeToggle.textContent = registration
     ? tr("auth.mode.login", "Zur Anmeldung")
     : tr("auth.mode.register", "Konto anlegen");
@@ -167,9 +197,45 @@ async function postJson(url, body, headers = {}) {
   if (!response.ok) {
     const error = new Error(payload.message || tr("auth.error.request_failed", "Anfrage fehlgeschlagen."));
     error.code = payload.error || "request_failed";
+    error.status = response.status;
+    error.payload = payload;
     throw error;
   }
   return payload;
+}
+
+function showActiveSessionDialog(payload) {
+  pendingLogin = {
+    token: payload.pending_login_token,
+    next: payload.next || nextUrl,
+    expiresAt: payload.pending_login_expires_at || "",
+  };
+  activeSessionStatus.textContent = "";
+  activeSessionDialog.showModal();
+  document.querySelector("#confirm-session-takeover").focus();
+}
+
+function hideActiveSessionDialog() {
+  pendingLogin = null;
+  activeSessionDialog.close();
+  applyMode(false);
+  statusElement.textContent = tr("auth.status.session.cancelled", "Anmeldung wurde abgebrochen. Die bisherige Sitzung bleibt aktiv.");
+}
+
+async function completePendingSessionAction(endpoint, progressMessage, onSuccess) {
+  if (!pendingLogin?.token) return;
+  const buttons = activeSessionDialog.querySelectorAll("button");
+  buttons.forEach((button) => { button.disabled = true; });
+  activeSessionStatus.textContent = progressMessage;
+  try {
+    const result = await postJson(endpoint, { pending_login_token: pendingLogin.token });
+    onSuccess(result);
+  } catch (error) {
+    activeSessionStatus.textContent = error?.code === "pending_login_expired"
+      ? "Der Anmeldeversuch ist abgelaufen. Bitte melde dich erneut an."
+      : error.message || "Der Sitzungswechsel konnte nicht abgeschlossen werden.";
+    buttons.forEach((button) => { button.disabled = false; });
+  }
 }
 function actionHeaders(action) {
   return action ? { "X-GerNetiX-Action-Id": action.id, "X-GerNetiX-Action-Type": action.type } : {};

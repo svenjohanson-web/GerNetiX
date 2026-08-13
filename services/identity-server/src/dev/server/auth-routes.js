@@ -19,6 +19,9 @@ function registerAuthRoutes({
   handleExternalLogin,
   handleLogout,
   handleSession,
+  handleSessionTakeover,
+  handleSessionTakeoverCancel,
+  handleSessionSecure,
   handleOfflineRecoveryStart,
   handleOfflineRecoveryPasskeyOptions,
   handleOfflineRecoveryPasskeyVerify,
@@ -32,6 +35,9 @@ function registerAuthRoutes({
     ["/api/passkeys/authentication/verify", handlePasskeyAuthenticationVerify],
     ["/api/login/external", handleExternalLogin],
     ["/api/logout", handleLogout],
+    ["/api/session/takeover", handleSessionTakeover],
+    ["/api/session/takeover/cancel", handleSessionTakeoverCancel],
+    ["/api/session/secure", handleSessionSecure],
   ]);
   for (const [path, handler] of handlers) {
     registry.register({ method: "POST", path, handler: ({ req, res }) => handler(req, res) });

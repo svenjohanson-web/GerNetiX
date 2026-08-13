@@ -14,6 +14,7 @@ function harness({ login = null } = {}) {
       return login;
     },
     async logout(token) { this.loggedOut = token; },
+    async describe_session_token() { return null; },
   };
   const handlers = createIdentityAuthHandlers({
     auth: () => auth, sessions, crypto,
@@ -46,4 +47,34 @@ test("auth handler revokes the local cache and identity session during logout", 
   assert.equal(context.sessions.has("token-1"), false);
   assert.equal(context.auth.loggedOut, "token-1");
   assert.deepEqual(context.responses, [{ status: 200, body: { logged_out: true } }]);
+});
+
+test("auth handler returns a pending takeover contract without setting a browser session", async () => {
+  const login = {
+    account: { user_id: "user-1" }, requires_session_takeover: true,
+    pending_login_token: "pending-1", pending_login_expires_at: "2030-01-01T00:05:00.000Z",
+  };
+  const context = harness({ login });
+  await context.handlers.handleLogin({ body: { identifier: "ada", password: "secret", next: "/app/learn/" } }, {});
+  assert.equal(context.sessions.size, 0);
+  assert.deepEqual(context.responses, [{ status: 409, body: {
+    error: "active_session_exists",
+    message: "Für dieses Konto ist bereits eine andere Sitzung aktiv.",
+    pending_login_token: "pending-1",
+    pending_login_expires_at: "2030-01-01T00:05:00.000Z",
+    next: "/app/learn/",
+  } }]);
+});
+
+test("takeover endpoint establishes only the activated pending session", async () => {
+  const context = harness();
+  context.auth.complete_session_takeover = async (token) => ({
+    account: { user_id: "user-1" }, replaced_session: true,
+    session: { token, expires_at: "2030-01-01T12:00:00.000Z" },
+  });
+  await context.handlers.handleSessionTakeover({ body: { pending_login_token: "pending-1", next: "/app/projects/" } }, {});
+  assert.equal(context.sessions.has("pending-1"), true);
+  assert.deepEqual(context.responses, [{ status: 200, body: {
+    account: { user_id: "user-1" }, next: "/app/projects/", replaced_session: true,
+  } }]);
 });
