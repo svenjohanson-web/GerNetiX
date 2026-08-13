@@ -5,13 +5,14 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const appRoot = path.resolve(__dirname, "..", "public", "app");
-const outputRoot = path.join(appRoot, "knowledge-chapters");
-const sourceFiles = fs.readdirSync(appRoot)
+const articleRoot = path.resolve(__dirname, "..", "src", "knowledge", "articles");
+const outputRoot = path.resolve(__dirname, "..", "src", "knowledge", "generated-chapters");
+const sourceFiles = fs.readdirSync(articleRoot)
   .filter((file) => /^knowledge-articles-.*\.js$/.test(file))
   .sort();
 
 function readArticleBundle(file) {
-  const source = fs.readFileSync(path.join(appRoot, file), "utf8");
+  const source = fs.readFileSync(path.join(articleRoot, file), "utf8");
   const variableName = source.match(/const\s+(KnowledgeArticles\w+)\s*=/)?.[1];
   if (!variableName) throw new Error(`No knowledge article object found in ${file}`);
   const context = {};
@@ -37,7 +38,7 @@ for (const sourceFile of sourceFiles) {
     expectedFiles.add(outputFile);
     fs.writeFileSync(path.join(outputRoot, outputFile), chapterAssetSource(articleId, article));
     index[articleId] = {
-      asset: `/app/knowledge-chapters/${outputFile}`,
+      endpoint: `/api/platform/knowledge/chapters/${encodeURIComponent(articleId)}`,
       title: article.title,
       summary: article.summary,
       sections: (article.sections || [])

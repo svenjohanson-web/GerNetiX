@@ -5,7 +5,7 @@ const releases = Object.freeze([
     title: "YAML: strukturierte Daten lesbar beschreiben",
     summary: "Schlüssel, Werte, Einrückung, Listen und typische Fehler verständlich erklärt.",
     published_at: "2026-07-24T18:00:00.000Z",
-    required_entitlements: Object.freeze(["learn_guided_projects"]),
+    required_entitlements: Object.freeze(["knowledge_book_software_systems"]),
   }),
   Object.freeze({
     chapter_id: "home-server-internet-security",
@@ -13,7 +13,7 @@ const releases = Object.freeze([
     title: "Home-Server sicher betreiben: Risiken der Internetfreigabe",
     summary: "Portfreigaben, Angriffsfläche, typische Fehlannahmen und sichere Alternativen verständlich einordnen.",
     published_at: "2026-07-28T18:00:00.000Z",
-    required_entitlements: Object.freeze(["learn_guided_projects"]),
+    required_entitlements: Object.freeze(["knowledge_library"]),
   }),
   Object.freeze({
     chapter_id: "security-basics",
@@ -21,7 +21,7 @@ const releases = Object.freeze([
     title: "Security in vernetzten Projekten",
     summary: "Identitäten, Rechte, Tokens, Zertifikate, MQTT-Sicherheit, typische Angriffsszenarien, Netzwerkgrenzen und eine Home-Server-Strategie verständlich einordnen.",
     published_at: "2026-07-28T19:00:00.000Z",
-    required_entitlements: Object.freeze(["learn_guided_projects"]),
+    required_entitlements: Object.freeze(["knowledge_library"]),
   }),
   Object.freeze({
     chapter_id: "radio-technologies-understand",
@@ -29,7 +29,7 @@ const releases = Object.freeze([
     title: "Funktechnologien verstehen",
     summary: "Bluetooth, WLAN, LoRa, Zigbee, NFC und RC-Funksysteme anhand ihrer Eigenschaften, Vor- und Nachteile sowie ihrer Störbarkeit vergleichen.",
     published_at: "2026-07-30T12:00:00.000Z",
-    required_entitlements: Object.freeze(["learn_guided_projects"]),
+    required_entitlements: Object.freeze(["knowledge_library"]),
   }),
   Object.freeze({
     chapter_id: "version-control-and-variants",
@@ -37,7 +37,7 @@ const releases = Object.freeze([
     title: "Versionierung und Variantenmanagement: von Ordnerkopien zu Git",
     summary: "Dateikopien, CVS, Subversion und Git mit Speicherprinzipien, Variantenstrategien und belastbaren Backups vergleichen.",
     published_at: "2026-08-02T18:00:00.000Z",
-    required_entitlements: Object.freeze(["learn_guided_projects"]),
+    required_entitlements: Object.freeze([]),
   }),
   Object.freeze({
     chapter_id: "esp32-gotchas",
@@ -45,7 +45,7 @@ const releases = Object.freeze([
     title: "ESP32-Besonderheiten und Stolperfallen",
     summary: "ADC und WLAN, Strapping-Pins, GPIO-Grenzen, Brownouts, Deep Sleep, PSRAM, USB und PWM-Ressourcen praxisnah einordnen.",
     published_at: "2026-08-03T12:00:00.000Z",
-    required_entitlements: Object.freeze(["learn_guided_projects"]),
+    required_entitlements: Object.freeze(["knowledge_library"]),
   }),
 ]);
 

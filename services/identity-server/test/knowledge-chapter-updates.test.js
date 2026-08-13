@@ -24,10 +24,10 @@ const knowledgeRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/serv
 test("offers a chapter update only to accounts that may read the chapter", () => {
   const release = findKnowledgeChapterRelease("yaml-basics");
   assert.equal(canReadKnowledgeChapter(release, []), false);
-  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
-  assert.deepEqual(unreadKnowledgeChapterReleases([], []), []);
+  assert.equal(canReadKnowledgeChapter(release, ["knowledge_book_software_systems"]), true);
+  assert.deepEqual(unreadKnowledgeChapterReleases([], []).map((item) => item.chapter_id), ["version-control-and-variants"]);
   assert.deepEqual(
-    unreadKnowledgeChapterReleases([], ["learn_guided_projects"]).map((item) => item.chapter_id),
+    unreadKnowledgeChapterReleases([], ["knowledge_library", "knowledge_book_software_systems"]).map((item) => item.chapter_id),
     ["esp32-gotchas", "version-control-and-variants", "radio-technologies-understand", "security-basics", "home-server-internet-security", "yaml-basics"],
   );
 });
@@ -37,29 +37,28 @@ test("publishes ESP32 gotchas as a new embedded knowledge chapter", () => {
   assert.equal(release.version, "2026-08-03.1");
   assert.match(release.summary, /ADC und WLAN/);
   assert.equal(canReadKnowledgeChapter(release, []), false);
-  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+  assert.equal(canReadKnowledgeChapter(release, ["knowledge_library"]), true);
 });
 
 test("publishes version control and variants as a new working-methods chapter", () => {
   const release = findKnowledgeChapterRelease("version-control-and-variants");
   assert.equal(release.version, "2026-08-02.1");
   assert.match(release.summary, /CVS, Subversion und Git/);
-  assert.equal(canReadKnowledgeChapter(release, []), false);
-  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+  assert.equal(canReadKnowledgeChapter(release, []), true);
 });
 
 test("publishes the home-server security chapter with an entitlement-gated read receipt", () => {
   const release = findKnowledgeChapterRelease("home-server-internet-security");
   assert.equal(release.version, "2026-07-28.1");
   assert.equal(canReadKnowledgeChapter(release, []), false);
-  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+  assert.equal(canReadKnowledgeChapter(release, ["knowledge_library"]), true);
 });
 
 test("publishes the cross-cutting security chapter with an entitlement-gated read receipt", () => {
   const release = findKnowledgeChapterRelease("security-basics");
   assert.equal(release.version, "2026-07-28.10");
   assert.equal(canReadKnowledgeChapter(release, []), false);
-  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+  assert.equal(canReadKnowledgeChapter(release, ["knowledge_library"]), true);
 });
 
 test("publishes the radio technologies chapter with an entitlement-gated read receipt", () => {
@@ -67,12 +66,12 @@ test("publishes the radio technologies chapter with an entitlement-gated read re
   assert.equal(release.version, "2026-07-30.1");
   assert.match(release.summary, /Bluetooth, WLAN, LoRa, Zigbee, NFC und RC-Funksysteme/);
   assert.equal(canReadKnowledgeChapter(release, []), false);
-  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+  assert.equal(canReadKnowledgeChapter(release, ["knowledge_library"]), true);
 });
 
 test("a read receipt suppresses only the matching chapter version", () => {
   const current = findKnowledgeChapterRelease("yaml-basics");
-  const entitlements = ["learn_guided_projects"];
+  const entitlements = ["knowledge_library", "knowledge_book_software_systems"];
   assert.equal(unreadKnowledgeChapterReleases([{
     account_id: "acct-1",
     chapter_id: current.chapter_id,
@@ -89,8 +88,8 @@ test("a read receipt suppresses only the matching chapter version", () => {
 
 test("builds an entitlement-filtered knowledge history with publication and read state", () => {
   const current = findKnowledgeChapterRelease("yaml-basics");
-  assert.deepEqual(knowledgeChapterHistory([], []).map((item) => item.chapter_id), []);
-  const unread = knowledgeChapterHistory([], ["learn_guided_projects"]);
+  assert.deepEqual(knowledgeChapterHistory([], []).map((item) => item.chapter_id), ["version-control-and-variants"]);
+  const unread = knowledgeChapterHistory([], ["knowledge_library", "knowledge_book_software_systems"]);
   assert.equal(unread[0].chapter_id, "esp32-gotchas");
   assert.equal(unread[1].chapter_id, "version-control-and-variants");
   assert.equal(unread[2].chapter_id, "radio-technologies-understand");
@@ -106,7 +105,7 @@ test("builds an entitlement-filtered knowledge history with publication and read
     chapter_id: current.chapter_id,
     chapter_version: current.version,
     seen_at: seenAt,
-  }], ["learn_guided_projects"]);
+  }], ["knowledge_library", "knowledge_book_software_systems"]);
   const readYaml = read.find((item) => item.chapter_id === current.chapter_id);
   assert.equal(readYaml.is_new, false);
   assert.equal(readYaml.seen_at, seenAt);
@@ -171,13 +170,21 @@ test("shows knowledge releases in the extensible dashboard news area and marks o
   assert.match(informationView, /notifyKnowledgeChapterOpen/);
 });
 
-test("organizes the knowledge portal as a library with one foundations book and individual lessons", () => {
-  assert.match(informationView, /function renderKnowledgeLibrary\(topics\)/);
+test("organizes the knowledge portal as a library with distinct books and individual lessons", () => {
+  assert.match(informationView, /function renderKnowledgeLibrary\(books, topics\)/);
   assert.match(informationView, /Wähle ein Buch/);
-  assert.match(informationView, /GerNetiX Grundlagen/);
-  assert.match(informationView, /knowledge-book-foundations/);
+  assert.match(informationView, /data-knowledge-book/);
+  assert.match(informationView, /content\.findBookForTopic/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../public/app/knowledge-content.js"), "utf8"), /Entwicklungsprozesse/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../public/app/knowledge-content.js"), "utf8"), /Elektrotechnik und Schaltungen/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../public/app/knowledge-content.js"), "utf8"), /Mikrocontroller und Embedded/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../public/app/knowledge-content.js"), "utf8"), /Software und Systeme/);
   assert.match(informationView, /data-knowledge-book/);
   assert.match(informationView, /data-knowledge-library/);
   assert.match(css, /\.knowledge-book-shelf/);
   assert.match(css, /\.knowledge-book-card/);
+  assert.match(informationView, /Leseprobe frei/);
+  assert.match(informationView, /Einmal kaufen/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../public/app/knowledge-content.js"), "utf8"), /knowledge_book_software_systems/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../public/app/knowledge-content.js"), "utf8"), /knowledge_library/);
 });

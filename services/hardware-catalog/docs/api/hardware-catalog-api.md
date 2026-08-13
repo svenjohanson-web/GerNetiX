@@ -8,8 +8,9 @@ und ihre Faehigkeiten. Die Hauptordnung ist technisch: ProcessorFamily/MCU,
 Modul/Realisierung und danach das konkrete Board. Arduino ist dabei Marke,
 Formfaktor oder Framework-Kompatibilitaet, aber keine technische Hauptkategorie.
 
-Beispiele sind Arduino Nano R3 / ATmega328P, Wemos D1 mini / ESP-12F,
-generische Boards mit ESP-WROOM-32 Modul, Arduino Nano ESP32, Espressif
+Beispiele sind Arduino Nano R3 / ATmega328P, Wemos D1 mini / ESP-12F, das
+ESP32-2432S028-Touchdisplay mit ESP-WROOM-32, generische Boards mit
+ESP-WROOM-32 Modul, Arduino Nano ESP32, Espressif
 ESP32-S3-DevKitC-1, das lokal getestete ESP32-S3 ES3C28P Touch-Board, das
 Waveshare ESP32-S3-AUDIO-Board und Espressif ESP32-C6-DevKitC-1.
 

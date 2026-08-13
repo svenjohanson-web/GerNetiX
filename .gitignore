@@ -2,6 +2,7 @@
 .DS_Store
 .runtime/
 node_modules/
+services/identity-server/dist/
 .pnpm-store/
 .pio/
 managed_components/

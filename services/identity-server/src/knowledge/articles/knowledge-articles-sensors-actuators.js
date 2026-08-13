@@ -1,5 +1,5 @@
 // Wissensspeicher: Sensorik und Aktorik.
-const KnowledgeArticlesSensorsActuators = {
+const KnowledgeArticlesSensorsActuators = { // Server-side authored content.
     "sensors": {
       title: "Sensoren",
       summary: "Sensoren übersetzen Eigenschaften der realen Welt in elektrische Signale. Erst die passende Messschaltung und Auswertung machen daraus einen verlässlichen Messwert.",

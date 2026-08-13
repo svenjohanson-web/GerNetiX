@@ -119,15 +119,12 @@ async function loadKnowledgeContentAssets() {
 }
 
 function knowledgeContentAssetUrls() {
-  const version = "20260805-knowledge-chapter-lazy-1";
+  const version = "20260812-knowledge-library-3";
   return ["knowledge-chapter-index.js", "knowledge-content.js"].map((file) => `/app/${file}?v=${version}`);
 }
 
 function knowledgePrefetchAssetUrls() {
-  return [
-    ...knowledgeContentAssetUrls(),
-    "/app/knowledge-chapters/from-problem-to-system.js?v=20260805-knowledge-chapter-lazy-1",
-  ];
+  return knowledgeContentAssetUrls();
 }
 
 function scheduleKnowledgeContentPrefetch() {
@@ -701,6 +698,7 @@ function renderInformationTopic() {
   InformationView.render({
     hasAccount: Boolean(state.account),
     premium: Boolean(state.billing?.entitlements?.includes("learn_guided_projects")),
+    entitlements: state.billing?.entitlements || [],
     newChapterIds: state.knowledgeUpdates.map((update) => update.chapter_id),
     knowledgeHistory: state.knowledgeHistory,
     showKnowledgeHistory: new URLSearchParams(window.location.search).get("ansicht") === "historie",
@@ -708,6 +706,10 @@ function renderInformationTopic() {
     surface: routeName() === "knowledge" ? "knowledge" : "help",
   });
 }
+
+window.addEventListener("gernetix-help-content-ready", () => {
+  if (routeName() === "help") renderInformationTopic();
+});
 
 async function markKnowledgeChapterRead(chapterId) {
   const update = state.knowledgeUpdates.find((item) => item.chapter_id === chapterId);

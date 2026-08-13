@@ -1,5 +1,5 @@
 // Wissensspeicher: Elektrotechnische Grundlagen und Sicherheit.
-const KnowledgeArticlesElectricalEngineering = {
+const KnowledgeArticlesElectricalEngineering = { // Server-side authored content.
     "electrical-basics-and-component-protection": {
       title: "Elektrische Grundbegriffe und Bauteilschutz",
       summary: "Spannung, Strom, Leistung, Energie und Arbeit verständlich unterscheiden – und verstehen, warum Bauteile durch zu viel Spannung, Strom oder Temperatur kaputtgehen.",

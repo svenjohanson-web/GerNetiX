@@ -18,7 +18,7 @@ const { registerProjectRoutes } = require("../src/dev/server/project-routes");
 const { registerSystemRoutes } = require("../src/dev/server/system-routes");
 const { registerDownloadRoutes } = require("../src/dev/server/download-routes");
 const { registerPlatformExtraRoutes } = require("../src/dev/server/platform-extra-routes");
-const { registerWebRoutes } = require("../src/dev/server/web-routes");
+const { isPublicAppAsset, registerWebRoutes } = require("../src/dev/server/web-routes");
 
 test("dispatches registered routes and leaves legacy routes untouched", async () => {
   const registry = createRouteRegistry();
@@ -65,7 +65,11 @@ test("knowledge route uses centralized session access and decodes the chapter id
   registerKnowledgeRoutes({
     registry,
     requireSession: async () => ({ account: { user_id: "user-1" } }),
+    resolveSession: async () => null,
+    accountSubscription: () => ({ entitlements: [] }),
+    knowledgeContentStore: { responseFor: () => null },
     markChapterRead: async (...args) => calls.push(args),
+    sendJson: () => {},
   });
   const res = {};
   assert.equal(await registry.dispatch({
@@ -586,10 +590,59 @@ test("web routes serve the public homepage and redirect anonymous app access", a
   });
   assert.equal(await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL("http://localhost/") }), true);
   assert.equal(await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL("http://localhost/app/dashboard/") }), true);
+  assert.equal(await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL("http://localhost/hilfe/") }), true);
   assert.deepEqual(calls, [
     ["static", "/public", "/index.html"],
     ["redirect", "/app/auth/?next=%2Fapp%2Fdashboard%2F"],
+    ["redirect", "/app/auth/?next=%2Fhilfe%2F"],
   ]);
+});
+
+test("web routes never expose legacy knowledge article scripts", async () => {
+  const registry = createRouteRegistry();
+  registerWebRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    redirect: () => {},
+    authRoute: () => "/app/auth/",
+    serveStatic: () => assert.fail("protected knowledge source must not be served as a static file"),
+    normalizeAppPath: (value) => value,
+    appDir: "/app",
+    operatorShellDir: "/shared",
+    publicDir: "/public",
+  });
+  const response = { status: 0, body: "", writeHead(status) { this.status = status; }, end(body) { this.body = body; } };
+  assert.equal(await registry.dispatch({
+    req: { method: "GET" },
+    res: response,
+    url: new URL("http://localhost/app/knowledge-chapters/security-basics.js"),
+  }), true);
+  assert.equal(response.status, 404);
+  assert.equal(response.body, "Not found");
+});
+
+test("public app assets use an explicit allowlist and all other files require a session", async () => {
+  assert.equal(isPublicAppAsset("/api-client.js"), true);
+  assert.equal(isPublicAppAsset("/i18n/locales/de.json"), true);
+  assert.equal(isPublicAppAsset("/quiz-data.js"), false);
+
+  const registry = createRouteRegistry();
+  const calls = [];
+  registerWebRoutes({
+    registry,
+    requireSession: async () => { calls.push("session"); return null; },
+    redirect: () => {},
+    authRoute: () => "/app/auth/",
+    serveStatic: (res, root, file) => calls.push(["static", file]),
+    normalizeAppPath: (pathname) => pathname.replace(/^\/app/, ""),
+    appDir: "/app",
+    operatorShellDir: "/shared",
+    publicDir: "/public",
+  });
+
+  await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL("http://localhost/app/api-client.js") });
+  await registry.dispatch({ req: { method: "GET" }, res: {}, url: new URL("http://localhost/app/quiz-data.js") });
+  assert.deepEqual(calls, [["static", "/api-client.js"], "session"]);
 });
 
 test("request handler reports slow requests without query data and preserves error responses", async () => {

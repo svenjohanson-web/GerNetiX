@@ -1,5 +1,5 @@
 // Wissensspeicher: Mikrocontroller, Embedded-Systeme und Hardware-Landschaft.
-const KnowledgeArticlesEmbedded = {
+const KnowledgeArticlesEmbedded = { // Server-side authored content.
     "hardware-landscape": {
       title: "Hardware-Landkarte: vom Akku bis Edge AI",
       summary: "Hardware ist keine Rangliste. Die Aufgabe entscheidet, ob ein kleiner Mikrocontroller, ein ESP32, Embedded Linux oder GPU-Edge-Computing sinnvoll ist.",

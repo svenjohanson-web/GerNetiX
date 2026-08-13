@@ -1,5 +1,5 @@
 // Wissensspeicher: Funktechnologien.
-const KnowledgeArticlesRadio = {
+const KnowledgeArticlesRadio = { // Server-side authored content.
     "radio-technologies-understand": {
       title: "Funktechnologien verstehen",
       summary: "Funk verbindet Geräte ohne Leitung, aber nicht ohne physikalische Grenzen. Dieses Kapitel erklärt die gemeinsamen Grundlagen und vergleicht Bluetooth, WLAN, LoRa, Zigbee, NFC und RC-Funksysteme anhand ihrer Eigenschaften, Vor- und Nachteile.",

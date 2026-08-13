@@ -270,7 +270,51 @@ const KnowledgeContent = (() => {
       ],
     },
   ];
-  const assetVersion = "20260805-knowledge-chapter-lazy-1";
+  const books = [
+    {
+      id: "development-processes",
+      title: "Entwicklungsprozesse",
+      description: "Von der Problemstellung über Modelle und Versionierung bis zu nachvollziehbaren technischen Entscheidungen.",
+      topicIds: ["engineering-thinking", "working-methods"],
+      access: { type: "free" },
+    },
+    {
+      id: "electrical-engineering",
+      title: "Elektrotechnik und Schaltungen",
+      description: "Elektrische Grundlagen, Schutz- und Anpassungsschaltungen sowie Sensoren und Aktoren verstehen.",
+      topicIds: ["electrical-engineering", "sensors-and-actuators"],
+      access: { type: "purchase", requiredEntitlements: ["knowledge_book_electrical_engineering"] },
+    },
+    {
+      id: "microcontrollers-embedded",
+      title: "Mikrocontroller und Embedded",
+      description: "Chips, Boards, Firmware, Bussysteme und systematische Fehlersuche für eingebettete Geräte.",
+      topicIds: ["microcontrollers-and-embedded"],
+      access: { type: "subscription", requiredEntitlements: ["knowledge_library"] },
+    },
+    {
+      id: "software-systems",
+      title: "Software und Systeme",
+      description: "Software, Daten, Kommunikation und verteilte Systeme als zusammenhängende technische Grundlage.",
+      topicIds: ["software-basics", "distributed-systems"],
+      access: { type: "purchase", requiredEntitlements: ["knowledge_book_software_systems"] },
+    },
+    {
+      id: "networks-ai-security",
+      title: "Vernetzung, KI und Sicherheit",
+      description: "Funktechnologien, Künstliche Intelligenz, Datenschutz und Security für vernetzte Projekte.",
+      topicIds: ["radio-technologies", "artificial-intelligence", "cross-cutting-topics"],
+      access: { type: "subscription", requiredEntitlements: ["knowledge_library"] },
+    },
+    {
+      id: "glossary",
+      title: "Technisches Lexikon",
+      description: "Fachbegriffe kurz, verständlich und mit praktischen Beispielen nachschlagen.",
+      topicIds: ["glossary"],
+      access: { type: "free" },
+    },
+  ];
+  const assetVersion = "20260812-knowledge-library-3";
   const articleLoadPromises = new Map();
   const registryRoot = typeof window === "undefined" ? globalThis : window;
   const authoredArticles = Object.assign(
@@ -325,17 +369,15 @@ const KnowledgeContent = (() => {
     if (loaded) return Promise.resolve(loaded);
     if (!chapterIndex[articleId]) return Promise.reject(new Error(`Unknown knowledge article: ${articleId}`));
     if (articleLoadPromises.has(articleId)) return articleLoadPromises.get(articleId);
-    const promise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = `${chapterIndex[articleId].asset}?v=${assetVersion}`;
-      script.dataset.knowledgeArticle = articleId;
-      script.addEventListener("load", () => {
-        const article = loadedArticle(articleId);
-        if (article) resolve(article);
-        else reject(new Error(`Knowledge article did not register: ${articleId}`));
-      }, { once: true });
-      script.addEventListener("error", () => reject(new Error(`Knowledge article could not be loaded: ${articleId}`)), { once: true });
-      document.head.append(script);
+    const promise = fetch(`/api/platform/knowledge/chapters/${encodeURIComponent(articleId)}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+    }).then(async (response) => {
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.article) throw new Error(payload.message || `Knowledge article could not be loaded: ${articleId}`);
+      payload.article.delivery_access = payload.access;
+      registryRoot.KnowledgeArticleRegistry[articleId] = payload.article;
+      return loadedArticle(articleId);
     }).catch((error) => {
       articleLoadPromises.delete(articleId);
       throw error;
@@ -345,15 +387,9 @@ const KnowledgeContent = (() => {
   }
 
   function prefetchArticle(articleId) {
-    const metadata = chapterIndex[articleId];
-    if (!metadata || loadedArticle(articleId)) return;
-    const href = `${metadata.asset}?v=${assetVersion}`;
-    if (document.querySelector(`link[rel="prefetch"][href="${CSS.escape(href)}"]`)) return;
-    const link = document.createElement("link");
-    link.rel = "prefetch";
-    link.as = "script";
-    link.href = href;
-    document.head.append(link);
+    // Full chapter content is deliberately fetched only for the active view.
+    // Prefetching protected neighbors would place unnecessary content in the browser.
+    return Boolean(articleId);
   }
 
   function findChapterForAnchor(anchorId) {
@@ -383,11 +419,22 @@ const KnowledgeContent = (() => {
     return topics.find((topic) => topic.children?.some((item) => item.id === topicId)) || null;
   }
 
+  function findBook(bookId) {
+    return books.find((book) => book.id === bookId) || null;
+  }
+
+  function findBookForTopic(topicId) {
+    return books.find((book) => book.topicIds.includes(findParentTopic(topicId)?.id)) || null;
+  }
+
   return {
     topics,
+    books,
     articles,
     findTopic,
     findParentTopic,
+    findBook,
+    findBookForTopic,
     findChapterForAnchor,
     loadedArticle,
     loadArticle,

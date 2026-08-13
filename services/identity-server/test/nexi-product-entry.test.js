@@ -11,8 +11,9 @@ const appHtml = fs.readFileSync(path.join(publicRoot, "app/index.html"), "utf8")
 const appJs = fs.readFileSync(path.join(publicRoot, "app/app.js"), "utf8");
 const shell = fs.readFileSync(path.join(publicRoot, "app/app-shell-controller.js"), "utf8");
 
-test("routes the Nexi account call to a dedicated product entry", () => {
-  assert.match(homepage, /next=%2Fapp%2Fnexi%2F/);
+test("routes the public Nexi call to the rebuild entry", () => {
+  assert.match(homepage, /href="\/nachbauprojekte\/nexi-sprachassistent\/"/);
+  assert.doesNotMatch(homepage, /next=%2Fapp%2Fnexi%2F/);
   assert.doesNotMatch(homepage, /next=%2Fapp%2Flearning-project-overview[^\"]*/);
   assert.doesNotMatch(rebuildPage, /learning-project-overview\/?\?catalog=nexi-voice-assistant/);
   assert.equal(normalizeAppPath("/app/nexi/"), "/index.html");

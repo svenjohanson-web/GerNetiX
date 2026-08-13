@@ -1,5 +1,5 @@
 // Wissensspeicher: Künstliche Intelligenz.
-const KnowledgeArticlesAi = {
+const KnowledgeArticlesAi = { // Server-side authored content.
     "ai-basics": {
       title: "Die Künstliche Intelligenz: GPT, Alexa und LLMs",
       summary: "KI ist kein einzelnes Produkt. Entscheidend ist, welche Aufgabe sie lösen soll, wo sie laufen darf und welche Kosten sowie Datenwege dazu passen.",

@@ -1,5 +1,5 @@
 // Wissensspeicher: Verteilte Systeme und Server-Landschaften.
-const KnowledgeArticlesDistributedSystems = {
+const KnowledgeArticlesDistributedSystems = { // Server-side authored content.
     "distributed-systems-introduction": {
       title: "Verteilte Systeme: Wenn zwei Welten zusammenarbeiten",
       summary: "Ein verteiltes System verbindet die physische Welt mit Software, Kommunikation und Bedienung. Keine einzelne Komponente löst die Aufgabe allein.",

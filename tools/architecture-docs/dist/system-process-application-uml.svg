@@ -78,7 +78,7 @@
 
     <rect class="node edge" x="635" y="150" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="176" text-anchor="middle">Identity Server</text>
-    <text class="smallText" x="745" y="196" text-anchor="middle">Plattform + Lernprojektkatalog · :4300</text>
+    <text class="smallText" x="745" y="196" text-anchor="middle">Plattform + geschuetzte Inhalte/Quiz-API · :4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="256" text-anchor="middle">Admin Access Server</text>

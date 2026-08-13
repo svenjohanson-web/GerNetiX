@@ -43,6 +43,7 @@ RUN npm ci --omit=dev --prefix services/compute-control-plane
 RUN npm ci --omit=dev --prefix services/public-demo-server
 
 COPY --chown=node:node services ./services
+COPY --chown=node:node modules/virtual-electronics-lab ./modules/virtual-electronics-lab
 COPY --chown=node:node firmware/shared/gernetix-runtime-core ./firmware/shared/gernetix-runtime-core
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js
 COPY --chown=node:node tools/migrate-identity-sqlite-to-postgres.js ./tools/migrate-identity-sqlite-to-postgres.js

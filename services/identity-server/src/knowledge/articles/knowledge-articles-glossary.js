@@ -1,5 +1,5 @@
 // Wissensspeicher: Technisches Lexikon.
-const KnowledgeArticlesGlossary = {
+const KnowledgeArticlesGlossary = { // Server-side authored content.
     "glossary-basics": {
       title: "Fachbegriffe einfach erklärt",
       summary: "Dieses Lexikon erklärt häufige Begriffe aus modernen Systemlandschaften kurz, ohne vorauszusetzen, dass du sie bereits kennst.",

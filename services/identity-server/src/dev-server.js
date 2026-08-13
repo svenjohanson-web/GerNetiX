@@ -76,6 +76,7 @@ const { createSubscriptionAccess } = require("./dev/account/subscription-access"
 const { createAccountWorkspaceService } = require("./dev/account/account-workspace-service");
 const { createRequestHandler } = require("./dev/server/request-handler");
 const { registerKnowledgeRoutes } = require("./dev/server/knowledge-routes");
+const { registerProtectedContentRoutes } = require("./dev/server/protected-content-routes");
 const { registerPlatformRoutes } = require("./dev/server/platform-routes");
 const { registerAuthRoutes } = require("./dev/server/auth-routes");
 const { registerAccountRoutes } = require("./dev/server/account-routes");
@@ -125,6 +126,9 @@ const {
   knowledgeChapterHistory,
   unreadKnowledgeChapterReleases,
 } = require("./knowledge/knowledge-chapter-releases");
+const { createKnowledgeContentStore } = require("./knowledge/knowledge-content-store");
+const { createHelpContentStore } = require("./help/help-content-store");
+const { createQuizContentStore } = require("./quiz/quiz-content-store");
 const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../shared/firmware-build-targets");
 const { resolveIdentityRuntimePersistence } = require("./runtime-persistence-policy");
 const {
@@ -134,7 +138,11 @@ const {
   verifyAuthenticationResponse,
 } = require("@simplewebauthn/server");
 
-const publicDir = path.join(__dirname, "..", "public");
+const sourcePublicDir = path.join(__dirname, "..", "public");
+const productionPublicDir = path.join(__dirname, "..", "dist", "public");
+const publicDir = process.env.NODE_ENV === "production" && fs.existsSync(productionPublicDir)
+  ? productionPublicDir
+  : sourcePublicDir;
 const appDir = path.join(publicDir, "app");
 const operatorShellDir = path.join(__dirname, "..", "..", "shared", "public");
 const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
@@ -548,6 +556,9 @@ const {
 });
 const routeRegistry = createRouteRegistry();
 const sessionAccess = createSessionAccess({ resolveSession: sessionService.read, sendJson });
+const knowledgeContentStore = createKnowledgeContentStore();
+const helpContentStore = createHelpContentStore();
+const quizContentStore = createQuizContentStore();
 const learningProgress = createLearningProgressService({
   projectServerJson,
   projectServerUserId,
@@ -770,7 +781,20 @@ const authHandlers = createIdentityAuthHandlers({
 registerKnowledgeRoutes({
   registry: routeRegistry,
   requireSession: sessionAccess.requireSession,
+  resolveSession: sessionService.read,
+  accountSubscription,
+  knowledgeContentStore,
+  readJsonBody,
   markChapterRead: platformService.handleKnowledgeChapterRead,
+  sendJson,
+});
+registerProtectedContentRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  helpContentStore,
+  quizContentStore,
 });
 registerPlatformRoutes({
   registry: routeRegistry,
@@ -973,6 +997,7 @@ registerWebRoutes({
   appDir,
   operatorShellDir,
   publicDir,
+  virtualElectronicsLabDir: path.join(workspaceRoot, "modules", "virtual-electronics-lab"),
   serveVendorEsptool: deviceRuntime.serveVendorEsptool,
   proxyPublicDemo: deviceRuntime.proxyPublicDemo,
 });

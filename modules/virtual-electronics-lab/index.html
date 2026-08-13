@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Interaktive Elektronik-Labs von GerNetiX." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+  <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
+  <title>Virtuelles Elektroniklabor · GerNetiX</title>
+  <link rel="stylesheet" href="./styles.css?v=20260814-radio-rc-range-1" />
+</head>
+<body>
+  <header class="lab-header"><a class="lab-brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a><div class="lab-header-actions"><button id="labThemeToggle" class="lab-theme-toggle" type="button"></button><a class="lab-knowledge" href="/wissen/">Wissensportal</a></div></header>
+  <main class="lab-page">
+    <section class="lab-intro" aria-labelledby="lab-title"><p>Öffentliches Lernangebot</p><h1 id="lab-title">Virtuelles Elektroniklabor</h1><span>Die Simulation nutzt ausschließlich Modellwerte. Keine Hardware, kein Konto, keine Speicherung.</span></section>
+    <nav id="labNavigation" class="lab-navigation" aria-label="Messinstrument auswählen"></nav>
+    <section id="labWorkspace" class="lab-workspace" aria-live="polite"></section>
+  </main>
+  <script type="module" src="./app.js?v=20260814-radio-rc-range-1"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="ESP8266 mit OLED und Tasten als lokale WLAN-Fernbedienung für Monitor-VCP-Befehle nachbauen." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <title>ESP KVM · Monitor per Taste oder Touch steuern · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen"><a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>ESP KVM</span></nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Nachbauprojekt · ESP8266-OLED oder ESP32-Touchdisplay</p>
+        <h1 id="project-title">ESP KVM: Monitor per Taste oder Touch steuern.</h1>
+        <p class="lead">Eine kleine USB-Steuerfläche zeigt an, was sie auslöst: zum Beispiel Helligkeit leiser/lauter oder Eingang wechseln. Sie funktioniert wahlweise mit ESP8266-OLED-Taste oder einem ESP32-Touchdisplay.</p>
+        <p><strong>Lieferstatus:</strong> Projektkonzept, Anschlussplan und lokale USB-Serial-zu-DDC/CI-Brücke liegen im getrennten Forgejo-Projekt <code>GerNetiX-Projekte/esp-kvm</code>. Firmware und Hardware-Abnahme stehen noch aus.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="architecture-title">
+      <p class="eyebrow">Der entscheidende Technikpunkt</p>
+      <h2 id="architecture-title">Der ESP8266 steuert nicht direkt den Monitor.</h2>
+      <p>VCP-Befehle werden normalerweise über <strong>DDC/CI</strong> vom Rechner über dessen Grafikanschluss an den Monitor übertragen. Deshalb sendet der ESP8266 bei einem Tastendruck nur einen begrenzten WLAN-Befehl an eine <strong>lokale Desktop-Brücke</strong>. Diese Brücke läuft auf dem Computer, an dem der Monitor angeschlossen ist, prüft den Befehl und setzt dort den passenden VCP-Wert.</p>
+      <p><strong>Das ist bewusst keine Fernsteuerung ins Internet:</strong> kein direkter Zugriff des ESP8266 auf den Monitor, keine Router-Portfreigabe und kein frei konfigurierbarer Shell-Befehl.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="material-title">
+      <p class="eyebrow">Material zuerst</p>
+      <h2 id="material-title">Das brauchst du für den Aufbau.</h2>
+      <ul>
+        <li>ein ESP8266-OLED-Board, zum Beispiel diymore HW-364A, oder ein ESP8266-Board mit 0,96-Zoll-I²C-OLED</li>
+        <li>alternativ ein ESP32-2432S028-Touchdisplay mit 2,8-Zoll-Display – vor dem Flashen den tatsächlichen Displaycontroller prüfen</li>
+        <li>ein oder mehrere Taster; beim HW-364A kann der vorhandene FLASH-Taster als erste Taste dienen</li>
+        <li>USB-Datenkabel und ein Computer, an dem der Zielmonitor angeschlossen ist</li>
+        <li>ein Monitor, dessen DDC/CI-Funktion im Monitor-Menü aktiviert ist und dessen gewünschte VCP-Codes geprüft wurden</li>
+      </ul>
+      <p>Monitorhersteller unterstützen nicht immer dieselben VCP-Codes. Helligkeit ist meist verfügbar; Eingangswahl und Ein-/Ausschalten müssen für das konkrete Modell getestet werden.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="touch-title">
+      <p class="eyebrow">Alternative Bedienoberfläche</p>
+      <h2 id="touch-title">ESP32-2432S028 mit großen Touchflächen.</h2>
+      <p>Die zweite Variante zeigt vier große Aktionen auf dem integrierten 2,8-Zoll-Display und sendet sie über denselben USB-Serial-Vertrag an die Desktop-Brücke. Die verbreitete ESP32-2432S028-Variante besitzt einen ESP32-WROOM-32, <strong>kein ESP32-S3</strong>.</p>
+      <p>Die Quellvariante ist zunächst für ein ILI9341-Display mit XPT2046-Touch vorbereitet. Bei diesen günstigen Boardfamilien existieren Varianten mit anderem Displaycontroller; ein nicht passendes Panel darf nicht mit dieser Konfiguration geflasht werden. WLAN, HTTP und ein direkter Monitorzugriff bleiben auch hier ausgeschlossen.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="wiring-title">
+      <p class="eyebrow">Erste Hardwarevariante</p>
+      <h2 id="wiring-title">OLED und Taste auf dem ESP8266-OLED-Board.</h2>
+      <ul>
+        <li><strong>OLED SDA: GPIO14</strong></li>
+        <li><strong>OLED SCL: GPIO12</strong></li>
+        <li><strong>erste Taste: GPIO0</strong> – beim HW-364A der FLASH-Taster; beim Einschalten nicht gedrückt halten, weil er den Bootmodus beeinflusst.</li>
+      </ul>
+      <p>Für mehr Tasten empfiehlt sich ein separates, passend beschaltetes Tastenmodul. Die endgültige Pinbelegung muss die Boot-Pins des gewählten ESP8266-Boards berücksichtigen.</p>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="stages-title">
+      <h2 id="stages-title">Vier überschaubare Ausbaustufen</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile"><h3>1. Bedienung anzeigen</h3><p>OLED starten, Taste entprellen und die ausgewählte Aktion sichtbar machen.</p></article>
+        <article class="panel maker-project-tile"><h3>2. Lokalen Befehl senden</h3><p>Der ESP8266 sendet über USB-Serial nur eine feste Aktions-ID wie <code>brightness_50</code> an die lokale Desktop-Brücke.</p></article>
+        <article class="panel maker-project-tile"><h3>3. VCP sicher übersetzen</h3><p>Die Desktop-Brücke ordnet nur erlaubte Aktions-IDs den getesteten VCP-Befehlen des konkret angeschlossenen Monitors zu.</p></article>
+        <article class="panel maker-project-tile"><h3>4. Rückmeldung prüfen</h3><p>OLED zeigt Erfolg, Fehler oder nicht erreichbaren Rechner. Jede Monitorfunktion wird einzeln getestet.</p></article>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="security-title">
+      <p class="eyebrow">Sicherheits- und Nutzungsgrenze</p>
+      <h2 id="security-title">Nur lokal, nur feste Befehle.</h2>
+      <ul>
+        <li>Die Desktop-Brücke lauscht ausschließlich im lokalen Netz oder auf dem Rechner selbst.</li>
+        <li>Der ESP8266 darf nur vorab definierte Aktionen senden, niemals beliebige Programme oder Parameter.</li>
+        <li>Ein lokaler Token und eine Gerätekennung verhindern, dass beliebige WLAN-Teilnehmer Monitorbefehle auslösen.</li>
+        <li>Bei Ausfall von WLAN oder Desktop-Brücke bleibt der Monitor in seinem bisherigen Zustand.</li>
+      </ul>
+      <p>Das Projekt ersetzt keine Bedienhilfen des Betriebssystems und darf keine sicherheitskritischen Anzeige- oder Alarmfunktionen steuern.</p>
+    </section>
+  </main>
+  <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav></footer>
+  <script src="/landing.js?v=20260808-session-menu-1"></script>
+</body>
+</html>

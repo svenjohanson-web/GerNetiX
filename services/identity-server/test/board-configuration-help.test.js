@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-const helpContent = fs.readFileSync(path.resolve(__dirname, "../public/app/help-content.js"), "utf8");
+const helpContent = fs.readFileSync(path.resolve(__dirname, "../src/help/help-content.js"), "utf8");
 
 test("explains GerNetiX, account and project board configuration levels", () => {
   const context = {};

@@ -1,5 +1,5 @@
 // Wissensspeicher: Datenschutz und Security.
-const KnowledgeArticlesCrossCutting = {
+const KnowledgeArticlesCrossCutting = { // Server-side authored content.
     "privacy-basics": {
       title: "Datenschutz in vernetzten Projekten",
       summary: "Vernetzte Geräte können schnell personenbezogene Daten erzeugen. Gute Projekte erfassen nur, was sie wirklich brauchen, erklären den Zweck und schützen Daten über ihren gesamten Lebenszyklus.",

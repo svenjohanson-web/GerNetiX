@@ -11,6 +11,7 @@ const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte",
 const radarRoomPresenceRoot = path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz");
 const radarRoomPresence = fs.readFileSync(path.join(radarRoomPresenceRoot, "index.html"), "utf8");
 const pirMotionDetector = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "index.html"), "utf8");
+const monitorVcpController = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "esp-kvm", "index.html"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
@@ -22,11 +23,11 @@ const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets"
 const motorReedBeforeIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-before.svg"), "utf8");
 const motorReedOnIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-on.svg"), "utf8");
 const motorReedAfterIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-after.svg"), "utf8");
-const knowledgeAppRoot = path.join(root, "public", "app");
-const knowledgeContent = fs.readdirSync(knowledgeAppRoot)
+const knowledgeSourceRoot = path.join(root, "src", "knowledge", "articles");
+const knowledgeContent = fs.readdirSync(knowledgeSourceRoot)
   .filter((file) => /^knowledge-articles-.*\.js$/.test(file))
   .sort()
-  .map((file) => fs.readFileSync(path.join(knowledgeAppRoot, file), "utf8"))
+  .map((file) => fs.readFileSync(path.join(knowledgeSourceRoot, file), "utf8"))
   .join("\n");
 const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
 const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
@@ -149,6 +150,24 @@ test("publishes a source-first PIR motion-detector rebuild project for ESP32 and
   assert.match(pirMotionDetector, /href="\/app\/development-platform\/\?template=esp32_device_only"/);
   assert.doesNotMatch(pirMotionDetector, /href="platformio\.ini"|href="src\/main\.cpp"/);
   assert.doesNotMatch(pirMotionDetector, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
+});
+
+test("publishes ESP KVM with an explicit local desktop bridge", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/esp8266-monitor-vcp"[\s\S]*redirect\(res, "\/nachbauprojekte\/esp-kvm\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/esp-kvm"[\s\S]*redirect\(res, "\/nachbauprojekte\/esp-kvm\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/esp-kvm\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/esp-kvm\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/esp-kvm\/"/);
+  assert.match(page, /ESP KVM/);
+  assert.match(monitorVcpController, /DDC\/CI/);
+  assert.match(monitorVcpController, /lokale Desktop-Brücke/);
+  assert.match(monitorVcpController, /GPIO0/);
+  assert.match(monitorVcpController, /GPIO14/);
+  assert.match(monitorVcpController, /GPIO12/);
+  assert.match(monitorVcpController, /kein direkter Zugriff des ESP8266 auf den Monitor/);
+  assert.match(monitorVcpController, /ESP32-2432S028/);
+  assert.match(monitorVcpController, /kein ESP32-S3/);
+  assert.match(monitorVcpController, /ILI9341-Display mit XPT2046-Touch/);
+  assert.doesNotMatch(monitorVcpController, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });
 
 test("publishes Nexi as a complete, prebuilt and directly flashable rebuild project", () => {

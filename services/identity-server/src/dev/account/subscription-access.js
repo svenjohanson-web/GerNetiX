@@ -8,12 +8,16 @@ function createSubscriptionAccess({ effectiveSubscriptionPlan, defaultAccountPla
       plan_valid_until: account.plan_valid_until || null,
     });
     const premium = ["premium", "premium_demo", "premium-demo"].includes(configuredPlan);
+    const purchasedEntitlements = Array.isArray(account.purchased_entitlements)
+      ? account.purchased_entitlements.filter((entitlement) => typeof entitlement === "string")
+      : [];
+    const subscriptionEntitlements = premium
+      ? ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant", "web_push", "project_history", "knowledge_library"]
+      : ["ide_edit_code", "build_and_flash"];
     return {
       plan_id: premium ? configuredPlan.replace("-", "_") : "free",
       plan: premium ? "Premium" : "Basis",
-      entitlements: premium
-        ? ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant", "web_push", "project_history"]
-        : ["ide_edit_code", "build_and_flash"],
+      entitlements: [...new Set([...subscriptionEntitlements, ...purchasedEntitlements])],
     };
   }
 

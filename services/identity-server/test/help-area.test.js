@@ -6,10 +6,13 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
+const knowledgeSourceRoot = path.join(__dirname, "..", "src", "knowledge", "articles");
+const generatedKnowledgeRoot = path.join(__dirname, "..", "src", "knowledge", "generated-chapters");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
 const app = readPlatformAppSource();
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
-const helpOnlyContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
+const helpLoaderContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
+const helpOnlyContent = fs.readFileSync(path.join(__dirname, "..", "src", "help", "help-content.js"), "utf8");
 const knowledgeArticleFiles = [
   "knowledge-articles-engineering.js",
   "knowledge-articles-electrical-engineering.js",
@@ -24,13 +27,13 @@ const knowledgeArticleFiles = [
 ];
 const knowledgeCatalogContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
 const knowledgeChapterIndex = fs.readFileSync(path.join(appRoot, "knowledge-chapter-index.js"), "utf8");
-const generatedKnowledgeChapterFiles = fs.readdirSync(path.join(appRoot, "knowledge-chapters")).filter((file) => file.endsWith(".js"));
+const generatedKnowledgeChapterFiles = fs.readdirSync(generatedKnowledgeRoot).filter((file) => file.endsWith(".js"));
 const generatedKnowledgeContent = generatedKnowledgeChapterFiles
-  .map((file) => fs.readFileSync(path.join(appRoot, "knowledge-chapters", file), "utf8"))
+  .map((file) => fs.readFileSync(path.join(generatedKnowledgeRoot, file), "utf8"))
   .join("\n");
-const distributedKnowledgeContent = fs.readFileSync(path.join(appRoot, "knowledge-articles-distributed-systems.js"), "utf8");
+const distributedKnowledgeContent = fs.readFileSync(path.join(knowledgeSourceRoot, "knowledge-articles-distributed-systems.js"), "utf8");
 const knowledgeContent = [
-  ...knowledgeArticleFiles.map((file) => fs.readFileSync(path.join(appRoot, file), "utf8")),
+  ...knowledgeArticleFiles.map((file) => fs.readFileSync(path.join(knowledgeSourceRoot, file), "utf8")),
   knowledgeCatalogContent,
 ].join("\n");
 function restoreNavigationTitles(content, titles) {
@@ -85,11 +88,13 @@ test("keeps Help reachable through the main menu and renders it as a dedicated v
 test("keeps help content, navigation and assistant integration independently extensible", () => {
   assert.match(html, /id="informationMount"/);
   assert.match(html, /help-content\.js/);
+  assert.match(helpLoaderContent, /\/api\/platform\/help\/content/);
+  assert.doesNotMatch(helpLoaderContent, /"provision-new-board"|const articleAccess/);
   assert.doesNotMatch(html, /<script[^>]+knowledge-content\.js/);
   assert.ok(knowledgeArticleFiles.every((file) => !html.includes(`<script defer src="/app/${file}`)));
   assert.match(app, /async function loadKnowledgeContentAssets\(\)/);
   assert.match(app, /"knowledge-chapter-index\.js", "knowledge-content\.js"/);
-  assert.match(app, /knowledge-chapters\/from-problem-to-system\.js/);
+  assert.doesNotMatch(app, /knowledge-chapters\/from-problem-to-system\.js/);
   assert.match(app, /const urls = knowledgeContentAssetUrls\(\)/);
   assert.match(app, /await Promise\.all\(urls\.slice\(0, -1\)\.map\(loadPlatformScript\)\)/);
   assert.match(app, /await loadPlatformScript\(urls\.at\(-1\)\)/);
@@ -146,16 +151,16 @@ test("keeps help content, navigation and assistant integration independently ext
 });
 
 test("keeps knowledge articles in focused topic modules", () => {
-  assert.ok(Buffer.byteLength(knowledgeCatalogContent, "utf8") < 15000);
+  assert.ok(Buffer.byteLength(knowledgeCatalogContent, "utf8") < 17000);
   assert.ok(Buffer.byteLength(knowledgeChapterIndex, "utf8") < 30000);
   assert.equal(generatedKnowledgeChapterFiles.length, 35);
   assert.match(knowledgeCatalogContent, /const articles = Object\.fromEntries/);
   assert.match(knowledgeCatalogContent, /function loadArticle\(articleId\)/);
   assert.match(knowledgeCatalogContent, /KnowledgeArticleRegistry/);
   assert.doesNotMatch(knowledgeCatalogContent, /"radio-technologies-understand": \{/);
-  assert.match(fs.readFileSync(path.join(appRoot, "knowledge-articles-radio.js"), "utf8"), /"radio-technologies-understand": \{/);
-  assert.match(fs.readFileSync(path.join(appRoot, "knowledge-articles-sensors-actuators.js"), "utf8"), /"sensors": \{[\s\S]*"actuators": \{/);
-  assert.match(fs.readFileSync(path.join(appRoot, "knowledge-chapters", "radio-technologies-understand.js"), "utf8"), /KnowledgeArticleRegistry\["radio-technologies-understand"\]/);
+  assert.match(fs.readFileSync(path.join(knowledgeSourceRoot, "knowledge-articles-radio.js"), "utf8"), /"radio-technologies-understand": \{/);
+  assert.match(fs.readFileSync(path.join(knowledgeSourceRoot, "knowledge-articles-sensors-actuators.js"), "utf8"), /"sensors": \{[\s\S]*"actuators": \{/);
+  assert.match(fs.readFileSync(path.join(generatedKnowledgeRoot, "radio-technologies-understand.js"), "utf8"), /KnowledgeArticleRegistry\["radio-technologies-understand"\]/);
 });
 
 test("keeps every generated lazy chapter synchronized with its authored source", () => {
@@ -165,7 +170,7 @@ test("keeps every generated lazy chapter synchronized with its authored source",
   const generatedContext = { window: {} };
   vm.createContext(generatedContext);
   for (const file of generatedKnowledgeChapterFiles) {
-    vm.runInContext(fs.readFileSync(path.join(appRoot, "knowledge-chapters", file), "utf8"), generatedContext);
+    vm.runInContext(fs.readFileSync(path.join(generatedKnowledgeRoot, file), "utf8"), generatedContext);
   }
   assert.equal(Object.keys(generatedContext.window.KnowledgeArticleRegistry).length, 35);
   for (const [articleId, article] of Object.entries(generatedContext.window.KnowledgeArticleRegistry)) {
@@ -378,7 +383,8 @@ test("offers interactive sensor selection games with scenario-specific reasoning
   assert.match(helpContent, /Förderband: Werkstücke zählen[\s\S]*answer: "photoelectric"/);
   assert.match(helpContent, /Außentor: Endlage mit Schlamm und Regen[\s\S]*Gekapselter induktiver Näherungssensor/);
   assert.match(helpContent, /Welcher Sensor passt wohin\?[\s\S]*Sicherheitskritische Schutztür[\s\S]*Zertifizierter Sicherheitssensor/);
-  assert.match(informationView, /renderKnowledgeQuizzes[\s\S]*data-knowledge-quiz-check[\s\S]*Wähle zuerst eine Antwort aus\.[\s\S]*selected\.value === quiz\.dataset\.answer/);
+  assert.match(informationView, /renderKnowledgeQuizzes[\s\S]*data-knowledge-quiz-check[\s\S]*Wähle zuerst eine Antwort aus\.[\s\S]*\/quizzes\/\$\{encodeURIComponent\(quiz\.dataset\.quizId\)\}\/answer/);
+  assert.doesNotMatch(informationView, /data-answer=|quiz\.dataset\.answer|data-quiz-correct|data-quiz-wrong/);
   assert.match(css, /\.knowledge-quiz-list[\s\S]*\.knowledge-quiz-feedback\.correct[\s\S]*\.knowledge-quiz-feedback\.wrong/);
 });
 
@@ -698,7 +704,8 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.doesNotMatch(knowledgeBookView, /accessBadge/);
   assert.match(knowledgeBookView, /renderPaywall|renderArticle/);
   assert.match(css, /\.help-paywall/);
-  assert.match(server, /\["\/hilfe", "\/hilfe\/", "\/wissen", "\/wissen\/"\][\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
+  assert.match(server, /\["\/hilfe", "\/hilfe\/"\][\s\S]*requireSession/);
+  assert.match(server, /\["\/wissen", "\/wissen\/"\][\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
   assert.doesNotMatch(server, /url\.pathname === "\/app\/help"/);
   assert.match(app, /const isPublicHelpPage/);
   assert.match(app, /const isPublicKnowledgePage/);
@@ -715,7 +722,7 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.match(informationView, /findContentForTopic/);
   assert.match(informationView, /"\/wissen\/"/);
   assert.match(informationView, /function renderKnowledgeBook/);
-  assert.match(informationView, /GerNetiX Grundlagen · Teil \$\{topicIndex \+ 1\}/);
+  assert.match(informationView, /\$\{escapeHtml\(book\.title\)\} · Teil \$\{topicIndex \+ 1\}/);
   assert.match(informationView, /const chapterNumber = `\$\{topicIndex \+ 1\}\.\$\{chapterIndex \+ 1\}`/);
   assert.match(informationView, /knowledge-chapter-number/);
   assert.match(informationView, /knowledge-subchapter-link/);
@@ -738,7 +745,7 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.match(informationView, /Anmeldung erforderlich · Demo-Link/);
   assert.match(informationView, /Demo-Link · Zuordnung zu einer Lesson folgt/);
   assert.match(informationView, /data-knowledge-chapter/);
-  assert.match(informationView, /renderArticle\(article, selectedChapter, \{ showRelated: false, chapterNumber \}\)/);
+  assert.match(informationView, /renderArticle\(article, selectedChapter, \{ showRelated: false, chapterNumber, accessRequirement: book\.access \}\)/);
   assert.match(informationView, /renderKnowledgeArticleLoading\(selectedChapter\)/);
   assert.match(informationView, /KnowledgeContent\.loadArticle\(articleId\)/);
   assert.match(informationView, /KnowledgeContent\.adjacentArticleIds\(chapterId\)/);

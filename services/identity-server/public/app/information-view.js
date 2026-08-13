@@ -6,6 +6,7 @@ const InformationView = (() => {
   let access = {
     hasAccount: true,
     premium: false,
+    entitlements: [],
     newChapterIds: [],
     knowledgeHistory: [],
     showKnowledgeHistory: false,
@@ -25,7 +26,7 @@ const InformationView = (() => {
     const portal = surface === "knowledge";
     const requested = window.location.hash.replace(/^#/, "");
     const requestedChapter = portal ? content.findChapterForAnchor(requested) : null;
-    const requestedBook = portal && requested === "knowledge-book-foundations";
+    const requestedBook = portal ? content.findBook(requested.replace(/^knowledge-book-/, "")) : null;
     if (requestedChapter) selectedTopicId = requestedChapter.id;
     else if (requested && visibleTopics.some((topic) => topic.children?.some((child) => child.id === requested))) selectedTopicId = requested;
     if (!visibleTopics.some((topic) => topic.children?.some((child) => child.id === selectedTopicId))) selectedTopicId = visibleTopics[0]?.children?.[0]?.id || "quick-start";
@@ -42,8 +43,8 @@ const InformationView = (() => {
       </header>
       ${portal && access.showKnowledgeHistory ? renderKnowledgeHistory() : ""}
       ${portal ? (requestedBook || !requested
-        ? renderKnowledgeLibrary(visibleTopics)
-        : renderKnowledgeBook(visibleTopics, selected, article)) : `<div class="help-layout">
+        ? renderKnowledgeLibrary(content.books, visibleTopics)
+        : renderKnowledgeBook(content.findBookForTopic(selectedTopicId), visibleTopics, selected, article)) : `<div class="help-layout">
         <nav class="panel help-topic-navigation" aria-label="${portal ? "Wissensportal-Themen" : "Hilfethemen"}">
           <p class="eyebrow">${portal ? "Themenbereiche" : "Hilfethemen"}</p>
           ${visibleTopics.map(renderTopic).join("")}
@@ -138,22 +139,23 @@ const InformationView = (() => {
       : new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
   }
 
-  function renderKnowledgeBook(topics, selectedChapter, article) {
+  function renderKnowledgeBook(book, allTopics, selectedChapter, article) {
+    const topics = allTopics.filter((topic) => book?.topicIds.includes(topic.id));
     const topicIndex = topics.findIndex((topic) => topic.children?.some((chapter) => chapter.id === selectedChapter.id));
     const topic = topics[topicIndex] || topics[0];
     const chapterIndex = topic?.children?.findIndex((chapter) => chapter.id === selectedChapter.id) ?? 0;
     const chapterNumber = `${topicIndex + 1}.${chapterIndex + 1}`;
     return `<div class="knowledge-book-layout">
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
-        <a class="knowledge-library-link" href="#knowledge-book-foundations" data-knowledge-library>← Alle Bücher</a>
+        <a class="knowledge-library-link" href="#knowledge-book-${escapeHtml(book.id)}" data-knowledge-library>← Alle Bücher</a>
         <div class="knowledge-book-toc-content">${topics.map((entry, entryIndex) => `<details class="knowledge-part-toc" ${entry.id === topic.id ? "open" : ""}><summary><span class="knowledge-part-title"><span>${entryIndex + 1}</span><strong>${escapeHtml(entry.title)}</strong></span></summary><div>${(entry.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, entryIndex, childIndex)).join("")}</div></details>`).join("")}</div>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         <section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}">
-          <header><p class="eyebrow">GerNetiX Grundlagen · Teil ${topicIndex + 1}</p><h2>${topicIndex + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>
+          <header><p class="eyebrow">${escapeHtml(book.title)} · Teil ${topicIndex + 1}</p><h2>${topicIndex + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>
           <article id="${escapeHtml(selectedChapter.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(selectedChapter.id)}">
             <div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderNewChapterBadge(selectedChapter.id)}</div>
-            ${article ? renderArticle(article, selectedChapter, { showRelated: false, chapterNumber }) : renderKnowledgeArticleLoading(selectedChapter)}
+            ${article ? renderArticle(article, selectedChapter, { showRelated: false, chapterNumber, accessRequirement: book.access }) : renderKnowledgeArticleLoading(selectedChapter)}
           </article>
         </section>
       </main>
@@ -168,28 +170,33 @@ const InformationView = (() => {
     return `<section class="knowledge-chapter-load-state" aria-live="polite" aria-busy="true"><p class="eyebrow">Kapitel wird geladen</p><h3>${escapeHtml(metadata?.title || chapter.title)}</h3><p>${escapeHtml(metadata?.summary || "Der Inhalt wird vorbereitet.")}</p><span class="knowledge-loading-bar" aria-hidden="true"></span></section>`;
   }
 
-  function renderKnowledgeLibrary(topics) {
-    const lessonCount = topics.reduce((count, topic) => count + (topic.children || []).length, 0);
+  function renderKnowledgeLibrary(books, topics) {
     return `<section class="knowledge-library" aria-label="Bücher im Wissensportal">
       <header class="knowledge-library-head">
         <p class="eyebrow">Bibliothek</p>
         <h3>Wähle ein Buch</h3>
         <p>Jedes Buch ist ein eigenes Thema. Darin findest du kurze, einzeln öffnende Lektionen statt eines langen Dokuments.</p>
       </header>
-      <div class="knowledge-book-shelf"><article class="panel knowledge-book-card">
-        <p class="knowledge-book-card-number">Band 1</p>
-        <h4>GerNetiX Grundlagen</h4>
-        <p>Technik, Software, Elektronik und vernetzte Systeme verständlich aufbauen – als ein zusammenhängendes Grundlagenbuch.</p>
-        <small>${lessonCount} Lektionen in ${topics.length} Teilen</small>
-        <button type="button" data-knowledge-book="foundations">Buch öffnen <span aria-hidden="true">→</span></button>
-      </article></div>
+      <div class="knowledge-book-shelf">${books.map((book, bookIndex) => {
+        const bookTopics = topics.filter((topic) => book.topicIds.includes(topic.id));
+        const lessonCount = bookTopics.reduce((count, topic) => count + (topic.children || []).length, 0);
+        const bookAccess = renderBookAccessMarker(book.access);
+        return `<article class="panel knowledge-book-card">
+          <p class="knowledge-book-card-number">Band ${bookIndex + 1}</p>
+          <h4>${escapeHtml(book.title)}</h4>
+          <p>${escapeHtml(book.description)}</p>
+          <p class="knowledge-book-access">${bookAccess} <span>${escapeHtml(accessDescription(book.access))}</span></p>
+          <small>${lessonCount} ${lessonCount === 1 ? "Lektion" : "Lektionen"} in ${bookTopics.length} ${bookTopics.length === 1 ? "Teil" : "Teilen"}</small>
+          <button type="button" data-knowledge-book="${escapeHtml(book.id)}">Buch öffnen <span aria-hidden="true">→</span></button>
+        </article>`;
+      }).join("")}</div>
     </section>`;
   }
 
   function renderKnowledgeChapterToc(chapter, topicIndex, chapterIndex) {
     const chapterNumber = `${topicIndex + 1}.${chapterIndex + 1}`;
-    const level = KnowledgeContent.articles[chapter.articleId]?.access || "public";
-    const previewOnly = !canAccess(level);
+    const book = KnowledgeContent.findBookForTopic(chapter.id);
+    const previewOnly = !canAccess(book?.access || "public");
     const subchapters = (chapter.subchapters || []).map((subchapter, subchapterIndex) => {
       if (!previewOnly || subchapterIndex === 0) {
         return `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}">${escapeHtml(subchapter.title)}</a>`;
@@ -236,12 +243,15 @@ const InformationView = (() => {
     </details>`;
   }
 
-  function renderArticle(article, topic, { showRelated = true, chapterNumber = "" } = {}) {
-    if (!canAccess(article.access)) {
-      const preview = article.access === "premium" ? article.sections.slice(0, 1) : [];
+  function renderArticle(article, topic, { showRelated = true, chapterNumber = "", accessRequirement = article.access } = {}) {
+    const effectiveAccessRequirement = article.delivery_access === "preview" && canAccess(accessRequirement)
+      ? "account"
+      : accessRequirement;
+    if (!canAccess(effectiveAccessRequirement)) {
+      const preview = article.sections.slice(0, 1);
       return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
         ${preview.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section knowledge-chapter-preview">${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}<h3>${escapeHtml(section.heading)}</h3>${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}${renderRebuildProjects(section)}</section>`).join("")}
-        ${renderPaywall(article.access, { knowledgeChapter: Boolean(chapterNumber) })}`;
+        ${renderPaywall(effectiveAccessRequirement, { knowledgeChapter: Boolean(chapterNumber) })}`;
     }
     return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
       ${article.sections.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section">
@@ -300,14 +310,12 @@ const InformationView = (() => {
   }
 
   function renderKnowledgeQuizzes(quizzes) {
-    return `<div class="knowledge-quiz-list">${quizzes.map((quiz) => `<form class="knowledge-quiz" data-knowledge-quiz data-answer="${escapeHtml(quiz.answer)}">
+    return `<div class="knowledge-quiz-list">${quizzes.map((quiz) => `<form class="knowledge-quiz" data-knowledge-quiz data-quiz-id="${escapeHtml(quiz.id)}">
       <header><p class="eyebrow">Entscheidungssituation</p><h4>${escapeHtml(quiz.title)}</h4><p>${escapeHtml(quiz.situation)}</p></header>
       <fieldset><legend>${escapeHtml(quiz.question)}</legend>${quiz.options.map((option) => `<label><input type="radio" name="quiz-${escapeHtml(quiz.id)}" value="${escapeHtml(option.id)}" /> <span>${escapeHtml(option.label)}</span></label>`).join("")}</fieldset>
       <button type="button" data-knowledge-quiz-check>Antwort prüfen</button>
       <p class="knowledge-quiz-feedback" data-quiz-feedback aria-live="polite" hidden></p>
-      <p data-quiz-correct hidden>${escapeHtml(quiz.correctText)}</p>
-      <p data-quiz-wrong hidden>${escapeHtml(quiz.wrongText)}</p>
-      <details class="knowledge-quiz-explanation" hidden><summary>Technische Begründung</summary><p>${escapeHtml(quiz.explanation)}</p></details>
+      <details class="knowledge-quiz-explanation" hidden><summary>Technische Begründung</summary><p></p></details>
     </form>`).join("")}</div>`;
   }
 
@@ -410,15 +418,31 @@ const InformationView = (() => {
   }
 
   function canAccess(level = "public") {
+    if (typeof level === "object" && level) {
+      if (level.type === "free") return true;
+      return (level.requiredEntitlements || []).every((entitlement) => access.entitlements.includes(entitlement));
+    }
     return level === "public" || (level === "account" && access.hasAccount) || (level === "premium" && access.premium);
   }
 
   function accessBadge(level = "public") {
+    if (typeof level === "object" && level) {
+      const labels = { free: "Kostenlos", subscription: "Im Abo", purchase: "Einmal kaufen" };
+      return `<small class="help-access-badge ${escapeHtml(level.type || "free")}">${labels[level.type] || labels.free}</small>`;
+    }
     const labels = { public: "Öffentlich", account: "Konto", premium: "Premium" };
     return `<small class="help-access-badge ${level}">${labels[level] || labels.public}</small>`;
   }
 
   function renderPaywall(level, { knowledgeChapter = false } = {}) {
+    if (typeof level === "object" && level) {
+      const purchase = level.type === "purchase";
+      const heading = purchase ? "Dieses Buch einmal kaufen" : "Dieses Buch im Abo weiterlesen";
+      const description = purchase
+        ? "Die Zusammenfassung und der erste Abschnitt jedes Kapitels sind als Leseprobe frei. Mit dem Einzelkauf bleibt dieses Buch dauerhaft in deiner Bibliothek."
+        : "Die Zusammenfassung und der erste Abschnitt jedes Kapitels sind als Leseprobe frei. Der vollständige Inhalt ist in deinem Wissens-Abo enthalten.";
+      return `<section class="help-paywall${knowledgeChapter ? " knowledge-chapter-paywall" : ""}"><p class="eyebrow">${purchase ? "Einzelkauf" : "Abo-Inhalt"}</p><h3>${heading}</h3><p>${description}</p><button class="primary" type="button" data-help-route="/app/billing/">${purchase ? "Buch kaufen" : "Abo ansehen"}</button></section>`;
+    }
     const premium = level === "premium";
     const heading = premium && knowledgeChapter ? "Dieses Kapitel mit Premium weiterlesen" : premium ? "Hier geht es mit Premium weiter" : "Melde dich an, um weiterzulesen";
     const description = premium && knowledgeChapter
@@ -427,6 +451,18 @@ const InformationView = (() => {
         ? "Die Einführung bleibt sichtbar. Die konkrete Schrittfolge und vertiefenden Hinweise sind Bestandteil des Premium-Abos."
         : "Dieser Ablauf bezieht sich auf dein persönliches Board, Inventar oder Projekt und ist deshalb erst nach der Anmeldung verfügbar.";
     return `<section class="help-paywall${knowledgeChapter ? " knowledge-chapter-paywall" : ""}"><p class="eyebrow">${premium ? "Premium-Inhalt" : "Konto erforderlich"}</p><h3>${heading}</h3><p>${description}</p><button class="primary" type="button" data-help-route="${premium ? "/app/billing/" : "/app/auth/"}">${premium ? "Premium ansehen" : "Anmelden"}</button></section>`;
+  }
+
+  function renderBookAccessMarker(level) {
+    if (typeof level !== "object" || !level) return "";
+    const labels = { free: "Kostenlos", subscription: "Im Abo", purchase: "Einmal kaufen" };
+    return `<small class="help-access-badge ${escapeHtml(level.type || "free")}">${labels[level.type] || labels.free}</small>`;
+  }
+
+  function accessDescription(level) {
+    if (typeof level !== "object" || !level) return "";
+    if (level.type === "free") return "vollständig lesen";
+    return canAccess(level) ? "für dich freigeschaltet" : "mit kostenloser Vorschau";
   }
 
   async function loadHardwareCatalog(mount) {
@@ -477,7 +513,7 @@ const InformationView = (() => {
 
   function bind(mount) {
     bound = true;
-    mount.addEventListener("click", (event) => {
+    mount.addEventListener("click", async (event) => {
       const quizCheck = event.target.closest("[data-knowledge-quiz-check]");
       if (quizCheck) {
         const quiz = quizCheck.closest("[data-knowledge-quiz]");
@@ -492,12 +528,29 @@ const InformationView = (() => {
           if (explanation) explanation.hidden = true;
           return;
         }
-        const correct = selected.value === quiz.dataset.answer;
-        feedback.className = `knowledge-quiz-feedback ${correct ? "correct" : "wrong"}`;
-        feedback.textContent = quiz.querySelector(correct ? "[data-quiz-correct]" : "[data-quiz-wrong]")?.textContent || "";
-        if (explanation) {
-          explanation.hidden = false;
-          explanation.open = true;
+        quizCheck.disabled = true;
+        try {
+          const chapter = contentForSurface("knowledge").findTopic(selectedTopicId);
+          const response = await fetch(`/api/platform/knowledge/chapters/${encodeURIComponent(chapter.articleId)}/quizzes/${encodeURIComponent(quiz.dataset.quizId)}/answer`, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ option_id: selected.value }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "Antwort konnte nicht geprüft werden.");
+          feedback.className = `knowledge-quiz-feedback ${result.correct ? "correct" : "wrong"}`;
+          feedback.textContent = result.feedback || "";
+          if (explanation) {
+            explanation.querySelector("p").textContent = result.explanation || "";
+            explanation.hidden = false;
+            explanation.open = true;
+          }
+        } catch (error) {
+          feedback.className = "knowledge-quiz-feedback wrong";
+          feedback.textContent = error.message || "Antwort konnte nicht geprüft werden.";
+        } finally {
+          quizCheck.disabled = false;
         }
         return;
       }
@@ -511,13 +564,15 @@ const InformationView = (() => {
       }
       const knowledgeBook = event.target.closest("[data-knowledge-book]");
       if (knowledgeBook) {
-        const firstChapter = KnowledgeContent.topics[0]?.children?.[0];
+        const book = KnowledgeContent.findBook(knowledgeBook.dataset.knowledgeBook);
+        const firstChapter = KnowledgeContent.topics.find((topic) => book?.topicIds.includes(topic.id))?.children?.[0];
         if (firstChapter) selectTopic(firstChapter.id);
         return;
       }
       if (event.target.closest("[data-knowledge-library]")) {
         event.preventDefault();
-        history.replaceState({}, "", "/wissen/#knowledge-book-foundations");
+        const book = KnowledgeContent.findBookForTopic(selectedTopicId);
+        history.replaceState({}, "", `/wissen/#knowledge-book-${book?.id || "development-processes"}`);
         render();
         return;
       }

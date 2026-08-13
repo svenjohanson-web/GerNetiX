@@ -64,7 +64,7 @@ test("renders only the active route and prefetches knowledge after an idle dashb
   assert.match(shell, /requestIdleCallback\(prefetch, \{ timeout: 5_000 \}\)/);
   assert.match(shell, /link\.rel = "prefetch"/);
   assert.match(shell, /return \["knowledge-chapter-index\.js", "knowledge-content\.js"\]/);
-  assert.match(shell, /knowledge-chapters\/from-problem-to-system\.js/);
+  assert.doesNotMatch(shell, /knowledge-chapters\/from-problem-to-system\.js/);
   assert.match(shell, /async function loadQuizAssets\(\)/);
   assert.match(shell, /async function loadProjectAppAssets\(\)/);
 });
@@ -97,13 +97,13 @@ test("keeps route HTML fragments out of the shell and rejects executable fragmen
   assert.match(shell, /footer\.before\(document\.importNode\(roots\[0\], true\)\)/);
 });
 
-test("loads one knowledge chapter at a time and only prefetches its neighbors", () => {
+test("loads one knowledge chapter at a time without prefetching protected neighbors", () => {
   assert.match(knowledgeContent, /function loadArticle\(articleId\)/);
-  assert.match(knowledgeContent, /script\.dataset\.knowledgeArticle = articleId/);
+  assert.match(knowledgeContent, /fetch\(`\/api\/platform\/knowledge\/chapters\/\$\{encodeURIComponent\(articleId\)\}`/);
   assert.match(knowledgeContent, /function adjacentArticleIds\(chapterId\)/);
   assert.match(informationView, /const article = portal \? content\.loadedArticle\(selected\.articleId\)/);
   assert.match(informationView, /await KnowledgeContent\.loadArticle\(articleId\)/);
-  assert.match(informationView, /KnowledgeContent\.adjacentArticleIds\(chapterId\)\.forEach\(KnowledgeContent\.prefetchArticle\)/);
+  assert.match(knowledgeContent, /Prefetching protected neighbors would place unnecessary content in the browser/);
   assert.doesNotMatch(informationView, /topics\.map\([\s\S]*renderArticle\(chapter, child/);
 });
 

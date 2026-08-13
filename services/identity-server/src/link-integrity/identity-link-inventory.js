@@ -8,6 +8,9 @@ const identityRoutes = [
   route("identity.home", "/", "public", "Identity"),
   route("identity.about", "/ueber-uns/", "public", "Business"),
   route("identity.rebuild_projects", "/nachbauprojekte/", "public", "Learning"),
+  route("identity.virtual_electronics_labs", "/technik-labs/", "public", "Learning"),
+  route("identity.spectrum_analyzer_lab", "/technik-labs/spektrumanalysator/", "public", "Learning"),
+  route("identity.network_analyzer_lab", "/technik-labs/netzwerkanalysator/", "public", "Learning"),
   route("identity.motor_rebuild", "/nachbauprojekte/einfache-elektromotoren/", "public", "Learning"),
   route("identity.printed_motor_series", "/nachbauprojekte/druckmotoren/", "public", "Learning"),
   route("identity.nexi_rebuild", "/nachbauprojekte/nexi-sprachassistent/", "public", "Learning"),
@@ -170,7 +173,7 @@ function inferAccessScope(targetUrl) {
 
 function inferOwnerDomain(targetUrl) {
   if (/device-management|flashbox|provision/i.test(targetUrl)) return "DeviceManagement";
-  if (/knowledge|wissen|learn|nachbauprojekte/i.test(targetUrl)) return "Learning";
+  if (/knowledge|wissen|learn|nachbauprojekte|technik-labs/i.test(targetUrl)) return "Learning";
   if (/community/i.test(targetUrl)) return "Community";
   if (/shop|billing/i.test(targetUrl)) return "Business";
   if (/ide|development-platform|projects|builds/i.test(targetUrl)) return "IDE";

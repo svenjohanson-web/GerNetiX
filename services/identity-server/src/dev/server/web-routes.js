@@ -2,9 +2,45 @@
 
 const path = require("node:path");
 
+const publicAppAssets = new Set([
+  "/manifest.webmanifest",
+  "/push-sw.js",
+  "/initial-view-router.js",
+  "/app-shell-early.js",
+  "/app.css",
+  "/unified-flash-dialog.css",
+  "/i18n/i18n.js",
+  "/action-observability.js",
+  "/api-client.js",
+  "/dom-utils.js",
+  "/ai-chat-pattern.js",
+  "/serial-service-client.js",
+  "/learning-project-view.js",
+  "/learning-project-controller.js",
+  "/learning-project-locales.js",
+  "/help-content.js",
+  "/help-chat-service.js",
+  "/information-view.js",
+  "/app-shell-controller.js",
+  "/app-dashboard-controller.js",
+  "/app-account-controller.js",
+  "/app-project-controller.js",
+  "/app-billing-controller.js",
+  "/app-runtime-utils.js",
+  "/app-push-controller.js",
+  "/app.js",
+  "/app-event-bindings.js",
+  "/knowledge-chapter-index.js",
+  "/knowledge-content.js",
+]);
+
+function isPublicAppAsset(appPath) {
+  return publicAppAssets.has(appPath) || /^\/i18n\/locales\/(?:de|en|nl)\.json$/.test(appPath);
+}
+
 function registerWebRoutes({
   registry, requireSession, redirect, authRoute, serveStatic, normalizeAppPath,
-  appDir, operatorShellDir, publicDir, serveVendorEsptool, proxyPublicDemo,
+  appDir, operatorShellDir, publicDir, virtualElectronicsLabDir, serveVendorEsptool, proxyPublicDemo,
 }) {
   registry.register({ method: "*", path: "/app/manifest.webmanifest", handler: ({ res }) => serveStatic(res, appDir, "/manifest.webmanifest") });
   registry.register({ method: "*", path: "/app/push-sw.js", handler: ({ res }) => serveStatic(res, appDir, "/push-sw.js") });
@@ -38,7 +74,25 @@ function registerWebRoutes({
     registry.register({ method: "*", path: routePath, handler: ({ res, url }) => redirect(res, authRoute(url.searchParams.get("next") || "/app/dashboard/")) });
   }
   registry.register({ method: "*", pattern: /^\/app\/auth(?:\/|$)/, handler: ({ res, url }) => serveStatic(res, appDir, normalizeAppPath(url.pathname), { versioned: url.searchParams.has("v") }) });
-  for (const routePath of ["/hilfe", "/hilfe/", "/wissen", "/wissen/"]) {
+  registry.register({
+    method: "*",
+    pattern: /^\/app\/(?:knowledge-articles-[^/]+|knowledge-chapters\/[^/]+)\.js$/,
+    handler: ({ res }) => {
+      res.writeHead(404, { "Cache-Control": "no-store" });
+      res.end("Not found");
+    },
+  });
+  for (const routePath of ["/hilfe", "/hilfe/"]) {
+    registry.register({
+      method: "*",
+      path: routePath,
+      async handler({ req, res, url }) {
+        if (!await requireSession(req, null)) { redirect(res, authRoute(url.pathname + url.search)); return; }
+        serveStatic(res, appDir, "/index.html");
+      },
+    });
+  }
+  for (const routePath of ["/wissen", "/wissen/"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, appDir, "/index.html") });
   }
   for (const routePath of ["/app/requirements-workshop", "/app/requirements-workshop/"]) {
@@ -66,7 +120,11 @@ function registerWebRoutes({
   registry.register({
     method: "*",
     pattern: /^\/app\/.*\.[^/]+$/,
-    handler: ({ res, url }) => serveStatic(res, appDir, normalizeAppPath(url.pathname), { versioned: url.searchParams.has("v") }),
+    async handler({ req, res, url }) {
+      const appPath = normalizeAppPath(url.pathname);
+      if (!isPublicAppAsset(appPath) && !await requireSession(req, res)) return;
+      serveStatic(res, appDir, appPath, { versioned: url.searchParams.has("v") });
+    },
   });
   registry.register({
     method: "*",
@@ -96,6 +154,12 @@ function registerWebRoutes({
   for (const routePath of ["/leistungen", "/leistungen/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/leistungen/index.html") });
   for (const routePath of ["/tarife", "/tarife/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/tarife/index.html") });
   for (const routePath of ["/entdecken", "/entdecken/", "/downloads", "/downloads/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => redirect(res, "/nachbauprojekte/") });
+  for (const routePath of ["/technik-labs", "/technik-labs/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, virtualElectronicsLabDir, "/index.html") });
+  registry.register({ method: "*", path: "/technik-labs/spektrumanalysator", handler: ({ res }) => redirect(res, "/technik-labs/?lab=spectrum") });
+  registry.register({ method: "*", path: "/technik-labs/spektrumanalysator/", handler: ({ res }) => redirect(res, "/technik-labs/?lab=spectrum") });
+  registry.register({ method: "*", path: "/technik-labs/netzwerkanalysator", handler: ({ res }) => redirect(res, "/technik-labs/?lab=vna") });
+  registry.register({ method: "*", path: "/technik-labs/netzwerkanalysator/", handler: ({ res }) => redirect(res, "/technik-labs/?lab=vna") });
+  registry.register({ method: "*", pattern: /^\/technik-labs\/(?:app\.js|styles\.css|labs\/[^/]+\.js)$/, handler: ({ res, url }) => serveStatic(res, virtualElectronicsLabDir, url.pathname.slice("/technik-labs".length), { versioned: url.searchParams.has("v") }) });
   for (const routePath of ["/nachbauprojekte", "/nachbauprojekte/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren", handler: ({ res }) => redirect(res, "/nachbauprojekte/einfache-elektromotoren/") });
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html") });
@@ -111,6 +175,10 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/radar-raumpraesenz/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/radar-raumpraesenz/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/pir-bewegungsmelder", handler: ({ res }) => redirect(res, "/nachbauprojekte/pir-bewegungsmelder/") });
   registry.register({ method: "*", path: "/nachbauprojekte/pir-bewegungsmelder/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/pir-bewegungsmelder/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/esp8266-monitor-vcp", handler: ({ res }) => redirect(res, "/nachbauprojekte/esp-kvm/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/esp8266-monitor-vcp/", handler: ({ res }) => redirect(res, "/nachbauprojekte/esp-kvm/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/esp-kvm", handler: ({ res }) => redirect(res, "/nachbauprojekte/esp-kvm/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/esp-kvm/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/esp-kvm/index.html") });
   registry.register({
     method: "GET",
     pattern: /^\/nachbauprojekte\/nexi-sprachassistent\/api\//,
@@ -124,4 +192,4 @@ function registerWebRoutes({
   registry.register({ method: "*", pattern: /^\//, handler: ({ res, url }) => serveStatic(res, publicDir, url.pathname, { versioned: url.searchParams.has("v") }) });
 }
 
-module.exports = { registerWebRoutes };
+module.exports = { isPublicAppAsset, publicAppAssets, registerWebRoutes };

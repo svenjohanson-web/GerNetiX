@@ -1,5 +1,5 @@
 // Wissensspeicher: Ingenieursmäßiges Denken und Arbeitsmethodiken.
-const KnowledgeArticlesEngineering = {
+const KnowledgeArticlesEngineering = { // Server-side authored content.
     "from-problem-to-system": {
       title: "Ingenieursmäßig denken: vom Problem zur Lösung",
       summary: "Ingenieursmäßiges Denken ist heute wichtiger denn je. Ein Studium kann wichtige Grundlagen vermitteln, doch entscheidend ist nicht der Abschluss allein: Ebenso wichtig sind praktische Erfahrung, Aufgeschlossenheit gegenüber neuen Technologien wie KI und die Fähigkeit, Anforderungen zu verstehen und Ergebnisse zu überprüfen.",

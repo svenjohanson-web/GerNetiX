@@ -13,9 +13,8 @@
       .replaceAll("'", "&#039;");
   }
 
-  function scoreAnswers(questions, answers) {
-    return questions.reduce((score, question, index) =>
-      score + (answers[index] === question.correctIndex ? 1 : 0), 0);
+  function scoreAnswers(_questions, results) {
+    return results.reduce((score, result) => score + (result?.correct ? 1 : 0), 0);
   }
 
   function create({ mount, getLocale }) {
@@ -23,19 +22,41 @@
       categoryId: "",
       questionIndex: 0,
       answers: [],
+      results: [],
       resultVisible: false,
+      catalog: null,
+      locale: "",
+      loading: false,
+      error: "",
     };
 
-    function catalog() {
-      return window.GerNetiXQuizData.getCatalog(getLocale());
+    async function catalog() {
+      const locale = getLocale();
+      if (state.catalog && state.locale === locale) return state.catalog;
+      state.locale = locale;
+      state.catalog = await window.GerNetiXQuizData.getCatalog(locale);
+      return state.catalog;
     }
 
-    function selectedCategory(currentCatalog = catalog()) {
+    function selectedCategory(currentCatalog = state.catalog) {
       return currentCatalog.categories.find((category) => category.id === state.categoryId);
     }
 
-    function render() {
-      const currentCatalog = catalog();
+    async function render() {
+      if (state.loading) return;
+      state.loading = true;
+      state.error = "";
+      mount.innerHTML = '<section class="panel quiz-round" aria-busy="true"><p>Quiz wird geladen …</p></section>';
+      let currentCatalog;
+      try {
+        currentCatalog = await catalog();
+      } catch (error) {
+        state.error = error.message || "Quiz konnte nicht geladen werden.";
+        mount.innerHTML = `<section class="panel quiz-round" role="alert"><p>${escapeHtml(state.error)}</p></section>`;
+        return;
+      } finally {
+        state.loading = false;
+      }
       if (!state.categoryId) {
         renderCategories(currentCatalog);
         return;
@@ -85,7 +106,8 @@
       const question = category.questions[state.questionIndex];
       const selectedAnswer = state.answers[state.questionIndex];
       const answered = Number.isInteger(selectedAnswer);
-      const correct = answered && selectedAnswer === question.correctIndex;
+      const result = state.results[state.questionIndex];
+      const correct = Boolean(result?.correct);
       mount.innerHTML = `
         <section class="panel quiz-round">
           <header class="quiz-round-head">
@@ -103,8 +125,8 @@
               ${question.options.map((option, index) => {
                 const classes = [
                   "quiz-option",
-                  answered && index === question.correctIndex ? "is-correct" : "",
-                  answered && index === selectedAnswer && index !== question.correctIndex ? "is-incorrect" : "",
+                  answered && index === result?.correct_index ? "is-correct" : "",
+                  answered && index === selectedAnswer && !result?.correct ? "is-incorrect" : "",
                 ].filter(Boolean).join(" ");
                 return `<button class="${classes}" type="button" data-quiz-answer="${index}"${answered ? " disabled" : ""}><span>${String.fromCharCode(65 + index)}</span>${escapeHtml(option)}</button>`;
               }).join("")}
@@ -113,8 +135,8 @@
           ${answered ? `
             <aside class="quiz-feedback ${correct ? "is-correct" : "is-incorrect"}" aria-live="polite">
               <strong>${escapeHtml(correct ? text.correct : text.incorrect)}</strong>
-              ${correct ? "" : `<p><b>${escapeHtml(text.answer)}</b> ${escapeHtml(question.options[question.correctIndex])}</p>`}
-              <p>${escapeHtml(question.explanation)}</p>
+              ${correct ? "" : `<p><b>${escapeHtml(text.answer)}</b> ${escapeHtml(result?.correct_option || "")}</p>`}
+              <p>${escapeHtml(result?.explanation || "")}</p>
             </aside>
             <div class="quiz-next-row">
               <button class="primary" type="button" data-quiz-next>${escapeHtml(state.questionIndex === category.questions.length - 1 ? text.finish : text.next)}</button>
@@ -131,7 +153,7 @@
 
     function renderResult(currentCatalog, category) {
       const { labels: text } = currentCatalog;
-      const score = scoreAnswers(category.questions, state.answers);
+      const score = scoreAnswers(category.questions, state.results);
       const ratio = score / category.questions.length;
       const resultText = ratio === 1 ? text.resultStrong : (ratio >= 0.5 ? text.resultMedium : text.resultStart);
       mount.innerHTML = `
@@ -154,14 +176,28 @@
       state.categoryId = categoryId;
       state.questionIndex = 0;
       state.answers = [];
+      state.results = [];
       state.resultVisible = false;
       render();
     }
 
-    function answer(optionIndex) {
+    async function answer(optionIndex) {
       if (Number.isInteger(state.answers[state.questionIndex])) return;
       state.answers[state.questionIndex] = optionIndex;
-      render();
+      const category = selectedCategory();
+      const question = category?.questions[state.questionIndex];
+      try {
+        state.results[state.questionIndex] = await window.GerNetiXQuizData.evaluate(
+          state.locale,
+          category.id,
+          question.id,
+          optionIndex,
+        );
+      } catch (error) {
+        state.answers[state.questionIndex] = undefined;
+        state.error = error.message || "Antwort konnte nicht geprüft werden.";
+      }
+      void render();
     }
 
     function next() {
@@ -176,6 +212,7 @@
       state.categoryId = "";
       state.questionIndex = 0;
       state.answers = [];
+      state.results = [];
       state.resultVisible = false;
       render();
     }

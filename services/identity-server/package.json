@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "node src/dev-server.js",
     "build:knowledge": "node tools/build-knowledge-chapters.js",
+    "build:browser": "node scripts/build-production-assets.js && node scripts/verify-browser-disclosure.js dist/public",
     "test": "node --test",
     "check": "node --check src/index.js",
     "check:links": "node scripts/check-link-integrity.js",
-    "verify:runtime-deps": "node scripts/verify-runtime-dependencies.js"
+    "verify:runtime-deps": "node scripts/verify-runtime-dependencies.js",
+    "verify:browser-disclosure": "node scripts/verify-browser-disclosure.js public"
   },
   "engines": {
     "node": ">=18"
@@ -21,5 +23,8 @@
     "nodemailer": "^9.0.3",
     "pg": "^8.16.3",
     "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "terser": "^5.43.1"
   }
 }

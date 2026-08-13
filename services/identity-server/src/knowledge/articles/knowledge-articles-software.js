@@ -1,5 +1,5 @@
 // Wissensspeicher: Informatik, Software und Datenspeicherung.
-const KnowledgeArticlesSoftware = {
+const KnowledgeArticlesSoftware = { // Server-side authored content.
     "software-basics-introduction": {
       title: "Was Software ist: von der Idee zum ausführbaren Programm",
       summary: "Software beschreibt, welche Aufgabe ein Gerät erfüllen soll. Je nach Zielsystem wird sie direkt in Maschinencode übersetzt oder mit einer Laufzeitumgebung ausgeführt.",

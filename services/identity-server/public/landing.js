@@ -15,6 +15,7 @@ function normalizePublicNavigation() {
     ["/ueber-uns/", "Über uns"],
     ["/nachbauprojekte/nexi-sprachassistent/", "Nexi"],
     ["/nachbauprojekte/", "Projekte zum Nachbauen"],
+    ["/technik-labs/", "Virtuelles Elektroniklabor"],
     ["/flashbox-einrichten/", "FlashBox einrichten"],
     ["/wissen/", "Wissensportal"],
     ["/community/", "Community"],
@@ -70,6 +71,7 @@ function showAuthenticatedPublicNavigation(account) {
     createNavigationGroup("Boards & Werkzeuge", "platform.menu.boards_tools", [
       ["/app/device-management/", "Geräte", "platform.nav.devices"],
       ["/app/hardware-lab/", "KI-Hardware-Assistent", "platform.nav.hardware_lab"],
+      ["/technik-labs/", "Virtuelles Elektroniklabor"],
       ["/app/downloads/", "Downloads", "platform.nav.downloads"],
       ["/flashbox-einrichten/", "FlashBox einrichten", "nav.usb_helper"],
     ]),

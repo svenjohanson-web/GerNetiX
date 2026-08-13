@@ -15,6 +15,7 @@ const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
 test("serves the GerNetiX homepage publicly before authentication", () => {
   assert.match(server, /path: "\/", handler: \(\{ res \}\) => serveStatic\(res, publicDir, "\/index\.html"\)/);
   assert.match(html, /id="publicLoginLink" class="header-login-link" href="\/app\/auth\/"[\s\S]*Anmelden/);
+  assert.match(html, /landing\.js\?v=20260813-electronics-lab-menu-1/);
   assert.match(css, /\.header-login-link, \.menu-button, \.public-language-switcher, \.public-theme-toggle \{[\s\S]*background: linear-gradient\(180deg, #f0ece5 0%, #e6ded2 100%\);[\s\S]*box-shadow:/);
   assert.match(client, /publicLoginLink\.href = "\/app\/dashboard\/";[\s\S]*publicLoginLink\.textContent = "Zum Dashboard";/);
   assert.doesNotMatch(html, /Jetzt starten/);
@@ -58,6 +59,18 @@ test("switches homepage images and their background surfaces with the public rea
   assert.match(css, /html\[data-public-theme="light"\] \.software-evolution-gallery figure,[\s\S]*\.system-flow-visual \{ background: #efe8dc; \}/);
 });
 
+test("adapts the header wordmark to the light reading theme", () => {
+  assert.match(html, /landing\.css\?v=20260813-light-contrast-1/);
+  assert.match(css, /html\[data-public-theme="light"\] \.brand img \{[\s\S]*filter: invert\(1\) hue-rotate\(180deg\);[\s\S]*\}/);
+});
+
+test("keeps highlighted homepage copy readable in the light theme", () => {
+  assert.match(css, /html\[data-public-theme="light"\] \.home-purpose-copy \.conclusion \{[\s\S]*color: #4f2f28;/);
+  assert.match(css, /html\[data-public-theme="light"\] \.nexi-home-copy p\.project-example-label \{[\s\S]*color: #7a3328;/);
+  assert.match(css, /html\[data-public-theme="light"\] \.nexi-home-options strong \{[\s\S]*color: var\(--text\);/);
+  assert.match(css, /html\[data-public-theme="light"\] \.nexi-home-options p \{[\s\S]*color: var\(--muted\);/);
+});
+
 test("uses the GerNetiX corporate design and responsive homepage grids", () => {
   assert.match(css, /--accent: #22d3ee/);
   assert.match(css, /body \{[\s\S]*padding-top: 78px;/);
@@ -66,18 +79,19 @@ test("uses the GerNetiX corporate design and responsive homepage grids", () => {
   assert.match(css, /\.hero h1 \{ font-size: clamp\(26px, 3vw, 34px\); \}/);
   assert.match(css, /\.home-area-grid \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.shared-spaces \{ grid-template-columns: minmax\(190px, \.55fr\) minmax\(0, 1\.45fr\);[\s\S]*padding: 30px 0;/);
-  assert.match(css, /\.shared-space-links \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.shared-space-links \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.system-flow-visual \{[\s\S]*overflow: hidden;[\s\S]*border: 1px solid/);
   assert.match(css, /\.system-flow-visual img \{ display: block; width: 100%; height: auto; \}/);
   assert.match(css, /@media \(max-width: 1040px\)[\s\S]*\.nexi-home-feature,[\s\S]*\.home-purpose-layout \{ grid-template-columns: 1fr; \}/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.shared-spaces \{ grid-template-columns: 1fr;[\s\S]*\.shared-space-links \{ grid-template-columns: 1fr; \}/);
 });
 
-test("shows the knowledge portal and community as shared companions", () => {
+test("shows knowledge, community and the electronics lab as shared companions", () => {
   assert.match(html, /id="shared-spaces"[\s\S]*Wissen und Austausch/);
   assert.match(html, /class="shared-space-link" href="\/wissen\/"[\s\S]*Wissensportal/);
   assert.match(html, /class="shared-space-link" href="\/community\/"[\s\S]*Community/);
-  assert.equal((html.match(/class="shared-space-link"/g) || []).length, 2);
+  assert.match(html, /class="shared-space-link" href="\/technik-labs\/"[\s\S]*Virtuelles Elektroniklabor/);
+  assert.equal((html.match(/class="shared-space-link"/g) || []).length, 3);
   assert.doesNotMatch(html, /Für beide Bereiche|keine weiteren Wege|shared-space-contexts|Wissensportal öffnen|Community öffnen/);
   assert.ok(html.indexOf('id="motivation"') < html.indexOf('id="shared-spaces"'));
   assert.ok(html.indexOf('id="shared-spaces"') < html.indexOf('id="nexi"'));
@@ -118,6 +132,7 @@ test("offers a hamburger menu with the public webshop entry only", () => {
   assert.match(menu, /href="\/hilfe\/">Hilfe/);
   assert.doesNotMatch(menu, /href="\/entdecken\/"|GerNetiX entdecken/);
   assert.match(menu, /href="\/nachbauprojekte\/">Projekte zum Nachbauen/);
+  assert.match(menu, /href="\/technik-labs\/">Virtuelles Elektroniklabor/);
   assert.match(menu, /href="\/flashbox-einrichten\/">FlashBox einrichten/);
   assert.match(menu, /href="\/shop\/">Webshop/);
   assert.match(menu, /href="\/app\/auth\/">Anmelden/);
@@ -125,6 +140,7 @@ test("offers a hamburger menu with the public webshop entry only", () => {
   assert.match(headerCss, /\.site-menu \{[\s\S]*position: absolute/);
   assert.match(client, /aria-expanded/);
   assert.match(client, /event\.key === "Escape"/);
+  assert.match(client, /\["\/technik-labs\/", "Virtuelles Elektroniklabor"\]/);
   assert.match(html, /class="site-footer-links"[\s\S]*Warum GerNetiX\?[\s\S]*Wissensportal[\s\S]*Hilfe/);
   assert.doesNotMatch(html.match(/class="site-footer-links"[\s\S]*/)?.[0] || "", /href="\/app\/vision\/"/);
 });
