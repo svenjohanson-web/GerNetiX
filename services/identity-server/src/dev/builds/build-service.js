@@ -1,6 +1,6 @@
 "use strict";
 
-const { issueInternalToken } = require("../../../shared/internal-api-auth");
+const { issueInternalToken } = require("../../../../shared/internal-api-auth");
 
 function createBuildService({ readJsonBody, readUserActionContext, sessionService, loadUserIdeProjects, loadUserIdeDevices, platformSoftwareUnits, resolveBuildConfig, touchscreenGameBuildConfigurationProblems, projectServerJson, projectServerUserId, renderPlatformioIni, sendJson, otaBuildDeployJson, buildWorkerPoolJson, buildDeployJson, toBuildDeployPackage, toProjectBuildResult, completeBrowserFlashDefinitions, usesGerNetixOtaAppLayout, esp32FirmwareAddress, customerArtifactList, buildDeployBaseUrl, otaBuildDeployBaseUrl, internalApiSigningKey, userIdeState, touchWorkspace }) {
 async function handleUserIdeBuildJob(req, res) {
