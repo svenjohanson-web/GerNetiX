@@ -41,16 +41,23 @@ function registerAccountRoutes({
         const session = await requireSession(req, res);
         if (!session) return;
         if (method === "GET") {
-          sendJson(res, 200, { preferred_locale: session.account.preferred_locale || "de" });
+          sendJson(res, 200, {
+            preferred_locale: session.account.preferred_locale || "de",
+            welcome_guide_disabled: Boolean(session.account.welcome_guide_disabled),
+          });
           return;
         }
         try {
           const body = await readJsonBody(req);
-          const account = await auth().update_preferred_locale(session.account.user_id, body.preferred_locale);
+          const account = await auth().update_account_preferences(session.account.user_id, body);
           updateCachedSessionAccount(req, account);
-          sendJson(res, 200, { preferred_locale: account.preferred_locale, account });
+          sendJson(res, 200, {
+            preferred_locale: account.preferred_locale,
+            welcome_guide_disabled: account.welcome_guide_disabled,
+            account,
+          });
         } catch (error) {
-          sendJson(res, error.status || 400, { error: error.code || "invalid_locale" });
+          sendJson(res, error.status || 400, { error: error.code || "invalid_preferences" });
         }
       },
     });

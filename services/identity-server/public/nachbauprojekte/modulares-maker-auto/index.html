@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Ein modulares ferngesteuertes Maker-Auto aus Lasercut- und 3D-Druckteilen mit ESP32, Servo und austauschbaren DC- oder Brushless-Antrieben." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <title>Modulares Maker-Auto mit ESP32 bauen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>Modulares Maker-Auto</span>
+    </nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Projektkonzept · Lasercut, 3D-Druck &amp; ESP32</p>
+        <h1 id="project-title">Baue ein ferngesteuertes Auto, das mit deinen Ideen mitwächst.</h1>
+        <p class="lead">Ein gelasertes Grunddeck trägt steck- und schraubbare Druckteile. Zwei kleine DC-Getriebemotoren treiben die Hinterräder an, ein Servo lenkt vorne und ein ESP32 stellt die lokale Fernsteuerung bereit.</p>
+        <p><strong>Lieferstatus:</strong> Aufbaukonzept, Startarchitektur und beschaffbare Teileklassen sind festgelegt. CAD-Dateien, Firmware und reale Hardware-Abnahme sind noch offen; deshalb gibt es noch keinen Download und keine Flash-Aktion.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="start-title">
+      <p class="eyebrow">Der sinnvolle Start</p>
+      <h2 id="start-title">Erst langsam, modular und messbar.</h2>
+      <p>Die erste Ausbaustufe verwendet zwei gebürstete 3–6-V-TT-Getriebemotoren, einen TB6612FNG-Zweikanal-Motortreiber und einen 9-g-Lenkservo. Das ist günstiger und leichter zu verstehen als ein Brushless-Antrieb. Beide Hinterräder lassen sich getrennt regeln; beim Lenken kann die Firmware das kurveninnere Rad etwas verlangsamen.</p>
+      <ul>
+        <li><strong>Chassis:</strong> ungefähr 210 × 140 mm, wahlweise aus 3-mm-Birkensperrholz gelasert oder als geteiltes Druckteil.</li>
+        <li><strong>Radstand:</strong> ungefähr 160 mm; die Maße bleiben bis zum ersten Papp- und Hardware-Prototyp vorläufig.</li>
+        <li><strong>Hinterachse:</strong> zwei einzeln verschraubte TT-Motormodule statt eines komplizierten Differenzials.</li>
+        <li><strong>Vorderachse:</strong> zwei Achsschenkel, Spurstange und Servoarm; Lenkwinkel mechanisch auf etwa ±25° begrenzen.</li>
+        <li><strong>Aufbau:</strong> Lochraster und Langlöcher für Motorhalter, Akkuwanne, Elektronikdeck und spätere Karosserie.</li>
+      </ul>
+    </section>
+
+    <section class="panel" id="amazon-liste" aria-labelledby="shopping-title">
+      <p class="eyebrow">Amazon-Suchliste · Stand August 2026</p>
+      <h2 id="shopping-title">Kaufe nach Daten, nicht nach Produktfoto.</h2>
+      <p>Die Links öffnen absichtlich Amazon-Suchen statt kurzlebiger Einzelangebote. Vor dem Kauf müssen Spannung, Abmessungen, Pinbelegung und insbesondere der Blockierstrom der konkreten Motoren geprüft werden. Preisbereiche sind nur eine grobe Planung und keine Preiszusage.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Teil</th><th>Menge</th><th>Worauf achten?</th><th>Grobe Planung</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://www.amazon.de/s?k=ESP32+DevKit+WROOM-32+USB-C" rel="nofollow noopener">ESP32-DevKit mit WROOM-32</a></td><td>1</td><td>klar dokumentierte Pinbelegung, USB-Datenanschluss, 3,3-V-Logik</td><td>8–12 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=TB6612FNG+Motortreiber+Modul" rel="nofollow noopener">TB6612FNG-Modul</a></td><td>1</td><td>echtes Zweikanalmodul mit VM, VCC, STBY und beiden PWM-Eingängen</td><td>5–9 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=TT+Getriebemotor+3-6V+Rad" rel="nofollow noopener">TT-Getriebemotor 3–6 V mit Rad</a></td><td>2</td><td>gleiche Übersetzung; Blockierstrom je Motor muss zum Treiber passen</td><td>9–14 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=SG90+9g+Servo" rel="nofollow noopener">SG90-kompatibler 9-g-Servo</a></td><td>1</td><td>4,8–6 V, Servoarm und Schrauben enthalten; Metallgetriebe erst bei Bedarf</td><td>4–7 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=4x+AA+Batteriehalter+Schalter" rel="nofollow noopener">4×AA-Halter mit Schalter</a></td><td>1</td><td>verschraubbar, ausreichend dicke Leitungen, keine offenen Kontakte</td><td>3–5 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=DC-DC+Step+Up+5V+2A+Modul" rel="nofollow noopener">5-V-Step-up-Modul</a></td><td>1</td><td>aus 4–5,6 V stabil 5 V; vor Anschluss unter Last messen</td><td>4–8 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=470uF+Kondensator+100nF+Keramik+Set" rel="nofollow noopener">Entstörkondensatoren</a></td><td>1 Satz</td><td>470 µF an der Versorgung; je 100 nF direkt am Bürstenmotor</td><td>3–6 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=M3+Schrauben+Abstandshalter+Sortiment" rel="nofollow noopener">M3-Schrauben und Abstandshalter</a></td><td>1 Satz</td><td>M3×8 bis M3×25, Muttern, Scheiben und selbstsichernde Muttern</td><td>6–10 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Realistischer Elektronik-Kern:</strong> ungefähr 35–55 €, wenn Befestigungsmaterial, AA-NiMH-Zellen und ein passendes externes Ladegerät bereits vorhanden sind. Werden Akkus, Ladegerät, Holz und alle Sortimente neu gekauft, liegt der Erstkauf eher bei 60–90 €; viele Teile bleiben für Folgeprojekte übrig.</p>
+      <p><strong>Bewusst nicht in der Startliste:</strong> lose 18650-Zellen, selbst gebaute Lithium-Packs, LiPo-Akkus und beliebige Billig-ESCs. Sie machen den Einstieg nicht einfacher und brauchen einen eigenen Lade-, Schutz- und Abnahmeweg.</p>
+    </section>
+
+    <section class="panel" id="versorgung" aria-labelledby="power-title">
+      <p class="eyebrow">Versorgung und Verdrahtung</p>
+      <h2 id="power-title">Ein Akku, getrennte Leistungswege, gemeinsame Masse.</h2>
+      <ul>
+        <li>Vier AA-NiMH-Zellen speisen Motortreiber-VM und den Servo direkt mit ungefähr 4,8 V Nennspannung.</li>
+        <li>Ein geprüftes Step-up-Modul erzeugt daraus stabile 5 V ausschließlich für den 5-V/VIN-Eingang des ESP32-Devkits.</li>
+        <li>ESP32, Step-up, Servo und Motortreiber benötigen eine gemeinsame Masse. Motorstrom darf nicht durch dünne Breadboard-Masseleitungen fließen.</li>
+        <li>Je ein 100-nF-Keramikkondensator sitzt direkt an den beiden Motoranschlüssen; ein 470-µF-Elko puffert die Motorversorgung nahe am Treiber.</li>
+        <li>Beim Programmieren bleibt die Fahrversorgung ausgeschaltet. Externe 5 V und USB-5 V dürfen nur gleichzeitig verbunden werden, wenn die konkrete Boardschaltung eine sichere Entkopplung nachweislich besitzt.</li>
+      </ul>
+      <p>Der GPIO versorgt weder Motor noch Servo. Er gibt nur Steuersignale aus. Der konkrete Motor wird erst freigegeben, wenn gemessener Anlauf- und Blockierstrom innerhalb der zulässigen Dauer- und Spitzenwerte des konkreten Treibermoduls liegen. Der TB6612FNG ist laut Toshiba ein Zweikanal-Vollbrückentreiber; die IC-Grenzen ersetzen keine thermische Prüfung des gekauften Moduls.</p>
+      <p><a href="https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html" rel="noopener">Espressif: ESP32-DevKitC-Dokumentation</a> · <a href="https://toshiba.semicon-storage.com/eu/semiconductor/product/motor-driver-ics/brushed-dc-motor-driver-ics/detail.TB6612FNG.html" rel="noopener">Toshiba: TB6612FNG-Daten und Datenblatt</a></p>
+    </section>
+
+    <section class="panel" id="schnittstellen" aria-labelledby="interface-title">
+      <p class="eyebrow">Vorläufige ESP32-Schnittstellen</p>
+      <h2 id="interface-title">Pins werden einmal zugeordnet und später konfigurierbar gehalten.</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funktion</th><th>ESP32-Pin</th><th>Ziel</th></tr></thead>
+          <tbody>
+            <tr><td>Motor links Richtung</td><td>GPIO26 / GPIO27</td><td>TB6612 AIN1 / AIN2</td></tr>
+            <tr><td>Motor links PWM</td><td>GPIO25</td><td>TB6612 PWMA</td></tr>
+            <tr><td>Motor rechts Richtung</td><td>GPIO32 / GPIO33</td><td>TB6612 BIN1 / BIN2</td></tr>
+            <tr><td>Motor rechts PWM</td><td>GPIO14</td><td>TB6612 PWMB</td></tr>
+            <tr><td>Treiberfreigabe</td><td>GPIO13</td><td>TB6612 STBY</td></tr>
+            <tr><td>Lenkservo</td><td>GPIO18</td><td>Servosignal</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Diese Zuordnung ist ein Startwert für ein klassisches ESP32-WROOM-Devkit, keine universelle Board-Pinbelegung. Vor dem Anschluss wird das konkrete Boardprofil geprüft. Motoren bleiben beim Booten und bei ungültiger Konfiguration in <code>STBY</code>.</p>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="stages-title">
+      <h2 id="stages-title">Fünf Ausbaustufen statt eines großen Sprungs</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile" id="stufe-1"><h3>1. Rollender Papp-Prototyp</h3><p>Motoren, Räder, Servo und Akku werden auf Wellpappe positioniert. Radstand, Wendekreis, Schwerpunkt und echte Bauteilmaße entscheiden erst danach über die CAD-Maße.</p></article>
+        <article class="panel maker-project-tile" id="stufe-2"><h3>2. Gelasertes Grunddeck</h3><p>Ein 3-mm-Sperrholzdeck erhält Lochraster, Kabelschlitze und verschraubte Halter. Alternativ entsteht dieselbe Schnittstelle aus zwei druckbaren Chassishälften.</p></article>
+        <article class="panel maker-project-tile" id="stufe-3"><h3>3. Lokal fahren und lenken</h3><p>Der ESP32 stellt eine lokale Handy-Steuerung bereit. Fahren ist nur bei gedrücktem Totmann-Bedienelement erlaubt; ein 300-ms-Watchdog stoppt bei Verbindungsabbruch.</p></article>
+        <article class="panel maker-project-tile" id="stufe-4"><h3>4. Eigene Handfernsteuerung</h3><p>Ein zweiter ESP32 mit Joystick oder Gamepad wird zur Fernbedienung. Das Fahrzeug behält Neutralstart, Reichweitenverlust-Stopp und lokale Geschwindigkeitsgrenze.</p></article>
+        <article class="panel maker-project-tile" id="stufe-5"><h3>5. Andere Antriebskassette</h3><p>N20-Motoren nutzen kleinere Druckhalter. Ein Brushless-Auto-ESC mit Rückwärtsfahrt folgt erst mit passendem Motor, Antriebsstrang, Akku, Übersetzung und separater Sicherheitsprüfung.</p></article>
+      </div>
+    </section>
+
+    <section class="panel" id="fernsteuerung" aria-labelledby="control-title">
+      <p class="eyebrow">Fernsteuerungsvertrag</p>
+      <h2 id="control-title">Ein verlorenes Funksignal bedeutet Stopp.</h2>
+      <ul>
+        <li>Motorfreigabe startet nach jedem Boot inaktiv; der Nutzer muss bewusst verbinden und neutral bestätigen.</li>
+        <li>Die erste Fahrstufe begrenzt PWM auf 35 % und hebt die Grenze erst nach Messung, Geradeauslauf und Bremstest an.</li>
+        <li>Jeder gültige Fahrbefehl trägt eine laufende Sequenznummer und erneuert den Watchdog.</li>
+        <li>Nach spätestens 300 ms ohne gültigen Befehl: PWM null, Treiber in Standby und Lenkung kontrolliert zur Mitte.</li>
+        <li>Richtungswechsel erfolgt nur über Null mit kurzer Pause; blockierte Räder werden nicht mit höherer PWM „freigebrannt“.</li>
+      </ul>
+      <p>WLAN oder ESP-NOW übernehmen nur die Bedienverbindung. Zeitlimit, Neutralstart und Motorabschaltung bleiben lokal auf dem Fahrzeug und hängen nicht von Handy oder Fernbedienung ab.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="variants-title">
+      <p class="eyebrow">Motorvarianten</p>
+      <h2 id="variants-title">Gleiche Fahrzeugidee, drei klar getrennte Antriebsstufen.</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Stufe</th><th>Antrieb</th><th>Was bleibt?</th><th>Was ändert sich?</th></tr></thead>
+          <tbody>
+            <tr><td>A · Einstieg</td><td>2× TT-Bürstenmotor + TB6612FNG</td><td>Chassis, Lenkung, ESP32, Fernsteuerungsvertrag</td><td>große, günstige Motorhalter</td></tr>
+            <tr><td>B · Kompakt</td><td>2× N20-Getriebemotor</td><td>Firmwarelogik und Zweikanalprinzip</td><td>Halter, Räder, Übersetzung; Treiber nach Blockierstrom neu prüfen</td></tr>
+            <tr><td>C · Brushless</td><td>1× sensored BLDC + Auto-ESC</td><td>Lenkung und übergeordnete Fahrbefehle</td><td>ESC-Signal, BEC, Akku, Getriebe/Differenzial und komplette Leistungsabnahme</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Ein Flugmodell-ESC ohne Rückwärtsfahrt ist kein gleichwertiger Ersatz für einen Auto-ESC. Für die Brushless-Stufe wird deshalb noch keine pauschale Einkaufsliste versprochen. Erst Fahrzeugmasse, gewünschte Geschwindigkeit, Raddurchmesser und Übersetzung bestimmen Motor, ESC und Akku.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="acceptance-title">
+      <p class="eyebrow">Erste Abnahme</p>
+      <h2 id="acceptance-title">Fertig ist Stufe 1 erst nach diesen Nachweisen.</h2>
+      <ol>
+        <li>Das aufgebockte Fahrzeug bootet mit stillstehenden Motoren und zentrierter Lenkung.</li>
+        <li>Beide Motoren laufen einzeln vorwärts und rückwärts; Strom und Treibertemperatur werden geprüft.</li>
+        <li>Servo-Endpunkte drücken die Mechanik in keiner Richtung gegen einen harten Anschlag.</li>
+        <li>Das Fahrzeug stoppt nach ausgeschaltetem Handy beziehungsweise Sender innerhalb von 300 ms elektrisch und rollt nur mechanisch aus.</li>
+        <li>Ein zehnminütiger Langsamfahrtest endet ohne Brownout, gelöste Schrauben, heiße Leitungen oder beschädigte Zahnräder.</li>
+      </ol>
+    </section>
+
+    <section class="panel product-cta maker-download-cta" aria-labelledby="knowledge-title">
+      <div>
+        <p class="eyebrow">Motoren vorher verstehen</p>
+        <h2 id="knowledge-title">Vom Motorprinzip bis zum Fahrzeugantrieb.</h2>
+        <p>Die bestehenden Motorprojekte erklären Kommutierung und gedruckte Motorstufen. Das Wissensportal grenzt DC-Motor, Servo und BLDC voneinander ab.</p>
+      </div>
+      <div><a class="primary-action" href="/wissen/#actuator-motor-control">Motoransteuerung verstehen →</a> <a class="secondary-action" href="/nachbauprojekte/druckmotoren/">Druckmotoren ansehen →</a></div>
+    </section>
+  </main>
+  <footer>
+    <span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
+    <nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/nachbauprojekte/">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
+  </footer>
+  <script src="/landing.js?v=20260808-session-menu-1"></script>
+</body>
+</html>

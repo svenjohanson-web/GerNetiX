@@ -165,6 +165,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/druckmotoren", handler: ({ res }) => redirect(res, "/nachbauprojekte/druckmotoren/") });
   registry.register({ method: "*", path: "/nachbauprojekte/druckmotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/druckmotoren/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/modulares-maker-auto", handler: ({ res }) => redirect(res, "/nachbauprojekte/modulares-maker-auto/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/modulares-maker-auto/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/modulares-maker-auto/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung", handler: ({ res }) => redirect(res, "/nachbauprojekte/hw364a-spielesammlung/") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/hw364a-spielesammlung/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/") });

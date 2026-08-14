@@ -66,7 +66,7 @@ loginForm.addEventListener("submit", async (event) => {
     }, actionHeaders(action)), passkeyActionReason);
     await actionStep(action, "auth.session", async () => result, "authentication_verification_failed");
     action?.succeed();
-    window.location.href = result.next || "/app/dashboard/";
+    window.location.href = withWelcomeGuide(result.next || "/app/dashboard/");
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error, action);
     if (error?.code === "active_session_exists" && error?.payload?.pending_login_token) {
@@ -86,7 +86,7 @@ document.querySelector("#cancel-session-takeover").addEventListener("click", asy
 
 document.querySelector("#confirm-session-takeover").addEventListener("click", async () => {
   await completePendingSessionAction("/api/session/takeover", "Sitzung wird gewechselt …", (result) => {
-    window.location.href = result.next || pendingLogin?.next || nextUrl;
+    window.location.href = withWelcomeGuide(result.next || pendingLogin?.next || nextUrl);
   });
 });
 
@@ -120,7 +120,7 @@ registerForm.addEventListener("submit", async (event) => {
       locale: currentLocale(),
     });
     statusElement.textContent = tr("auth.status.account.created", "Konto wurde angelegt.");
-    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 900);
+    window.setTimeout(() => { window.location.href = withWelcomeGuide(result.next || "/app/dashboard/"); }, 900);
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
     statusElement.textContent = registrationFailureMessage(error);
@@ -148,7 +148,7 @@ recoveryForm.addEventListener("submit", async (event) => {
       locale: currentLocale(),
     });
     statusElement.textContent = tr("auth.status.recovery.restored", "Zugang wurde wiederhergestellt.");
-    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 600);
+    window.setTimeout(() => { window.location.href = withWelcomeGuide(result.next || "/app/dashboard/"); }, 600);
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
     statusElement.textContent = localizedErrorMessage(error, "auth.status.recovery.failed", "Zugang konnte nicht wiederhergestellt werden.");
@@ -158,7 +158,7 @@ guestAccessButton.addEventListener("click", async () => {
   statusElement.textContent = tr("auth.status.guest.creating", "Gastzugang wird angelegt …");
   try {
     const result = await postJson("/api/account/guest", { next: nextUrl, locale: currentLocale() });
-    window.location.href = result.next || "/app/dashboard/";
+    window.location.href = withWelcomeGuide(result.next || "/app/dashboard/");
   } catch (error) {
     statusElement.textContent = localizedErrorMessage(error, "auth.status.guest.failed", "Gastzugang konnte nicht angelegt werden.");
   }
@@ -189,6 +189,13 @@ function applyMode(updateUrl) {
     registration ? params.set("mode", "register") : recovery ? params.set("mode", "recovery") : params.delete("mode");
     window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
   }
+}
+
+function withWelcomeGuide(destination) {
+  const url = new URL(destination || "/app/dashboard/", window.location.origin);
+  if (url.origin !== window.location.origin) return "/app/dashboard/?welcome=1";
+  url.searchParams.set("welcome", "1");
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 async function postJson(url, body, headers = {}) {

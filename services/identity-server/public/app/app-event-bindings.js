@@ -6,6 +6,13 @@ document.querySelector("#logoutButton").addEventListener("click", async () => {
   window.location.href = "/app/auth/";
 });
 document.querySelector("#platformLanguage")?.addEventListener("change", (event) => changePlatformLocale(event));
+document.querySelector("#welcomeGuideMenuButton")?.addEventListener("click", () => {
+  closeMainMenu();
+  GerNetiXWelcomeGuide.open({ account: state.account });
+});
+window.addEventListener("gernetix:account-preferences-updated", (event) => {
+  if (event.detail && state.account) state.account = { ...state.account, ...event.detail };
+});
 document.querySelector("#deviceWifiSetupMenuButton")?.addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;

@@ -21,6 +21,7 @@ async function bootstrap() {
     document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : (isPublicKnowledgePage ? "Wissensportal" : "Öffentliche Hilfe");
     document.querySelector("#logoutButton").textContent = state.account ? "Abmelden" : "Anmelden";
     renderRoute();
+    GerNetiXWelcomeGuide.maybeOpen(state.account);
     return;
   }
   renderInitialRoute();
@@ -31,6 +32,7 @@ async function bootstrap() {
   await initializePlatformI18n();
   renderAll();
   renderRoute({ contentRendered: true });
+  GerNetiXWelcomeGuide.maybeOpen(state.account);
   void hydratePlatformState(initialRoute).then((changed) => {
     if (changed && routeName() === initialRoute) renderAll();
   });

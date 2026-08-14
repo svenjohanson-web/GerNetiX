@@ -7,6 +7,7 @@ const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "index.html"), "utf8");
 const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "einfache-elektromotoren", "index.html"), "utf8");
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
+const modularMakerCar = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "modulares-maker-auto", "index.html"), "utf8");
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const radarRoomPresenceRoot = path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz");
 const radarRoomPresence = fs.readFileSync(path.join(radarRoomPresenceRoot, "index.html"), "utf8");
@@ -100,6 +101,27 @@ test("publishes the HW-364A one-button game collection as an additional rebuild 
   assert.match(hw364aGames, /SDA GPIO14 und SCL GPIO12/);
   assert.match(hw364aGames, /Build geprüft, Hardware-Abnahme noch offen/);
   assert.match(hw364aGames, /öffentlicher WebSerial-Download wird hier ergänzt/);
+});
+
+test("publishes a modular laser-cut and 3D-printed ESP32 maker car concept", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/modulares-maker-auto"[\s\S]*redirect\(res, "\/nachbauprojekte\/modulares-maker-auto\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/modulares-maker-auto\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/modulares-maker-auto\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/modulares-maker-auto\/"/);
+  assert.match(page, /Modulares Maker-Auto mit ESP32 bauen/);
+  assert.match(page, /Projektkonzept · CAD und Firmware offen/);
+  assert.match(modularMakerCar, /Baue ein ferngesteuertes Auto, das mit deinen Ideen mitwächst/);
+  assert.match(modularMakerCar, /zwei gebürstete 3–6-V-TT-Getriebemotoren/);
+  assert.match(modularMakerCar, /TB6612FNG-Zweikanal-Motortreiber/);
+  assert.match(modularMakerCar, /Amazon-Suchliste · Stand August 2026/);
+  assert.match(modularMakerCar, /ESP32\+DevKit\+WROOM-32\+USB-C/);
+  assert.match(modularMakerCar, /35–55 €/);
+  assert.match(modularMakerCar, /lose 18650-Zellen/);
+  assert.match(modularMakerCar, /Vier AA-NiMH-Zellen/);
+  assert.match(modularMakerCar, /GPIO26 \/ GPIO27[\s\S]*GPIO32 \/ GPIO33[\s\S]*GPIO18/);
+  assert.match(modularMakerCar, /300-ms-Watchdog/);
+  assert.match(modularMakerCar, /TT-Bürstenmotor[\s\S]*N20-Getriebemotor[\s\S]*sensored BLDC/);
+  assert.match(modularMakerCar, /CAD-Dateien, Firmware und reale Hardware-Abnahme sind noch offen/);
+  assert.doesNotMatch(modularMakerCar, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });
 
 test("publishes a Forgejo-backed ESP32 and Arduino Nano radar room-presence rebuild project", () => {

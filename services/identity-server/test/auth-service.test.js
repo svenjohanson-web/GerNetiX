@@ -277,6 +277,9 @@ test("sqlite identity persistence keeps local accounts across repository reloads
   await first.update_subscription_plan(registered.account.user_id, "premium", {
     plan_valid_until: "2099-12-31T23:59:59.000Z",
   });
+  await first.update_account_preferences(registered.account.user_id, {
+    welcome_guide_disabled: true,
+  });
   await first.transition_account_lifecycle(registered.account.user_id, {
     to_state: "inactive_grace",
     grace_until: "2099-01-15T00:00:00.000Z",
@@ -296,6 +299,7 @@ test("sqlite identity persistence keeps local accounts across repository reloads
   assert.equal(resolved.account.user_id, "acct-persisted");
   assert.equal(resolved.account.subscription_plan, "premium");
   assert.equal(resolved.account.plan_valid_until, "2099-12-31T23:59:59.000Z");
+  assert.equal(resolved.account.welcome_guide_disabled, true);
   assert.equal(resolved.account.lifecycle_state, "inactive_grace");
   assert.equal(resolved.account.grace_until, "2099-01-15T00:00:00.000Z");
 });
@@ -365,6 +369,30 @@ test("social login creates exactly one internal account and reuses it on next lo
   assert.equal(second.account.user_id, first.account.user_id);
   assert.equal(second.requires_session_takeover, true);
   assert.ok(second.pending_login_token);
+});
+
+test("persists the account-bound welcome guide preference", async () => {
+  const { auth, repository } = createModule();
+  const created = await auth.create_passkey_account("guided-maker", {
+    credentialId: "guided-credential",
+    publicKey: "guided-public-key",
+  });
+
+  assert.equal(created.account.welcome_guide_disabled, false);
+  const hidden = await auth.update_account_preferences(created.account.user_id, {
+    welcome_guide_disabled: true,
+  });
+  assert.equal(hidden.welcome_guide_disabled, true);
+  assert.equal(repository.findUserById(created.account.user_id).welcome_guide_disabled, true);
+
+  const visibleAgain = await auth.update_account_preferences(created.account.user_id, {
+    welcome_guide_disabled: false,
+  });
+  assert.equal(visibleAgain.welcome_guide_disabled, false);
+  await assert.rejects(
+    auth.update_account_preferences(created.account.user_id, { welcome_guide_disabled: "yes" }),
+    /must be boolean/,
+  );
 });
 
 test("interactive login requires an explicit takeover and atomically revokes the previous session", async () => {
