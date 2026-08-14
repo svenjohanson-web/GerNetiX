@@ -53,7 +53,17 @@ ensure_internal_api_keyset() {
 
   if [ ! -d "$key_dir" ]; then
     install -d -m 0700 "$(dirname "$key_dir")"
-    node tools/internal-api-key-provisioner/index.js --output "$key_dir" --version "$key_version"
+    key_parent=$(dirname "$key_dir")
+    docker run --rm \
+      --network none \
+      --read-only \
+      --cap-drop ALL \
+      --security-opt no-new-privileges:true \
+      -v "$repo_dir:/app:ro" \
+      -v "$key_parent:/keys" \
+      -w /app \
+      node:24-bookworm-slim \
+      node tools/internal-api-key-provisioner/index.js --output "/keys/$key_version" --version "$key_version"
   fi
   [ -s "$key_dir/public-trust-ring.json" ] || {
     echo "Fehlender oeffentlicher interner API-Trust-Ring" >&2

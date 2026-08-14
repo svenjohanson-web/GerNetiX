@@ -97,6 +97,9 @@ test("provisions missing staging secrets without replacing existing values", () 
   assert.match(remoteDeploy, /openssl rand -base64 32/);
   assert.match(remoteDeploy, /ensure_internal_api_keyset/);
   assert.match(remoteDeploy, /tools\/internal-api-key-provisioner\/index\.js/);
+  assert.match(remoteDeploy, /docker run --rm/);
+  assert.match(remoteDeploy, /--network none/);
+  assert.match(remoteDeploy, /node:24-bookworm-slim[\s\\]+node tools\/internal-api-key-provisioner/);
   assert.match(remoteDeploy, /INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON/);
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex/);
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex/);
