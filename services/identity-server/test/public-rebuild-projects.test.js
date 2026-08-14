@@ -120,6 +120,14 @@ test("publishes a modular laser-cut and 3D-printed ESP32 maker car concept", () 
   assert.match(modularMakerCar, /GPIO26 \/ GPIO27[\s\S]*GPIO32 \/ GPIO33[\s\S]*GPIO18/);
   assert.match(modularMakerCar, /300-ms-Watchdog/);
   assert.match(modularMakerCar, /TT-Bürstenmotor[\s\S]*N20-Getriebemotor[\s\S]*sensored BLDC/);
+  assert.match(modularMakerCar, /Ein Fahrzeuganschluss, zuerst ein Ultraschallhalter/);
+  assert.match(modularMakerCar, /HC-SR04[\s\S]*GPIO23[\s\S]*GPIO34/);
+  assert.match(modularMakerCar, /1 kΩ[\s\S]*2 kΩ[\s\S]*ungefähr 3,3 V/);
+  assert.match(modularMakerCar, /Unter 40 cm[\s\S]*unter 20 cm/);
+  assert.match(modularMakerCar, /ultrasonic\.front/);
+  assert.match(modularMakerCar, /Ungültige und veraltete Messungen[\s\S]*nie als freie Fahrt/);
+  assert.doesNotMatch(modularMakerCar, /LD2410C|24-GHz-Radar|radar\.front|Radar und Ultraschall/);
+  assert.match(modularMakerCar, /Sechs Ausbaustufen/);
   assert.match(modularMakerCar, /CAD-Dateien, Firmware und reale Hardware-Abnahme sind noch offen/);
   assert.doesNotMatch(modularMakerCar, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });

@@ -59,10 +59,12 @@
             <tr><td><a href="https://www.amazon.de/s?k=DC-DC+Step+Up+5V+2A+Modul" rel="nofollow noopener">5-V-Step-up-Modul</a></td><td>1</td><td>aus 4–5,6 V stabil 5 V; vor Anschluss unter Last messen</td><td>4–8 €</td></tr>
             <tr><td><a href="https://www.amazon.de/s?k=470uF+Kondensator+100nF+Keramik+Set" rel="nofollow noopener">Entstörkondensatoren</a></td><td>1 Satz</td><td>470 µF an der Versorgung; je 100 nF direkt am Bürstenmotor</td><td>3–6 €</td></tr>
             <tr><td><a href="https://www.amazon.de/s?k=M3+Schrauben+Abstandshalter+Sortiment" rel="nofollow noopener">M3-Schrauben und Abstandshalter</a></td><td>1 Satz</td><td>M3×8 bis M3×25, Muttern, Scheiben und selbstsichernde Muttern</td><td>6–10 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=HC-SR04+Ultraschall+Abstandssensor" rel="nofollow noopener">HC-SR04-Ultraschallsensor</a></td><td>1</td><td>klassische 5-V-Version; Echo wird vor dem ESP32 auf höchstens 3,3 V geteilt</td><td>3–7 €</td></tr>
+            <tr><td><a href="https://www.amazon.de/s?k=1k+2k+Widerstand+Sortiment" rel="nofollow noopener">1-kΩ-/2-kΩ-Widerstände</a></td><td>je 1</td><td>Spannungsteiler für das 5-V-Echo des HC-SR04; Werte vor Anschluss messen</td><td>2–5 €</td></tr>
           </tbody>
         </table>
       </div>
-      <p><strong>Realistischer Elektronik-Kern:</strong> ungefähr 35–55 €, wenn Befestigungsmaterial, AA-NiMH-Zellen und ein passendes externes Ladegerät bereits vorhanden sind. Werden Akkus, Ladegerät, Holz und alle Sortimente neu gekauft, liegt der Erstkauf eher bei 60–90 €; viele Teile bleiben für Folgeprojekte übrig.</p>
+      <p><strong>Realistischer Elektronik-Kern:</strong> ungefähr 35–55 €, wenn Befestigungsmaterial, AA-NiMH-Zellen und ein passendes externes Ladegerät bereits vorhanden sind. Ultraschallsensor und Pegelanpassung ergänzen grob 5–12 €. Werden Akkus, Ladegerät, Holz und alle Sortimente neu gekauft, liegt der Erstkauf eher bei 65–105 €; viele Teile bleiben für Folgeprojekte übrig.</p>
       <p><strong>Bewusst nicht in der Startliste:</strong> lose 18650-Zellen, selbst gebaute Lithium-Packs, LiPo-Akkus und beliebige Billig-ESCs. Sie machen den Einstieg nicht einfacher und brauchen einen eigenen Lade-, Schutz- und Abnahmeweg.</p>
     </section>
 
@@ -71,7 +73,7 @@
       <h2 id="power-title">Ein Akku, getrennte Leistungswege, gemeinsame Masse.</h2>
       <ul>
         <li>Vier AA-NiMH-Zellen speisen Motortreiber-VM und den Servo direkt mit ungefähr 4,8 V Nennspannung.</li>
-        <li>Ein geprüftes Step-up-Modul erzeugt daraus stabile 5 V ausschließlich für den 5-V/VIN-Eingang des ESP32-Devkits.</li>
+        <li>Ein geprüftes Step-up-Modul erzeugt daraus eine stabile 5-V-Logik- und Sensorschiene für ESP32-5V/VIN und HC-SR04. Es wird mit allen gleichzeitig aktiven Verbrauchern unter Last geprüft.</li>
         <li>ESP32, Step-up, Servo und Motortreiber benötigen eine gemeinsame Masse. Motorstrom darf nicht durch dünne Breadboard-Masseleitungen fließen.</li>
         <li>Je ein 100-nF-Keramikkondensator sitzt direkt an den beiden Motoranschlüssen; ein 470-µF-Elko puffert die Motorversorgung nahe am Treiber.</li>
         <li>Beim Programmieren bleibt die Fahrversorgung ausgeschaltet. Externe 5 V und USB-5 V dürfen nur gleichzeitig verbunden werden, wenn die konkrete Boardschaltung eine sichere Entkopplung nachweislich besitzt.</li>
@@ -93,20 +95,67 @@
             <tr><td>Motor rechts PWM</td><td>GPIO14</td><td>TB6612 PWMB</td></tr>
             <tr><td>Treiberfreigabe</td><td>GPIO13</td><td>TB6612 STBY</td></tr>
             <tr><td>Lenkservo</td><td>GPIO18</td><td>Servosignal</td></tr>
+            <tr><td>Ultraschall Trigger</td><td>GPIO23</td><td>HC-SR04 TRIG</td></tr>
+            <tr><td>Ultraschall Echo</td><td>GPIO34</td><td>HC-SR04 ECHO über 1-kΩ-/2-kΩ-Spannungsteiler</td></tr>
           </tbody>
         </table>
       </div>
       <p>Diese Zuordnung ist ein Startwert für ein klassisches ESP32-WROOM-Devkit, keine universelle Board-Pinbelegung. Vor dem Anschluss wird das konkrete Boardprofil geprüft. Motoren bleiben beim Booten und bei ungültiger Konfiguration in <code>STBY</code>.</p>
     </section>
 
+    <section class="panel" id="sensormodule" aria-labelledby="sensor-modules-title">
+      <p class="eyebrow">Austauschbare Sensorik</p>
+      <h2 id="sensor-modules-title">Ein Fahrzeuganschluss, zuerst ein Ultraschallhalter.</h2>
+      <p>Vorne auf dem Chassis entsteht eine neutrale Sensorbrücke mit zwei parallelen M3-Langlöchern. Die Langlöcher liegen 20 mm auseinander und sind 30 mm lang. Dadurch bleibt die Fahrzeugseite gleich, während ein kleiner Adapter die echten Maße des HC-SR04 aufnimmt.</p>
+      <ul>
+        <li><strong>3D-Druck:</strong> Ein U-förmiger Pod wird mit zwei M3-Schrauben auf die Sensorbrücke gesetzt. Nur der Pod ändert sich, wenn später ein anderer Sensor verwendet wird.</li>
+        <li><strong>Lasercut:</strong> Eine Frontplatte und zwei Seitenwangen werden gesteckt oder verschraubt. Sensorlöcher werden erst nach Vermessung des tatsächlich gelieferten Moduls geschnitten.</li>
+        <li><strong>Kabelschnittstelle:</strong> 5 V, 3,3 V, GND und zwei GPIO liegen auf einer beschrifteten Sensorleiste. Nicht benötigte Leitungen bleiben unbeschaltet.</li>
+        <li><strong>Montagegrenze:</strong> Sensor, Kabel und Halter dürfen weder Lenkung noch Räder berühren; die Halterung löst sich bei einem leichten Stoß nicht.</li>
+      </ul>
+      <p>Die genannten 20 mm definieren nur die wiederverwendbare Fahrzeugaufnahme. Sie behaupten keine einheitlichen Lochabstände der Sensormodule.</p>
+    </section>
+
+    <section class="panel" id="ultraschall" aria-labelledby="ultrasonic-title">
+      <p class="eyebrow">Sensormodul A · Ultraschall</p>
+      <h2 id="ultrasonic-title">Der HC-SR04 misst den Nahbereich vor dem Fahrzeug.</h2>
+      <p>Der Ultraschallsensor sendet einen kurzen 40-kHz-Impuls und misst die Laufzeit des Echos. Seine beiden runden Wandler blicken frei nach vorne. Der Halter hält sie außerhalb der Karosserie; eine optionale zweite Druckstufe kann den gesamten Pod später auf einem eigenen kleinen Scan-Servo drehen.</p>
+      <ul>
+        <li><strong>VCC:</strong> stabile 5-V-Sensorschiene; <strong>GND:</strong> gemeinsame Logikmasse.</li>
+        <li><strong>TRIG:</strong> GPIO23 erzeugt mindestens 10 µs High.</li>
+        <li><strong>ECHO:</strong> Das 5-V-Echosignal geht nie direkt an den ESP32. 1 kΩ vom Sensor zum Messpunkt und 2 kΩ vom Messpunkt nach GND teilen es auf ungefähr 3,3 V für GPIO34.</li>
+        <li><strong>Messrate:</strong> zunächst 10 Hz. Ein Timeout oder ein Wert außerhalb des freigegebenen Bereichs wird als ungültig behandelt, nicht als „freie Fahrt“.</li>
+      </ul>
+      <p>Für die erste Assistenz gilt: Unter 40 cm wird die Vorwärtsgeschwindigkeit reduziert, unter 20 cm wird nach zwei aufeinanderfolgenden gültigen Messungen ein lokaler Stopp angefordert. Schräge, weiche oder sehr kleine Flächen können Ultraschall schlecht reflektieren; die Funktion ist daher kein Personenschutz.</p>
+    </section>
+
+    <section class="panel" id="sensorlogik" aria-labelledby="sensor-logic-title">
+      <p class="eyebrow">Gemeinsamer Softwarevertrag</p>
+      <h2 id="sensor-logic-title">Jede Ultraschallmessung trägt Quelle, Alter und Gültigkeit.</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feld</th><th>Ultraschallwert</th></tr></thead>
+          <tbody>
+            <tr><td>Quelle</td><td><code>ultrasonic.front</code></td></tr>
+            <tr><td>Messwert</td><td>Distanz in mm</td></tr>
+            <tr><td>Qualität</td><td>gültig, Timeout oder außerhalb Bereich</td></tr>
+            <tr><td>Alter</td><td>Zeit seit letztem gültigem Echo</td></tr>
+            <tr><td>Erste Wirkung</td><td>Langsamfahrt und lokaler Stopp im Assistenzmodus</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Die Sensorlogik läuft unterhalb der Fernsteuerung, ersetzt aber deren Watchdog nicht. Ein verlorenes Funksignal stoppt weiterhin unabhängig vom Ultraschallwert. Ungültige und veraltete Messungen werden sichtbar protokolliert und nie als freie Fahrt interpretiert.</p>
+    </section>
+
     <section class="maker-project-categories" aria-labelledby="stages-title">
-      <h2 id="stages-title">Fünf Ausbaustufen statt eines großen Sprungs</h2>
+      <h2 id="stages-title">Sechs Ausbaustufen statt eines großen Sprungs</h2>
       <div class="maker-project-list">
         <article class="panel maker-project-tile" id="stufe-1"><h3>1. Rollender Papp-Prototyp</h3><p>Motoren, Räder, Servo und Akku werden auf Wellpappe positioniert. Radstand, Wendekreis, Schwerpunkt und echte Bauteilmaße entscheiden erst danach über die CAD-Maße.</p></article>
         <article class="panel maker-project-tile" id="stufe-2"><h3>2. Gelasertes Grunddeck</h3><p>Ein 3-mm-Sperrholzdeck erhält Lochraster, Kabelschlitze und verschraubte Halter. Alternativ entsteht dieselbe Schnittstelle aus zwei druckbaren Chassishälften.</p></article>
         <article class="panel maker-project-tile" id="stufe-3"><h3>3. Lokal fahren und lenken</h3><p>Der ESP32 stellt eine lokale Handy-Steuerung bereit. Fahren ist nur bei gedrücktem Totmann-Bedienelement erlaubt; ein 300-ms-Watchdog stoppt bei Verbindungsabbruch.</p></article>
-        <article class="panel maker-project-tile" id="stufe-4"><h3>4. Eigene Handfernsteuerung</h3><p>Ein zweiter ESP32 mit Joystick oder Gamepad wird zur Fernbedienung. Das Fahrzeug behält Neutralstart, Reichweitenverlust-Stopp und lokale Geschwindigkeitsgrenze.</p></article>
-        <article class="panel maker-project-tile" id="stufe-5"><h3>5. Andere Antriebskassette</h3><p>N20-Motoren nutzen kleinere Druckhalter. Ein Brushless-Auto-ESC mit Rückwärtsfahrt folgt erst mit passendem Motor, Antriebsstrang, Akku, Übersetzung und separater Sicherheitsprüfung.</p></article>
+        <article class="panel maker-project-tile" id="stufe-4"><h3>4. Ultraschall-Assistenz ergänzen</h3><p>Der austauschbare Frontpod misst Rohdaten und Fehlfälle. Erst danach werden Langsamfahrt und lokaler Abstandsstopp freigegeben.</p></article>
+        <article class="panel maker-project-tile" id="stufe-5"><h3>5. Eigene Handfernsteuerung</h3><p>Ein zweiter ESP32 mit Joystick oder Gamepad wird zur Fernbedienung. Das Fahrzeug behält Neutralstart, Reichweitenverlust-Stopp und lokale Geschwindigkeitsgrenze.</p></article>
+        <article class="panel maker-project-tile" id="stufe-6"><h3>6. Andere Antriebskassette</h3><p>N20-Motoren nutzen kleinere Druckhalter. Ein Brushless-Auto-ESC mit Rückwärtsfahrt folgt erst mit passendem Motor, Antriebsstrang, Akku, Übersetzung und separater Sicherheitsprüfung.</p></article>
       </div>
     </section>
 
@@ -148,6 +197,7 @@
         <li>Servo-Endpunkte drücken die Mechanik in keiner Richtung gegen einen harten Anschlag.</li>
         <li>Das Fahrzeug stoppt nach ausgeschaltetem Handy beziehungsweise Sender innerhalb von 300 ms elektrisch und rollt nur mechanisch aus.</li>
         <li>Ein zehnminütiger Langsamfahrtest endet ohne Brownout, gelöste Schrauben, heiße Leitungen oder beschädigte Zahnräder.</li>
+        <li>Der HC-SR04 stoppt den Assistenzmodus bei Timeout, reduziert unter 40 cm und fordert unter 20 cm reproduzierbar Stopp an.</li>
       </ol>
     </section>
 
