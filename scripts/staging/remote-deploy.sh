@@ -154,16 +154,18 @@ wait_for_private_pwa() {
 }
 
 reload_edge() {
+  # Git ersetzt bind-gemountete Konfigurationsdateien atomar. Ein nginx reload
+  # im bestehenden Container wuerde deshalb weiterhin den alten Inode sehen.
+  # Nur die beiden zustandslosen Edge-Container werden gezielt neu erstellt.
+  compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls
   nginx_container=$(compose ps -q nginx)
   nginx_tls_container=$(compose --profile tls ps -q nginx-tls)
   if [ -z "$nginx_container" ] || [ -z "$nginx_tls_container" ]; then
-    echo "Nginx oder Nginx-TLS laeuft nicht; gezieltes Reload wird sicher abgebrochen." >&2
+    echo "Nginx oder Nginx-TLS wurde nicht neu erstellt; Edge-Aktualisierung wird sicher abgebrochen." >&2
     return 1
   fi
   docker exec "$nginx_container" nginx -t >/dev/null
   docker exec "$nginx_tls_container" nginx -t >/dev/null
-  docker exec "$nginx_container" nginx -s reload
-  docker exec "$nginx_tls_container" nginx -s reload
   wait_for_private_pwa
 }
 
@@ -379,7 +381,7 @@ if [ "$deploy_mode" = "incremental" ]; then
       ;;
   esac
   if [ "$edge_changed" -eq 1 ]; then
-    begin_phase "HTTP- und HTTPS-Nginx validieren und ohne Containerwechsel neu laden"
+    begin_phase "HTTP- und HTTPS-Nginx mit aktuellen Bind-Mounts neu erstellen"
     reload_edge
   fi
 
@@ -397,7 +399,7 @@ if [ "$deploy_mode" = "targeted-infrastructure" ]; then
     apply_host_firewall
   fi
   if [ "$edge_changed" -eq 1 ]; then
-    begin_phase "HTTP- und HTTPS-Nginx validieren und ohne Containerwechsel neu laden"
+    begin_phase "HTTP- und HTTPS-Nginx mit aktuellen Bind-Mounts neu erstellen"
     reload_edge
   fi
   exit 0

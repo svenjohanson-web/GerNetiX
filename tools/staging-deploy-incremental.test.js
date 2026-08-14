@@ -25,16 +25,16 @@ test("classifies service-only changes for a targeted staging deployment", () => 
   assert.match(remoteDeploy, /compose up -d --no-deps --force-recreate \$incremental_services/);
 });
 
-test("uses targeted health checks and reloads the edge without recreating it", () => {
+test("uses targeted health checks and recreates the stateless edge for fresh bind mounts", () => {
   assert.match(remoteDeploy, /docker exec "\$container_id" node \/app\/docker\/healthcheck\.js/);
   assert.match(remoteDeploy, /GERNETIX_STAGING_INCREMENTAL_WAIT_TIMEOUT:-45/);
   assert.match(remoteDeploy, /\*" identity-server "\*\)[\s\S]*edge_changed=1/);
   assert.match(remoteDeploy, /if \[ "\$edge_changed" -eq 1 \]; then[\s\S]*reload_edge/);
   assert.match(remoteDeploy, /infra\/vps\/nginx\/\*\)[\s\S]*edge_changed=1/);
   assert.match(remoteDeploy, /deploy_mode=targeted-infrastructure/);
+  assert.match(remoteDeploy, /compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls/);
   assert.match(remoteDeploy, /docker exec "\$nginx_tls_container" nginx -t/);
-  assert.match(remoteDeploy, /docker exec "\$nginx_tls_container" nginx -s reload/);
-  assert.doesNotMatch(remoteDeploy, /force-recreate nginx nginx-tls/);
+  assert.doesNotMatch(remoteDeploy, /docker exec "\$nginx_tls_container" nginx -s reload/);
 });
 
 test("serializes deployments and avoids recurring full-path work", () => {
