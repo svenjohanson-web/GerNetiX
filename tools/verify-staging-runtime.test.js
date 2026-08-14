@@ -68,3 +68,11 @@ test("keeps protected project repositories out of the Docker build context", () 
   assert.match(dockerIgnore, /^projects$/m);
   assert.match(dockerIgnore, /^Demoanwendungen$/m);
 });
+
+test("includes only the architecture artifacts required by the Context Manager image", () => {
+  assert.match(dockerIgnore, /^docs$/m);
+  assert.match(dockerIgnore, /^!docs\/$/m);
+  assert.match(dockerIgnore, /^docs\/\*$/m);
+  assert.match(dockerIgnore, /^!docs\/system-process-application-uml\.md$/m);
+  assert.match(dockerIgnore, /^!docs\/system-process-application-uml\.svg$/m);
+});

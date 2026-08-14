@@ -6,6 +6,10 @@
 **/test
 **/*.test.js
 docs
+!docs/
+docs/*
+!docs/system-process-application-uml.md
+!docs/system-process-application-uml.svg
 data
 model
 tools/yaml-graph-sqlite/out
