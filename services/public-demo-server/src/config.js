@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -17,7 +18,7 @@ function createConfig(env = process.env) {
       user: env.PUBLIC_DEMO_POSTGRES_USER || "gernetix_runtime",
       password: env.PUBLIC_DEMO_POSTGRES_PASSWORD || "",
     },
-    publisherToken: env.PUBLIC_DEMO_PUBLISHER_TOKEN || "",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "public-demo-server"),
     artifactDir: path.resolve(env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts")),
   };
 }

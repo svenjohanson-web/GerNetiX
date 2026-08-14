@@ -588,6 +588,8 @@ function validateComputeBuildResult(result, job, artifactPolicySource = DEFAULT_
 function summarizeJob(job) {
   return {
     job_id: job.job_id,
+    account_id: job.account_id || null,
+    project_id: job.project_id || null,
     action_id: job.action_id || "",
     action_type: job.action_type || "",
     worker_id: job.worker_id || null,

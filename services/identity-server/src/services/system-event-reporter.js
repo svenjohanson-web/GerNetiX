@@ -1,6 +1,8 @@
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
+
 function createSystemEventReporter(options = {}) {
   const baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
-  const ingestToken = String(options.ingestToken || "");
+  const signingKey = String(options.internalApiSigningKey || "");
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const timeoutMs = Number(options.timeoutMs || 700);
@@ -16,12 +18,13 @@ function createSystemEventReporter(options = {}) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const internalIngest = Boolean(ingestToken);
-      const response = await fetchImpl(`${baseUrl}${internalIngest ? "/api/internal/system-events" : "/api/admin/system-events"}`, {
+      if (!baseUrl || !signingKey) return false;
+      const token = issueInternalToken({ iss: "identity-server", sub: "identity-server", aud: "admin-tool", scopes: ["operations.system_events.write"] }, signingKey);
+      const response = await fetchImpl(`${baseUrl}/api/internal/system-events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(internalIngest ? { "X-GerNetiX-System-Event-Token": ingestToken } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(safeEvent),
         signal: controller.signal,

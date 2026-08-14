@@ -54,6 +54,11 @@ class DeviceVoiceService {
     const assistantContext = authorizedAssistantContext(authorization.assistant_context, requestedContext);
     const policy = validatedAssistantPolicy(authorization.assistant_policy, this.maximumRecordingSeconds);
     const runtime = validatedAssistantRuntime(authorization.assistant_runtime);
+    const internalAuthContext = {
+      account_id: accountId,
+      project_ids: [assistantContext.project_id],
+      entitlements: ["ai_assistant"],
+    };
     this.enforceRateLimit(`device:${deviceId}`, this.deviceSessionsPerMinute, 60 * 1000);
     this.enforceRateLimit(`account:${accountId}`, this.accountSessionsPerHour, 60 * 60 * 1000);
 
@@ -71,7 +76,7 @@ class DeviceVoiceService {
       mode_id: assistantContext.mode_id,
       source_revision: assistantContext.project_commit || assistantContext.assistant_revision,
       system_capabilities: ["system_capability.ai_usage_audit_trail"],
-    });
+    }, internalAuthContext);
     if (!preflight.allowed) {
       throw new DeviceVoiceError(
         "voice_usage_not_allowed",
@@ -91,6 +96,7 @@ class DeviceVoiceService {
       status: "awaiting_audio",
       token_sha256: sha256(sessionToken),
       usage_event_id: preflight.event_id,
+      internal_auth_context: internalAuthContext,
       assistant_context: assistantContext,
       assistant_policy: policy,
       assistant_runtime: runtime,
@@ -127,7 +133,7 @@ class DeviceVoiceService {
     await Promise.all(expired.map((session) => this.aiUsageClient.fail(session.usage_event_id, {
       error_code: "voice_session_expired",
       error_message: "Voice-Session ohne Audio abgelaufen.",
-    }).catch(() => {})));
+    }, session.internal_auth_context).catch(() => {})));
   }
 
   async processAudio(sessionId, token, audio, contentType) {
@@ -138,7 +144,7 @@ class DeviceVoiceService {
         await this.aiUsageClient.fail(session.usage_event_id, {
           error_code: "voice_session_expired",
           error_message: "Voice-Session ohne Audio abgelaufen.",
-        }).catch(() => {});
+        }, session.internal_auth_context).catch(() => {});
       }
       throw new DeviceVoiceError("voice_session_expired", "Die Voice-Session ist abgelaufen.", 410);
     }
@@ -185,7 +191,7 @@ class DeviceVoiceService {
       await this.aiUsageClient.complete(session.usage_event_id, {
         input_tokens: Number(result.usage?.input_tokens || 0),
         output_tokens: Number(result.usage?.output_tokens || 0),
-      });
+      }, session.internal_auth_context);
       return {
         audio: result.audio,
         content_type: INPUT_CONTENT_TYPE,
@@ -195,7 +201,7 @@ class DeviceVoiceService {
       await this.aiUsageClient.fail(session.usage_event_id, {
         error_code: error.code || "voice_provider_error",
         error_message: "Voice-Verarbeitung fehlgeschlagen.",
-      }).catch(() => {});
+      }, session.internal_auth_context).catch(() => {});
       throw error;
     }
   }

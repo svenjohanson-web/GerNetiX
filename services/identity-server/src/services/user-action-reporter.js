@@ -1,21 +1,24 @@
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
+
 function createUserActionReporter(options = {}) {
   const baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
-  const ingestToken = String(options.ingestToken || "");
+  const signingKey = String(options.internalApiSigningKey || "");
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const timeoutMs = Number(options.timeoutMs || 700);
   const outbox = options.outboxStore ? createOutbox(options.outboxStore, logger, Number(options.outboxLimit || 10000)) : null;
 
   async function deliver(event) {
-    if (!baseUrl || !ingestToken) return false;
+    if (!baseUrl || !signingKey) return false;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      const token = issueInternalToken({ iss: "identity-server", sub: "identity-server", aud: "admin-tool", scopes: ["operations.user_actions.write"] }, signingKey);
       const response = await fetchImpl(`${baseUrl}/api/internal/user-action-events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-GerNetiX-System-Event-Token": ingestToken,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(event),
         signal: controller.signal,

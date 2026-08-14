@@ -138,27 +138,27 @@ test("ESP-IDF component caches are isolated per software target workspace", () =
   assert.equal(cameraEnv.PLATFORMIO_CORE_DIR, "/platformio");
   assert.equal(
     cameraEnv.IDF_COMPONENT_CACHE_PATH,
-    path.join(cacheRoot, "project--camera--default", "idf-component-cache"),
+    path.resolve(cacheRoot, "project--camera--default", "idf-component-cache"),
   );
   assert.equal(
     displayEnv.IDF_COMPONENT_CACHE_PATH,
-    path.join(cacheRoot, "project--display--default", "idf-component-cache"),
+    path.resolve(cacheRoot, "project--display--default", "idf-component-cache"),
   );
   assert.notEqual(cameraEnv.IDF_COMPONENT_CACHE_PATH, displayEnv.IDF_COMPONENT_CACHE_PATH);
-  assert.equal(cameraEnv.PLATFORMIO_BUILD_DIR, cameraBuildDir);
-  assert.equal(displayEnv.PLATFORMIO_BUILD_DIR, displayBuildDir);
+  assert.equal(cameraEnv.PLATFORMIO_BUILD_DIR, path.resolve(cameraBuildDir));
+  assert.equal(displayEnv.PLATFORMIO_BUILD_DIR, path.resolve(displayBuildDir));
   assert.notEqual(cameraEnv.PLATFORMIO_BUILD_DIR, displayEnv.PLATFORMIO_BUILD_DIR);
   assert.equal(
     cameraEnv.PLATFORMIO_BUILD_CACHE_DIR,
-    path.join(cacheRoot, "project--camera--default", "platformio-object-cache"),
+    path.resolve(cacheRoot, "project--camera--default", "platformio-object-cache"),
   );
   assert.equal(
     cameraEnv.PLATFORMIO_PENV_DIR,
-    path.join(cacheRoot, "project--camera--default", "platformio-penv"),
+    path.resolve(cacheRoot, "project--camera--default", "platformio-penv"),
   );
   assert.equal(
     displayEnv.PLATFORMIO_PENV_DIR,
-    path.join(cacheRoot, "project--display--default", "platformio-penv"),
+    path.resolve(cacheRoot, "project--display--default", "platformio-penv"),
   );
   assert.notEqual(cameraEnv.PLATFORMIO_PENV_DIR, displayEnv.PLATFORMIO_PENV_DIR);
 });

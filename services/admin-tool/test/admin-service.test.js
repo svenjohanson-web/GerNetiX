@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const { createDefaultAdminTool } = require("../src");
 const { AdminService, InMemoryAdminRepository, AdminAccessPolicy } = require("../src");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 
 function adminContext(overrides = {}) {
   return {
@@ -711,7 +712,7 @@ test("admin keeps SMTP password server-side while configuring Identity mail deli
 
   assert.equal(saved.config.has_password, true);
   assert.equal(calls[0].pathname, "/api/internal/email-config");
-  assert.equal(calls[0].options.headers["x-gernetix-admin-token"], "test-identity-admin-token");
+  verifyInternalToken(calls[0].options.headers.Authorization.replace(/^Bearer\s+/, ""), "test-internal-signing-key", { audience: "identity-server", requiredScopes: ["identity.email.write"] });
   assert.equal(calls[0].options.body.password, "secret");
   assert.equal(tested.ok, true);
 });
@@ -818,14 +819,14 @@ test("critical basissoftware events notify the operator once while every event r
   assert.equal(requests.length, 2, "simultaneous duplicate reports must produce exactly one additional notification");
 });
 
-test("monitoring reads Community operational counts without exposing the internal token", async () => {
+test("monitoring reads Community operational counts with a short scoped token", async () => {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({
     repository,
     accessPolicy: new AdminAccessPolicy({ repository }),
     serviceClients: {
       communityPlatformBaseUrl: "http://community.test",
-      communityInternalToken: "community-secret",
+      internalApiSigningKey: "community-test-signing-key",
     },
   });
   const previousFetch = global.fetch;
@@ -850,14 +851,17 @@ test("monitoring reads Community operational counts without exposing the interna
     const result = await service.monitoring();
     const community = result.services.find((item) => item.service_id === "community_platform");
     assert.equal(community.operations.questions.private, 1);
-    assert.equal(requests.find((item) => item.url.endsWith("/operations-summary")).headers["X-GerNetiX-Community-Token"], "community-secret");
-    assert.doesNotMatch(JSON.stringify(community), /community-secret/);
+    const authorization = requests.find((item) => item.url.endsWith("/operations-summary")).headers.Authorization;
+    verifyInternalToken(authorization.replace(/^Bearer /, ""), "community-test-signing-key", {
+      audience: "community-platform", requiredScopes: ["community.operations.read"],
+    });
+    assert.doesNotMatch(JSON.stringify(community), /community-test-signing-key|Bearer/);
   } finally {
     global.fetch = previousFetch;
   }
 });
 
-test("community support access is capability-gated, audited and uses the separate community admin token", async () => {
+test("community support access is capability-gated, audited and uses a scoped service identity", async () => {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({
     repository,
@@ -865,7 +869,7 @@ test("community support access is capability-gated, audited and uses the separat
     llmConfigStore: { publicConfig: () => ({}), getConfig: () => ({}), updateConfig: () => ({}) },
     serviceClients: {
       communityPlatformBaseUrl: "http://community.test",
-      communityAdminToken: "community-admin-secret",
+      internalApiSigningKey: "community-admin-signing-key",
     },
   });
   let request = null;
@@ -880,9 +884,18 @@ test("community support access is capability-gated, audited and uses the separat
   assert.equal(result.items[0].thread_id, "thread-1");
   assert.equal(request.baseUrl, "http://community.test");
   assert.equal(request.pathname, "/api/community/admin/support-threads");
-  assert.equal(request.options.headers["x-gernetix-community-admin-token"], "community-admin-secret");
-  const forwardedActor = JSON.parse(Buffer.from(request.options.headers["x-gernetix-community-admin-actor"], "base64url").toString("utf8"));
-  assert.deepEqual(forwardedActor, { actor_id: "admin-support", role: "support", capabilities: ["admin_community_support"] });
+  const authorization = service.internalApiAuthorization("http://community.test").Authorization;
+  verifyInternalToken(authorization.replace(/^Bearer /, ""), "community-admin-signing-key", {
+    audience: "community-platform", requiredScopes: ["community.admin"],
+  });
+  const forwardedActor = verifyInternalToken(request.options.headers["x-gernetix-admin-delegation"], "community-admin-signing-key", {
+    audience: "community-platform", requiredScopes: ["community.admin"],
+  });
+  assert.equal(forwardedActor.kind, "delegated_admin_action");
+  assert.deepEqual(forwardedActor.context, {
+    account_id: "admin-support", project_ids: [], job_ids: [], worker_ids: [], artifact_names: [], device_ids: [],
+    entitlements: [], role: "support", capabilities: ["admin_community_support"],
+  });
   assert.ok((await repository.listAuditEvents()).some((event) => event.purpose === "community_support_queue_read" && event.access_decision === "full"));
   await assert.rejects(service.communitySupportThreads({}, adminContext({ actor: { actor_id: "admin-none", role: "community_moderator", capabilities: [] } })), /nicht freigegeben/);
 });
@@ -929,6 +942,18 @@ test("resource summary combines account quotas with the effective build retentio
   assert.equal(result.build_policy.artifacts[0].retention_days, 5);
 });
 
+test("admin service authenticates build policy reads with the narrow service scope", () => {
+  const service = new AdminService({
+    repository: new InMemoryAdminRepository(),
+    serviceClients: { buildDeployBaseUrl: "https://build.internal", internalApiSigningKey: "admin-build-policy-test-key" },
+  });
+  const headers = service.internalApiAuthorization("https://build.internal");
+  const claims = verifyInternalToken(headers.Authorization.replace(/^Bearer /, ""), "admin-build-policy-test-key", {
+    audience: "build-deploy-server", requiredScopes: ["build.policy.read"],
+  });
+  assert.deepEqual(claims.scopes, ["build.policy.read"]);
+});
+
 function createAdminServiceWithHttpJson(routes, error = null) {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({
@@ -946,7 +971,7 @@ function createAdminServiceWithHttpJson(routes, error = null) {
       aiUsageBaseUrl: "http://usage.test",
       aiContextBaseUrl: "http://context.test",
       identityBaseUrl: "http://identity.test",
-      identityAdminToken: "test-identity-admin-token",
+      internalApiSigningKey: "test-internal-signing-key",
     },
   });
   service.httpJson = async (_baseUrl, pathname) => {

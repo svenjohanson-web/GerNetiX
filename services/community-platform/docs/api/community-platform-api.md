@@ -87,7 +87,14 @@ Der Marketplace ist ein Kleinanzeigenbereich fuer gebrauchte Elektronik und kein
 GET /operations-summary
 ```
 
-Der interne, durch `COMMUNITY_INTERNAL_TOKEN` geschützte Endpunkt liefert ausschließlich aggregierte Zähler für Admin Tool und Betriebsmonitoring: Fragen nach Sichtbarkeit und Bearbeitungsstatus, Triage-Rückstand, Antworten nach Verifizierungsstatus, Wissensdokumente, Ideen, Showcase-Projekte, Marketplace-Eintraege sowie das konfigurierte Persistenz-Backend. Titel, Texte, technische Account-/Projektkennungen und andere Community-Inhalte werden nicht ausgegeben.
+Der interne Endpunkt verlangt einen kurzlebigen Bearer-Diensttoken fuer die
+Audience `community-platform` und den Scope `community.operations.read`. Er
+liefert ausschliesslich aggregierte Zaehler fuer Admin Tool und
+Betriebsmonitoring: Fragen nach Sichtbarkeit und Bearbeitungsstatus,
+Triage-Rueckstand, Antworten nach Verifizierungsstatus, Wissensdokumente,
+Ideen, Showcase-Projekte, Marketplace-Eintraege sowie das konfigurierte
+Persistenz-Backend. Titel, Texte, technische Account-/Projektkennungen und
+andere Community-Inhalte werden nicht ausgegeben.
 
 ## Getrennte Admin-Verwaltung
 
@@ -105,4 +112,14 @@ GET  /admin/message-reports
 POST /admin/message-reports/{reportId}/resolve
 ```
 
-Diese Routen akzeptieren ausschließlich `COMMUNITY_ADMIN_TOKEN` und einen vom Admin Tool mitgegebenen Admin-Akteur. Die Plattform prüft dessen Capability erneut: Support darf nur Support-Postfach und Community-Anfragen lesen und beantworten; Moderation darf ausschließlich konkret gemeldete Nachrichten prüfen und entscheiden. Private Direktnachrichten werden nicht als allgemeines Admin-Postfach exponiert. Das Admin Tool schreibt keine Kopie der Community-Inhalte in sein Operations-Register, sondern protokolliert jeden Abruf und jede Änderung dort als Audit-Ereignis.
+Diese Routen verlangen einen kurzlebigen Diensttoken mit Audience
+`community-platform` und Scope `community.admin` sowie eine separat signierte,
+ebenfalls kurzlebige Admin-Delegation. Die Delegation bindet Admin-Akteur,
+Rolle und Capabilities kryptografisch; Base64- oder frei gesetzte
+Actor-Header werden nicht akzeptiert. Die Plattform prueft die Capability
+erneut: Support darf nur Support-Postfach und Community-Anfragen lesen und
+beantworten; Moderation darf ausschliesslich konkret gemeldete Nachrichten
+pruefen und entscheiden. Private Direktnachrichten werden nicht als
+allgemeines Admin-Postfach exponiert. Das Admin Tool schreibt keine Kopie der
+Community-Inhalte in sein Operations-Register, sondern protokolliert jeden
+Abruf und jede Aenderung dort als Audit-Ereignis.

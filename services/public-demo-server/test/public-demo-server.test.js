@@ -6,6 +6,7 @@ const { createHttpApp } = require("../src/http-app");
 const { createConfig } = require("../src/config");
 const { PublicDemoService } = require("../src/services/public-demo-service");
 const { InMemoryPublicDemoRepository } = require("./support/in-memory-public-demo-repository");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
 const path = require("node:path");
 const browserApp = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
 const browserPage = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
@@ -95,7 +96,8 @@ test("ein Nexi-Release bewahrt die vier ESP-IDF-Images und ihre Board-Offsets", 
 test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen", async () => {
   const repository = createRepository();
   const service = new PublicDemoService({ repository });
-  const server = http.createServer((request, response) => createHttpApp({ service, publisherToken: "only-for-publisher" })(request, response)
+  const internalApiSigningKey = "public-demo-test-signing-key";
+  const server = http.createServer((request, response) => createHttpApp({ service, internalApiSigningKey })(request, response)
     .catch((error) => {
       response.writeHead(error.status || 500, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ error: error.code }));
@@ -129,9 +131,28 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
   });
   assert.equal(forbidden.status, 403);
 
+  const wrongScope = issueInternalToken({
+    iss: "test-publisher",
+    sub: "test-publisher",
+    aud: "public-demo-server",
+    scopes: ["public_demo.read"],
+  }, internalApiSigningKey);
+  const scopeDenied = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${wrongScope}` },
+    body: JSON.stringify(release()),
+  });
+  assert.equal(scopeDenied.status, 403);
+
+  const publisherToken = issueInternalToken({
+    iss: "test-publisher",
+    sub: "test-publisher",
+    aud: "public-demo-server",
+    scopes: ["public_demo.publish"],
+  }, internalApiSigningKey);
   const published = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Public-Demo-Publisher-Token": "only-for-publisher" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${publisherToken}` },
     body: JSON.stringify(release()),
   });
   assert.equal(published.status, 201);

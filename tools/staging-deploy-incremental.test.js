@@ -64,7 +64,7 @@ test("keeps npm installs cached when only service source files change", () => {
 
 test("builds frequent identity changes in a dedicated small runtime image", () => {
   const dependencyManifest = identityDockerfile.indexOf("services/identity-server/package-lock.json");
-  const dependencyInstall = identityDockerfile.indexOf("npm ci --omit=dev --prefix services/identity-server");
+  const dependencyInstall = identityDockerfile.indexOf("npm ci --include=dev --prefix services/identity-server");
   const identitySources = identityDockerfile.indexOf("COPY --chown=node:node services/identity-server ./services/identity-server");
   assert.ok(dependencyManifest >= 0);
   assert.ok(dependencyManifest < dependencyInstall);
@@ -95,18 +95,18 @@ test("provisions missing staging secrets without replacing existing values", () 
   assert.match(remoteDeploy, /grep -q "\^\$\{secret_name\}=\." "\$env_file"/);
   assert.match(remoteDeploy, /openssl rand -hex 32/);
   assert.match(remoteDeploy, /openssl rand -base64 32/);
-  assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex/);
+  assert.match(remoteDeploy, /ensure_internal_api_keyset/);
+  assert.match(remoteDeploy, /tools\/internal-api-key-provisioner\/index\.js/);
+  assert.match(remoteDeploy, /INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON/);
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex/);
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex/);
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex/);
   assert.match(remoteDeploy, /ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex/);
   assert.match(remoteDeploy, /ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64/);
-  assert.match(remoteDeploy, /ensure_staging_secret PROJECT_ADMIN_READ_TOKEN hex/);
   assert.match(remoteDeploy, /ensure_staging_secret FORGEJO_POSTGRES_PASSWORD hex/);
   assert.match(remoteDeploy, /ensure_staging_secret FORGEJO_SECRET_KEY hex/);
   assert.match(remoteDeploy, /ensure_staging_secret FORGEJO_INTERNAL_TOKEN hex/);
   assert.match(remoteDeploy, /chmod 600 "\$env_file"/);
   assert.match(remoteDeploy, /tail -c 1 "\$env_file"/);
-  assert.match(remoteDeploy, /repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN/);
-  assert.match(remoteDeploy, /length\(secret_value\) == 64/);
+  assert.doesNotMatch(remoteDeploy, /ensure_staging_secret COMPUTE_INTERNAL_TOKEN/);
 });

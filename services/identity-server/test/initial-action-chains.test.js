@@ -50,5 +50,6 @@ test("project build carries the action through source, submit, worker and status
   assert.match(server, /action_id: actionContext\.actionId/);
   assert.match(server, /action_type: actionContext\.actionType/);
   assert.match(server, /buildDeployClient\("\/api\/build-jobs", \{[\s\S]*headers: actionHeaders/);
-  assert.match(routes, /loadBuildDeployJob\(jobId, actionOptions\)/);
+  assert.match(routes, /securedActionOptions = \{ \.\.\.actionOptions, \.\.\.projectAccess\(session, projects\) \}/);
+  assert.match(routes, /loadBuildDeployJob\(jobId, securedActionOptions\)/);
 });

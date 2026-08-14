@@ -1,9 +1,11 @@
 const { HardwareCatalogError } = require("./errors");
+const { readBearerToken, verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const prefix = "/api/hardware-catalog";
 
 function createHttpApp(options) {
   const service = options.service;
+  const signingKey = options.internalApiSigningKey || "";
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -57,17 +59,25 @@ function createHttpApp(options) {
     }
 
     if (req.method === "POST" && path === `${prefix}/admin/capabilities`) {
+      requireAdmin(req, signingKey);
       sendJson(res, 201, await service.upsertCapability(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/admin/hardware-items`) {
+      requireAdmin(req, signingKey);
       sendJson(res, 201, await service.upsertHardwareItem(await readJsonBody(req)));
       return;
     }
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function requireAdmin(req, signingKey) {
+  verifyInternalToken(readBearerToken(req), signingKey, {
+    audience: "hardware-catalog", requiredScopes: ["hardware_catalog.admin"],
+  });
 }
 
 function readJsonBody(req) {

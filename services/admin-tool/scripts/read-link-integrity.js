@@ -1,10 +1,12 @@
 "use strict";
 
 const http = require("node:http");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 async function main() {
-  const accessToken = process.env.ADMIN_TOOL_ACCESS_TOKEN || "";
-  if (!accessToken) throw new Error("ADMIN_TOOL_ACCESS_TOKEN ist im Admin Tool nicht konfiguriert.");
+  const signingKey = readOptionalInternalApiAuthConfig(process.env, "admin-tool");
+  if (!signingKey) throw new Error("Interne API-Authentifizierung ist im Admin Tool nicht konfiguriert.");
 
   const actor = {
     actor_id: "desktop-process-monitor",
@@ -14,12 +16,17 @@ async function main() {
   const result = await requestJson({
     baseUrl: process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600",
     pathname: "/api/admin/link-integrity?purpose=desktop_monitor_read",
-    headers: {
-      "x-gernetix-admin-access-token": accessToken,
-      "x-gernetix-admin-actor": Buffer.from(JSON.stringify(actor)).toString("base64url"),
-    },
+    headers: adminHeaders(signingKey, actor),
   });
   process.stdout.write(`${JSON.stringify(result)}\n`);
+}
+
+function adminHeaders(signingKey, actor) {
+  const scopes = ["admin.gateway.proxy"];
+  return {
+    Authorization: `Bearer ${issueInternalToken({ iss: "admin-tool", sub: actor.actor_id, aud: "admin-tool", scopes }, signingKey)}`,
+    "X-GerNetiX-Admin-Delegation": issueInternalToken({ iss: "admin-tool", sub: actor.actor_id, aud: "admin-tool", kind: "delegated_admin_action", scopes, context: { role: actor.role, capabilities: actor.capabilities } }, signingKey),
+  };
 }
 
 function requestJson({ baseUrl, pathname, headers }) {
@@ -64,4 +71,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { requestJson };
+module.exports = { adminHeaders, requestJson };

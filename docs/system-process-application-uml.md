@@ -37,6 +37,49 @@ Groessenvarianten aendern nur die Darstellung; Authentifizierung,
 Entitlements, Provider, Kontext, Usage-Pruefung und Persistenz bleiben bei den
 jeweiligen Domaenenendpunkten.
 
+## Zero-Trust-Grenze fuer interne APIs
+
+Interne Fach-APIs sind keine Erweiterung der Browser-Sitzung und duerfen nicht
+allein wegen einer internen Netzwerkadresse vertrauen. Jeder Aufruf besitzt
+eine kurzlebige, signierte Dienstidentitaet mit eindeutigem Zielservice und
+Minimal-Scope. Wenn eine Nutzeraktion Konto-, Projekt- oder Entitlementdaten
+betrifft, gibt Identity erst nach Session-, Besitz-, Rollen- und
+Entitlementpruefung eine ebenfalls kurzlebige Delegation fuer genau diese
+Ressource aus. Der Zielservice prueft Signatur, Ablauf, Zielgruppe, Scope und
+Ressourcenbindung selbst; Request-Felder aus dem Browser sind nie
+Berechtigungsnachweis.
+
+Jeder ausstellende Dienst signiert mit einem eigenen privaten Ed25519-Key.
+Empfaenger besitzen nur den oeffentlichen, an `kid` und Issuer gebundenen
+Trust Ring. Eine Rotation vertraut alten und neuen Public Keys nur waehrend
+einer begrenzten Ueberlappung; entfernte oder unbekannte Key-IDs werden
+abgewiesen. Ein gemeinsam verteilter HMAC-Schluessel ist kein produktiver
+Vertrauensanker mehr.
+
+Dienst- und Delegationstokens verbleiben serverseitig. Browser erhalten nur
+HttpOnly-Sitzungen und rufen keine internen Fachendpunkte direkt auf. Health-
+Endpunkte sind die einzige eng dokumentierte Ausnahme und liefern keine
+Fachdaten oder Secrets. Der detaillierte API-Inventar- und Migrationsvertrag
+steht in [Interne API-Zugriffssteuerung](internal-api-access-control.md).
+CI gleicht Routendateien und Zugriffsklassen gegen dieses Inventar ab und
+prueft interne Compose-Bindings, Browserartefakte sowie query- und
+referrerfreie Edge-Logs.
+
+Device Management behandelt Challenge und Signaturpruefung als eigenen
+Geraete-Bootstrap; alle nachfolgenden Dienst- und Kontorouten verwenden Scopes
+und bei Kontodaten eine Delegation. Community stellt anonym nur ausdruecklich
+redigierte Leseprojektionen bereit. Schreiben, persoenliche Nachrichten,
+Betriebsdaten und Admin-Aktionen bleiben hinter getrennten Service-Scopes;
+ein frei gesetzter Actor-Header ist kein Berechtigungsnachweis.
+
+Hardware Catalog laesst nur seine fachlich freigegebenen Leseprojektionen
+oeffentlich, Hardware Shop nur Angebote und Matching, Public Demo nur bereits
+freigegebene Releases. Katalogadministration, kontogebundene Warenkoerbe und
+Bestellungen, generische Persistence-Operationen, Demo-Publishing und alle
+Telemetry-Fachrouten verlangen eine ziel- und scopegebundene
+Dienstidentitaet; Shop- und Telemetry-Kontozugriffe zusaetzlich die passende
+Ressourcendelegation.
+
 Die Plattform-UI startet Domain-Abhaengigkeiten nicht pauschal. Der Identity
 Server fuehrt bei expliziten `include`-Profilen nur die fuer die aktive Route
 angeforderten Summary-Bereiche aus; eigene Routenendpunkte und grosse
@@ -93,7 +136,7 @@ flowchart LR
     platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/applications, /app/learn,<br/>/app/development-platform, /app/hardware-lab, /app/ide, /app/project-app<br/>Identity Server :4300"]
     recoveryHmi["Recovery HMI<br/>bestehende Boards retten<br/>:5100"]
     provisioningHmi["Provisioning Tool HMI<br/>Factory USB Provisioning<br/>:4500"]
-    contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
+    contextHmi["Context Manager HMI<br/>/context-manager/<br/>lokal oder Admin-Access-BFF"]
     sqliteExplorer["SQLite Graph Explorer<br/>Tool UI<br/>:4318"]
   end
 
@@ -255,6 +298,7 @@ flowchart LR
   deviceVoice -. "nur nach bewusster Providerfreigabe;<br/>keine Retention" .-> externalLlm
 
   adminAccess --> adminTool
+  adminAccess -->|"HttpOnly-Session + Capability + CSRF-BFF"| contextManager
   adminTool -->|"eigener Admin-Token + Capability-Akteur"| communityPlatform
   adminTool --> deviceManagement
   adminTool --> projectServer
@@ -499,7 +543,7 @@ flowchart LR
 - Der erste IoT-Device-IDE-Durchstich beginnt mit einem logischen Template ohne vorweggenommene Boardrealisierung. Die vorbereitete Architektur darf ohne weitere KI-Fragen als bewusster Template-Startpunkt uebernommen werden. Erst der Hardware-Realisierungsschritt waehlt Prozessor und konkretes Board, beispielsweise einen ESP32, macht das Projekt buildfaehig und verknuepft das Board optional mit einem kompatiblen Account-Device aus dem Inventar. Jede IoT-Device-Komponente zeigt unabhaengig von diesem Zustand den festen IDE-Einstieg `Konfiguration/Uebersicht`: `Hardware` umfasst `Boardkonfiguration` und `Angeschlossene Komponenten`, `Software` umfasst `Funktionen`, `Treiberverwaltung`, `Webserver-Konfiguration` und `Webserver-Vorschau`. Die Uebersicht verlinkt bestehende Fachansichten und ist keine zweite Pflegeoberflaeche. Die wiederverwendbare `BoardConfigurationPlugin`-Komponente stellt Boardauswahl, Ausstattung, Pinbearbeitung und die daraus abgeleitete Compiler-Vorschau sowohl im Provisioning als auch direkt in der IDE bereit; ein fehlendes Projektboard erzeugt keinen Umweg mehr in eine andere Ansicht. Der Hardware Catalog ist die Quelle fuer Boardfunktion, Anschluss und feste Pinbelegung. Seine `pin_profile.assigned_pins` werden deterministisch in `default_instance_configuration.board_features[*].pins` aufgeloest, bevor Provisioning, Account-Board oder Projektsnapshot sie verwenden. Ein unveraenderter GerNetiX- oder Account-Boardstand kann unmittelbar als Projektsnapshot uebernommen werden. Geaenderte Werte werden hervorgehoben und koennen entweder nur fuer dieses Projekt oder nach Vergabe eines eigenen Boardnamens als unveraenderliche Account-Boardversion gespeichert werden; der Project Server uebernimmt in beiden Faellen einen festen, vollstaendig aufgeloesten Snapshot in `build_config.board_configuration`. Eine spaetere Katalog- oder Account-Boardversion veraendert bestehende Projekte dadurch nicht. Das globale Katalogprofil bleibt unveraendert; sein `base_board_profile_id` bildet den physischen Build- und Inventartyp. Der Hardware Catalog liefert fuer jedes buildfaehige Board zusaetzlich ein strukturiertes `platformio_build`-Profil. Der Project Server erzeugt daraus bei jeder gespeicherten Board-/Buildaenderung die sichtbare `platformio.ini` und verwendet fuer das BuildPackage dieselbe zentrale Projektion; Platform, Environment, Compiler-Board, Framework, Speichergrenzen, Partitionierung, Bibliotheken, Uploadparameter und Build-Flags koennen dadurch nicht von der grafischen Projektkonfiguration abweichen. Dieser Vertrag gilt fuer ESP32, ESP8266, AVR und kuenftige Katalogziele. Die Zuordnung wird komponentenbezogen als `component_device_allocations` in der Build-Konfiguration persistiert. Das strukturierte `hardware-configuration`-Modell wird vollstaendig in `Architektur/verdrahtung/hardware.puml` projiziert: Prozessor, Board, Inventarzuordnung, Sensor- und Aktortypen, Eigenschaften, Vorschaltungen und Pins gehoeren in diese eine sichtbare Hardware-Architektur. Eine separate Verdrahtungs- oder Zuordnungsansicht ist unzulaessig. Nach der Uebernahme zeigt die IDE die Architektur als schreibgeschuetzte Baseline; sie bietet dafuer keine zweite Pflegeoberflaeche. Jede Architekturkomponente besitzt ihren eigenen Source-Bereich; fuer die logische Komponente zeigt und speichert die IDE ausschliesslich die account- und projektgebundene `Komponenten/IoT-Device 1/src/user_main.cpp`. Der Project Server erzeugt daraus mit der zum realen Board passenden, versionierten Basissoftware ein vollstaendiges BuildPackage. Es generiert aus dem Board-Snapshot `include/gernetix_board_configuration.h` und erzwingt dessen Einbindung in jede Compilereinheit; Quelle, Version, Komponenten, Treiber, Anschluesse, Werte und Pins sind damit reproduzierbare Compilerparameter. Aeltere Templatekopien werden beim Laden anhand ihrer Hardwarekonfiguration in denselben Software-Einheiten-Snapshot ueberfuehrt; referenziert User-Code den generierten Header ohne Board-Snapshot, weist der Project Server das BuildPackage bereits vor dem Compilerstart als inkonsistent ab. Build-&-Deploy fuehrt standardmaessig einen echten PlatformIO-Build aus und liefert Bootloader, Partitionstabelle und Firmware als Artefakte zurueck. Der VPS-Build-Dienst ist dafuer sowohl an das interne Backend-Netz als auch an das ausgehende Edge-Netz angebunden: interne Services und MQTT bleiben im Backend, waehrend PlatformIO fehlende, anschliessend persistent gecachte Toolchains laden kann. USB-Flash wird durch die bestehende Plattformoberfläche über den lokal installierten GerNetiX Serial Service ausgeführt; der VPS-Server besitzt keinen Zugriff auf den USB-Port und meldet erst das lokal zurückgemeldete Ergebnis als Erfolg. OTA-Flash bleibt an Basissoftware, Partitionslayout und `ota_status=ready` gebunden. Project Server und Device Management bleiben fachliche Quellen der Wahrheit.
 - Board- und Treiberkonfiguration sind getrennte IDE-Sichten mit gerichteter Abhaengigkeit: Die Boardkonfiguration beschreibt nur vorhandene MCU- und Runtime-Ressourcen. Die speziellere Treiberkonfiguration waehlt Motor- oder Geraetetreiber und belegt ausschliesslich Pins aus dem festen Board-Projektsnapshot. Beide Sichten persistieren in demselben `hardware-configuration`-Projektmodell; die Treiberansicht kopiert oder veraendert das Boardprofil nicht.
 - Der IDE-Projektbaum besitzt keinen zweiten globalen Source-Bereich neben den Komponenten. Komponentenpfade und technische Legacy-Pfade unter `src/` werden in der Lesesicht unter `Komponenten/<Komponente>/Source` zusammengefuehrt, ohne Repositorypfade umzubenennen. Der Buildvertrag unterscheidet den fachlichen `user_source_path` von der erst fuer das BuildPackage erzeugten technischen Zielstelle `user_target_path`; eine Boardauswahl darf den fachlichen Einstieg nicht auf einen zweiten Wurzelpfad umbiegen.
-- Der ESP32-OTA-Firmwarepfad akzeptiert ausschliesslich zeitlich begrenzte ECDSA-P-256-signierte Deploy-Auftraege mit passender Key-ID und monotoner Sequenznummer. Das Artefakt wird per HTTPS geladen, im inaktiven A/B-Slot gegen den beauftragten SHA-256 geprueft und erst nach erfolgreicher Runtime-Initialisierung als gueltig bestaetigt.
+- Der ESP32-OTA-Firmwarepfad akzeptiert ausschliesslich zeitlich begrenzte ECDSA-P-256-signierte Deploy-Auftraege mit passender Key-ID und monotoner Sequenznummer. Die Firmware-URL traegt zusaetzlich eine kurzlebige, HMAC-signierte Downloadfreigabe, die BuildJob, konkreten Artefaktnamen und Zielgeraet bindet; sie ist kein allgemeiner API-Token. Das Artefakt wird per HTTPS geladen, im inaktiven A/B-Slot gegen den beauftragten SHA-256 geprueft und erst nach erfolgreicher Runtime-Initialisierung als gueltig bestaetigt.
 - Jedes GerNetiX-Basissoftware-Artefakt besitzt verpflichtend eine nicht leere `basissoftwareVersion` und `basissoftwareVariant`. Diese Build-Metadaten werden im Device-Status veroeffentlicht und sind von der separat provisionierten Anwendungs-`firmwareVersion` unabhaengig. Die stabilen ESP32-Varianten heissen `full`, `medium` und `low`; der Project Server waehlt dazu passend eines der geprueften 4-, 8- oder 16-MB-Partitionslayouts.
 - Die ESP32-Basissoftware bleibt ein stabiler, eigenstaendiger Runtime-Kern. Projekt- und kundenspezifische Erweiterungen duerfen weder Basissoftware-Schnittstellen noch Provisioning-, WLAN-/SSID-Setup- oder Sicherheitsablaeufe veraendern und keinen Projekt-Webserver in das Basissoftware-Setup-Portal einbringen. Erweiterungen sind ausschliesslich ueber klar abgegrenzte Schnittstellen anzubinden.
 - Provisioning speichert nach der Boardausstattung ein Update- und Speicherprofil an der Device-Instanz. `FULL` nutzt A/B-Rollback, `MEDIUM` einen vor der einzelnen grossen Hauptfirmware startenden Recovery-Bootstrap und `LOW` einen USB-only-Einzel-App-Slot. MEDIUM signalisiert beim Start ein fuenfsekundiges Recovery-Fenster per schneller LED, bleibt bei einem danach gedrueckten `BOOT`-Taster oder fehlender gueltiger Hauptfirmware im Bootstrap und startet eine vorhandene gueltige Hauptfirmware auch ohne erreichbaren Server. `BOOT` bereits waehrend Reset bleibt der ESP-ROM-/USB-Fallback. Die Oberflaeche erklaert Ausfallverhalten und typische 4/8/16-MB-Anwendungen, beruecksichtigt Display und Sound in der Empfehlung und weist darauf hin, dass SD-Karten nur Ressourcen auslagern. Ein spaeterer Profilwechsel bleibt erlaubt, setzt wegen der geaenderten Partitionstabelle aber einen einmaligen USB-Neu-Flash voraus.
@@ -523,7 +567,7 @@ flowchart LR
 - Das Provisioning Tool darf im Serverbetrieb nicht auf die Projektumgebung zugreifen. Die Basissoftware fuer Factory-Flash muss als versioniertes Firmware-Artefakt in SQLite/Artifact Store vorliegen; lokale Quellen sind nur ein expliziter Entwicklungs-Fallback.
 - Die Provisioning-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Firmware-Artefakte werden serverseitig aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad bereitgestellt.
 - Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml` und bleibt auf Loopback ohne TLS. Der VPS-Broker behaelt `1883` und `9001` ausschliesslich im internen Docker-Netz und bindet den Device-Port `8883` nur an die WireGuard-Adresse. Server-TLS, verpflichtendes Device-Client-Zertifikat, Device-CA und `%u`-basierte ACL begrenzen jedes Device auf sein eigenes OTA-/Status-Topic. Ein ESP32 ohne eigenen WireGuard-Client erreicht die private Instanz nur ueber einen kontrollierten WireGuard-faehigen Gateway oder eine spaeter getrennt entworfene Device-Edge.
-- Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
+- Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows. Seine Fachrouten verlangen eine Dienstidentitaet mit getrennten Lese-, Schreib- oder Analyse-Scopes. Die statische HMI erhaelt keinen Diensttoken; Admin Access stellt sie ueber HttpOnly-Operator-Sitzung, Capabilitypruefung, feste BFF-Allowlist und CSRF-Schutz bereit und auditiert Request sowie Ergebnis ohne Fachinhalt.
 - Community und Projektbegleitung laufen ausschliesslich über die angemeldete Plattform. Der Nutzer wählt beim Erstellen zwischen `public` (für weitere angemeldete Mitglieder sichtbar) und `private` (nur anfragendes Konto plus konfigurierte GerNetiX-Operatoren). Der Community-Service ist nicht am Edge veröffentlicht, akzeptiert nur den token-geschützten Identity-Proxy und persistiert seine Inhalte getrennt in PostgreSQL. Private Threads werden weder in öffentlichen Listen noch in der Wissensbasis oder KI-Suche verwendet.
 - Die interne Nachrichtenplattform liegt ebenfalls in der Community Platform. Identity löst beim Beginn einer Direktunterhaltung nur einen exakt eingegebenen registrierten Nicknamen auf; eine öffentliche Kontosuche entsteht dadurch nicht. Community persistiert Unterhaltung, Teilnehmer, einzelne Nachrichten, empfängerbezogene Inbox-Einträge und Lesestände in `community_*`. Zugriff auf einen Thread setzt eine aktive Teilnahme voraus. Operator-Broadcasts bleiben operatorgebunden; Projekteinladungen sind strukturierte Inbox-Einträge und keine E-Mails.
 - Der öffentliche Support-Einstieg führt nach der Anmeldung nicht mehr in eine beliebige öffentliche Community-Anfrage, sondern eröffnet einen privaten System-Thread im internen Support-Postfach. Empfänger sind die explizit konfigurierten Supportkonten oder ersatzweise die Community-Operator-Konten. Supportantworten bleiben im selben teilnehmergeschützten Thread; E-Mail-Adressen werden dafür nicht benötigt.

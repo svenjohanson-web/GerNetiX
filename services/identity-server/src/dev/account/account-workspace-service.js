@@ -74,6 +74,7 @@ function createAccountWorkspaceService({
     const load = projectServerJson(`/api/internal/accounts/${encodeURIComponent(accountId)}/resource-plan`, {
       method: "PUT",
       body: { plan_id: subscription.plan_id },
+      internalAuth: accountResourcePlanAccess(accountId),
     }).then((value) => {
       resourcePlanCache.set(cacheKey, { value, expires_at: Date.now() + resourcePlanCacheMs });
       return value;
@@ -92,6 +93,7 @@ function createAccountWorkspaceService({
         plan_id: subscription.plan_id,
         active_project_ids: activeProjectIds,
       },
+      internalAuth: accountResourcePlanAccess(accountId),
     });
     for (const key of resourcePlanCache.keys()) {
       if (key.startsWith(`${accountId}\u0000`)) resourcePlanCache.delete(key);
@@ -110,6 +112,14 @@ function createAccountWorkspaceService({
     touchWorkspace,
     updateAccountProjectSelection,
     updateWorkspaceState,
+  };
+}
+
+function accountResourcePlanAccess(accountId) {
+  return {
+    scopes: ["project.write"],
+    // accountId is derived from the authenticated server session.
+    delegation: { account_id: String(accountId), project_ids: [] },
   };
 }
 

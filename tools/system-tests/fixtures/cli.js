@@ -3,6 +3,7 @@
 
 const { loadManifest } = require("./manifest");
 const { createSeedClient } = require("./seed-client");
+const { readInternalApiAuthConfig } = require("../../../services/shared/internal-api-auth");
 
 const DEFAULT_TARGETS = Object.freeze({
   identity: "http://127.0.0.1:14300",
@@ -31,6 +32,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     identityBaseUrl: env.GERNETIX_SYSTEM_TEST_IDENTITY_URL || DEFAULT_TARGETS.identity,
     projectBaseUrl: env.GERNETIX_SYSTEM_TEST_PROJECT_URL || DEFAULT_TARGETS.project,
     deviceBaseUrl: env.GERNETIX_SYSTEM_TEST_DEVICE_URL || DEFAULT_TARGETS.device,
+    internalApiAuth: readInternalApiAuthConfig(env, { serviceId: "system-test-seed" }),
     writeConfirmed: options.confirmWrite,
   });
   const password = env[manifest.password_env];

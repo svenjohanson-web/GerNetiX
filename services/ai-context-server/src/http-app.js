@@ -1,9 +1,16 @@
 const { AiContextError } = require("./errors");
+const {
+  verifyInternalToken,
+  verifyDelegation,
+  assertDelegatedResource,
+  readBearerToken,
+} = require("../../shared/internal-api-auth");
 
 const prefix = "/api/ai-context";
 
 function createHttpApp(options) {
   const service = options.service;
+  const signingKey = options.internalApiSigningKey || "";
 
   return async function routeRequest(req, res) {
     try {
@@ -16,124 +23,160 @@ function createHttpApp(options) {
       }
 
       if (req.method === "GET" && path === `${prefix}/policy`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { policy: await service.getPolicy() });
         return;
       }
 
       if (req.method === "PUT" && path === `${prefix}/policy`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { policy: await service.updatePolicy(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/grants`) {
-        sendJson(res, 200, { items: await service.listGrants(Object.fromEntries(url.searchParams.entries())) });
+        const filter = Object.fromEntries(url.searchParams.entries());
+        if (filter.account_id) requireDelegatedAccount(req, signingKey, filter.account_id, "ai.context.read", filter.project_id);
+        else requireService(req, signingKey, "ai.context.admin");
+        sendJson(res, 200, { items: await service.listGrants(filter) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/sources`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { items: await service.listSources(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/prompt-foundations`) {
+        requireService(req, signingKey, "ai.context.read");
         sendJson(res, 200, { items: await service.listPromptFoundations(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/architecture-components`) {
+        requireService(req, signingKey, "ai.context.read");
         sendJson(res, 200, { items: await service.listArchitectureComponents(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/architecture-components/search`) {
+        requireService(req, signingKey, "ai.context.read");
         sendJson(res, 200, await service.searchArchitectureComponents(url.searchParams.get("q"), url.searchParams.get("limit")));
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/help-articles`) {
+        requireService(req, signingKey, "ai.context.read");
         sendJson(res, 200, { items: await service.listHelpArticles(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/help-articles/search`) {
+        requireService(req, signingKey, "ai.context.read");
         sendJson(res, 200, await service.searchHelpArticles(url.searchParams.get("q"), url.searchParams.get("limit")));
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/clarification-cases`) {
-        sendJson(res, 200, await service.listClarificationCases(Object.fromEntries(url.searchParams.entries())));
+        const filter = Object.fromEntries(url.searchParams.entries());
+        if (filter.account_id) requireDelegatedAccount(req, signingKey, filter.account_id, "ai.context.read");
+        else requireService(req, signingKey, "ai.context.admin");
+        sendJson(res, 200, await service.listClarificationCases(filter));
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/clarification-cases`) {
-        sendJson(res, 201, { clarificationCase: await service.recordClarificationCase(await readJsonBody(req)) });
+        requireService(req, signingKey, "ai.context.write");
+        const input = await readJsonBody(req);
+        if (input.account_id) requireDelegatedAccount(req, signingKey, input.account_id, "ai.context.write", input.project_id);
+        sendJson(res, 201, { clarificationCase: await service.recordClarificationCase(input) });
         return;
       }
 
       const clarificationAction = path.match(new RegExp(`^${prefix}/clarification-cases/([^/]+)/actions$`));
       if (req.method === "POST" && clarificationAction) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { clarificationCase: await service.resolveClarificationCase(decodeURIComponent(clarificationAction[1]), await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/intent-examples`) {
-        sendJson(res, 200, { items: await service.listIntentExamples(Object.fromEntries(url.searchParams.entries())) });
+        const filter = Object.fromEntries(url.searchParams.entries());
+        if (filter.account_id) requireDelegatedAccount(req, signingKey, filter.account_id, "ai.context.read");
+        else requireService(req, signingKey, "ai.context.read");
+        sendJson(res, 200, { items: await service.listIntentExamples(filter) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/intent-examples/search`) {
-        sendJson(res, 200, await service.searchIntentExamples(url.searchParams.get("q"), url.searchParams.get("limit"), url.searchParams.get("account_id")));
+        const accountId = url.searchParams.get("account_id") || "";
+        if (accountId) requireDelegatedAccount(req, signingKey, accountId, "ai.context.read");
+        else requireService(req, signingKey, "ai.context.read");
+        sendJson(res, 200, await service.searchIntentExamples(url.searchParams.get("q"), url.searchParams.get("limit"), accountId));
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/prompt-foundations`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 201, { promptFoundation: await service.upsertPromptFoundation(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/architecture-components`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 201, { architectureComponent: await service.upsertArchitectureComponent(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/help-articles`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 201, { helpArticle: await service.upsertHelpArticle(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/sources`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 201, { source: await service.upsertSource(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/grants`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 201, { grant: await service.createGrant(await readJsonBody(req)) });
         return;
       }
 
       const revoke = path.match(new RegExp(`^${prefix}/grants/([^/]+)/revoke$`));
       if (req.method === "POST" && revoke) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { grant: await service.revokeGrant(decodeURIComponent(revoke[1]), await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/preflight`) {
-        const result = await service.preflight(await readJsonBody(req));
+        requireService(req, signingKey, "ai.context.use");
+        const input = await readJsonBody(req);
+        requireDelegatedAccount(req, signingKey, input.account_id, "ai.context.use", input.project_id, "ai_assistant");
+        const result = await service.preflight(input);
         sendJson(res, result.allowed ? 200 : 403, result);
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/audit-events`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { items: await service.listAuditEvents(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/storage/summary`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { summary: await service.storageSummary() });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/sqlite/summary`) {
+        requireService(req, signingKey, "ai.context.admin");
         sendJson(res, 200, { summary: await service.storageSummary() });
         return;
       }
@@ -148,6 +191,23 @@ function createHttpApp(options) {
       });
     }
   };
+}
+
+function requireService(req, signingKey, scope) {
+  return verifyInternalToken(readBearerToken(req), signingKey, {
+    audience: "ai-context-server",
+    requiredScopes: [scope],
+  });
+}
+
+function requireDelegatedAccount(req, signingKey, accountId, scope, projectId = "", entitlement = "") {
+  if (!accountId) throw new AiContextError("delegated_account_required", "Ein delegierter Kontokontext ist erforderlich.", 403);
+  requireService(req, signingKey, scope);
+  const claims = verifyDelegation(req.headers["x-gernetix-delegation"], signingKey, {
+    audience: "ai-context-server",
+    requiredScopes: [scope],
+  });
+  return assertDelegatedResource(claims, { accountId, projectId, entitlement });
 }
 
 function readJsonBody(req) {

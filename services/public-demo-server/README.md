@@ -12,7 +12,8 @@ Sie enthält keine Konten, Projekte, Inventar-, Telemetrie- oder Kundendaten.
 - `GET /api/public/demos/:demo_id/releases/:version/firmware`
 
 Ein Release ist ausschließlich über einen internen Veröffentlichungszugang mit
-`X-Public-Demo-Publisher-Token` anlegbar. Jeder Release enthält nur
+einen kurzlebigen Bearer-Diensttoken mit Audience `public-demo-server` und
+Scope `public_demo.publish` anlegbar. Jeder Release enthält nur
 den ESP32-Flash-Bestandteilen `bootloader.bin`, `partitions.bin`, optional
 `ota_data_initial.bin` und `firmware.bin`, wird einmalig gespeichert und mit
 SHA-256 ausgeliefert. Die Binärdateien liegen checksum-gesichert im zentralen

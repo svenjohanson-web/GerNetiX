@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "inventory": "docs/internal-api-access-inventory.md",
+  "services": {
+    "admin-access-server": {
+      "inventorySection": "Identitaets- und Admin-Kante",
+      "classes": [
+        "health",
+        "public",
+        "admin",
+        "internal-service"
+      ],
+      "files": [
+        "services/admin-access-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:3e00bf3b53eb288f5fe4171dc9406bcd87d215e3ec67ae508e46c65e3914495f"
+    },
+    "admin-tool": {
+      "inventorySection": "Identitaets- und Admin-Kante",
+      "classes": [
+        "health",
+        "admin",
+        "internal-service"
+      ],
+      "files": [
+        "services/admin-tool/src/http-app.js"
+      ],
+      "fingerprint": "sha256:27a8ef94e7686d97b00542fcff870c1ae87d7f44477f9cdd6301e7cee905dc9a"
+    },
+    "ai-context-server": {
+      "inventorySection": "KI, Kontext und Telemetrie",
+      "classes": [
+        "health",
+        "internal-service",
+        "delegated-user-action",
+        "admin"
+      ],
+      "files": [
+        "services/ai-context-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:507d47f5223aee16653145f53656a82513893890f788adbff472fb0d5ab78525"
+    },
+    "ai-usage-server": {
+      "inventorySection": "KI, Kontext und Telemetrie",
+      "classes": [
+        "health",
+        "internal-service",
+        "delegated-user-action",
+        "admin"
+      ],
+      "files": [
+        "services/ai-usage-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:e11488a9bba4144fdff1bf406047b1c57f7ef12cfb900843eabea54f65270fb2"
+    },
+    "build-deploy-server": {
+      "inventorySection": "Projekt, Build und Artefakte",
+      "classes": [
+        "health",
+        "internal-service",
+        "delegated-user-action",
+        "worker",
+        "device"
+      ],
+      "files": [
+        "services/build-deploy-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:81c6cc6c04f637dc4e64225019da4e86bbe5f27561cdab4408eb2370ba45c5b1"
+    },
+    "community-ai-assistant": {
+      "inventorySection": "KI, Kontext und Telemetrie",
+      "classes": [
+        "health",
+        "delegated-user-action",
+        "admin"
+      ],
+      "files": [
+        "services/community-ai-assistant/src/http-app.js"
+      ],
+      "fingerprint": "sha256:e029800b8847b0749ef35382e11424c4d21f1bcfd600ae9fd7944d1cfb018700"
+    },
+    "community-platform": {
+      "inventorySection": "Community, Katalog und Shop",
+      "classes": [
+        "health",
+        "public",
+        "internal-service",
+        "delegated-user-action",
+        "admin"
+      ],
+      "files": [
+        "services/community-platform/src/http-app.js"
+      ],
+      "fingerprint": "sha256:b38c70bf369f4cd6cf1a44e3f62536594a5bfc7e87815588b8f1eab38c430dee"
+    },
+    "compute-control-plane": {
+      "inventorySection": "Projekt, Build und Artefakte",
+      "classes": [
+        "health",
+        "internal-service",
+        "worker"
+      ],
+      "files": [
+        "services/compute-control-plane/src/http-app.js"
+      ],
+      "fingerprint": "sha256:7964f87475991b17215b3d3ab628138b19cd05c0a4282e43b4f19b7cbbf99dfe"
+    },
+    "context-manager": {
+      "inventorySection": "Lokale Entwicklungs- und Persistenzdienste",
+      "classes": [
+        "health",
+        "admin",
+        "internal-service"
+      ],
+      "files": [
+        "services/context-manager/src/http-app.js"
+      ],
+      "fingerprint": "sha256:3657835bef3dd9abed7378964cf265f5d1ccd2c661bee6c7fd4c49bc4d0e0517"
+    },
+    "device-management-server": {
+      "inventorySection": "Geraete, Provisionierung und Recovery",
+      "classes": [
+        "health",
+        "internal-service",
+        "delegated-user-action",
+        "device",
+        "admin"
+      ],
+      "files": [
+        "services/device-management-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:d45d400ec6cd6fe0a9d15518d699d9667d7b6926c2c00e59995bfdb2ab50e07a"
+    },
+    "device-voice-orchestrator": {
+      "inventorySection": "Geraete, Provisionierung und Recovery",
+      "classes": [
+        "health",
+        "public",
+        "internal-service",
+        "delegated-user-action",
+        "device"
+      ],
+      "files": [
+        "services/device-voice-orchestrator/src/http-app.js"
+      ],
+      "fingerprint": "sha256:9ba251567829fc92a731938e97312c1692a41c83ed4b22325a53bc37a7d21b27"
+    },
+    "hardware-catalog": {
+      "inventorySection": "Community, Katalog und Shop",
+      "classes": [
+        "health",
+        "public",
+        "internal-service"
+      ],
+      "files": [
+        "services/hardware-catalog/src/http-app.js"
+      ],
+      "fingerprint": "sha256:5706270840b4bc0bea2d16afdaedbc56c855fd0bc4d609f667eeaaf0a937d9ac"
+    },
+    "hardware-shop": {
+      "inventorySection": "Community, Katalog und Shop",
+      "classes": [
+        "health",
+        "public",
+        "delegated-user-action",
+        "internal-service"
+      ],
+      "files": [
+        "services/hardware-shop/src/http-app.js"
+      ],
+      "fingerprint": "sha256:5ffd9872a376c73fc910114eceef904a0d8b3e289ede3029570e6eee928f8854"
+    },
+    "identity-server": {
+      "inventorySections": [
+        "Identitaets- und Admin-Kante",
+        "Identity als Nutzer-Gateway: weitere API-Familien"
+      ],
+      "classes": [
+        "health",
+        "public",
+        "user",
+        "internal-service",
+        "delegated-user-action",
+        "device",
+        "admin"
+      ],
+      "files": [
+        "services/identity-server/src/dev/server/account-routes.js",
+        "services/identity-server/src/dev/server/auth-routes.js",
+        "services/identity-server/src/dev/server/build-routes.js",
+        "services/identity-server/src/dev/server/community-routes.js",
+        "services/identity-server/src/dev/server/device-routes.js",
+        "services/identity-server/src/dev/server/download-routes.js",
+        "services/identity-server/src/dev/server/hardware-lab-routes.js",
+        "services/identity-server/src/dev/server/hardware-routes.js",
+        "services/identity-server/src/dev/server/knowledge-routes.js",
+        "services/identity-server/src/dev/server/platform-extra-routes.js",
+        "services/identity-server/src/dev/server/platform-routes.js",
+        "services/identity-server/src/dev/server/project-routes.js",
+        "services/identity-server/src/dev/server/protected-content-routes.js",
+        "services/identity-server/src/dev/server/requirements-workshop-routes.js",
+        "services/identity-server/src/dev/server/system-routes.js",
+        "services/identity-server/src/dev/server/web-routes.js"
+      ],
+      "fingerprint": "sha256:c2a56a557683fafa8209196b39a799bf01e78ea68406f79bd68dcfc14f33edad"
+    },
+    "persistence-server": {
+      "inventorySection": "Lokale Entwicklungs- und Persistenzdienste",
+      "classes": [
+        "health",
+        "internal-service"
+      ],
+      "files": [
+        "services/persistence-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:88a306f8c5514c46e21a9502cbccbbaf409d47fa66b65ed443e72ded8485c651"
+    },
+    "project-server": {
+      "inventorySection": "Projekt, Build und Artefakte",
+      "classes": [
+        "health",
+        "internal-service",
+        "delegated-user-action",
+        "worker"
+      ],
+      "files": [
+        "services/project-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:f63721b18cc88665c80e18f34514c3dc6782ba2bd2314a1264e1fa05ae42a644"
+    },
+    "provisioning-tool": {
+      "inventorySection": "Geraete, Provisionierung und Recovery",
+      "classes": [
+        "health",
+        "public",
+        "delegated-user-action",
+        "device"
+      ],
+      "files": [
+        "services/provisioning-tool/src/http-app.js"
+      ],
+      "fingerprint": "sha256:0ef97e1425b0fef98c77d93982b072ccb8f939c275da354762c7d9f6ac8a1090"
+    },
+    "public-demo-server": {
+      "inventorySection": "Geraete, Provisionierung und Recovery",
+      "classes": [
+        "health",
+        "public",
+        "internal-service"
+      ],
+      "files": [
+        "services/public-demo-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:852dd1a5cf46bb6eb1cb27bb9d738d8e93f1c81e0526f0c6ed0f552b783b1d7e"
+    },
+    "recovery-tool": {
+      "inventorySection": "Geraete, Provisionierung und Recovery",
+      "classes": [
+        "health",
+        "delegated-user-action",
+        "device"
+      ],
+      "files": [
+        "services/recovery-tool/src/http-app.js"
+      ],
+      "fingerprint": "sha256:fbee7373287a9cf0b42e57f5fa13e4b5ddae95126a396872e97ef41bc563e8c6"
+    },
+    "telemetry-server": {
+      "inventorySection": "KI, Kontext und Telemetrie",
+      "classes": [
+        "health",
+        "internal-service",
+        "delegated-user-action"
+      ],
+      "files": [
+        "services/telemetry-server/src/http-app.js"
+      ],
+      "fingerprint": "sha256:cd6c3ab92d256fcc857936921b6ab2b9d5a6ec35764211d8113075a19022e7bc"
+    }
+  }
+}

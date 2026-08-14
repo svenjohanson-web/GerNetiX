@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
 function createConfig(env = process.env) {
@@ -14,6 +15,7 @@ function createConfig(env = process.env) {
     ollamaModel: env.OLLAMA_MODEL || "qwen2.5-coder:7b",
     buildDeployBaseUrl: env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     aiUsageBaseUrl: env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000/api/ai-usage",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "recovery-tool"),
     aiUsageTimeoutMs: Number(env.AI_USAGE_TIMEOUT_MS || 10000),
     hardwareSourceMaxBytes: Number(env.HARDWARE_SOURCE_MAX_BYTES || 2 * 1024 * 1024),
     hardwareSourceTimeoutMs: Number(env.HARDWARE_SOURCE_TIMEOUT_MS || 12000),

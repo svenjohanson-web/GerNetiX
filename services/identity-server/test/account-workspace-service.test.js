@@ -39,6 +39,9 @@ test("shares and refreshes the account resource plan cache", async () => {
 
   await service.updateAccountProjectSelection(session, { active_project_ids: ["p1", "p1", "p2"] });
   assert.deepEqual(requests.at(-1).options.body.active_project_ids, ["p1", "p2"]);
+  assert.deepEqual(requests.at(-1).options.internalAuth, {
+    scopes: ["project.write"],
+    delegation: { account_id: "account-1", project_ids: [] },
+  });
   assert.equal(requests.length, 2);
 });
-

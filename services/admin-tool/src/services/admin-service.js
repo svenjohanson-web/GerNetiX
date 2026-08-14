@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const { AdminToolError } = require("../errors");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
 class AdminService {
   constructor(options) {
@@ -79,11 +80,7 @@ class AdminService {
     if (!this.serviceClients?.projectServerBaseUrl) {
       throw new AdminToolError("project_server_not_configured", "Der Project Server ist nicht konfiguriert.", 503);
     }
-    return this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary", {
-      headers: this.serviceClients.projectAdminReadToken
-        ? { "X-GerNetiX-Project-Admin-Token": this.serviceClients.projectAdminReadToken }
-        : {},
-    });
+    return this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary");
   }
 
   async syntheticChecks(filter = {}) {
@@ -275,13 +272,13 @@ class AdminService {
 
   async synchronizeIdentityLinkInventory(context) {
     const access = await this.requireLinkIntegrityAccess(context, "link_inventory_sync");
-    if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.identityAdminToken) {
+    if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.internalApiSigningKey) {
       throw new AdminToolError("identity_link_inventory_unavailable", "Die interne Identity-Verbindung ist nicht konfiguriert.", 503);
     }
     const inventory = await this.httpJson(
       this.serviceClients.identityBaseUrl,
       "/api/internal/link-integrity/inventory",
-      { headers: { "x-gernetix-admin-token": this.serviceClients.identityAdminToken } },
+      { headers: this.identityInternalHeaders("identity.link_integrity.read") },
     );
     const result = await this.registerLinkInventory(inventory);
     return { access, source_service: inventory.source_service, ...result };
@@ -707,13 +704,18 @@ class AdminService {
     return access;
   }
 
+  identityInternalHeaders(scope) {
+    const token = issueInternalToken({ iss: "admin-tool", sub: "admin-tool", aud: "identity-server", scopes: [scope] }, this.serviceClients?.internalApiSigningKey || "");
+    return { Authorization: `Bearer ${token}` };
+  }
+
   async identityEmailConfigRequest(pathname, options = {}) {
-    if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.identityAdminToken) {
+    if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.internalApiSigningKey) {
       throw new AdminToolError("identity_email_configuration_unavailable", "Die interne Identity-Admin-Verbindung ist noch nicht konfiguriert.", 503);
     }
     return this.httpJson(this.serviceClients.identityBaseUrl, pathname, {
       ...options,
-      headers: { "x-gernetix-admin-token": this.serviceClients.identityAdminToken },
+      headers: this.identityInternalHeaders(pathname.endsWith("/test") ? "identity.email.test" : options.method === "PUT" ? "identity.email.write" : "identity.email.read"),
     });
   }
 
@@ -889,7 +891,7 @@ class AdminService {
   }
 
   async communityAdminRequest(pathname, context, options = {}) {
-    if (!this.serviceClients?.communityPlatformBaseUrl || !this.serviceClients.communityAdminToken) {
+    if (!this.serviceClients?.communityPlatformBaseUrl || !this.serviceClients.internalApiSigningKey) {
       throw new AdminToolError("community_admin_connection_unavailable", "Die getrennte Community-Admin-Verbindung ist noch nicht konfiguriert.", 503);
     }
     const actor = {
@@ -897,12 +899,16 @@ class AdminService {
       role: context.actor.role,
       capabilities: context.actor.capabilities || [],
     };
+    const common = { iss: "admin-tool", sub: "admin-tool", aud: "community-platform", scopes: ["community.admin"] };
     return this.httpJson(this.serviceClients.communityPlatformBaseUrl, pathname, {
       ...options,
       headers: {
         ...(options.headers || {}),
-        "x-gernetix-community-admin-token": this.serviceClients.communityAdminToken,
-        "x-gernetix-community-admin-actor": Buffer.from(JSON.stringify(actor)).toString("base64url"),
+        "x-gernetix-admin-delegation": issueInternalToken({
+          ...common,
+          kind: "delegated_admin_action",
+          context: { account_id: actor.actor_id, role: actor.role, capabilities: actor.capabilities },
+        }, this.serviceClients.internalApiSigningKey),
       },
     });
   }
@@ -1151,7 +1157,11 @@ class AdminService {
   async httpJson(baseUrl, pathname, options = {}) {
     const response = await this.fetchImpl(`${baseUrl}${pathname}`, {
       method: options.method || "GET",
-      headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) },
+      headers: {
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(options.headers || {}),
+        ...this.internalApiAuthorization(baseUrl),
+      },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
     const payload = await response.json().catch(() => ({}));
@@ -1159,6 +1169,47 @@ class AdminService {
       throw new AdminToolError(payload.error || "remote_service_error", payload.message || "Remote Service Fehler.", response.status, payload.details || {});
     }
     return payload;
+  }
+
+  internalApiAuthorization(baseUrl) {
+    const clients = this.serviceClients || {};
+    const signingKey = String(clients.internalApiSigningKey || "");
+    if (!signingKey) return {};
+    const target = String(baseUrl || "").replace(/\/$/, "");
+    const projectServer = String(clients.projectServerBaseUrl || "").replace(/\/$/, "");
+    const aiUsage = String(clients.aiUsageBaseUrl || "").replace(/\/$/, "");
+    const aiContext = String(clients.aiContextBaseUrl || "").replace(/\/$/, "");
+    const buildDeploy = String(clients.buildDeployBaseUrl || "").replace(/\/$/, "");
+    const deviceManagement = String(clients.deviceManagementBaseUrl || "").replace(/\/$/, "");
+    const communityPlatform = String(clients.communityPlatformBaseUrl || "").replace(/\/$/, "");
+    let audience = "";
+    let scopes = [];
+    if (target && target === projectServer) {
+      audience = "project-server";
+      scopes = ["project.admin"];
+    } else if (target && target === aiUsage) {
+      audience = "ai-usage-server";
+      scopes = ["ai.usage.admin"];
+    } else if (target && target === aiContext) {
+      audience = "ai-context-server";
+      // The Admin Tool reads both administrative and shared prompt data.
+      scopes = ["ai.context.admin", "ai.context.read"];
+    } else if (target && target === buildDeploy) {
+      audience = "build-deploy-server";
+      scopes = ["build.policy.read"];
+    } else if (target && target === deviceManagement) {
+      audience = "device-management-server";
+      scopes = ["device.admin.read"];
+    } else if (target && target === communityPlatform) {
+      audience = "community-platform";
+      scopes = ["community.admin", "community.operations.read"];
+    }
+    if (!audience) return {};
+    return {
+      Authorization: `Bearer ${issueInternalToken({
+        iss: "admin-tool", sub: "admin-tool", aud: audience, scopes,
+      }, signingKey)}`,
+    };
   }
 }
 
@@ -1301,8 +1352,10 @@ function monitoringTargets(serviceClients = {}) {
     monitoringTarget("recovery", "Recovery Tool", clients.recoveryBaseUrl),
     monitoringTarget("community_platform", "Community Platform", clients.communityPlatformBaseUrl, {
       detailsPath: "/api/community/operations-summary",
-      requestHeaders: clients.communityInternalToken
-        ? { "X-GerNetiX-Community-Token": clients.communityInternalToken }
+      requestHeaders: clients.internalApiSigningKey
+        ? { Authorization: `Bearer ${issueInternalToken({
+          iss: "admin-tool", sub: "admin-tool", aud: "community-platform", scopes: ["community.operations.read"],
+        }, clients.internalApiSigningKey)}` }
         : {},
     }),
     monitoringTarget("community_ai", "Community AI", clients.communityAiBaseUrl),

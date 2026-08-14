@@ -10,7 +10,7 @@ start().catch((error) => {
 
 async function start() {
   const service = await createDefaultPublicDemoService(config);
-  const app = createHttpApp({ service, publisherToken: config.publisherToken });
+  const app = createHttpApp({ service, internalApiSigningKey: config.internalApiSigningKey });
   const server = http.createServer((req, res) => {
     app(req, res).catch((error) => sendJson(res, error.status || 500, {
       error: error.code || "internal_server_error",

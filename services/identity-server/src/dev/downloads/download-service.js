@@ -35,6 +35,10 @@ async function handleDevLessonPreviewMigration(req, res) {
   try {
     await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}`, {
       method: "PATCH",
+      internalAuth: {
+        scopes: ["project.write"],
+        delegation: { project_ids: [projectId], role: "admin", capabilities: ["admin_learning_content"] },
+      },
       body: {
         view_manifest: normalizedManifest,
         build_config: null,
@@ -190,4 +194,3 @@ async function serveUsbSerialHelperDownload(res, filename) {
 }
 
 module.exports = { createDownloadService };
-

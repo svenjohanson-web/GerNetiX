@@ -51,3 +51,28 @@ test("authored sqlite graph artifacts survive yaml bootstrap import", () => {
   assert.equal(relation.origin, "graph_authoring");
   assert.ok(authored.properties_json.includes("YAML ist nicht"));
 });
+
+test("authored artifacts replace their legacy bootstrap projection", () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-graph-overlay-")), "model-graph.sqlite");
+  const db = openAuthoringDatabase(dbPath);
+  upsertAuthoredArtifact(db, {
+    id: "vision.gernetix",
+    type: "vision",
+    title: "Canonical authored vision",
+    status: "approved",
+    ownerDomain: "Business",
+    summary: "Authoritative graph record.",
+  });
+  db.close();
+
+  importGraph(dbPath);
+  const imported = new DatabaseSync(dbPath);
+  const artifact = imported.prepare("SELECT title,is_duplicate,source_file FROM artifacts WHERE id=?").get("vision.gernetix");
+  const duplicate = imported.prepare("SELECT 1 FROM validation_errors WHERE code='duplicate_artifact_id' AND artifact_id=?").get("vision.gernetix");
+  imported.close();
+
+  assert.equal(artifact.title, "Canonical authored vision");
+  assert.equal(artifact.is_duplicate, 0);
+  assert.equal(artifact.source_file, "sqlite://graph_authored_artifacts");
+  assert.equal(duplicate, undefined);
+});

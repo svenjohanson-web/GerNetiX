@@ -2,9 +2,10 @@ const http = require("node:http");
 const { createConfig, createDefaultContextManager, createHttpApp } = require("./index");
 const { sendJson } = require("./http-app");
 
+async function start() {
 const config = createConfig();
-const service = createDefaultContextManager(config);
-const app = createHttpApp({ service });
+const service = await createDefaultContextManager(config);
+const app = createHttpApp({ service, internalApiSigningKey: config.internalApiSigningKey });
 
 const server = http.createServer((req, res) => {
   app(req, res).catch((error) => {
@@ -20,4 +21,10 @@ server.listen(config.port, config.host, () => {
   console.log(`Context Manager: http://${config.host}:${config.port}`);
   console.log(`HMI: http://${config.host}:${config.port}/context-manager/`);
   console.log("API prefix: /api/context");
+});
+}
+
+start().catch((error) => {
+  console.error(error?.message || error);
+  process.exitCode = 1;
 });

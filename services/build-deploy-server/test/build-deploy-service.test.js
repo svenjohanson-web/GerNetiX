@@ -84,6 +84,8 @@ test("standard build publishes only flashable artifacts while debug remains expl
   } finally {
     service.artifactRetentionScheduler?.close();
     service.artifactStore.close();
+    service.stateStore?.close();
+    service.deployOrchestrator.acknowledgementStore?.close?.();
     await fs.rm(runtimeDir, { recursive: true, force: true });
   }
 });
@@ -226,11 +228,10 @@ test("build job can return avr hex firmware as primary artifact", async () => {
 
 test("build job persists a certificate-authenticated FlashBox delivery for one helper", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-deploy-"));
-  const service = createDefaultBuildDeployService(createConfig({
-    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
-    BUILD_RUNNER: "mock",
-    NODE_ENV: "test",
-  }));
+  const service = createDefaultBuildDeployService({
+    ...createConfig({ BUILD_DEPLOY_RUNTIME_DIR: runtimeDir, BUILD_RUNNER: "mock", NODE_ENV: "test" }),
+    internalApiSigningKey: "build-service-flashbox-test-key",
+  });
   const published = [];
   service.deployOrchestrator.publicBaseUrl = "https://build.gernetix.com";
   service.deployOrchestrator.mqttPublisher = { publish: async (...args) => published.push(args) };
@@ -431,7 +432,7 @@ test("concurrent builds of the same software target are executed exclusively", a
   assert.equal(service.getJob("exclusive-1").status, "succeeded");
   assert.equal(service.getJob("exclusive-2").status, "succeeded");
   assert.equal(buildDirs.get("exclusive-1"), buildDirs.get("exclusive-2"));
-  assert.match(buildDirs.get("exclusive-1"), /workspace\/.pio\/build$/);
+  assert.match(buildDirs.get("exclusive-1"), /workspace[\\/][.]pio[\\/]build$/);
   assert.equal(await fs.access(buildDirs.get("exclusive-1")).then(() => true).catch(() => false), true);
 });
 

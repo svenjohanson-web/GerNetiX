@@ -14,7 +14,7 @@ start().catch((error) => {
 
 async function start() {
   const service = await createDefaultAiContextServer(config);
-  const app = createHttpApp({ service });
+  const app = createHttpApp({ service, internalApiSigningKey: config.internalApiSigningKey });
 
   const server = http.createServer(app);
 

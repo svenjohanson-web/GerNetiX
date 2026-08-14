@@ -21,6 +21,7 @@ test("seed uses real service routes and is idempotent", async () => {
     identityBaseUrl: "http://127.0.0.1:14300",
     projectBaseUrl: "http://localhost:14800",
     deviceBaseUrl: "http://[::1]:14700",
+    internalApiSigningKey: "system-test-seed-signing-key",
     writeConfirmed: true,
   });
 
@@ -69,10 +70,14 @@ function createFakeFetch(state) {
       return json(201, { account });
     }
     if (options.method === "GET" && url.pathname.startsWith("/api/projects/")) {
+      assert.match(options.headers.Authorization, /^Bearer /);
+      assert.ok(options.headers["X-GerNetiX-Project-Delegation"]);
       const id = decodeURIComponent(url.pathname.slice("/api/projects/".length));
       return state.projects.has(id) ? json(200, state.projects.get(id)) : json(404, { error: "project_not_found" });
     }
     if (call === "POST /api/projects") {
+      assert.match(options.headers.Authorization, /^Bearer /);
+      assert.ok(options.headers["X-GerNetiX-Project-Delegation"]);
       state.projects.set(body.project_id, body);
       state.writes += 1;
       return json(201, body);

@@ -16,7 +16,8 @@ Das Admin Tool benoetigt die bereits vorhandenen internen Service-URLs sowie:
 |---|---|
 | `OPERATIONS_POSTGRES_*` oder `OPERATIONS_POSTGRES_URL` | Fuehrende Operations-Persistenz |
 | `ADMIN_TOOL_BASE_URL` | Scheduler-Ziel, intern normalerweise Port 4600 |
-| `SYSTEM_EVENT_INGEST_TOKEN` | Schutz fuer Action-Ingest und synthetischen Scheduler-Start |
+| `INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON` | Oeffentlicher Trust Ring fuer die Verifikation interner Tokens |
+| `INTERNAL_API_SIGNING_KEY_ID` / `INTERNAL_API_SIGNING_PRIVATE_KEY_B64` | Eigene Ed25519-Dienstidentitaet des Admin Tools; der private Key bleibt nur bei diesem Dienst |
 | `IDENTITY_BASE_URL` | Login-HTML-Pruefung |
 | `PROJECT_SERVER_BASE_URL` | Project-Server-Pruefung |
 | `BUILD_DEPLOY_BASE_URL` | Build-Koordinationspruefung |
@@ -73,8 +74,8 @@ Ein Staging-Schritt erfolgt nur nach ausdruecklichem Auftrag.
 1. `docs/codex-staging-deployment.md` lesen.
 2. `node tools/staging-deploy.js --plan` ausfuehren und Modus, Dienste und
    Grund bestaetigen.
-3. Sicherstellen, dass alle oben genannten URLs im internen Docker-Netz und
-   `SYSTEM_EVENT_INGEST_TOKEN` als Secret gesetzt sind.
+3. Sicherstellen, dass alle oben genannten URLs im internen Docker-Netz, der
+   oeffentliche Trust Ring und der eigene private Admin-Tool-Key gesetzt sind.
 4. Den bereits gepushten, sauberen Stand genau einmal mit
    `node tools/staging-deploy.js` ausrollen.
 5. Admin- und Access-Health sowie die vier Ziel-Health-/Read-only-Pfade pruefen.
@@ -90,8 +91,8 @@ Ein Staging-Schritt erfolgt nur nach ausdruecklichem Auftrag.
 ## 5. Periodischer Staging-Betrieb
 
 Nach erfolgreicher manueller Abnahme wird der Scheduler ausserhalb des Admin
-Tools alle fuenf Minuten gestartet. Der Scheduler besitzt nur
-`SYSTEM_EVENT_INGEST_TOKEN`, keinen Admin-Login und keinen direkten
+Tools alle fuenf Minuten gestartet. Der Scheduler stellt nur einen
+kurzlebigen Token mit `operations.synthetic_checks.run` aus, besitzt keinen Admin-Login und keinen direkten
 PostgreSQL-Zugang. Gleichzeitige Laeufe werden zunaechst organisatorisch durch
 die Scheduler-Konfiguration verhindert.
 

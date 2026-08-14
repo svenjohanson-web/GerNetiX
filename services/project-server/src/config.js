@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { createSystemRepositoryCatalog } = require("./system-repository-catalog");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -20,7 +21,7 @@ function createConfig(env = process.env) {
     sqlitePath,
     repositoryStoreBackend: env.PROJECT_REPOSITORY_STORE || "sql",
     requireForgejoForNewProjects: env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS === "true",
-    adminReadToken: env.PROJECT_ADMIN_READ_TOKEN || "",
+    internalAuthSecret: readOptionalInternalApiAuthConfig(env, "project-server"),
     systemRepositories: createSystemRepositoryCatalog(env),
     forgejo: {
       baseUrl: env.FORGEJO_INTERNAL_URL || "",

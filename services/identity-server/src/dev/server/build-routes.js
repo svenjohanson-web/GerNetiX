@@ -44,6 +44,7 @@ function registerBuildRoutes({
       if (!project) { sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." }); return; }
       const result = await buildDeployJson("/api/build-cache/clean", {
         method: "POST",
+        ...projectAccess(session, [project], "build.cache.clean"),
         body: { project_id: project.project_server_id },
       });
       sendJson(res, 200, result);
@@ -56,12 +57,15 @@ function registerBuildRoutes({
       const session = await requireSession(req, res);
       if (!session) return;
       const jobId = decodeURIComponent(match[1]);
-      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-      if (!projectJob || projectJob.user_id !== projectServerUserId(session)) {
+      const projectJob = await loadOwnedBuildJob(session, jobId);
+      if (!projectJob) {
         sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." });
         return;
       }
-      const result = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}/cancel`, { method: "POST" });
+      const result = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}/cancel`, {
+        method: "POST",
+        ...projectAccess(session, [{ project_server_id: projectJob.project_id }], "build.job.cancel"),
+      });
       sendJson(res, 202, result);
     },
   });
@@ -73,8 +77,8 @@ function registerBuildRoutes({
       if (!session) return;
       const jobId = decodeURIComponent(match[1]);
       const body = await readJsonBody(req);
-      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-      if (!projectJob || projectJob.user_id !== projectServerUserId(session)) {
+      const projectJob = await loadOwnedBuildJob(session, jobId);
+      if (!projectJob) {
         sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." });
         return;
       }
@@ -86,7 +90,7 @@ function registerBuildRoutes({
         sendJson(res, 409, { error: "build_profile_mismatch", message: "Der vorhandene Build besitzt ein anderes Buildprofil." });
         return;
       }
-      const reuse = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/reuse-status`);
+      const reuse = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/reuse-status`, projectAccess(session, await loadUserIdeProjects(session)));
       if (!reuse.reusable) {
         sendJson(res, 409, {
           error: "build_not_reusable",
@@ -124,12 +128,15 @@ function registerBuildRoutes({
     method: "POST",
     pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/,
     async handler({ req, res, match }) {
-      if (!await requireSession(req, res)) return;
+      const session = await requireSession(req, res);
+      if (!session) return;
       const jobId = decodeURIComponent(match[1]);
       const body = await readJsonBody(req);
-      const existing = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+      const existing = await loadOwnedBuildJob(session, jobId);
+      if (!existing) { sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." }); return; }
       const updated = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
         method: "POST",
+        ...projectAccess(session, await loadUserIdeProjects(session), "project.write"),
         body: {
           status: body.status === "succeeded" ? "succeeded" : "failed",
           build: {
@@ -155,13 +162,18 @@ function registerBuildRoutes({
     method: "GET",
     pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/status$/,
     async handler({ req, res, match }) {
-      if (!await requireSession(req, res)) return;
+      const session = await requireSession(req, res);
+      if (!session) return;
       const jobId = decodeURIComponent(match[1]);
       const actionContext = readUserActionContext(req, "project.build.start");
       const actionOptions = actionContext ? { headers: actionContext.headers } : {};
-      const job = await loadBuildDeployJob(jobId, actionOptions);
-      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`, actionOptions).catch(() => null);
-      if (["succeeded", "failed", "cancelled"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
+      const projects = await loadUserIdeProjects(session);
+      const securedActionOptions = { ...actionOptions, ...projectAccess(session, projects) };
+      const job = await loadBuildDeployJob(jobId, securedActionOptions);
+      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`, securedActionOptions).catch(() => null);
+      const project = projects.find((item) => item.project_server_id === projectJob?.project_id);
+      if (!projectJob || !project || projectJob.user_id !== projectServerUserId(session)) { sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." }); return; }
+      if (["succeeded", "failed", "cancelled"].includes(job.status)) await recordCompletedBuildJob(jobId, job, project, session);
       sendJson(res, 200, {
         build_job_id: jobId,
         build_deploy_job_id: jobId,
@@ -190,8 +202,8 @@ function registerBuildRoutes({
       if (!session) return;
       const jobId = decodeURIComponent(match[1]);
       const body = await readJsonBody(req);
-      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-      if (!projectJob || projectJob.user_id !== projectServerUserId(session)) {
+      const projectJob = await loadOwnedBuildJob(session, jobId);
+      if (!projectJob) {
         sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." });
         return;
       }
@@ -206,6 +218,7 @@ function registerBuildRoutes({
       }
       const result = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}/symbolize`, {
         method: "POST",
+        ...projectAccess(session, [{ project_server_id: projectJob.project_id }], "build.job.symbolize"),
         body: { build_id: body.build_id, addresses: body.addresses },
       });
       sendJson(res, 200, {
@@ -221,8 +234,8 @@ function registerBuildRoutes({
       const session = await requireSession(req, res);
       if (!session) return;
       const jobId = decodeURIComponent(match[1]);
-      const job = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-      if (!job || job.user_id !== projectServerUserId(session)) {
+      const job = await loadOwnedBuildJob(session, jobId);
+      if (!job) {
         sendJson(res, 404, { error: "build_artifact_not_found" });
         return;
       }
@@ -232,9 +245,32 @@ function registerBuildRoutes({
         sendJson(res, 404, { error: "build_artifact_not_found" });
         return;
       }
-      await proxyBuildArtifact(res, jobId, fileName);
+      await proxyBuildArtifact(res, jobId, fileName, {
+        account_id: projectServerUserId(session),
+        project_ids: [job.project_id],
+        entitlements: [],
+      });
     },
   });
+
+  async function loadOwnedBuildJob(session, jobId) {
+    const projects = await loadUserIdeProjects(session);
+    const job = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`, projectAccess(session, projects)).catch(() => null);
+    const ownProject = projects.find((item) => item.project_server_id === job?.project_id);
+    return job && ownProject && job.user_id === projectServerUserId(session) ? job : null;
+  }
+
+  function projectAccess(session, projects, scope = "project.read") {
+    return {
+      internalAuth: {
+        scopes: [scope],
+        delegation: {
+          account_id: projectServerUserId(session),
+          project_ids: (projects || []).map((project) => String(project.project_server_id)).filter(Boolean),
+        },
+      },
+    };
+  }
 }
 
 function buildArtifactList(jobId, artifacts) {

@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -14,6 +15,7 @@ function createConfig(env = process.env) {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 4700),
     publicBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "device-management-server"),
     persistenceBackend: env.PERSISTENCE_BACKEND || env.DEVICE_MANAGEMENT_PERSISTENCE_BACKEND || "postgres",
     runtimeRoot,
     sqlitePath,

@@ -1,13 +1,14 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createSystemEventReporter } = require("../src/services/system-event-reporter");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 
 test("reports identity events through the token-protected internal Admin Tool endpoint", async () => {
   const requests = [];
   const warnings = [];
   const report = createSystemEventReporter({
     baseUrl: "http://admin-tool:4600/",
-    ingestToken: "event-ingest-token",
+    internalApiSigningKey: "event-signing-key",
     logger: { warn(value) { warnings.push(value); } },
     async fetchImpl(url, options) {
       requests.push({ url, options });
@@ -25,7 +26,7 @@ test("reports identity events through the token-protected internal Admin Tool en
 
   assert.equal(delivered, true);
   assert.equal(requests[0].url, "http://admin-tool:4600/api/internal/system-events");
-  assert.equal(requests[0].options.headers["X-GerNetiX-System-Event-Token"], "event-ingest-token");
+  verifyInternalToken(requests[0].options.headers.Authorization.replace(/^Bearer\s+/, ""), "event-signing-key", { audience: "admin-tool", requiredScopes: ["operations.system_events.write"] });
   const body = JSON.parse(requests[0].options.body);
   assert.equal(body.event_type, "passkey_login_failed");
   assert.equal(body.details.error_code, "bad_signature");
@@ -37,7 +38,7 @@ test("keeps login failure handling available when Admin Tool delivery fails", as
   const warnings = [];
   const report = createSystemEventReporter({
     baseUrl: "http://admin-tool:4600",
-    ingestToken: "event-ingest-token",
+    internalApiSigningKey: "event-signing-key",
     logger: { warn(value) { warnings.push(String(value)); } },
     async fetchImpl() { throw new Error("connect ECONNREFUSED"); },
   });

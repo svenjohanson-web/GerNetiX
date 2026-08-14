@@ -401,9 +401,14 @@ function activateTab(name) {
 }
 
 async function requestJson(url, options = {}) {
+  const method = options.method || "GET";
+  const csrf = readCookie("gernetix_admin_csrf");
   const response = await fetch(url, {
-    method: options.method || "GET",
-    headers: options.body ? { "Content-Type": "application/json" } : undefined,
+    method,
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(!["GET", "HEAD"].includes(method) && csrf ? { "X-GerNetiX-CSRF": csrf } : {}),
+    },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const payload = await response.json();
@@ -411,6 +416,12 @@ async function requestJson(url, options = {}) {
     throw new Error(payload.message || payload.error || `HTTP ${response.status}`);
   }
   return payload;
+}
+
+function readCookie(name) {
+  const prefix = `${encodeURIComponent(name)}=`;
+  const entry = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(prefix));
+  return entry ? decodeURIComponent(entry.slice(prefix.length)) : "";
 }
 
 async function runAction(action) {

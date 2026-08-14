@@ -25,6 +25,7 @@ COPY --chown=node:node services/admin-access-server/package.json services/admin-
 COPY --chown=node:node services/build-deploy-server/package.json services/build-deploy-server/package-lock.json ./services/build-deploy-server/
 COPY --chown=node:node services/compute-control-plane/package.json services/compute-control-plane/package-lock.json ./services/compute-control-plane/
 COPY --chown=node:node services/public-demo-server/package.json services/public-demo-server/package-lock.json ./services/public-demo-server/
+COPY --chown=node:node services/context-manager/package.json services/context-manager/package-lock.json ./services/context-manager/
 
 RUN npm ci --omit=dev --prefix services/ai-context-server
 RUN npm ci --omit=dev --prefix services/identity-server
@@ -41,8 +42,10 @@ RUN npm ci --omit=dev --prefix services/admin-access-server
 RUN npm ci --omit=dev --prefix services/build-deploy-server
 RUN npm ci --omit=dev --prefix services/compute-control-plane
 RUN npm ci --omit=dev --prefix services/public-demo-server
+RUN npm ci --omit=dev --prefix services/context-manager
 
 COPY --chown=node:node services ./services
+COPY --chown=node:node docs/system-process-application-uml.md docs/system-process-application-uml.svg ./docs/
 COPY --chown=node:node modules/virtual-electronics-lab ./modules/virtual-electronics-lab
 COPY --chown=node:node firmware/shared/gernetix-runtime-core ./firmware/shared/gernetix-runtime-core
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js

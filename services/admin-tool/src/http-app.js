@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { AdminToolError } = require("./errors");
+const { createInMemoryReplayGuard, readBearerToken, verifyInternalToken } = require("../../shared/internal-api-auth");
 const componentMetamodel = require("../../identity-server/public/app/development-component-metamodel");
 
 const publicDir = path.join(__dirname, "..", "public");
@@ -8,6 +9,7 @@ const operatorShellDir = path.join(__dirname, "..", "..", "shared", "public");
 
 function createHttpApp(options) {
   const service = options.service;
+  const internalReplayGuard = createInMemoryReplayGuard();
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -33,8 +35,8 @@ function createHttpApp(options) {
     }
 
     if (url.pathname.startsWith("/api/admin/")) {
-      const actor = trustedAdminActor(req, service);
-      if (service.serviceClients?.adminToolAccessToken && !actor) {
+      const actor = trustedAdminActor(req, service, internalReplayGuard);
+      if (service.serviceClients?.requireInternalAuth && !actor) {
         sendJson(res, 403, { error: "admin_access_denied" });
         return;
       }
@@ -264,33 +266,25 @@ function createHttpApp(options) {
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/security-events") {
-      if (!service.serviceClients?.securityMonitorToken || req.headers["x-gernetix-security-monitor-token"] !== service.serviceClients.securityMonitorToken) {
-        sendJson(res, 403, { error: "security_monitor_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.security_events.write", internalReplayGuard);
       sendJson(res, 202, await service.recordSecurityEvent(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/system-events") {
-      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
-        sendJson(res, 403, { error: "system_event_ingest_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.system_events.write", internalReplayGuard);
       sendJson(res, 201, { event: await service.recordSystemEvent(await readJsonBody(req)) });
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/user-action-events") {
-      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
-        sendJson(res, 403, { error: "user_action_ingest_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.user_actions.write", internalReplayGuard);
       sendJson(res, 201, { event: await service.recordUserActionEvent(await readJsonBody(req)) });
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/synthetic-checks/run") {
-      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
-        sendJson(res, 403, { error: "synthetic_check_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.synthetic_checks.run", internalReplayGuard);
       const body = await readJsonBody(req);
       sendJson(res, 200, await service.runSyntheticChecks(body, {
         actor: { actor_id: "synthetic-monitor", role: "system", capabilities: [] },
@@ -299,25 +293,19 @@ function createHttpApp(options) {
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/interface-calls") {
-      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
-        sendJson(res, 403, { error: "interface_call_ingest_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.interface_calls.write", internalReplayGuard);
       sendJson(res, 202, await service.recordInterfaceCall(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/link-integrity/inventory") {
-      if (!service.serviceClients?.linkIntegrityIngestToken || req.headers["x-gernetix-link-integrity-token"] !== service.serviceClients.linkIntegrityIngestToken) {
-        sendJson(res, 403, { error: "link_integrity_ingest_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.link_integrity.write", internalReplayGuard);
       sendJson(res, 202, await service.registerLinkInventory(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/link-integrity/checks") {
-      if (!service.serviceClients?.linkIntegrityIngestToken || req.headers["x-gernetix-link-integrity-token"] !== service.serviceClients.linkIntegrityIngestToken) {
-        sendJson(res, 403, { error: "link_integrity_ingest_access_denied" }); return;
-      }
+      requireOperationsScope(req, service, "operations.link_integrity.write", internalReplayGuard);
       sendJson(res, 202, await service.recordLinkChecks(await readJsonBody(req)));
       return;
     }
@@ -445,13 +433,21 @@ function readContext(url, body = {}, req = null) {
   };
 }
 
-function trustedAdminActor(req, service) {
-  if (!service.serviceClients?.adminToolAccessToken) return null;
-  if (req.headers["x-gernetix-admin-access-token"] !== service.serviceClients.adminToolAccessToken) return null;
+function requireOperationsScope(req, service, scope, replayGuard) {
+  return verifyInternalToken(readBearerToken(req), service.serviceClients?.internalApiSigningKey || "", {
+    audience: "admin-tool",
+    requiredScopes: [scope],
+    replayGuard,
+  });
+}
+
+function trustedAdminActor(req, service, replayGuard) {
   try {
-    const actor = JSON.parse(Buffer.from(String(req.headers["x-gernetix-admin-actor"] || ""), "base64url").toString("utf8"));
-    if (!actor?.actor_id || !actor?.role || !Array.isArray(actor.capabilities)) return null;
-    return { actor_id: String(actor.actor_id), role: String(actor.role), capabilities: actor.capabilities.map(String) };
+    const secret = service.serviceClients?.internalApiSigningKey || "";
+    verifyInternalToken(readBearerToken(req), secret, { audience: "admin-tool", requiredScopes: ["admin.gateway.proxy"], replayGuard });
+    const claims = verifyInternalToken(req.headers["x-gernetix-admin-delegation"], secret, { audience: "admin-tool", requiredScopes: ["admin.gateway.proxy"], replayGuard });
+    if (claims.kind !== "delegated_admin_action" || !claims.sub || !claims.context?.role) return null;
+    return { actor_id: claims.sub, role: claims.context.role, capabilities: claims.context.capabilities || [] };
   } catch {
     return null;
   }

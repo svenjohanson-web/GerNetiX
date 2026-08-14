@@ -1,6 +1,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { RecoveryToolError } = require("./errors");
+const {
+  assertDelegatedResource,
+  readBearerToken,
+  verifyDelegation,
+  verifyInternalToken,
+} = require("../../shared/internal-api-auth");
 
 const prefix = "/api/recovery";
 const publicDir = path.join(__dirname, "..", "public");
@@ -12,6 +18,7 @@ const contentTypes = {
 
 function createHttpApp(options) {
   const service = options.service;
+  const signingKey = options.internalApiSigningKey || "";
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -23,23 +30,28 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && path === `${prefix}/sessions`) {
-      sendJson(res, 200, service.listSessions(Object.fromEntries(url.searchParams.entries())));
+      const delegation = authorize(req, signingKey, "recovery.session.read");
+      sendJson(res, 200, service.listSessions({ ...Object.fromEntries(url.searchParams.entries()), account_id: delegation.context.account_id }));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/sessions`) {
-      sendJson(res, 201, service.createSession(await readJsonBody(req)));
+      const delegation = authorize(req, signingKey, "recovery.session.write");
+      sendJson(res, 201, service.createSession(withDelegatedAccount(await readJsonBody(req), delegation)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/hardware-lab/sessions`) {
-      sendJson(res, 201, service.createHardwareLabSession(await readJsonBody(req)));
+      const delegation = authorize(req, signingKey, "hardware_lab.write", "ai_assistant");
+      sendJson(res, 201, service.createHardwareLabSession(withDelegatedAccount(await readJsonBody(req), delegation)));
       return;
     }
 
     const hardwareLabActionMatch = path.match(new RegExp(`^${prefix}/hardware-lab/sessions/([^/]+)/(analyze-sources|discovery-firmware-build|discovery-firmware-build-status|discovery-firmware-build-result|examination-report|gernetix-verification-request)$`));
     if (req.method === "POST" && hardwareLabActionMatch) {
       const sessionId = decodeURIComponent(hardwareLabActionMatch[1]);
+      const delegation = authorize(req, signingKey, "hardware_lab.write", "ai_assistant");
+      assertOwnedSession(service, sessionId, delegation);
       const body = await readJsonBody(req);
       const actions = {
         "analyze-sources": () => service.analyzeHardwareLabSources(sessionId, body),
@@ -55,31 +67,45 @@ function createHttpApp(options) {
 
     const sessionMatch = path.match(new RegExp(`^${prefix}/sessions/([^/]+)$`));
     if (req.method === "GET" && sessionMatch) {
-      sendJson(res, 200, service.getSession(decodeURIComponent(sessionMatch[1])));
+      const sessionId = decodeURIComponent(sessionMatch[1]);
+      const delegation = authorize(req, signingKey, "recovery.session.read");
+      sendJson(res, 200, assertOwnedSession(service, sessionId, delegation));
       return;
     }
 
     const capabilitiesMatch = path.match(new RegExp(`^${prefix}/sessions/([^/]+)/capabilities$`));
     if (req.method === "POST" && capabilitiesMatch) {
-      sendJson(res, 200, service.answerCapabilities(decodeURIComponent(capabilitiesMatch[1]), await readJsonBody(req)));
+      const sessionId = decodeURIComponent(capabilitiesMatch[1]);
+      const delegation = authorize(req, signingKey, "recovery.session.write");
+      assertOwnedSession(service, sessionId, delegation);
+      sendJson(res, 200, service.answerCapabilities(sessionId, await readJsonBody(req)));
       return;
     }
 
     const registerMatch = path.match(new RegExp(`^${prefix}/sessions/([^/]+)/register-community-device$`));
     if (req.method === "POST" && registerMatch) {
-      sendJson(res, 200, await service.registerCommunityDevice(decodeURIComponent(registerMatch[1]), await readJsonBody(req)));
+      const sessionId = decodeURIComponent(registerMatch[1]);
+      const delegation = authorize(req, signingKey, "recovery.session.write");
+      assertOwnedSession(service, sessionId, delegation);
+      sendJson(res, 200, await service.registerCommunityDevice(sessionId, await readJsonBody(req)));
       return;
     }
 
     const credentialsMatch = path.match(new RegExp(`^${prefix}/sessions/([^/]+)/renew-credentials$`));
     if (req.method === "POST" && credentialsMatch) {
-      sendJson(res, 200, service.renewCredentials(decodeURIComponent(credentialsMatch[1]), await readJsonBody(req)));
+      const sessionId = decodeURIComponent(credentialsMatch[1]);
+      const delegation = authorize(req, signingKey, "recovery.credentials.write");
+      assertOwnedSession(service, sessionId, delegation);
+      sendJson(res, 200, service.renewCredentials(sessionId, await readJsonBody(req)));
       return;
     }
 
     const connectivityMatch = path.match(new RegExp(`^${prefix}/sessions/([^/]+)/connectivity-reset$`));
     if (req.method === "POST" && connectivityMatch) {
-      sendJson(res, 200, service.resetConnectivity(decodeURIComponent(connectivityMatch[1]), await readJsonBody(req)));
+      const sessionId = decodeURIComponent(connectivityMatch[1]);
+      const delegation = authorize(req, signingKey, "recovery.session.write");
+      assertOwnedSession(service, sessionId, delegation);
+      sendJson(res, 200, service.resetConnectivity(sessionId, await readJsonBody(req)));
       return;
     }
 
@@ -90,6 +116,25 @@ function createHttpApp(options) {
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function authorize(req, signingKey, scope, entitlement = "") {
+  verifyInternalToken(readBearerToken(req), signingKey, { audience: "recovery-tool", requiredScopes: [scope] });
+  const delegation = verifyDelegation(req.headers["x-gernetix-delegation"], signingKey, {
+    audience: "recovery-tool",
+    requiredScopes: [scope],
+  });
+  return assertDelegatedResource(delegation, { entitlement });
+}
+
+function assertOwnedSession(service, sessionId, delegation) {
+  const session = service.getSession(sessionId);
+  assertDelegatedResource(delegation, { accountId: session.account_id });
+  return session;
+}
+
+function withDelegatedAccount(body, delegation) {
+  return { ...(body || {}), account_id: delegation.context.account_id };
 }
 
 function readJsonBody(req) {

@@ -3,9 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const compose = fs.readFileSync(path.join(__dirname, "..", "compose.vps.yaml"), "utf8");
-const envExample = fs.readFileSync(path.join(__dirname, "..", ".env.vps.example"), "utf8");
-const remoteDeploy = fs.readFileSync(path.join(__dirname, "..", "scripts", "staging", "remote-deploy.sh"), "utf8");
+const normalized = (value) => value.replace(/\r\n/g, "\n");
+const compose = normalized(fs.readFileSync(path.join(__dirname, "..", "compose.vps.yaml"), "utf8"));
+const envExample = normalized(fs.readFileSync(path.join(__dirname, "..", ".env.vps.example"), "utf8"));
+const remoteDeploy = normalized(fs.readFileSync(path.join(__dirname, "..", "scripts", "staging", "remote-deploy.sh"), "utf8"));
 
 test("VPS compose runs exactly one PostgreSQL container", () => {
   const postgresImages = compose.match(/^\s+image:\s+(?:postgres|pgvector\/pgvector):[^\n]+$/gm) || [];
@@ -23,7 +24,6 @@ test("productive runtime services do not select SQLite persistence", () => {
   assert.match(compose, /postgres-consolidation-migration:/);
   assert.match(compose, /profiles: \["postgres-consolidation"\]/);
   assert.match(remoteDeploy, /run --rm --no-deps postgres-consolidation-migration/);
-  assert.match(remoteDeploy, /up -d --no-deps --force-recreate runtime-postgres/);
   assert.match(remoteDeploy, /up -d --remove-orphans/);
 });
 
@@ -51,7 +51,7 @@ test("Build workers coordinate jobs and target locks through central PostgreSQL"
 test("elastic workers use the Compute Gateway instead of PostgreSQL credentials", () => {
   assert.match(compose, /^  compute-control-plane:$/m);
   assert.match(compose, /COMPUTE_PERSISTENCE_BACKEND: postgres/);
-  assert.match(compose, /COMPUTE_INTERNAL_TOKEN: \$\{COMPUTE_INTERNAL_TOKEN:/);
+  assert.match(compose, /INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON: \$\{INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON:/);
   assert.match(compose, /COMPUTE_WORKER_BOOTSTRAP_TOKEN: \$\{COMPUTE_WORKER_BOOTSTRAP_TOKEN:/);
   assert.match(compose, /COMPUTE_WORKER_SIGNING_SECRET: \$\{COMPUTE_WORKER_SIGNING_SECRET:/);
   assert.match(compose, /COMPUTE_PROJECT_GRANT_SIGNING_SECRET: \$\{COMPUTE_PROJECT_GRANT_SIGNING_SECRET:/);
@@ -60,14 +60,15 @@ test("elastic workers use the Compute Gateway instead of PostgreSQL credentials"
   assert.doesNotMatch(compose, /COMPUTE_WORKER_POSTGRES_PASSWORD/);
 });
 
-test("Community administration uses a dedicated token instead of Identity operator accounts", () => {
-  assert.match(compose, /COMMUNITY_ADMIN_TOKEN: \$\{COMMUNITY_ADMIN_TOKEN:\?COMMUNITY_ADMIN_TOKEN muss gesetzt sein\}/);
+test("Community administration uses scoped signed service identities instead of operator accounts", () => {
+  assert.doesNotMatch(compose, /COMMUNITY_ADMIN_TOKEN|COMMUNITY_INTERNAL_TOKEN/);
+  assert.match(compose, /ADMIN_TOOL_INTERNAL_API_SIGNING_PRIVATE_KEY_B64/);
+  assert.match(compose, /ADMIN_ACCESS_INTERNAL_API_SIGNING_PRIVATE_KEY_B64/);
+  assert.doesNotMatch(compose, /^\s+INTERNAL_API_SIGNING_KEY:/m);
   assert.doesNotMatch(compose, /COMMUNITY_OPERATOR_USER_IDS:/);
 });
 
 test("link integrity uses a dedicated token only in Identity and Admin Tool", () => {
-  const assignments = compose.match(/^\s+LINK_INTEGRITY_INGEST_TOKEN:\s+.+$/gm) || [];
-  assert.equal(assignments.length, 2);
-  assert.ok(assignments.every((line) => line.includes("${LINK_INTEGRITY_INGEST_TOKEN:")));
-  assert.match(envExample, /^LINK_INTEGRITY_INGEST_TOKEN=replace-with-a-separate-long-random-secret$/m);
+  assert.doesNotMatch(compose, /LINK_INTEGRITY_INGEST_TOKEN|SYSTEM_EVENT_INGEST_TOKEN|SECURITY_MONITOR_TOKEN/);
+  assert.doesNotMatch(envExample, /LINK_INTEGRITY_INGEST_TOKEN|SYSTEM_EVENT_INGEST_TOKEN|SECURITY_MONITOR_TOKEN/);
 });

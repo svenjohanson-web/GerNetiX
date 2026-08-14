@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { DeployJobOrchestrator } = require("../src/modules/deploy-job-orchestrator");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
+const internalApiSigningKey = "deploy-orchestrator-internal-key";
 
 test("reports every missing OTA chain prerequisite before the build", () => {
   const result = new DeployJobOrchestrator().preflight();
@@ -22,21 +24,26 @@ test("signs, publishes and records an authorized OTA deploy", async () => {
     mqttPublisher: { publish: async (...args) => published.push(args) },
     authorizationSigner: { keyId: "ota-test-1", sign: async ({ canonical }) => `signed:${canonical.length}` },
     acknowledgementStore: { record: async (entry) => acknowledgements.push(entry) },
+    internalApiSigningKey,
   });
   assert.equal(orchestrator.preflight().ready, true);
   const result = await orchestrator.maybeCreateDeploy({
-    job_id: "job-123",
+    job_id: "job-123", account_id: "acct-1", project_id: "project-1",
     mode: "build_and_flash",
     device_id: "device_123",
     deploy: { requested: true, authorized: true, device_id: "device_123" },
   }, {
-    primary_firmware: { download_url: "https://build.example/firmware.bin", sha256: "abc", size_bytes: 123 },
+    primary_firmware: { file_name: "firmware.bin", download_url: "https://build.example/firmware.bin", sha256: "abc", size_bytes: 123 },
     artifacts: {},
   });
 
   assert.equal(result.status, "published");
   assert.equal(result.topic, "gernetix/devices/device_123/ota");
-  assert.equal(result.firmware_url, "https://build.example/firmware.bin");
+  const firmwareUrl = new URL(result.firmware_url);
+  assert.equal(`${firmwareUrl.origin}${firmwareUrl.pathname}`, "https://build.example/firmware.bin");
+  const grant = verifyInternalToken(firmwareUrl.searchParams.get("grant"), internalApiSigningKey, { audience: "build-deploy-server", requiredScopes: ["artifact.download"] });
+  assert.deepEqual(grant.context.job_ids, ["job-123"]);
+  assert.deepEqual(grant.context.artifact_names, ["firmware.bin"]);
   assert.equal(published.length, 1);
   assert.equal(published[0][2].qos, 1);
   assert.equal(published[0][2].retain, true);
@@ -56,10 +63,11 @@ test("uses the embedded ESP image digest for compatibility while retaining the a
     mqttPublisher: { publish: async (topic, payload) => published.push({ topic, command: JSON.parse(payload) }) },
     authorizationSigner: { sign: async () => "a".repeat(64) },
     acknowledgementStore: { record: async () => {}, get: () => null },
+    internalApiSigningKey,
   });
   const result = await orchestrator.maybeCreateDeploy(
-    { job_id: "job-compat", mode: "build_and_flash", device_id: "device-1", deploy: { requested: true, authorized: true, device_id: "device-1" } },
-    { primary_firmware: { download_url: "https://build.gernetix.com/artifacts/job-compat/firmware.bin", sha256: "b".repeat(64), esp_image_sha256: "c".repeat(64), size_bytes: 123 } },
+    { job_id: "job-compat", account_id: "acct-1", project_id: "project-1", mode: "build_and_flash", device_id: "device-1", deploy: { requested: true, authorized: true, device_id: "device-1" } },
+    { primary_firmware: { file_name: "firmware.bin", download_url: "https://build.gernetix.com/artifacts/job-compat/firmware.bin", sha256: "b".repeat(64), esp_image_sha256: "c".repeat(64), size_bytes: 123 } },
   );
   assert.equal(published[0].command.sha256, "c".repeat(64));
   assert.equal(result.firmware_sha256, "c".repeat(64));
@@ -72,10 +80,11 @@ test("signs and publishes a FlashBox job only to the selected helper topic", asy
     publicBaseUrl: "https://build.gernetix.com",
     mqttPublisher: { publish: async (...args) => published.push(args) },
     authorizationSigner: { keyId: "flashbox-test-1", sign: async ({ canonical }) => `signed:${canonical.length}` },
+    internalApiSigningKey,
   });
 
   const result = await orchestrator.maybeCreateFlashboxDelivery({
-    job_id: "job-flashbox-1",
+    job_id: "job-flashbox-1", account_id: "acct-1", project_id: "project-1",
     mode: "build",
     device_id: "target-esp32-1",
     flashbox: {
@@ -88,6 +97,7 @@ test("signs and publishes a FlashBox job only to the selected helper topic", asy
   }, {
     primary_firmware: {
       download_url: "/artifacts/job-flashbox-1/firmware.bin",
+      file_name: "firmware.bin",
       sha256: "a".repeat(64),
       esp_image_sha256: "b".repeat(64),
       size_bytes: 123,
@@ -105,7 +115,9 @@ test("signs and publishes a FlashBox job only to the selected helper topic", asy
   assert.equal(command.schema_version, "gernetix-flashbox-command-v1");
   assert.equal(command.flashbox_job_id, "flashbox_job-flashbox-1");
   assert.equal(command.target_device_id, "target-esp32-1");
-  assert.equal(command.firmware_url, "https://build.gernetix.com/artifacts/job-flashbox-1/firmware.bin");
+  const flashboxFirmwareUrl = new URL(command.firmware_url);
+  assert.equal(`${flashboxFirmwareUrl.origin}${flashboxFirmwareUrl.pathname}`, "https://build.gernetix.com/artifacts/job-flashbox-1/firmware.bin");
+  assert.ok(flashboxFirmwareUrl.searchParams.get("grant"));
   assert.equal(command.artifact_sha256, "a".repeat(64));
   assert.equal(command.firmware_sha256, "b".repeat(64));
 });

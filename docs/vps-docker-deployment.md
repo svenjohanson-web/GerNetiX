@@ -96,7 +96,16 @@ fordert dafuer das gemeinsame Zertifikat
 Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar
 bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
 
-Fuer persistente Identity-Systemereignisse muss in `.env.vps` ein eigener langer Zufallswert als `SYSTEM_EVENT_INGEST_TOKEN` gesetzt sein. Compose uebergibt denselben Wert ausschliesslich an Identity Server und Admin Tool. Das Linkinventar und die Prüfergebnisse verwenden davon getrennt `LINK_INTEGRITY_INGEST_TOKEN`; auch dieser Wert wird ausschließlich an Identity Server und Admin Tool übergeben.
+Interne Aufrufe verwenden dienstweise Ed25519-Schluessel. Jeder ausstellende
+Dienst erhaelt nur `INTERNAL_API_SIGNING_KEY_ID` und seinen eigenen
+`INTERNAL_API_SIGNING_PRIVATE_KEY_B64`; alle beteiligten Dienste erhalten den
+oeffentlichen `INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON`. Das Staging-Deployskript
+erzeugt den initialen Key-Satz mit `tools/internal-api-key-provisioner`
+ausserhalb des Repositories und bricht bei einer Teilkonfiguration ab. Bei
+Rotation bleiben alter und neuer Public Key waehrend eines begrenzten
+Uebergangs im Trust Ring; danach wird der alte `kid` entfernt. Private Keys
+werden nie serviceuebergreifend verteilt. Die frueheren statischen
+Operations-Ingest-Secrets werden nicht mehr in Compose verteilt.
 
 ```bash
 docker compose --env-file .env.vps -f compose.vps.yaml kill -s HUP mqtt-broker

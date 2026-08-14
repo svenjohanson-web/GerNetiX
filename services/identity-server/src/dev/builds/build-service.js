@@ -1,6 +1,8 @@
 "use strict";
 
-function createBuildService({ readJsonBody, readUserActionContext, sessionService, loadUserIdeProjects, loadUserIdeDevices, platformSoftwareUnits, resolveBuildConfig, touchscreenGameBuildConfigurationProblems, projectServerJson, renderPlatformioIni, sendJson, otaBuildDeployJson, buildWorkerPoolJson, buildDeployJson, toBuildDeployPackage, toProjectBuildResult, completeBrowserFlashDefinitions, usesGerNetixOtaAppLayout, esp32FirmwareAddress, customerArtifactList, buildDeployBaseUrl, otaBuildDeployBaseUrl, userIdeState, touchWorkspace }) {
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
+
+function createBuildService({ readJsonBody, readUserActionContext, sessionService, loadUserIdeProjects, loadUserIdeDevices, platformSoftwareUnits, resolveBuildConfig, touchscreenGameBuildConfigurationProblems, projectServerJson, projectServerUserId, renderPlatformioIni, sendJson, otaBuildDeployJson, buildWorkerPoolJson, buildDeployJson, toBuildDeployPackage, toProjectBuildResult, completeBrowserFlashDefinitions, usesGerNetixOtaAppLayout, esp32FirmwareAddress, customerArtifactList, buildDeployBaseUrl, otaBuildDeployBaseUrl, internalApiSigningKey, userIdeState, touchWorkspace }) {
 async function handleUserIdeBuildJob(req, res) {
   const body = await readJsonBody(req);
   const actionContext = readUserActionContext(req, "project.build.start");
@@ -39,7 +41,7 @@ async function handleUserIdeBuildJob(req, res) {
     const problems = touchscreenGameBuildConfigurationProblems(project, resolvedBuildConfig);
     const sourcePayload = problems.length
       ? { items: [] }
-      : await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
+      : await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, projectAccess(session, project));
     const sourceRoot = String(softwareUnit?.source_root || "").replace(/\/$/, "");
     const sourcePrefix = sourceRoot ? `${sourceRoot}/` : "";
     const sourcePaths = new Set((sourcePayload.items || []).map((source) => {
@@ -114,6 +116,7 @@ async function handleUserIdeBuildJob(req, res) {
   }
   const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
     method: "POST",
+    ...projectAccess(session, project, "project.write"),
     headers: actionHeaders,
     body: {
       mode,
@@ -124,12 +127,13 @@ async function handleUserIdeBuildJob(req, res) {
       build_config: resolvedBuildConfig,
     },
   });
-  const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`, { headers: actionHeaders });
+  const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`, { ...projectAccess(session, project), headers: actionHeaders });
   const buildDeployClient = mode === "build_and_flash"
     ? otaBuildDeployJson
     : (["build", "prebuild"].includes(mode) && !flashTransportRequested ? buildWorkerPoolJson : buildDeployJson);
   const buildDeployJob = await buildDeployClient("/api/build-jobs", {
     method: "POST",
+    ...projectAccess(session, project, "build.job.request"),
     headers: actionHeaders,
     body: {
       job_id: projectServerJob.build_job_id,
@@ -161,6 +165,7 @@ async function handleUserIdeBuildJob(req, res) {
   });
   await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/submitted`, {
     method: "POST",
+    ...projectAccess(session, project, "project.write"),
     headers: actionHeaders,
     body: {
       build_deploy_job_id: buildDeployJob.job_id,
@@ -170,7 +175,7 @@ async function handleUserIdeBuildJob(req, res) {
   // while the worker compiles. Completion is synchronized by the status route.
   const completedBuildDeployJob = buildDeployJob;
   if (completedBuildDeployJob && ["succeeded", "failed", "cancelled"].includes(completedBuildDeployJob.status)) {
-    await recordCompletedBuildJob(projectServerJob.build_job_id, completedBuildDeployJob);
+    await recordCompletedBuildJob(projectServerJob.build_job_id, completedBuildDeployJob, project, session);
   }
 
   const build = {
@@ -205,11 +210,25 @@ async function handleUserIdeBuildJob(req, res) {
   sendJson(res, 202, build);
 }
 
-async function recordCompletedBuildJob(jobId, completedJob) {
+async function recordCompletedBuildJob(jobId, completedJob, project, session) {
+  if (!project?.project_server_id) throw new Error("A server-authorized project is required to record a build result.");
   return projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
     method: "POST",
+    ...projectAccess(session, project, "project.write"),
     body: toProjectBuildResult(completedJob),
   });
+}
+
+function projectAccess(session, project, scope = "project.read") {
+  const accountId = typeof projectServerUserId === "function"
+    ? projectServerUserId(session)
+    : String(project?.user_id || project?.owner_user_id || "");
+  return {
+    internalAuth: {
+      scopes: [scope],
+      delegation: { account_id: accountId, project_ids: [String(project.project_server_id)] },
+    },
+  };
 }
 
 function browserFlashManifest(jobId, completedJob, buildConfig = {}) {
@@ -249,10 +268,11 @@ function buildArtifactDownloads(jobId, completedJob) {
   return customerArtifactList(jobId, artifacts);
 }
 
-async function proxyBuildArtifact(res, jobId, fileName) {
-  let upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+async function proxyBuildArtifact(res, jobId, fileName, delegationContext) {
+  const authHeaders = buildArtifactAuthHeaders(delegationContext);
+  let upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`, { headers: authHeaders });
   if (upstream.status === 404 && otaBuildDeployBaseUrl !== buildDeployBaseUrl) {
-    upstream = await fetch(`${otaBuildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+    upstream = await fetch(`${otaBuildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`, { headers: authHeaders });
   }
   const content = Buffer.from(await upstream.arrayBuffer());
   res.writeHead(upstream.status, {
@@ -262,6 +282,15 @@ async function proxyBuildArtifact(res, jobId, fileName) {
     "Cache-Control": "no-store",
   });
   res.end(content);
+}
+
+function buildArtifactAuthHeaders(context) {
+  const scopes = ["artifact.download"];
+  const common = { iss: "identity-server", sub: "identity-server", aud: "build-deploy-server", scopes };
+  return {
+    Authorization: `Bearer ${issueInternalToken(common, internalApiSigningKey)}`,
+    "X-GerNetiX-Delegation": issueInternalToken({ ...common, kind: "delegated_user_action", context }, internalApiSigningKey),
+  };
 }
 
 

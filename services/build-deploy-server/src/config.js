@@ -1,5 +1,6 @@
 const path = require("node:path");
 const os = require("node:os");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
 function createConfig(env = process.env) {
@@ -11,6 +12,7 @@ function createConfig(env = process.env) {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 4400),
     publicBaseUrl: env.PUBLIC_BASE_URL || "",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "build-deploy-server"),
     mqttBrokerUrl: env.MQTT_BROKER_URL || "",
     runner: env.BUILD_RUNNER || "platformio",
     allowMockRunner: env.NODE_ENV === "test",
@@ -73,7 +75,6 @@ function createConfig(env = process.env) {
       ? path.resolve(env.INTERFACE_TELEMETRY_SQLITE_PATH)
       : (env.PERSISTENCE_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-services.sqlite")),
     interfaceTelemetryEndpoint: env.INTERFACE_TELEMETRY_ENDPOINT || "",
-    interfaceTelemetryToken: env.INTERFACE_TELEMETRY_TOKEN || "",
     otaSigningPrivateKeyPath: env.OTA_SIGNING_PRIVATE_KEY_PATH ? path.resolve(env.OTA_SIGNING_PRIVATE_KEY_PATH) : "",
     otaSigningKeyId: env.OTA_SIGNING_KEY_ID || "",
   };

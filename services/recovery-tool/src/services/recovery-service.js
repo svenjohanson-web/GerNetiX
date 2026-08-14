@@ -1,11 +1,13 @@
 const crypto = require("node:crypto");
 const { RecoveryToolError } = require("../errors");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 const { createDiscoveryBuildPackage } = require("./hardware-discovery-package");
 
 class RecoveryService {
   constructor(options) {
     this.repository = options.repository;
     this.deviceManagementBaseUrl = options.deviceManagementBaseUrl;
+    this.internalApiSigningKey = options.internalApiSigningKey || "";
     this.registerRecoveredDevices = options.registerRecoveredDevices !== false;
     this.sourceReader = options.sourceReader;
     this.hardwareLabAi = options.hardwareLabAi;
@@ -325,7 +327,11 @@ class RecoveryService {
     const session = this.requireHardwareLabSession(sessionId);
     const buildJobId = session.discovery?.firmware_build?.build_job_id;
     if (!buildJobId) throw new RecoveryToolError("discovery_build_request_required", "Es wurde noch kein Discovery-Build angefordert.", 409);
-    const job = await this.buildDeployClient.get(buildJobId);
+    const job = await this.buildDeployClient.get(buildJobId, {
+      account_id: session.account_id,
+      project_ids: [],
+      entitlements: [],
+    });
     if (job.status === "succeeded") {
       const primary = job.result?.build?.primary_firmware;
       if (!primary?.sha256 || !primary?.file_name) throw new RecoveryToolError("discovery_build_artifact_missing", "Der erfolgreiche Discovery-Build enthaelt kein primaeres Firmware-Artefakt.", 502);
@@ -557,7 +563,7 @@ class RecoveryService {
 
     const response = await fetch(`${this.deviceManagementBaseUrl.replace(/\/$/, "")}/devices/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${issueInternalToken({ iss: "recovery-tool", sub: "recovery-tool", aud: "device-management-server", scopes: ["device.register"] }, this.internalApiSigningKey)}` },
       body: JSON.stringify({
         device_id: session.device_id,
         serial_number: input.serial_number || session.serial_number,

@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { promisify } = require("node:util");
 const { ProvisioningError } = require("../errors");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
 const execFileAsync = promisify(execFile);
 
@@ -19,6 +20,7 @@ class ProvisioningService {
     this.firmwareArtifactStore = options.firmwareArtifactStore;
     this.hardwareCatalog = options.hardwareCatalog;
     this.deviceManagementBaseUrl = options.deviceManagementBaseUrl;
+    this.internalApiSigningKey = options.internalApiSigningKey || "";
     this.registerDeviceOnComplete = options.registerDeviceOnComplete !== false;
     this.allowFirmwareArtifactAdminWrite = options.allowFirmwareArtifactAdminWrite === true;
     this.generatedProvisioningHeaderPath = options.generatedProvisioningHeaderPath;
@@ -591,7 +593,12 @@ class ProvisioningService {
   async registerDeviceManagementDevice(session, input = {}) {
     const response = await fetch(`${this.deviceManagementBaseUrl.replace(/\/$/, "")}/devices/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${issueInternalToken({
+          iss: "provisioning-tool", sub: "provisioning-tool", aud: "device-management-server", scopes: ["device.register"],
+        }, this.internalApiSigningKey)}`,
+      },
       body: JSON.stringify({
         device_id: session.device.device_id,
         serial_number: session.device.serial_number,

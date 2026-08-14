@@ -5,15 +5,23 @@ const { Readable } = require("node:stream");
 const test = require("node:test");
 const { CapacityProviderRegistry, ComputeControlPlaneService, InMemoryComputeRepository, ProjectRuntimeGrantService, WorkerTokenService, createHttpApp } = require("../src");
 const { sendJson } = require("../src/http-app");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+
+const internalApiSigningKey = "compute-internal-signing-key";
+function internal(scope) {
+  return { authorization: `Bearer ${issueInternalToken({ iss: "build-deploy-server", sub: "build-deploy-server", aud: "compute-control-plane", scopes: [scope] }, internalApiSigningKey)}` };
+}
 
 test("HTTP gateway separates internal and worker credentials through a complete lease", async () => {
   const service = new ComputeControlPlaneService({ repository: new InMemoryComputeRepository() });
   const tokenService = new WorkerTokenService({ secret: "signing-secret" });
   const appliedPatches = [];
   const projectRuntimeGrants = new ProjectRuntimeGrantService({ secret: "project-grant-secret" });
-  const app = createHttpApp({ service, tokenService, internalToken: "internal-secret", workerBootstrapToken: "bootstrap-secret", providers: new CapacityProviderRegistry(), projectRuntimeGrants, projectPatchWriter: async (patch) => { appliedPatches.push(patch); return { status: "applied" }; } });
+  const app = createHttpApp({ service, tokenService, internalApiSigningKey, workerBootstrapToken: "bootstrap-secret", providers: new CapacityProviderRegistry(), projectRuntimeGrants, projectPatchWriter: async (patch) => { appliedPatches.push(patch); return { status: "applied" }; } });
   const denied = await callApp(app, "/api/compute/internal/jobs", {}, {});
   assert.equal(denied.status, 403);
+  const wrongScope = await callApp(app, "/api/compute/internal/jobs", { headers: internal("compute.job.read"), body: job() });
+  assert.equal(wrongScope.status, 403);
 
   const registration = await callApp(app, "/api/compute/workers/register", {
     headers: { "x-gernetix-worker-bootstrap-token": "bootstrap-secret" },
@@ -23,7 +31,7 @@ test("HTTP gateway separates internal and worker credentials through a complete 
   const bearer = registration.body.worker_credential.token;
 
   const submitted = await callApp(app, "/api/compute/internal/jobs", {
-    headers: { "x-gernetix-compute-token": "internal-secret" }, body: job(),
+    headers: internal("compute.job.submit"), body: job(),
   });
   assert.equal(submitted.status, 201);
 
@@ -32,7 +40,7 @@ test("HTTP gateway separates internal and worker credentials through a complete 
   const completed = await callApp(app, `/api/compute/workers/jobs/http-job/leases/${leased.body.job.lease.lease_id}/complete`, { headers: { authorization: `Bearer ${bearer}` }, body: { output_revision: "sha256:fedcba9876543210", output_bytes: 64 } });
   assert.equal(completed.body.status, "succeeded");
 
-  const grant = await callApp(app, "/api/compute/internal/project-runtime/grants", { headers: { "x-gernetix-compute-token": "internal-secret" }, body: { account_id: "account", project_id: "project", input_revision: "sha256:0123456789abcdef", read_paths: ["sensor.temperature"], write_paths: ["actuator.fan"] } });
+  const grant = await callApp(app, "/api/compute/internal/project-runtime/grants", { headers: internal("compute.runtime_grant.issue"), body: { account_id: "account", project_id: "project", input_revision: "sha256:0123456789abcdef", read_paths: ["sensor.temperature"], write_paths: ["actuator.fan"] } });
   assert.equal(grant.status, 201);
   const patch = await callApp(app, "/api/compute/workers/project-runtime/patch", { headers: { authorization: `Bearer ${bearer}` }, body: { token: grant.body.token, account_id: "account", project_id: "project", input_revision: "sha256:0123456789abcdef", patch: { actuator: { fan: true } } } });
   assert.equal(patch.body.status, "applied");

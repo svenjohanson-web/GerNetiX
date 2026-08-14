@@ -49,7 +49,7 @@ function createProjectRepositoryContractStub({ projectServerJson }) {
     let source = resolved.sources.find((item) => item.path === path);
     if (!source) throw contractError("repository_file_not_found", "Datei wurde in diesem Commit nicht gefunden.", 404);
     if (resolved.current && source.content === undefined) {
-      source = await projectServerJson(sourcePathname(project, path));
+      source = await projectServerJson(sourcePathname(project, path), projectAccess(project));
     }
     return filePayload(resolved.commit_sha, source);
   }
@@ -82,12 +82,12 @@ function createProjectRepositoryContractStub({ projectServerJson }) {
     const [repositoryStatus, sourceList, versions] = await Promise.all([
       status(project),
       loadSourceList(project),
-      projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions`),
+      projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions`, projectAccess(project)),
     ]);
     let currentSources = sourceList.items || [];
     if (options.withCurrentContent) {
       currentSources = await Promise.all(currentSources.map(async (source) => (
-        source.content === undefined ? projectServerJson(sourcePathname(project, source.path)) : source
+        source.content === undefined ? projectServerJson(sourcePathname(project, source.path), projectAccess(project)) : source
       )));
     }
     return {
@@ -98,14 +98,20 @@ function createProjectRepositoryContractStub({ projectServerJson }) {
   }
 
   function loadProject(project) {
-    return projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`);
+    return projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, projectAccess(project));
   }
 
   function loadSourceList(project) {
-    return projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
+    return projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, projectAccess(project));
   }
 
   return { diff, file, history, status, tree };
+}
+
+function projectAccess(project) {
+  const accountId = String(project.owner_user_id || project.user_id || "");
+  if (!accountId) throw new Error("A server-authorized project owner is required for repository access.");
+  return { internalAuth: { scopes: ["project.read"], delegation: { account_id: accountId, project_ids: [String(project.project_server_id)] } } };
 }
 
 function sourcePathname(project, path) {

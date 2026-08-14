@@ -691,7 +691,7 @@ test("records successful architecture chat usage through ai usage service", asyn
   const assistant = createDevelopmentAssistant({
     aiContextJson: promptFoundationJson,
     aiUsageJson: async (pathname, options = {}) => {
-      usageCalls.push({ pathname, body: options.body });
+      usageCalls.push({ pathname, body: options.body, internalAuth: options.internalAuth });
       if (pathname === "/api/ai-usage/preflight") {
         return { allowed: true, event_id: "usage_1" };
       }
@@ -712,6 +712,7 @@ test("records successful architecture chat usage through ai usage service", asyn
       }),
     },
     projectServerUserId: () => "usr_demo",
+    accountSubscription: () => ({ entitlements: ["ai_assistant"] }),
     readJsonBody: async () => ({
       projectId: "dev_project_usage",
       messages: [{ role: "user", content: "Plane bitte eine Architektur mit ESP32, Backend, Mobile App, Browser UI, MQTT, REST API, SQLite Persistenz, Cloud Zugriff und lokaler Bedienung." }],
@@ -739,9 +740,14 @@ test("records successful architecture chat usage through ai usage service", asyn
   assert.equal(usageCalls[0].body.feature, "architecture_discovery");
   assert.equal(usageCalls[0].body.model, "gpt-5.5");
   assert.equal(usageCalls[0].body.source_id, "openai_gpt");
+  assert.deepEqual(usageCalls[0].internalAuth, {
+    scopes: ["ai.usage.consume"],
+    delegation: { account_id: "usr_demo", project_ids: ["dev_project_usage"], entitlements: ["ai_assistant"] },
+  });
   assert.equal(usageCalls[1].pathname, "/api/ai-usage/events/usage_1/complete");
   assert.equal(usageCalls[1].body.input_tokens, 40);
   assert.equal(usageCalls[1].body.output_tokens, 9);
+  assert.deepEqual(usageCalls[1].internalAuth, usageCalls[0].internalAuth);
 });
 
 test("does not call provider when ai usage preflight rejects architecture chat", async () => {
@@ -940,6 +946,7 @@ test("answers data logger quick prompt with measured quantity and sensor clarifi
       }),
     },
     projectServerUserId: () => "usr_demo",
+    accountSubscription: () => ({ entitlements: ["ai_assistant"] }),
     readJsonBody: async () => ({
       projectId: "dev_project_quick_prompt",
       messages: [{ role: "user", content: "Ich moechte einen Datenlogger" }],
@@ -990,6 +997,7 @@ test("answers touchscreen game loop quick prompt locally", async () => {
       }),
     },
     projectServerUserId: () => "usr_demo",
+    accountSubscription: () => ({ entitlements: ["ai_assistant"] }),
     readJsonBody: async () => ({
       projectId: "dev_project_touchscreen_game",
       messages: [{ role: "user", content: "Ich moechte einen Touchscreen Game Loop" }],

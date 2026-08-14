@@ -283,7 +283,7 @@ test("build artifact routes retain account ownership checks", async () => {
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
     projectServerJson: async () => ({ user_id: "another-user" }),
     loadBuildDeployJob: async () => ({}),
@@ -308,9 +308,9 @@ test("owned builds expose firmware but deny symbol and diagnostic artifact downl
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
-    projectServerJson: async () => ({ user_id: "user-1", result: { build: { artifacts } } }),
+    projectServerJson: async () => ({ project_id: "project-1", user_id: "user-1", result: { build: { artifacts } } }),
     loadBuildDeployJob: async () => ({}),
     recordCompletedBuildJob: async () => {},
     browserFlashManifest: () => ({}),
@@ -337,10 +337,10 @@ test("basissoftware build status never returns raw compiler logs", async () => {
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
     projectServerJson: async () => ({
-      user_id: "user-1",
+      project_id: "project-1", user_id: "user-1",
       build_config: { firmware_basis_id: "gernetix-runtime-basissoftware" },
       error: { details: { build_log: "secret basis source path" } },
     }),
@@ -375,12 +375,12 @@ test("build cancellation keeps account ownership and targets the central coordin
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async (path, options) => {
       forwarded.push([path, options]);
       return { job_id: "job 42", status: "cancelling" };
     },
-    projectServerJson: async () => ({ user_id: "user-1" }),
+    projectServerJson: async () => ({ project_id: "project-1", user_id: "user-1" }),
     loadBuildDeployJob: async () => ({}),
     recordCompletedBuildJob: async () => {},
     browserFlashManifest: () => ({}),
@@ -393,7 +393,10 @@ test("build cancellation keeps account ownership and targets the central coordin
     res: {},
     url: new URL("http://localhost/api/user-ide/build-jobs/job%2042/cancel"),
   }), true);
-  assert.deepEqual(forwarded, [["/api/build-jobs/job%2042/cancel", { method: "POST" }]]);
+  assert.deepEqual(forwarded, [["/api/build-jobs/job%2042/cancel", {
+    method: "POST",
+    internalAuth: { scopes: ["build.job.cancel"], delegation: { account_id: "user-1", project_ids: ["project-1"] } },
+  }]]);
   assert.deepEqual(responses, [[202, { job_id: "job 42", status: "cancelling" }]]);
 });
 
@@ -408,7 +411,7 @@ test("crash symbolization is account-bound and requires the exact persisted buil
     readJsonBody: async () => ({ build_id: buildId, addresses: ["0x40001234", "0x40005678"] }),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async (path, options) => {
       forwarded.push([path, options]);
       return { status: "symbolized", build_id: buildId, frames: [
@@ -417,7 +420,7 @@ test("crash symbolization is account-bound and requires the exact persisted buil
       ] };
     },
     projectServerJson: async () => ({
-      user_id: "user-1",
+      project_id: "project-1", user_id: "user-1",
       customer_debug_source_paths: ["src/user/user_app.cpp"],
       result: { build: { build_id: buildId } },
     }),
@@ -433,6 +436,7 @@ test("crash symbolization is account-bound and requires the exact persisted buil
   }), true);
   assert.deepEqual(forwarded, [["/api/build-jobs/job-1/symbolize", {
     method: "POST", body: { build_id: buildId, addresses: ["0x40001234", "0x40005678"] },
+    internalAuth: { scopes: ["build.job.symbolize"], delegation: { account_id: "user-1", project_ids: ["project-1"] } },
   }]]);
   assert.deepEqual(responses, [[200, { status: "symbolized", build_id: buildId, frames: [
     { address: "0x40001234", resolved: true, function: "userMain", file: "/build/src/user/user_app.cpp", line: 5 },
@@ -449,7 +453,7 @@ test("USB flash reuses an owned successful build only after the Project Server c
     readJsonBody: async () => ({ software_unit_id: "camera" }),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
     projectServerJson: async (path) => path.endsWith("/reuse-status")
       ? { reusable: true, reason: "build_snapshot_matches" }

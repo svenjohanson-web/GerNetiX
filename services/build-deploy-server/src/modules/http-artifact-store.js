@@ -10,21 +10,25 @@ const { Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const zlib = require("node:zlib");
 const { DEFAULT_ARTIFACT_POLICY_SOURCE, contentType, sanitizeJobId } = require("./artifact-contract");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
 class HttpArtifactStore {
   constructor(options = {}) {
     this.baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
     this.token = options.token || "";
+    this.signingKey = options.signingKey || "";
+    this.workerId = options.workerId || "";
     this.publicBaseUrl = options.publicBaseUrl || "";
     this.tempDir = options.tempDir;
     this.timeoutMs = options.timeoutMs || 120000;
     this.request = options.request || request;
     this.reportMetrics = options.reportMetrics || (() => {});
     this.artifactPolicySource = options.artifactPolicySource || DEFAULT_ARTIFACT_POLICY_SOURCE;
-    if (!this.baseUrl || !this.token || !this.tempDir) {
-      throw new Error("HTTP-ArtifactStore braucht Base-URL, Token und Temp-Verzeichnis.");
+    if (!this.baseUrl || (!this.token && !this.signingKey) || !this.tempDir) {
+      throw new Error("HTTP-ArtifactStore braucht Base-URL, Upload-Berechtigung und Temp-Verzeichnis.");
     }
-    if (this.token.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
+    if (this.token && this.token.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
+    if (this.signingKey && !this.workerId) throw new Error("Signierte Artifact-Uploads brauchen eine Worker-ID.");
   }
 
   async saveBuildArtifacts(jobId, buildOutput, sourceReference) {
@@ -43,7 +47,7 @@ class HttpArtifactStore {
       await Promise.all(prepared.map((artifact) => this.uploadArtifact(safeJobId, artifact, source)));
       await this.callJson("POST", `/api/internal/build-artifacts/${encodeURIComponent(safeJobId)}/finalize`, {
         artifacts: prepared.map((artifact) => artifact.name),
-      });
+      }, this.uploadAuthorization("artifact.finalize", safeJobId, prepared.map((artifact) => artifact.name)));
       const result = Object.fromEntries(prepared.map((artifact) => [artifact.name, artifact.publicMetadata]));
       this.emitMetrics(safeJobId, prepared, startedAt, true);
       return result;
@@ -107,7 +111,7 @@ class HttpArtifactStore {
 
   async uploadArtifact(jobId, artifact, source) {
     const headers = {
-      "Authorization": `Bearer ${this.token}`,
+      "Authorization": `Bearer ${this.uploadAuthorization("artifact.upload", jobId, [artifact.name])}`,
       "Content-Type": contentType(artifact.name),
       "Content-Encoding": artifact.encoding,
       "Content-Length": String(artifact.storedSizeBytes),
@@ -128,19 +132,31 @@ class HttpArtifactStore {
     });
   }
 
-  async callJson(method, pathname, body) {
+  async callJson(method, pathname, body, authorization = this.token) {
     const payload = Buffer.from(JSON.stringify(body));
     await this.request({
       method,
       url: `${this.baseUrl}${pathname}`,
       headers: {
-        "Authorization": `Bearer ${this.token}`,
+        "Authorization": `Bearer ${authorization}`,
         "Content-Type": "application/json",
         "Content-Length": String(payload.length),
       },
       body: payload,
       timeoutMs: this.timeoutMs,
     });
+  }
+
+  uploadAuthorization(scope, jobId, artifactNames) {
+    if (!this.signingKey) return this.token;
+    return issueInternalToken({
+      iss: "build-deploy-server",
+      sub: this.workerId,
+      aud: "build-deploy-server",
+      kind: "artifact_worker_grant",
+      scopes: [scope],
+      context: { job_ids: [jobId], worker_ids: [this.workerId], artifact_names: artifactNames },
+    }, this.signingKey);
   }
 
   emitMetrics(jobId, artifacts, startedAt, succeeded) {

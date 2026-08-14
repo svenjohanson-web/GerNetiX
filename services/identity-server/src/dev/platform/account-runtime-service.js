@@ -159,20 +159,25 @@ function createAccountRuntimeService({
       sendJson(res, 400, { error: "missing_offer_id", message: "offer_id fehlt." });
       return;
     }
+    const accountId = projectServerUserId(session);
+    const shopDelegation = (scope) => ({ internalAuth: { scopes: [scope], delegation: { account_id: accountId, project_ids: [], entitlements: [] } } });
     const cart = await hardwareShopJson("/api/hardware-shop/carts", {
       method: "POST",
-      body: { account_id: projectServerUserId(session) },
+      ...shopDelegation("shop.cart.write"),
+      body: { account_id: accountId },
     });
     await hardwareShopJson(`/api/hardware-shop/carts/${encodeURIComponent(cart.cart_id)}/items`, {
       method: "POST",
+      ...shopDelegation("shop.cart.write"),
       body: { offer_id: offerId, quantity: Number(body.quantity || 1) },
     });
     const order = await hardwareShopJson("/api/hardware-shop/orders", {
       method: "POST",
+      ...shopDelegation("shop.order.write"),
       body: { cart_id: cart.cart_id, payment_status: "paid" },
     });
-    const purchaseContext = await hardwareShopJson(`/api/hardware-shop/orders/${encodeURIComponent(order.order_id)}/purchase-context`);
-    const deviceManagementPurchaseContext = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(projectServerUserId(session))}/purchase-contexts`, {
+    const purchaseContext = await hardwareShopJson(`/api/hardware-shop/orders/${encodeURIComponent(order.order_id)}/purchase-context`, shopDelegation("shop.purchase_context.read"));
+    const deviceManagementPurchaseContext = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/purchase-contexts`, {
       method: "POST",
       body: { order_id: order.order_id, ...purchaseContext },
     });
@@ -185,12 +190,18 @@ function createAccountRuntimeService({
 
   async function loadAiUsageSummary(session) {
     const accountId = projectServerUserId(session);
+    const aiUsageAuth = {
+      internalAuth: {
+        scopes: ["ai.usage.read"],
+        delegation: { account_id: accountId, project_ids: [], entitlements: ["ai_assistant"] },
+      },
+    };
     try {
-      const [credits, rating, dashboard, creditPackages] = await Promise.all([
-        aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
-        aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`),
-        aiUsageJson("/api/ai-usage/admin/dashboard"),
-        aiUsageJson("/api/ai-usage/credit-packages"),
+      const [credits, rating, events, creditPackages] = await Promise.all([
+        aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`, aiUsageAuth),
+        aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`, aiUsageAuth),
+        aiUsageJson(`/api/ai-usage/events?account_id=${encodeURIComponent(accountId)}`, aiUsageAuth),
+        aiUsageJson("/api/ai-usage/credit-packages", { internalAuth: { scopes: ["ai.usage.read"] } }),
       ]);
       return {
         base_url: aiUsageBaseUrl,
@@ -198,9 +209,9 @@ function createAccountRuntimeService({
         credits,
         credit_packages: creditPackages.items || [],
         rating,
-        usage_events: dashboard.summary,
-        account_usage: (dashboard.by_account || []).find((item) => item.account_id === accountId) || null,
-        model_summary: dashboard.by_model,
+        usage_events: events.items || [],
+        account_usage: null,
+        model_summary: [],
       };
     } catch (error) {
       return {

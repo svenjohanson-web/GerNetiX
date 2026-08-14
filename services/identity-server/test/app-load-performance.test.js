@@ -142,11 +142,12 @@ test("browser-only learning projects do not load build flash or board workbenche
   assert.match(guided, /if \(typeof waitForCompletedBuild !== "function"\) \{\s*throw new Error/);
 });
 
-test("project file authorization does not reload every account project", () => {
+test("project file authorization resolves the requested id from the account-bound project list", () => {
   const accessStart = devServer.indexOf("async function requireSessionProject");
   const accessEnd = devServer.indexOf("\n  function sessionProjectNotFound", accessStart);
   const accessBody = devServer.slice(accessStart, accessEnd);
-  assert.match(accessBody, /projectServerJson\(`\/api\/projects\/\$\{encodeURIComponent\(requestedProjectId\)\}`\)/);
+  assert.match(accessBody, /projectServerJson\(`\/api\/projects\?user_id=\$\{encodeURIComponent\(accountId\)\}`/);
+  assert.match(accessBody, /find\(\(project\) => project\.project_id === requestedProjectId\)/);
   assert.match(accessBody, /storedProject\.user_id !== accountId/);
   assert.doesNotMatch(accessBody, /loadUserIdeProjects/);
 });

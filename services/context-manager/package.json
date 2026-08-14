@@ -1,0 +1,15 @@
+{
+  "name": "@gernetix/context-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "8.16.3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

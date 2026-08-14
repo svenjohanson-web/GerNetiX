@@ -48,16 +48,16 @@ function fixture(overrides = {}) {
       },
     },
     aiUsageClient: {
-      async preflight(payload) {
-        calls.preflight.push(payload);
+      async preflight(payload, context) {
+        calls.preflight.push({ ...payload, context });
         return { allowed: true, event_id: "usage-1" };
       },
-      async complete(eventId, payload) {
-        calls.complete.push({ eventId, payload });
+      async complete(eventId, payload, context) {
+        calls.complete.push({ eventId, payload, context });
         return { status: "success" };
       },
-      async fail(eventId, payload) {
-        calls.fail.push({ eventId, payload });
+      async fail(eventId, payload, context) {
+        calls.fail.push({ eventId, payload, context });
         return { status: "failed" };
       },
     },
@@ -107,6 +107,11 @@ test("creates an authenticated, account-bound, cost-approved ephemeral session",
   assert.equal(calls.preflight[0].feature, "device_voice_ai");
   assert.equal(calls.preflight[0].assistant_definition_id, "assistant-nexi");
   assert.equal(calls.preflight[0].source_revision, "abcdef1234567890");
+  assert.deepEqual(calls.preflight[0].context, {
+    account_id: "acct-parent",
+    project_ids: ["project-nexi"],
+    entitlements: ["ai_assistant"],
+  });
   assert.equal(session.assistant_context.mode_id, "knowledge");
   const stored = repository.find(session.session_id);
   assert.notEqual(stored.token_sha256, session.session_token);
@@ -128,6 +133,8 @@ test("processes bounded PCM once, bills usage and retains neither audio nor tran
   assert.equal(calls.provider[0].assistant.project_id, "project-nexi");
   assert.equal(calls.provider[0].assistant.mode_instruction, "Beantworte eine Wissensfrage.");
   assert.equal(calls.complete[0].payload.input_tokens, 30);
+  assert.equal(calls.complete[0].context.account_id, "acct-parent");
+  assert.deepEqual(calls.complete[0].context.project_ids, ["project-nexi"]);
   assert.equal(calls.fail.length, 0);
   await assert.rejects(
     service.processAudio(session.session_id, session.session_token, inputAudio, INPUT_CONTENT_TYPE),

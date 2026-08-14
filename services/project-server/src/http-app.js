@@ -1,11 +1,16 @@
-const crypto = require("node:crypto");
 const { ProjectServerError } = require("./errors");
+const {
+  verifyInternalToken,
+  verifyDelegation,
+  assertDelegatedResource,
+  readBearerToken,
+} = require("../../shared/internal-api-auth");
 
 const prefix = "/api/projects";
 
 function createHttpApp(options) {
   const service = options.service;
-  const adminReadToken = String(options.adminReadToken || "");
+  const internalAuthSecret = String(options.internalAuthSecret || "");
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -16,8 +21,27 @@ function createHttpApp(options) {
       return;
     }
 
+    // The Project Server is an internal API.  A caller must first prove its
+    // service identity; a signed delegation is checked separately below for
+    // tenant resources.  This intentionally fails closed when no key exists.
+    const requiredScope = requiredServiceScope(req.method, path);
+    const serviceClaims = authorizeService(req, internalAuthSecret, requiredScope);
+    if (!serviceClaims) {
+      sendJson(res, 403, { error: "project_internal_access_denied" });
+      return;
+    }
+
+    const projectRoute = path.match(new RegExp(`^${prefix}/([^/]+)`));
+    if (projectRoute) {
+      const projectId = decodeURIComponent(projectRoute[1]);
+      if (!authorizeDelegatedProject(req, internalAuthSecret, requiredScope, projectId)) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
+    }
+
     if (req.method === "GET" && path === "/api/internal/repositories/summary") {
-      if (!validInternalToken(req.headers["x-gernetix-project-admin-token"], adminReadToken)) {
+      if (!hasScope(serviceClaims, "project.admin")) {
         sendJson(res, 403, { error: "project_admin_access_denied" });
         return;
       }
@@ -26,7 +50,7 @@ function createHttpApp(options) {
     }
 
     if (req.method === "POST" && path === "/api/internal/repositories/migrations") {
-      if (!validInternalToken(req.headers["x-gernetix-project-admin-token"], adminReadToken)) {
+      if (!hasScope(serviceClaims, "project.admin")) {
         sendJson(res, 403, { error: "project_admin_access_denied" });
         return;
       }
@@ -34,12 +58,34 @@ function createHttpApp(options) {
       return;
     }
 
+    const ownershipLookup = path.match(/^\/api\/internal\/project-ownership\/([^/]+)$/);
+    if (req.method === "GET" && ownershipLookup) {
+      const project = await service.getProject(decodeURIComponent(ownershipLookup[1]));
+      const allocatedDeviceIds = [project.device_id, ...(project.build_config?.component_device_allocations || []).map((item) => item.device_id)]
+        .map((value) => String(value || "").trim()).filter(Boolean);
+      sendJson(res, 200, {
+        project_id: project.project_id,
+        account_id: project.user_id,
+        allocated_device_ids: [...new Set(allocatedDeviceIds)],
+      });
+      return;
+    }
+
     if (req.method === "GET" && path === prefix) {
+      if (!authorizeDelegatedAccount(req, internalAuthSecret, requiredScope, url.searchParams.get("user_id") || url.searchParams.get("userId") || "")) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, { items: await service.listProjects(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
     if (req.method === "POST" && path === prefix) {
-      sendJson(res, 201, await service.createProject(await readJsonBody(req)));
+      const body = await readJsonBody(req);
+      if (!authorizeDelegatedAccount(req, internalAuthSecret, requiredScope, body.user_id || "")) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
+      sendJson(res, 201, await service.createProject(body));
       return;
     }
 
@@ -49,6 +95,10 @@ function createHttpApp(options) {
     }
     const accountResourcePolicy = path.match(/^\/api\/internal\/accounts\/([^/]+)\/resource-plan$/);
     if (req.method === "GET" && accountResourcePolicy) {
+      if (!authorizeDelegatedAccount(req, internalAuthSecret, requiredScope, decodeURIComponent(accountResourcePolicy[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.accountResourceSummary(
         decodeURIComponent(accountResourcePolicy[1]),
         url.searchParams.get("plan_id") || "free",
@@ -56,6 +106,10 @@ function createHttpApp(options) {
       return;
     }
     if (req.method === "PUT" && accountResourcePolicy) {
+      if (!authorizeDelegatedAccount(req, internalAuthSecret, requiredScope, decodeURIComponent(accountResourcePolicy[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.applyAccountResourcePlan(
         decodeURIComponent(accountResourcePolicy[1]),
         await readJsonBody(req),
@@ -250,41 +304,70 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && path === "/api/build-jobs") {
+      if (!authorizeDelegatedAccount(req, internalAuthSecret, requiredScope, url.searchParams.get("user_id") || url.searchParams.get("userId") || "")) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, { items: await service.listBuildJobs(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
 
     const buildJob = path.match(/^\/api\/build-jobs\/([^/]+)$/);
     if (req.method === "GET" && buildJob) {
+      if (!await authorizeDelegatedBuildJob(req, internalAuthSecret, requiredScope, service, decodeURIComponent(buildJob[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.getBuildJob(decodeURIComponent(buildJob[1])));
       return;
     }
 
     const buildPackage = path.match(/^\/api\/build-jobs\/([^/]+)\/build-package$/);
     if (req.method === "GET" && buildPackage) {
+      if (!await authorizeDelegatedBuildJob(req, internalAuthSecret, requiredScope, service, decodeURIComponent(buildPackage[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.createBuildPackage(decodeURIComponent(buildPackage[1])));
       return;
     }
 
     const buildReuseStatus = path.match(/^\/api\/build-jobs\/([^/]+)\/reuse-status$/);
     if (req.method === "GET" && buildReuseStatus) {
+      if (!await authorizeDelegatedBuildJob(req, internalAuthSecret, requiredScope, service, decodeURIComponent(buildReuseStatus[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.buildReuseStatus(decodeURIComponent(buildReuseStatus[1])));
       return;
     }
 
     const submit = path.match(/^\/api\/build-jobs\/([^/]+)\/submitted$/);
     if (req.method === "POST" && submit) {
+      if (!await authorizeDelegatedBuildJob(req, internalAuthSecret, requiredScope, service, decodeURIComponent(submit[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.markBuildSubmitted(decodeURIComponent(submit[1]), await readJsonBody(req)));
       return;
     }
 
     const result = path.match(/^\/api\/build-jobs\/([^/]+)\/result$/);
     if (req.method === "POST" && result) {
+      if (!await authorizeDelegatedBuildJob(req, internalAuthSecret, requiredScope, service, decodeURIComponent(result[1]))) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, await service.recordBuildResult(decodeURIComponent(result[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path === "/api/firmware-artifacts") {
+      const projectId = url.searchParams.get("project_id") || url.searchParams.get("projectId") || "";
+      if (!projectId || !authorizeDelegatedProject(req, internalAuthSecret, requiredScope, projectId)) {
+        sendJson(res, 403, { error: "project_delegated_access_denied" });
+        return;
+      }
       sendJson(res, 200, { items: await service.listArtifacts(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
@@ -317,11 +400,56 @@ function createHttpApp(options) {
   };
 }
 
-function validInternalToken(value, expected) {
-  const actual = Buffer.from(String(value || ""));
-  const required = Buffer.from(String(expected || ""));
-  return required.length > 0 && actual.length === required.length && crypto.timingSafeEqual(actual, required);
+function requiredServiceScope(method, path) {
+  if (method === "GET" && path.startsWith("/api/internal/project-ownership/")) return "project.ownership.resolve";
+  if (path === "/api/resource-policies" || path.startsWith("/api/resource-policies/") || path.startsWith("/api/internal/repositories/")) return "project.admin";
+  if (path === "/api/learning-feedback" || path.startsWith("/api/learning-feedback/") || path === "/api/template-feedback") return "project.admin";
+  return method === "GET" ? "project.read" : "project.write";
 }
+
+function authorizeService(req, secret, scope) {
+  try {
+    return verifyInternalToken(readBearerToken(req), secret, { audience: "project-server", requiredScopes: [scope] });
+  } catch {
+    return null;
+  }
+}
+
+function authorizeDelegatedProject(req, secret, scope, projectId) {
+  try {
+    const claims = verifyDelegation(req.headers["x-gernetix-project-delegation"], secret, {
+      audience: "project-server", requiredScopes: [scope],
+    });
+    assertDelegatedResource(claims, { projectId });
+    return claims;
+  } catch {
+    return null;
+  }
+}
+
+function authorizeDelegatedAccount(req, secret, scope, accountId) {
+  try {
+    if (!accountId) return null;
+    const claims = verifyDelegation(req.headers["x-gernetix-project-delegation"], secret, {
+      audience: "project-server", requiredScopes: [scope],
+    });
+    assertDelegatedResource(claims, { accountId });
+    return claims;
+  } catch {
+    return null;
+  }
+}
+
+async function authorizeDelegatedBuildJob(req, secret, scope, service, buildJobId) {
+  try {
+    const buildJob = await service.getBuildJob(buildJobId);
+    return authorizeDelegatedProject(req, secret, scope, buildJob.project_id);
+  } catch {
+    return null;
+  }
+}
+
+function hasScope(claims, scope) { return Array.isArray(claims?.scopes) && claims.scopes.includes(scope); }
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {

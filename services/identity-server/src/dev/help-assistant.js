@@ -1,6 +1,6 @@
 const HELP_TIMEOUT_MS = 45000;
 
-function createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson, fetchImpl = fetch }) {
+function createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, accountSubscription, readJsonBody, sendJson, fetchImpl = fetch }) {
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const messages = normalizeMessages(body.messages);
@@ -26,11 +26,11 @@ function createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, proje
         return;
       }
       const response = await callOpenAiResponses(messages, config, knowledge.items);
-      const usageEvent = await completeUsage(usagePreflight, response.usage);
+      const usageEvent = await completeUsage(usagePreflight, response.usage, session);
       const recommendations = recommendedTopics(messages.at(-1).content);
       sendJson(res, 200, { answer: response.answer, relatedTopics: recommendations.relatedTopics, openTopicId: recommendations.openTopicId, retrieval: { strategy: knowledge.strategy, article_ids: knowledge.items.map((item) => item.article_id) }, routing: { provider: "openai-responses", routeTask: "help_chat", costPolicy: "external_costs_with_preflight", model: config.apiModel }, usage: response.usage, usageEvent });
     } catch (error) {
-      await failUsage(usagePreflight, error);
+      await failUsage(usagePreflight, error, session);
       sendJson(res, 503, { error: "help_assistant_unavailable", message: error?.message || "Das OpenAI Help-Modell ist nicht erreichbar." });
     }
   }
@@ -87,17 +87,22 @@ function createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, proje
     if (!aiUsageJson) return null;
     const accountId = typeof projectServerUserId === "function" ? projectServerUserId(session) : session?.user_id || "";
     const estimatedInputTokens = Math.ceil((helpSystemPrompt(articles).length + messages.reduce((sum, message) => sum + message.content.length, 0)) / 4);
-    return aiUsageJson("/api/ai-usage/preflight", { method: "POST", allowPaymentRequired: true, body: { account_id: accountId, user_id: accountId, project_id: "", feature: "help_assistance", model: config.apiModel, source_id: "openai_gpt", estimated_input_tokens: estimatedInputTokens, estimated_output_tokens: 400, system_capabilities: [] } });
+    return aiUsageJson("/api/ai-usage/preflight", { method: "POST", allowPaymentRequired: true, internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session) }, body: { account_id: accountId, user_id: accountId, project_id: "", feature: "help_assistance", model: config.apiModel, source_id: "openai_gpt", estimated_input_tokens: estimatedInputTokens, estimated_output_tokens: 400, system_capabilities: [] } });
   }
 
-  async function completeUsage(preflight, usage) {
+  async function completeUsage(preflight, usage, session) {
     if (!aiUsageJson || !preflight?.event_id) return null;
-    return aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, { method: "POST", body: { input_tokens: usage.promptTokens, output_tokens: usage.completionTokens } }).catch((error) => ({ event_id: preflight.event_id, status: "tracking_failed", error: error.message || String(error) }));
+    return aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, { method: "POST", internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session) }, body: { input_tokens: usage.promptTokens, output_tokens: usage.completionTokens } }).catch((error) => ({ event_id: preflight.event_id, status: "tracking_failed", error: error.message || String(error) }));
   }
 
-  async function failUsage(preflight, error) {
+  async function failUsage(preflight, error, session) {
     if (!aiUsageJson || !preflight?.event_id) return null;
-    return aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/fail`, { method: "POST", body: { error_code: "provider_error", error_message: error.message || String(error) } }).catch(() => null);
+    return aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/fail`, { method: "POST", internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session) }, body: { error_code: "provider_error", error_message: error.message || String(error) } }).catch(() => null);
+  }
+
+  function userDelegation(session) {
+    const accountId = typeof projectServerUserId === "function" ? projectServerUserId(session) : session?.user_id || "";
+    return { account_id: accountId, project_ids: [], entitlements: accountSubscription?.(session)?.entitlements || [] };
   }
 
   function responseInput(message) {

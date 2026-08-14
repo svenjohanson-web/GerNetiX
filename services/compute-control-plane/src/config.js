@@ -1,11 +1,13 @@
 "use strict";
 
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
+
 function createConfig(env = process.env) {
   return {
     host: env.HOST || "127.0.0.1",
     port: boundedInteger(env.PORT, 5700, 1, 65535),
     persistenceBackend: env.COMPUTE_PERSISTENCE_BACKEND || env.PERSISTENCE_BACKEND || "memory",
-    internalToken: String(env.COMPUTE_INTERNAL_TOKEN || ""),
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "compute-control-plane"),
     workerBootstrapToken: String(env.COMPUTE_WORKER_BOOTSTRAP_TOKEN || ""),
     workerSigningSecret: String(env.COMPUTE_WORKER_SIGNING_SECRET || ""),
     projectGrantSigningSecret: String(env.COMPUTE_PROJECT_GRANT_SIGNING_SECRET || ""),

@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createConfig, createDefaultRecoveryTool } = require("../src");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 
 function createService(overrides = {}) {
   return createDefaultRecoveryTool(createConfig({
@@ -136,6 +137,33 @@ test("dry-run community registration updates recovery state", async () => {
   assert.equal(registered.status, "registered_with_device_management");
   assert.equal(registered.device_management_registration.registration_mode, "dry_run");
   assert.equal(registered.recovery_state.credential, "registered_with_public_key");
+});
+
+test("real community registration uses the narrow Device Management scope", async () => {
+  const signingKey = "recovery-device-registration-test-key";
+  const service = createDefaultRecoveryTool({
+    ...createConfig({
+      DEVICE_MANAGEMENT_BASE_URL: "https://devices.gernetix.test/api/device-management",
+      REGISTER_RECOVERED_DEVICES: "true",
+    }),
+    internalApiSigningKey: signingKey,
+  });
+  const session = service.createSession({ detection: { usb_path: "COM10", serial_number: "REC-10" } });
+  const originalFetch = global.fetch;
+  let authorization = "";
+  global.fetch = async (_url, options) => {
+    authorization = options.headers.Authorization;
+    return { ok: true, status: 201, async json() { return { device_id: session.device_id, authenticity_status: "community_unverified" }; } };
+  };
+  try {
+    await service.registerCommunityDevice(session.recovery_session_id);
+    const claims = verifyInternalToken(authorization.replace(/^Bearer /, ""), signingKey, {
+      audience: "device-management-server", requiredScopes: ["device.register"],
+    });
+    assert.equal(claims.sub, "recovery-tool");
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test("prepares connectivity reset without storing wifi password centrally", () => {

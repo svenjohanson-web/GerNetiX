@@ -1,9 +1,9 @@
-const { timingSafeEqual } = require("node:crypto");
 const fs = require("node:fs");
 const nodePath = require("node:path");
 const { PublicDemoError } = require("./errors");
+const { readBearerToken, verifyInternalToken } = require("../../shared/internal-api-auth");
 
-function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__dirname, "..", "public") }) {
+function createHttpApp({ service, internalApiSigningKey, publicDir = nodePath.join(__dirname, "..", "public") }) {
   const identityPublicDir = nodePath.join(__dirname, "..", "..", "identity-server", "public");
   const sharedAppAssets = new Set(["serial-service-client.js", "unified-flash-dialog.css", "unified-flash-dialog.js", "unified-flash-executor.js"]);
   return async function routeRequest(req, res) {
@@ -39,7 +39,10 @@ function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__di
       return sendJson(res, 200, await service.getPublicDemo(decodeURIComponent(demo[1])));
     }
     if (req.method === "POST" && path === "/api/internal/public-demos") {
-      requirePublisherToken(req, publisherToken);
+      verifyInternalToken(readBearerToken(req), internalApiSigningKey, {
+        audience: "public-demo-server",
+        requiredScopes: ["public_demo.publish"],
+      });
       return sendJson(res, 201, await service.publishDemo(await readJsonBody(req)));
     }
     return sendJson(res, 404, { error: "not_found" });
@@ -59,18 +62,6 @@ function serveStatic(res, publicDir, requestPath) {
         : "text/html; charset=utf-8";
   res.writeHead(200, { "Content-Type": contentType, "X-Content-Type-Options": "nosniff" });
   res.end(fs.readFileSync(filePath));
-}
-
-function requirePublisherToken(req, expectedToken) {
-  const actualToken = req.headers["x-public-demo-publisher-token"] || "";
-  if (!expectedToken || typeof actualToken !== "string") {
-    throw new PublicDemoError("forbidden", "Der Veröffentlichungszugang ist nicht freigegeben.", 403);
-  }
-  const expected = Buffer.from(expectedToken);
-  const actual = Buffer.from(actualToken);
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
-    throw new PublicDemoError("forbidden", "Der Veröffentlichungszugang ist nicht freigegeben.", 403);
-  }
 }
 
 function sendFirmware(res, firmware) {

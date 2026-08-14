@@ -1,6 +1,22 @@
 "use strict";
 
 function createProjectConfigurationService({ readJsonBody, projectServerUserId, developmentProjectTemplate, requireEntitlements, requiredField, templateBuildConfig, templateHardwareConfiguration, templateSoftwareUnits, loadAvailableProcessorBoards, sendJson, compilerBoardConfiguration, normalizeHardwareConfiguration, defaultProjectCommunicationSetup, applyProjectCommunicationSetup, slugifyProjectId, templateArchitecturePlantUml, developmentProjectSources, templateFirmwareSources, templateHardwareProfileId, projectServerJson, accountSubscription, developmentProjectViewManifest, defaultHomeAutomationConfiguration, defaultTouchscreenGameConfiguration, touchWorkspace, toPlatformProject, mapProjectServerProject, requireSessionProject, normalizeArchitectureDiagram, architectureDiagramFromManifest, projectSources, hardwareConfigurationFromManifest, loadUserIdeProjects, initialArchitecturePlantUml, normalizeArchitectureDialog, normalizeHomeAutomationConfiguration, normalizeTouchscreenGameConfiguration, isTouchscreenGameBoard, buildConfigForBoard, touchscreenGameInventoryMatches, mergeSelectedGamesHeader, developmentSoftwareUnits, loadUserIdeDevices, hardwareConfigurationSources, hardwareWiringPlantUml, loadProcessorBoards, normalizeBasissoftwareConfiguration, platformSoftwareUnits, normalizeProjectCommunicationSetup }) {
+function delegatedProjectAccess(accountId, projectIds, scope) {
+  return { internalAuth: { scopes: [scope], delegation: { account_id: String(accountId), project_ids: projectIds.map(String) } } };
+}
+
+function accountAccess(session, scope = "project.read") {
+  return delegatedProjectAccess(projectServerUserId(session), [], scope);
+}
+
+function projectAccess(session, project, scope = "project.read") {
+  return delegatedProjectAccess(projectServerUserId(session), [project.project_server_id], scope);
+}
+
+function systemProjectAccess(projectId, scope = "project.read") {
+  return delegatedProjectAccess("system", [projectId], scope);
+}
+
 async function handleDevelopmentProjectCreate(req, res, session) {
   const body = await readJsonBody(req);
   const userId = projectServerUserId(session);
@@ -143,9 +159,10 @@ async function handleDevelopmentProjectCreate(req, res, session) {
     : "";
   const templateProjectId = `system_template_${template.id}${templateVariant}_v${template.schemaVersion}`;
   if (template.id !== "empty") {
-    const existingTemplate = await projectServerJson(`/api/projects/${encodeURIComponent(templateProjectId)}`).catch((error) => error.status === 404 ? null : Promise.reject(error));
+    const existingTemplate = await projectServerJson(`/api/projects/${encodeURIComponent(templateProjectId)}`, systemProjectAccess(templateProjectId)).catch((error) => error.status === 404 ? null : Promise.reject(error));
     if (!existingTemplate) await projectServerJson("/api/projects", {
       method: "POST",
+      ...delegatedProjectAccess("system", [], "project.write"),
       body: {
         project_id: templateProjectId, user_id: "system", title: template.title, description: template.description,
         learning_project_id: "system_template", hardware_profile_id: templateHardwareProfileId(template), build_config: buildConfig,
@@ -163,6 +180,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   }
   const project = await projectServerJson("/api/projects", {
     method: "POST",
+    ...accountAccess(session, "project.write"),
     body: {
       project_id: projectId,
       ...(template.id !== "empty" ? { template_project_id: templateProjectId } : {}),
@@ -218,6 +236,7 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   const expectedHeadSha = await projectSources.persistGenerated(project, sources, "Architekturansichten aktualisiert");
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       ...(expectedHeadSha ? { expected_head_sha: expectedHeadSha } : {}),
       title,
@@ -323,9 +342,11 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
     const selectedGamesPath = "Komponenten/IoT-Device 1/include/config/selected_games.h";
     const existingSelectedGames = await projectServerJson(
       `/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(selectedGamesPath)}`,
+      projectAccess(session, project),
     ).catch(() => null);
     await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
       method: "PUT",
+      ...projectAccess(session, project, "project.write"),
       body: {
         path: selectedGamesPath,
         role: "user_code",
@@ -345,6 +366,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
     : softwareUnits[0]?.software_unit_id || "";
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       ...(selectedBoard ? { hardware_profile_id: selectedBoard.base_board_profile_id || selectedBoard.hardware_item_id } : {}),
       device_id: selectedInventoryDevice?.device_id || project.device_id || "",
@@ -468,7 +490,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         inventory_device_id: primaryInventoryDevice?.device_id || "",
       })
     : existingManifest.game_configuration;
-  const currentSources = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
+  const currentSources = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, projectAccess(session, project));
   const currentSourcePaths = new Set((currentSources.items || []).map((source) => source.path));
   const starterSources = developmentFirmwareStarterSources(softwareUnits, project.title)
     .filter((source) => !currentSourcePaths.has(source.path));
@@ -476,6 +498,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   const expectedHeadSha = await projectSources.persistGenerated(project, sources, "Hardwareansichten aktualisiert");
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       ...(expectedHeadSha ? { expected_head_sha: expectedHeadSha } : {}),
       hardware_profile_id: selectedBaseBoardId || project.hardware_profile_id,
@@ -531,6 +554,7 @@ async function handleProjectComponentFeatures(req, res, session, projectId) {
   const webserver = body.webserver && typeof body.webserver === "object" ? body.webserver : {};
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       build_config: {
         ...project.build_config,
@@ -573,6 +597,7 @@ async function handleProjectBasissoftwareConfiguration(req, res, session, projec
   }
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: { software_units: updatedUnits, active_software_unit_id: softwareUnitId },
   });
   const projects = await loadUserIdeProjects(session);
@@ -593,6 +618,7 @@ async function handleProjectCommunicationSetup(req, res, session, projectId) {
   const derived = applyProjectCommunicationSetup(softwareUnits, setup);
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       view_manifest: { ...project.view_manifest, communication_setup: derived.setup },
       software_units: derived.software_units,
@@ -650,6 +676,7 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
   const current = project.build_config.component_hardware_features || {};
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       build_config: {
         ...project.build_config,
@@ -676,6 +703,7 @@ async function handleProjectPwaDashboard(req, res, session, projectId) {
   const pwaDashboard = normalizePwaDashboardConfiguration(body);
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       view_manifest: {
         ...project.view_manifest,
@@ -698,6 +726,7 @@ async function handleProjectEventConfiguration(req, res, session, projectId) {
   const configuration = normalizeEventConfiguration(await readJsonBody(req), project.view_manifest);
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(session, project, "project.write"),
     body: {
       view_manifest: {
         ...project.view_manifest,

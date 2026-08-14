@@ -1,9 +1,11 @@
 const { PersistenceServerError } = require("./errors");
+const { readBearerToken, verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const prefix = "/api/persistence";
 
 function createHttpApp(options) {
   const service = options.service;
+  const internalApiSigningKey = options.internalApiSigningKey || "";
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -16,20 +18,24 @@ function createHttpApp(options) {
 
     const stateMatch = path.match(new RegExp(`^${prefix}/state/([^/]+)$`));
     if (req.method === "GET" && stateMatch) {
+      requireServiceToken(req, internalApiSigningKey, "persistence.state.read");
       sendJson(res, 200, service.getState(decodeURIComponent(stateMatch[1])));
       return;
     }
     if (req.method === "PUT" && stateMatch) {
+      requireServiceToken(req, internalApiSigningKey, "persistence.state.write");
       sendJson(res, 200, service.putState(decodeURIComponent(stateMatch[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/export`) {
+      requireServiceToken(req, internalApiSigningKey, "persistence.export");
       sendJson(res, 200, service.exportDatabase());
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/backup`) {
+      requireServiceToken(req, internalApiSigningKey, "persistence.backup.run");
       const body = await readJsonBody(req);
       sendJson(res, 200, service.backupDatabase(body.target_path || body.targetPath));
       return;
@@ -37,6 +43,13 @@ function createHttpApp(options) {
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function requireServiceToken(req, secret, scope) {
+  return verifyInternalToken(readBearerToken(req), secret, {
+    audience: "persistence-server",
+    requiredScopes: [scope],
+  });
 }
 
 function readJsonBody(req) {

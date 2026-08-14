@@ -1,9 +1,12 @@
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
+
 function createConfig(env = process.env) {
   return {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 5800),
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700/api/device-management",
     aiUsageBaseUrl: env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000/api/ai-usage",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "device-voice-orchestrator"),
     provider: env.DEVICE_VOICE_PROVIDER || "disabled",
     model: env.DEVICE_VOICE_MODEL || "device-voice-pipeline-v1",
     sessionTtlSeconds: boundedNumber(env.DEVICE_VOICE_SESSION_TTL_SECONDS, 120, 30, 300),

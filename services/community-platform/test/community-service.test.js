@@ -6,13 +6,18 @@ const test = require("node:test");
 const { Readable } = require("node:stream");
 
 const { createConfig, createDefaultCommunityPlatform, createHttpApp } = require("../src");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+const internalApiSigningKey = "community-platform-test-signing-key";
 const member = { user_id: "user-1" };
 const operator = { user_id: "moderator-1", is_operator: true };
 const supportAdmin = { actor_id: "admin-support-1", is_admin: true, capabilities: ["admin_community_support"] };
 const moderationAdmin = { actor_id: "admin-moderator-1", is_admin: true, capabilities: ["admin_community_moderation"] };
 
 async function createService() {
-  return createDefaultCommunityPlatform(createConfig({ COMMUNITY_TRIAGE_SLA_HOURS: "24", COMMUNITY_PERSISTENCE_BACKEND: "memory" }));
+  return createDefaultCommunityPlatform({
+    ...createConfig({ COMMUNITY_TRIAGE_SLA_HOURS: "24", COMMUNITY_PERSISTENCE_BACKEND: "memory" }),
+    internalApiSigningKey,
+  });
 }
 
 test("uses a separate SQLite database by default and retains questions after a restart", async () => {
@@ -511,22 +516,22 @@ test("exposes only the calling member's compact dashboard summary through HTTP",
   assert.doesNotMatch(JSON.stringify(owner.body), /Nur für mich|Privat|user-1/);
 });
 
-test("protects the operational summary with the internal Community token", async () => {
-  const service = await createDefaultCommunityPlatform(createConfig({
-    COMMUNITY_PERSISTENCE_BACKEND: "memory",
-    COMMUNITY_INTERNAL_TOKEN: "internal-secret",
-  }));
+test("protects the operational summary with a narrow service token", async () => {
+  const service = await createDefaultCommunityPlatform({
+    ...createConfig({ COMMUNITY_PERSISTENCE_BACKEND: "memory" }),
+    internalApiSigningKey,
+  });
   const app = createHttpApp({ service });
 
   const denied = await requestJson(app, "/api/community/operations-summary");
   const allowed = await requestJson(app, "/api/community/operations-summary", {
-    "x-gernetix-community-token": "internal-secret",
+    ...serviceHeaders("community.operations.read"),
   });
 
-  assert.equal(denied.status, 401);
+  assert.equal(denied.status, 403);
   assert.equal(allowed.status, 200);
   assert.equal(allowed.body.questions.total, 1);
-  assert.doesNotMatch(JSON.stringify(allowed.body), /internal-secret|seed-expert/);
+  assert.doesNotMatch(JSON.stringify(allowed.body), /test-signing-key|seed-expert/);
 });
 
 test("advertises support for immutable project copies", async () => {
@@ -552,12 +557,10 @@ test("exposes used-electronics listings and owner-only sale status through HTTP"
   assert.equal(created.status, 201);
   assert.equal(created.body.sale_type, "used_electronics");
 
-  await assert.rejects(
-    requestAppJson(app, "PATCH", `/api/community/marketplace/listings/${created.body.listing_id}`, {
-      headers: { "x-gernetix-community-actor": "user-2" }, body: { state: "sold" },
-    }),
-    /nicht gefunden/,
-  );
+  const foreignUpdate = await requestAppJson(app, "PATCH", `/api/community/marketplace/listings/${created.body.listing_id}`, {
+    headers: { "x-gernetix-community-actor": "user-2" }, body: { state: "sold" },
+  });
+  assert.equal(foreignUpdate.status, 404);
   const sold = await requestAppJson(app, "PATCH", `/api/community/marketplace/listings/${created.body.listing_id}`, {
     headers: ownerHeaders, body: { state: "sold" },
   });
@@ -594,19 +597,19 @@ test("exposes thread creation, replies and read state through the Community HTTP
   assert.equal(read.body.state, "read");
 });
 
-test("protects the separate Community admin API with its own token and capability actor", async () => {
+test("protects the separate Community admin API with service scope and capability actor", async () => {
   const service = await createService();
-  service.adminToken = "community-admin-secret";
   const app = createHttpApp({ service });
   const thread = await service.createSupportRequest({ subject: "Admin HTTP", body: "Bitte öffnen" }, member);
-  const actor = Buffer.from(JSON.stringify({ actor_id: "admin-1", role: "support", capabilities: ["admin_community_support"] })).toString("base64url");
+  const actorClaims = { iss: "admin-tool", sub: "admin-tool", aud: "community-platform", scopes: ["community.admin"], kind: "delegated_admin_action", context: { account_id: "admin-1", role: "support", capabilities: ["admin_community_support"] } };
 
   const denied = await requestAppJson(app, "GET", "/api/community/admin/support-threads");
   assert.equal(denied.status, 401);
   const allowed = await requestAppJson(app, "GET", "/api/community/admin/support-threads", {
     headers: {
       "x-gernetix-community-admin-token": "community-admin-secret",
-      "x-gernetix-community-admin-actor": actor,
+      "x-gernetix-admin-delegation": issueInternalToken(actorClaims, internalApiSigningKey),
+      ...serviceHeaders("community.admin"),
     },
   });
   assert.equal(allowed.status, 200);
@@ -614,7 +617,8 @@ test("protects the separate Community admin API with its own token and capabilit
   const reply = await requestAppJson(app, "POST", `/api/community/admin/support-threads/${thread.thread_id}/messages`, {
     headers: {
       "x-gernetix-community-admin-token": "community-admin-secret",
-      "x-gernetix-community-admin-actor": actor,
+      "x-gernetix-admin-delegation": issueInternalToken(actorClaims, internalApiSigningKey),
+      ...serviceHeaders("community.admin"),
     },
     body: { body: "Über den getrennten Admin-Zugang." },
   });
@@ -625,10 +629,12 @@ test("protects the separate Community admin API with its own token and capabilit
 async function requestJson(app, url, headers = {}) {
   let status = 0;
   let body = "";
-  await app({ method: "GET", url, headers: { host: "localhost", ...headers } }, {
+  const response = {
     writeHead(code) { status = code; },
     end(value) { body = value || ""; },
-  });
+  };
+  await app({ method: "GET", url, headers: { host: "localhost", ...authenticatedHeaders("GET", headers) } }, response)
+    .catch((error) => { response.writeHead(error.status || 500); response.end(JSON.stringify({ error: error.code || "internal" })); });
   return { status, body: JSON.parse(body) };
 }
 
@@ -639,10 +645,32 @@ async function requestAppJson(app, method, url, options = {}) {
   const req = Readable.from(requestBody ? [requestBody] : []);
   req.method = method;
   req.url = url;
-  req.headers = { host: "localhost", ...(options.headers || {}) };
-  await app(req, {
+  req.headers = { host: "localhost", ...authenticatedHeaders(method, options.headers || {}) };
+  const response = {
     writeHead(code) { status = code; },
     end(value) { responseBody = value || ""; },
-  });
+  };
+  await app(req, response)
+    .catch((error) => { response.writeHead(error.status || 500); response.end(JSON.stringify({ error: error.code || "internal", message: error.message })); });
   return { status, body: responseBody ? JSON.parse(responseBody) : null };
+}
+
+function authenticatedHeaders(method, headers) {
+  const actor = String(headers["x-gernetix-community-actor"] || "");
+  if (!actor || headers.authorization) return headers;
+  const scope = method === "GET" ? "community.read" : "community.write";
+  const common = { iss: "identity-server", sub: "identity-server", aud: "community-platform", scopes: [scope] };
+  return {
+    ...headers,
+    authorization: `Bearer ${issueInternalToken(common, internalApiSigningKey)}`,
+    "x-gernetix-delegation": issueInternalToken({
+      ...common, kind: "delegated_user_action", context: { account_id: actor, project_ids: [], entitlements: [] },
+    }, internalApiSigningKey),
+  };
+}
+
+function serviceHeaders(scope) {
+  return { authorization: `Bearer ${issueInternalToken({
+    iss: "test-service", sub: "test-service", aud: "community-platform", scopes: [scope],
+  }, internalApiSigningKey)}` };
 }

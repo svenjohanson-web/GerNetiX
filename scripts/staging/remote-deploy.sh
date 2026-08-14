@@ -26,38 +26,62 @@ ensure_staging_secret() {
   echo "    $secret_name: fehlenden Staging-Wert sicher erzeugt"
 }
 
-repair_concatenated_hex_secret() {
-  secret_name=$1
-  repair_file="${env_file}.repair.$$"
-  awk -v secret_name="$secret_name" '
-    {
-      marker = secret_name "="
-      marker_position = index($0, marker)
-      if (marker_position > 1) {
-        secret_value = substr($0, marker_position + length(marker))
-        if (length(secret_value) == 64 && secret_value ~ /^[0-9a-f]+$/) {
-          print substr($0, 1, marker_position - 1)
-          print substr($0, marker_position)
-          repaired = 1
-          next
-        }
-      }
-      print
-    }
-    END { exit repaired ? 0 : 3 }
-  ' "$env_file" > "$repair_file" || repair_status=$?
-  repair_status=${repair_status:-0}
-  if [ "$repair_status" -eq 0 ]; then
-    chmod 600 "$repair_file"
-    mv "$repair_file" "$env_file"
-    echo "    $secret_name: zusammengefuehrte Staging-Zeile repariert"
-  else
-    rm -f "$repair_file"
-    if [ "$repair_status" -ne 3 ]; then
-      echo "Staging-Env konnte fuer $secret_name nicht geprueft werden." >&2
-      exit "$repair_status"
-    fi
+append_staging_value() {
+  value_name=$1
+  value=$2
+  if [ -s "$env_file" ] && [ -n "$(tail -c 1 "$env_file")" ]; then
+    printf '\n' >> "$env_file"
   fi
+  printf '%s=%s\n' "$value_name" "$value" >> "$env_file"
+}
+
+ensure_internal_api_keyset() {
+  key_version=${INTERNAL_API_KEY_VERSION:-2026-08}
+  key_dir=${GERNETIX_INTERNAL_API_KEY_DIR:-/var/lib/gernetix/internal-api-keys/$key_version}
+  required_names="INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON IDENTITY_INTERNAL_API_SIGNING_KEY_ID IDENTITY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 ADMIN_TOOL_INTERNAL_API_SIGNING_KEY_ID ADMIN_TOOL_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 ADMIN_ACCESS_INTERNAL_API_SIGNING_KEY_ID ADMIN_ACCESS_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 BUILD_DEPLOY_INTERNAL_API_SIGNING_KEY_ID BUILD_DEPLOY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 TELEMETRY_INTERNAL_API_SIGNING_KEY_ID TELEMETRY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 DEVICE_VOICE_INTERNAL_API_SIGNING_KEY_ID DEVICE_VOICE_INTERNAL_API_SIGNING_PRIVATE_KEY_B64"
+  configured_count=0
+  required_count=0
+  for value_name in $required_names; do
+    required_count=$((required_count + 1))
+    if grep -q "^${value_name}=." "$env_file"; then configured_count=$((configured_count + 1)); fi
+  done
+  if [ "$configured_count" -eq "$required_count" ]; then return; fi
+  if [ "$configured_count" -ne 0 ]; then
+    echo "Interne API-Schluessel sind nur teilweise konfiguriert; automatische Vermischung wird abgebrochen." >&2
+    exit 1
+  fi
+
+  if [ ! -d "$key_dir" ]; then
+    install -d -m 0700 "$(dirname "$key_dir")"
+    node tools/internal-api-key-provisioner/index.js --output "$key_dir" --version "$key_version"
+  fi
+  [ -s "$key_dir/public-trust-ring.json" ] || {
+    echo "Fehlender oeffentlicher interner API-Trust-Ring" >&2
+    exit 1
+  }
+  for issuer in identity-server admin-tool admin-access-server build-deploy-server telemetry-server device-voice-orchestrator; do
+    [ -s "$key_dir/private/$issuer.pkcs8.der.b64" ] || {
+      echo "Fehlender privater interner API-Schluessel fuer $issuer" >&2
+      exit 1
+    }
+  done
+  trust_ring=$(tr -d '\r\n' < "$key_dir/public-trust-ring.json")
+  append_staging_value INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON "$trust_ring"
+  for mapping in \
+    "IDENTITY:identity-server" \
+    "ADMIN_TOOL:admin-tool" \
+    "ADMIN_ACCESS:admin-access-server" \
+    "BUILD_DEPLOY:build-deploy-server" \
+    "TELEMETRY:telemetry-server" \
+    "DEVICE_VOICE:device-voice-orchestrator"; do
+    prefix=${mapping%%:*}
+    issuer=${mapping#*:}
+    private_file="$key_dir/private/$issuer.pkcs8.der.b64"
+    append_staging_value "${prefix}_INTERNAL_API_SIGNING_KEY_ID" "${issuer}-${key_version}"
+    append_staging_value "${prefix}_INTERNAL_API_SIGNING_PRIVATE_KEY_B64" "$(tr -d '\r\n' < "$private_file")"
+  done
+  chmod 600 "$env_file"
+  echo "    Interne API-Schluessel: getrennte Ed25519-Aussteller sicher provisioniert"
 }
 
 compose() {
@@ -287,14 +311,12 @@ fi
 
 begin_phase "Fehlende Staging-Secrets provisionieren"
 chmod 600 "$env_file"
-repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN
-ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
+ensure_internal_api_keyset
 ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
 ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
 ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex
 ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex
 ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64
-ensure_staging_secret PROJECT_ADMIN_READ_TOKEN hex
 ensure_staging_secret FORGEJO_POSTGRES_PASSWORD hex
 ensure_staging_secret FORGEJO_SECRET_KEY hex
 ensure_staging_secret FORGEJO_INTERNAL_TOKEN hex

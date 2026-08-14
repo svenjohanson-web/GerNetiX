@@ -20,6 +20,28 @@ function registerProjectRoutes(dependencies) {
       handler: ({ req, res, match, url }) => withSession(req, res, (session) => action({ req, res, match, url, session })),
     });
   }
+  function projectAccess(session, project, scope = "project.read") {
+    return {
+      internalAuth: {
+        scopes: [scope],
+        delegation: {
+          account_id: accountIdFor(session),
+          project_ids: [String(project.project_server_id)],
+        },
+      },
+    };
+  }
+  function accountAccess(session, scope = "project.read") {
+    return {
+      internalAuth: {
+        scopes: [scope],
+        delegation: { account_id: accountIdFor(session), project_ids: [] },
+      },
+    };
+  }
+  function accountIdFor(session) {
+    return String(projectServerUserId ? projectServerUserId(session) : session?.account?.user_id || "");
+  }
 
   registry.register({
     method: "*",
@@ -39,6 +61,7 @@ function registerProjectRoutes(dependencies) {
       }
       const feedback = await projectServerJson("/api/template-feedback", {
         method: "POST",
+        ...accountAccess(session, "project.admin"),
         body: {
           template_id: template.id,
           user_id: projectServerUserId(session),
@@ -64,6 +87,7 @@ function registerProjectRoutes(dependencies) {
       }
       const feedback = await projectServerJson("/api/learning-feedback", {
         method: "POST",
+        ...projectAccess(session, project, "project.admin"),
         body: {
           project_id: project.project_server_id,
           user_id: projectServerUserId(session),
@@ -101,6 +125,7 @@ function registerProjectRoutes(dependencies) {
       const project = await requireSessionProject(session, String(body.projectId || body.project_id || ""));
       const feedback = await projectServerJson("/api/learning-feedback", {
         method: "POST",
+        ...projectAccess(session, project, "project.admin"),
         body: {
           project_id: project.project_server_id,
           user_id: projectServerUserId(session),
@@ -150,6 +175,7 @@ function registerProjectRoutes(dependencies) {
       const body = method === "POST" ? await readJsonBody(req) : undefined;
       const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/debug-session`, {
         method,
+        ...projectAccess(session, project, method === "GET" ? "project.read" : "project.write"),
         ...(body ? { body } : {}),
       });
       sendJson(res, method === "POST" ? 201 : 200, result);
@@ -159,6 +185,7 @@ function registerProjectRoutes(dependencies) {
     const project = await requireSessionProject(session, decodeURIComponent(match[1]));
     const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/debug-session/activity`, {
       method: "POST",
+      ...projectAccess(session, project, "project.write"),
       body: {},
     });
     sendJson(res, 200, result);
@@ -170,7 +197,7 @@ function registerProjectRoutes(dependencies) {
       const servicePath = `/api/projects/${encodeURIComponent(project.project_server_id)}/project-app`;
       if (method === "GET") {
         const query = new URLSearchParams({ account_id: accountId });
-        const snapshot = await projectServerJson(`${servicePath}?${query}`);
+        const snapshot = await projectServerJson(`${servicePath}?${query}`, projectAccess(session, project));
         const [accountDevices, processorBoards] = await Promise.all([
           dependencies.loadUserIdeDevices(session).catch(() => []),
           dependencies.loadProcessorBoards?.().catch(() => []),
@@ -213,6 +240,7 @@ function registerProjectRoutes(dependencies) {
       const actionContext = readUserActionContext(req, "project.settings.save");
       sendJson(res, 200, await projectServerJson(servicePath, {
         method: "PUT",
+        ...projectAccess(session, project, "project.write"),
         ...(actionContext ? { headers: actionContext.headers } : {}),
         body: {
           account_id: accountId,
@@ -241,7 +269,7 @@ function registerProjectRoutes(dependencies) {
       sendJson(res, 403, { error: "project_app_device_not_owned", message: "Mindestens ein ausgewaehltes Geraet gehoert nicht zu diesem Account." });
       return;
     }
-    const snapshot = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/project-app?${new URLSearchParams({ account_id: accountId })}`);
+    const snapshot = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/project-app?${new URLSearchParams({ account_id: accountId })}`, projectAccess(session, project));
     const reports = new Map(accountDevices.map((device) => [
       device.device_id,
       projectAppDeviceCompatibility({ project, manifest: snapshot.manifest, device, processorBoards }),
@@ -258,6 +286,7 @@ function registerProjectRoutes(dependencies) {
     }
     const saved = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/project-app/devices`, {
       method: "PUT",
+      ...projectAccess(session, project, "project.write"),
       body: { account_id: accountId, device_ids: requestedIds },
     });
     sendJson(res, 200, {
@@ -344,9 +373,9 @@ function registerProjectRoutes(dependencies) {
       if (!requireEntitlement(res, session, "project_history")) return;
       const project = await requireSessionProject(session, decodeURIComponent(match[1]));
       const servicePath = `/api/projects/${encodeURIComponent(project.project_server_id)}/versions`;
-      if (method === "GET") { sendJson(res, 200, await projectServerJson(servicePath)); return; }
+      if (method === "GET") { sendJson(res, 200, await projectServerJson(servicePath, projectAccess(session, project))); return; }
       const body = await readJsonBody(req);
-      sendJson(res, 201, await projectServerJson(servicePath, { method: "POST", body: { ...body, user_id: projectServerUserId(session) } }));
+      sendJson(res, 201, await projectServerJson(servicePath, { method: "POST", ...projectAccess(session, project, "project.write"), body: { ...body, user_id: projectServerUserId(session) } }));
     });
   }
   registerProjectPattern("POST", /^\/api\/platform\/projects\/([^/]+)\/versions\/([^/]+)\/restore$/, async ({ req, res, match, session }) => {
@@ -354,7 +383,7 @@ function registerProjectRoutes(dependencies) {
     const project = await requireSessionProject(session, decodeURIComponent(match[1]));
     const body = await readJsonBody(req);
     sendJson(res, 201, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions/${encodeURIComponent(match[2])}/restore`, {
-      method: "POST", body: { ...body, user_id: projectServerUserId(session) },
+      method: "POST", ...projectAccess(session, project, "project.write"), body: { ...body, user_id: projectServerUserId(session) },
     }));
   });
   registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/source-search$/, ({ res, match, url, session }) => (

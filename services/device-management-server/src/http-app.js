@@ -1,9 +1,11 @@
 const { DeviceManagementError } = require("./errors");
+const { assertDelegatedResource, readBearerToken, verifyDelegation, verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const prefix = "/api/device-management";
 
 function createHttpApp(options) {
   const service = options.service;
+  const signingKey = options.internalApiSigningKey || "";
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -28,6 +30,8 @@ function createHttpApp(options) {
       });
       return;
     }
+
+    authorizeRequest(req, url, signingKey);
 
     if (req.method === "POST" && path === `${prefix}/devices/register`) {
       sendJson(res, 201, await service.registerDevice(await readJsonBody(req)));
@@ -273,6 +277,46 @@ function createHttpApp(options) {
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function authorizeRequest(req, url, signingKey) {
+  const path = url.pathname;
+  // Challenge and proof are the device authentication protocol itself.
+  if (/\/devices\/[^/]+\/auth\/(challenge|verify)$/.test(path)) return;
+  const { scope, accountId } = accessRule(req.method, path, url);
+  verifyInternalToken(readBearerToken(req), signingKey, {
+    audience: "device-management-server", requiredScopes: [scope],
+  });
+  if (accountId) {
+    const delegation = verifyDelegation(req.headers["x-gernetix-delegation"], signingKey, {
+      audience: "device-management-server", requiredScopes: [scope],
+    });
+    assertDelegatedResource(delegation, { accountId });
+  }
+}
+
+function accessRule(method, path, url) {
+  const account = path.match(/^\/api\/device-management\/accounts\/([^/]+)\//);
+  if (account) {
+    const write = method !== "GET";
+    const family = path.includes("board-configurations") ? "account_board"
+      : path.includes("purchase-contexts") ? "purchase_context"
+        : path.includes("hardware-unit-claims") || path.includes("claimable-hardware-units") ? "hardware_claim"
+          : "device.account";
+    return { scope: `${family}.${write ? "write" : "read"}`, accountId: decodeURIComponent(account[1]) };
+  }
+  if (path.includes("/admin/devices")) return { scope: "device.admin.read" };
+  if (path.includes("/customer-data-access/")) {
+    const accountId = url.searchParams.get("accountId") || url.searchParams.get("account_id") || "";
+    return { scope: method === "GET" ? "customer_data_access.read" : "customer_data_access.write", accountId };
+  }
+  if (path.endsWith("/push-recipients")) return { scope: "device.ownership.resolve" };
+  if (path.endsWith("/voice-authorize")) return { scope: "device.voice.authorize" };
+  if (path.includes("/pairing/")) return { scope: "device.pair" };
+  if (path.includes("/provisioning/")) return { scope: "device.provision" };
+  if (path.endsWith("/devices/register")) return { scope: "device.register" };
+  if (path.endsWith("/heartbeat") || path.endsWith("/connectivity/status")) return { scope: "device.status.write" };
+  return { scope: "device.status.read" };
 }
 
 function readJsonBody(req) {

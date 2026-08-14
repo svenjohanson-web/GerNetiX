@@ -1,4 +1,5 @@
 const { BuildDeployError } = require("../errors");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
 class DeployJobOrchestrator {
   constructor(options = {}) {
@@ -6,6 +7,7 @@ class DeployJobOrchestrator {
     this.mqttPublisher = options.mqttPublisher || null;
     this.authorizationSigner = options.authorizationSigner || null;
     this.acknowledgementStore = options.acknowledgementStore || null;
+    this.internalApiSigningKey = options.internalApiSigningKey || "";
   }
 
   preflight() {
@@ -68,11 +70,12 @@ class DeployJobOrchestrator {
 
     const deployId = `deploy_${job.job_id}`;
     const sequence = Date.now();
-    const firmwareUrl = /^https:\/\//.test(firmware.download_url)
+    const unsignedFirmwareUrl = /^https:\/\//.test(firmware.download_url)
       ? firmware.download_url
       : `${this.publicBaseUrl}${firmware.download_url.startsWith("/") ? "" : "/"}${firmware.download_url}`;
     const deviceFirmwareSha256 = firmware.esp_image_sha256 || firmware.sha256;
     const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60;
+    const firmwareUrl = this.authorizeFirmwareUrl(unsignedFirmwareUrl, job, firmware, deploy.device_id, expiresAt);
     const signingKeyId = this.authorizationSigner.keyId || "test-key";
     const canonical = [
       "gernetix-ota-command-v1",
@@ -154,12 +157,13 @@ class DeployJobOrchestrator {
 
     const flashboxJobId = `flashbox_${job.job_id}`;
     const sequence = Date.now();
-    const firmwareUrl = /^https:\/\//.test(firmware.download_url)
+    const unsignedFirmwareUrl = /^https:\/\//.test(firmware.download_url)
       ? firmware.download_url
       : `${this.publicBaseUrl}${firmware.download_url.startsWith("/") ? "" : "/"}${firmware.download_url}`;
     const artifactSha256 = firmware.sha256;
     const deviceFirmwareSha256 = firmware.esp_image_sha256 || artifactSha256;
     const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60;
+    const firmwareUrl = this.authorizeFirmwareUrl(unsignedFirmwareUrl, job, firmware, flashbox.flashbox_device_id, expiresAt);
     const signingKeyId = this.authorizationSigner.keyId || "test-key";
     const manifestType = flashbox.manifest_type || "project_firmware_flash";
     const canonical = [
@@ -211,6 +215,28 @@ class DeployJobOrchestrator {
       firmware_size_bytes: firmware.size_bytes,
       log: "Signierter FlashBox-Auftrag wurde auf dem ausschließlich für die inventarisierte FlashBox lesbaren MQTT-Topic veröffentlicht.",
     };
+  }
+
+  authorizeFirmwareUrl(url, job, firmware, deviceId, expiresAt) {
+    const fileName = String(firmware.file_name || new URL(url).pathname.split("/").pop() || "");
+    const ttlSeconds = Math.max(1, expiresAt - Math.floor(Date.now() / 1000));
+    const grant = issueInternalToken({
+      iss: "build-deploy-server",
+      sub: String(deviceId || "device"),
+      aud: "build-deploy-server",
+      kind: "artifact_download_grant",
+      scopes: ["artifact.download"],
+      context: {
+        account_id: job.account_id,
+        project_ids: job.project_id ? [job.project_id] : [],
+        job_ids: [job.job_id],
+        artifact_names: [fileName],
+        device_ids: deviceId ? [deviceId] : [],
+      },
+    }, this.internalApiSigningKey, { ttlSeconds });
+    const target = new URL(url);
+    target.searchParams.set("grant", grant);
+    return target.toString();
   }
 }
 

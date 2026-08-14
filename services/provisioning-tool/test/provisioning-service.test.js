@@ -10,6 +10,7 @@ const {
   createDefaultProvisioningTool,
   UsbFlashRunner,
 } = require("../src");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const TEST_DEVICE_KEYS = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
 const TEST_DEVICE_PUBLIC_KEY = TEST_DEVICE_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
@@ -556,10 +557,11 @@ test("persists registered firmware artifacts in sqlite", () => {
     REGISTER_DEVICE_ON_COMPLETE: "false",
     PERSISTENCE_BACKEND: "sqlite",
     PROVISIONING_SQLITE_PATH: sqlitePath,
+    PROVISIONING_FIRMWARE_FILE_PATH: path.join(tempRoot, "not-configured.bin"),
   }));
 
   first.upsertFirmwareArtifact({
-    artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
+    artifact_id: "firmware_artifact.test_esp8266_factory.latest",
     file_name: "merged-firmware.bin",
     content_base64: Buffer.from("persist me").toString("base64"),
     chip: "esp8266",
@@ -573,12 +575,13 @@ test("persists registered firmware artifacts in sqlite", () => {
     REGISTER_DEVICE_ON_COMPLETE: "false",
     PERSISTENCE_BACKEND: "sqlite",
     PROVISIONING_SQLITE_PATH: sqlitePath,
+    PROVISIONING_FIRMWARE_FILE_PATH: path.join(tempRoot, "not-configured.bin"),
   }));
   const artifacts = second.listFirmwareArtifacts();
   const mode = second.getFlashMode();
 
   assert.equal(artifacts.items.length, 1);
-  assert.equal(artifacts.items[0].artifact_id, "firmware_artifact.esp32_basissoftware_factory.latest");
+  assert.equal(artifacts.items[0].artifact_id, "firmware_artifact.test_esp8266_factory.latest");
   assert.equal(artifacts.items[0].chip, "esp8266");
   assert.equal(mode.artifact_ready, true);
   assert.equal(mode.modes.find((item) => item.id === "esptool").enabled, true);
@@ -686,6 +689,31 @@ test("complete marks manufacturer registration and device lifecycle", async () =
   assert.equal(completed.device.lifecycle_state, "provisioned_by_gernetix");
   assert.equal(completed.manufacturer_registration.quality_check_state, "passed");
   assert.equal(completed.audit_events.at(-1).type, "provisioning_completed");
+});
+
+test("Device Management registration uses a target-bound service token", async () => {
+  const signingKey = "provisioning-device-registration-test-key";
+  const service = createService();
+  service.internalApiSigningKey = signingKey;
+  const originalFetch = global.fetch;
+  let authorization = "";
+  global.fetch = async (_url, options) => {
+    authorization = options.headers.Authorization;
+    return { ok: true, status: 201, async json() { return { device_id: "device-1" }; } };
+  };
+  try {
+    await service.registerDeviceManagementDevice({
+      device: { device_id: "device-1", serial_number: "serial-1", hardware_profile_id: "board-1" },
+      manufacturer_registration: { firmware_version: "1.0.0", provisioning_batch_id: "batch-1", provisioned_at: new Date().toISOString(), provisioned_by: "factory", quality_check_state: "passed" },
+      credential: { credential_id: "credential-1", credential_type: "ECDSA_P256_X509", key_reference: "device-key", algorithm: "ECDSA_P256_SHA256", public_key_pem: "public", public_key_fingerprint_sha256: "a".repeat(64), certificate_pem: "certificate", certificate_fingerprint_sha256: "b".repeat(64), expires_at: "2099-01-01T00:00:00.000Z" },
+    });
+    const claims = verifyInternalToken(authorization.replace(/^Bearer /, ""), signingKey, {
+      audience: "device-management-server", requiredScopes: ["device.register"],
+    });
+    assert.equal(claims.sub, "provisioning-tool");
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 test("rejects unknown processor board from hardware catalog", async () => {

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { normalizeUserActionEvent, createUserActionIngestHandler, readUserActionContext } = require("../src/services/user-action-events");
 const { createUserActionReporter } = require("../src/services/user-action-reporter");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const validInput = {
   action_type: "nexi.flash.usb.start",
@@ -91,12 +92,12 @@ test("same-origin action ingest forwards only the normalized event", async () =>
 test("identity reports user actions through the protected Admin Tool endpoint", async () => {
   const requests = [];
   const report = createUserActionReporter({
-    baseUrl: "http://admin-tool:4600/", ingestToken: "ops-token", logger: { warn() {} },
+    baseUrl: "http://admin-tool:4600/", internalApiSigningKey: "ops-signing-key", logger: { warn() {} },
     fetchImpl: async (url, options) => { requests.push({ url, options }); return { ok: true, status: 201 }; },
   });
   assert.equal(await report(normalizeUserActionEvent(validInput)), true);
   assert.equal(requests[0].url, "http://admin-tool:4600/api/internal/user-action-events");
-  assert.equal(requests[0].options.headers["X-GerNetiX-System-Event-Token"], "ops-token");
+  verifyInternalToken(requests[0].options.headers.Authorization.replace(/^Bearer\s+/, ""), "ops-signing-key", { audience: "admin-tool", requiredScopes: ["operations.user_actions.write"] });
 });
 
 test("identity keeps failed Operations deliveries in a persistent outbox and flushes after recovery", async () => {
@@ -107,7 +108,7 @@ test("identity keeps failed Operations deliveries in a persistent outbox and flu
     async save(value) { state = structuredClone(value); },
   };
   const report = createUserActionReporter({
-    baseUrl: "http://admin-tool:4600", ingestToken: "ops-token", outboxStore: store,
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: "ops-signing-key", outboxStore: store,
     logger: { warn() {} },
     fetchImpl: async () => available ? { ok: true, status: 201 } : { ok: false, status: 503 },
   });

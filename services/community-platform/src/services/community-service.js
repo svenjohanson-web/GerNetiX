@@ -5,8 +5,7 @@ class CommunityService {
   constructor(options) {
     this.repository = options.repository;
     this.triageSlaHours = options.triageSlaHours || 24;
-    this.internalToken = options.internalToken || "";
-    this.adminToken = options.adminToken || "";
+    this.internalApiSigningKey = options.internalApiSigningKey || "";
     this.persistenceBackend = options.persistenceBackend || "unknown";
     this.messageRateLimit = options.messageRateLimit || 20;
     this.messageRateWindowSeconds = options.messageRateWindowSeconds || 600;

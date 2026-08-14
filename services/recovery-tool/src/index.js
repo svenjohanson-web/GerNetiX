@@ -18,6 +18,7 @@ function createDefaultRecoveryTool(config = createConfig(), overrides = {}) {
   return new RecoveryService({
     repository: overrides.repository || createRepository(config),
     deviceManagementBaseUrl: config.deviceManagementBaseUrl,
+    internalApiSigningKey: config.internalApiSigningKey,
     registerRecoveredDevices: config.registerRecoveredDevices,
     sourceReader: overrides.sourceReader || new HardwareSourceReader({
       maxSourceBytes: config.hardwareSourceMaxBytes,
@@ -26,9 +27,16 @@ function createDefaultRecoveryTool(config = createConfig(), overrides = {}) {
     hardwareLabAi: overrides.hardwareLabAi || new HardwareLabAi({
       llmConfigStore,
       timeoutMs: config.hardwareAiTimeoutMs,
-      aiUsageClient: overrides.aiUsageClient || new AiUsageClient({ baseUrl: config.aiUsageBaseUrl, timeoutMs: config.aiUsageTimeoutMs }),
+      aiUsageClient: overrides.aiUsageClient || new AiUsageClient({
+        baseUrl: config.aiUsageBaseUrl,
+        timeoutMs: config.aiUsageTimeoutMs,
+        signingKey: config.internalApiSigningKey,
+      }),
     }),
-    buildDeployClient: overrides.buildDeployClient || new BuildDeployClient({ baseUrl: config.buildDeployBaseUrl }),
+    buildDeployClient: overrides.buildDeployClient || new BuildDeployClient({
+      baseUrl: config.buildDeployBaseUrl,
+      signingKey: config.internalApiSigningKey,
+    }),
   });
 }
 

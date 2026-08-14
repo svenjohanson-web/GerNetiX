@@ -55,10 +55,9 @@ Konfiguration:
 - `PERSISTENCE_BACKEND`: System-Event-Persistenz, lokal standardmaessig `sqlite`
 - `OPERATIONS_POSTGRES_*`: Verbindung zur fuehrenden Operations-PostgreSQL-Datenbank
 - `PUBLIC_DEMO_BASE_URL`: interne Basis-URL des oeffentlichen Flash-Katalogs, Standard `http://127.0.0.1:4920`
-- `SYSTEM_EVENT_INGEST_TOKEN`: schuetzt neben System- und Action-Ingest auch den Scheduler-Start der synthetischen Vorpruefungen
 - `PERSISTENCE_SQLITE_PATH`: ausschliesslich Legacy-/Testpfad fuer die einmalige Altuebernahme
-- `SYSTEM_EVENT_INGEST_TOKEN`: eigener Dienst-zu-Dienst-Token fuer den internen System-Event-Eingang; im VPS-Betrieb identisch in Admin Tool und meldenden Diensten setzen
-- `LINK_INTEGRITY_INGEST_TOKEN`: davon getrennter Dienst-zu-Dienst-Token fuer Linkinventar und Prüfergebnisse; ausschließlich in Admin Tool und Identity setzen
+- `INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON`: oeffentlicher Trust Ring fuer eingehende interne Tokens
+- `INTERNAL_API_SIGNING_KEY_ID` und `INTERNAL_API_SIGNING_PRIVATE_KEY_B64`: eigener Ed25519-Key des Admin Tools fuer kurzlebige, scopegebundene Aufrufe; der private Key wird keinem Zielservice gegeben
 - `LLM_CONFIG_PATH`: Legacy-Pfad zur alten lokalen LLM-JSON-Konfiguration; fachliche LLM-Routing-Persistenz muss gemaess Architekturentscheidung in SQLite liegen.
 - `AI_CONTEXT_BASE_URL`: AI-Context-Server fuer LLM-Datenfreigaben, Standard `http://127.0.0.1:5500`
 - `HARDWARE_CATALOG_BASE_URL`: Hardware Catalog fuer fachliche KI-Kontextinhalte wie Boards und Capabilities, Standard `http://127.0.0.1:4910`

@@ -134,6 +134,10 @@ jobs:
         run: node tools/ci/check-javascript-syntax.js
       - name: Validate Compose models
         run: node tools/ci/check-compose.js
+      - name: Verify internal network boundary and secret leakage
+        run: node --test tools/verify-internal-network-boundary.test.js
+      - name: Check HTTP route classification
+        run: node tools/internal-api-route-guard/index.js
       - name: Check committed diff
         env:
           EVENT_NAME: ${{ github.event_name }}

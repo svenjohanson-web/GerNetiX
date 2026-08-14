@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 function createConfig(env = process.env) {
   return {
@@ -10,14 +11,9 @@ function createConfig(env = process.env) {
       : path.join(__dirname, "..", ".runtime"),
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700",
     identityBaseUrl: env.IDENTITY_BASE_URL || "http://127.0.0.1:4300",
-    identityAdminToken: env.IDENTITY_ADMIN_TOKEN || "",
-    adminToolAccessToken: env.ADMIN_TOOL_ACCESS_TOKEN || "",
-    systemEventIngestToken: env.SYSTEM_EVENT_INGEST_TOKEN || "",
-    linkIntegrityIngestToken: env.LINK_INTEGRITY_INGEST_TOKEN || "",
-    securityMonitorToken: env.SECURITY_MONITOR_TOKEN || "",
     buildDeployBaseUrl: env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     projectServerBaseUrl: env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
-    projectAdminReadToken: env.PROJECT_ADMIN_READ_TOKEN || "",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "admin-tool"),
     hardwareShopBaseUrl: env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900",
     hardwareCatalogBaseUrl: env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910",
     publicDemoBaseUrl: env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920",
@@ -26,8 +22,6 @@ function createConfig(env = process.env) {
     provisioningBaseUrl: env.PROVISIONING_BASE_URL || "http://127.0.0.1:4500",
     recoveryBaseUrl: env.RECOVERY_BASE_URL || "http://127.0.0.1:5100",
     communityPlatformBaseUrl: env.COMMUNITY_PLATFORM_BASE_URL || "http://127.0.0.1:5200",
-    communityInternalToken: env.COMMUNITY_INTERNAL_TOKEN || "",
-    communityAdminToken: env.COMMUNITY_ADMIN_TOKEN || "",
     communityAiBaseUrl: env.COMMUNITY_AI_BASE_URL || "http://127.0.0.1:5300",
     defaultOllamaBaseUrl: env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
     defaultOllamaModel: env.OLLAMA_MODEL || "llama3.2:3b",

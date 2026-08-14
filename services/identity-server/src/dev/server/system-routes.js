@@ -9,7 +9,14 @@ function registerSystemRoutes({
   handleProjectRuntimeStream, telemetryJson,
 }) {
   registry.register({ method: "OPTIONS", path: "/api/dev/lesson-preview-migration", handler: ({ res }) => sendDevJson(res, 204, {}) });
-  registry.register({ method: "POST", path: "/api/dev/lesson-preview-migration", handler: ({ req, res }) => handleDevLessonPreviewMigration(req, res) });
+  registry.register({
+    method: "POST",
+    path: "/api/dev/lesson-preview-migration",
+    handler({ req, res }) {
+      requireInternalAdmin(req, "identity.dev.migration");
+      return handleDevLessonPreviewMigration(req, res);
+    },
+  });
   registry.register({
     method: "*",
     path: "/health",
@@ -24,7 +31,7 @@ function registerSystemRoutes({
     method: "*",
     path: "/api/internal/email-config",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, req.method === "GET" ? "identity.email.read" : "identity.email.write");
       if (req.method === "GET") { sendJson(res, 200, { config: smtpConfigStore.publicConfig() }); return; }
       if (req.method === "PUT") { sendJson(res, 200, { config: await smtpConfigStore.update(await readJsonBody(req)) }); return; }
       sendJson(res, 405, { error: "method_not_allowed" });
@@ -34,7 +41,7 @@ function registerSystemRoutes({
     method: "GET",
     path: "/api/internal/link-integrity/inventory",
     handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.link_integrity.read");
       sendJson(res, 200, createIdentityLinkInventory({ publicDir }));
     },
   });
@@ -42,7 +49,7 @@ function registerSystemRoutes({
     method: "POST",
     path: "/api/internal/email-config/test",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.email.test");
       await smtpEmailService.testConnection();
       sendJson(res, 200, { ok: true, config: smtpConfigStore.publicConfig() });
     },
@@ -51,7 +58,7 @@ function registerSystemRoutes({
     method: "POST",
     path: "/api/internal/security-alert",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.alert.security");
       const alert = await readJsonBody(req);
       const config = smtpConfigStore.deliveryConfig();
       const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;
@@ -67,7 +74,7 @@ function registerSystemRoutes({
     method: "POST",
     path: "/api/internal/operator-alert",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.alert.operator");
       const alert = await readJsonBody(req);
       const config = smtpConfigStore.deliveryConfig();
       const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;

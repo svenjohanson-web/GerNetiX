@@ -6,6 +6,7 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 const {
   createIdentityLinkInventory,
   normalizeTarget,
@@ -61,7 +62,7 @@ test("link checker logs in for protected routes and ingests inventory plus check
   const received = { inventory: null, checks: null, dashboardCookie: "" };
   const server = http.createServer(async (req, res) => {
     if (req.url === "/api/internal/link-integrity/inventory" && req.method === "GET") {
-      assert.equal(req.headers["x-gernetix-admin-token"], "identity-token");
+      verifyInternalToken(String(req.headers.authorization || "").replace(/^Bearer\s+/, ""), "link-signing-key", { audience: "identity-server", requiredScopes: ["identity.link_integrity.read"] });
       return json(res, 200, {
         source_service: "identity-server",
         generated_at: "2026-07-30T12:00:00.000Z",
@@ -85,12 +86,12 @@ test("link checker logs in for protected routes and ingests inventory plus check
       return html(res, received.dashboardCookie.includes("test-session") ? 200 : 302, "<main>Dashboard</main>");
     }
     if (req.url === "/api/internal/link-integrity/inventory" && req.method === "POST") {
-      assert.equal(req.headers["x-gernetix-link-integrity-token"], "ingest-token");
+      verifyInternalToken(String(req.headers.authorization || "").replace(/^Bearer\s+/, ""), "link-signing-key", { audience: "admin-tool", requiredScopes: ["operations.link_integrity.write"] });
       received.inventory = await body(req);
       return json(res, 202, { accepted: true });
     }
     if (req.url === "/api/internal/link-integrity/checks" && req.method === "POST") {
-      assert.equal(req.headers["x-gernetix-link-integrity-token"], "ingest-token");
+      verifyInternalToken(String(req.headers.authorization || "").replace(/^Bearer\s+/, ""), "link-signing-key", { audience: "admin-tool", requiredScopes: ["operations.link_integrity.write"] });
       received.checks = await body(req);
       return json(res, 202, { accepted: true });
     }
@@ -103,11 +104,9 @@ test("link checker logs in for protected routes and ingests inventory plus check
     const result = await main({
       IDENTITY_BASE_URL: baseUrl,
       ADMIN_TOOL_BASE_URL: baseUrl,
-      IDENTITY_ADMIN_TOKEN: "identity-token",
-      LINK_INTEGRITY_INGEST_TOKEN: "ingest-token",
       LINK_CHECK_IDENTIFIER: "link-check-user",
       LINK_CHECK_PASSWORD: "secret",
-    }, []);
+    }, [], { internalApiSigningKey: "link-signing-key" });
     assert.equal(result.summary.healthy, 1);
     assert.match(received.dashboardCookie, /test-session/);
     assert.equal(received.inventory.source_service, "identity-server");

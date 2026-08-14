@@ -22,6 +22,7 @@ class HardwareLabAi {
     if (!this.aiUsageClient) throw new RecoveryToolError("hardware_lab_ai_usage_not_configured", "Die verpflichtende KI-Nutzungspruefung ist nicht konfiguriert.", 503);
     const accountId = String(input.account_id || "").trim();
     if (!accountId) throw new RecoveryToolError("hardware_lab_account_required", "Fuer die KI-Analyse ist eine Account-ID erforderlich.", 400);
+    const internalAuthContext = aiUsageDelegationContext(accountId);
     const usagePreflight = await this.aiUsageClient.preflight({
       account_id: accountId,
       user_id: accountId,
@@ -32,7 +33,7 @@ class HardwareLabAi {
       estimated_input_tokens: estimateInputTokens(input),
       estimated_output_tokens: 4000,
       system_capabilities: ["system_capability.ai_premium_models", "system_capability.ai_guided_hardware_lab"],
-    });
+    }, internalAuthContext);
     if (!usagePreflight.allowed) {
       throw new RecoveryToolError("hardware_lab_ai_usage_rejected", `KI-Analyse wurde durch die Nutzungspruefung abgelehnt: ${usagePreflight.rejection_reason || "unbekannter Grund"}.`, 402, usagePreflight);
     }
@@ -85,7 +86,7 @@ class HardwareLabAi {
         usageBooking = await this.aiUsageClient.complete(usagePreflight.event_id, {
           input_tokens: usage.input_tokens ?? 0,
           output_tokens: usage.output_tokens ?? 0,
-        });
+        }, internalAuthContext);
       } catch (error) {
         usageBooking = { event_id: usagePreflight.event_id, status: "tracking_failed", error_code: error.code || "usage_completion_failed" };
       }
@@ -99,7 +100,7 @@ class HardwareLabAi {
     } catch (error) {
       if (error.name === "AbortError") throw new RecoveryToolError("hardware_lab_ai_timeout", "Die KI-Quellenanalyse hat das Zeitlimit ueberschritten.", 504);
       try {
-        await this.aiUsageClient.fail(usagePreflight.event_id, { error_code: error.code || "provider_error", error_message: error.message || String(error) });
+        await this.aiUsageClient.fail(usagePreflight.event_id, { error_code: error.code || "provider_error", error_message: error.message || String(error) }, internalAuthContext);
       } catch {}
       throw error;
     } finally {
@@ -115,6 +116,7 @@ class HardwareLabAi {
     if (!this.aiUsageClient) throw new RecoveryToolError("hardware_lab_ai_usage_not_configured", "Die verpflichtende KI-Nutzungsprüfung ist nicht konfiguriert.", 503);
     const accountId = String(input.account_id || "").trim();
     if (!accountId) throw new RecoveryToolError("hardware_lab_account_required", "Für den KI-Dialog ist eine Account-ID erforderlich.", 400);
+    const internalAuthContext = aiUsageDelegationContext(accountId);
     const providerInput = chatResponseInput(input);
     const usagePreflight = await this.aiUsageClient.preflight({
       account_id: accountId,
@@ -126,7 +128,7 @@ class HardwareLabAi {
       estimated_input_tokens: estimateChatTokens(providerInput),
       estimated_output_tokens: 1400,
       system_capabilities: ["system_capability.ai_premium_models", "system_capability.ai_guided_hardware_lab"],
-    });
+    }, internalAuthContext);
     if (!usagePreflight.allowed) {
       throw new RecoveryToolError("hardware_lab_ai_usage_rejected", `KI-Dialog wurde durch die Nutzungsprüfung abgelehnt: ${usagePreflight.rejection_reason || "unbekannter Grund"}.`, 402, usagePreflight);
     }
@@ -154,7 +156,7 @@ class HardwareLabAi {
       const usage = { input_tokens: payload.usage?.input_tokens ?? null, output_tokens: payload.usage?.output_tokens ?? null, total_tokens: payload.usage?.total_tokens ?? null };
       let usageBooking;
       try {
-        usageBooking = await this.aiUsageClient.complete(usagePreflight.event_id, { input_tokens: usage.input_tokens ?? 0, output_tokens: usage.output_tokens ?? 0 });
+        usageBooking = await this.aiUsageClient.complete(usagePreflight.event_id, { input_tokens: usage.input_tokens ?? 0, output_tokens: usage.output_tokens ?? 0 }, internalAuthContext);
       } catch (error) {
         usageBooking = { status: "tracking_failed", error_code: error.code || "usage_completion_failed" };
       }
@@ -173,13 +175,17 @@ class HardwareLabAi {
       };
     } catch (error) {
       if (error.name === "AbortError") throw new RecoveryToolError("hardware_lab_ai_timeout", "Der KI-Dialog hat das Zeitlimit überschritten.", 504);
-      try { await this.aiUsageClient.fail(usagePreflight.event_id, { error_code: error.code || "provider_error", error_message: error.message || String(error) }); } catch {}
+      try { await this.aiUsageClient.fail(usagePreflight.event_id, { error_code: error.code || "provider_error", error_message: error.message || String(error) }, internalAuthContext); } catch {}
       if (error instanceof SyntaxError) throw new RecoveryToolError("hardware_lab_chat_invalid_json", "Der KI-Dialog lieferte keine gültige strukturierte Antwort.", 502);
       throw error;
     } finally {
       clearTimeout(timer);
     }
   }
+}
+
+function aiUsageDelegationContext(accountId) {
+  return { account_id: accountId, project_ids: [], entitlements: ["ai_assistant"] };
 }
 
 function supportsOpenAiResponses(config = {}) {

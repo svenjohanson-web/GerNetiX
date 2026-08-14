@@ -18,13 +18,13 @@ function createAccountTransparencyFactory({
       usageEvents,
       hardwareOffers,
     ] = await Promise.all([
-      transparencySection("project-server.projects", () => projectServerJson(`/api/projects?user_id=${encodeURIComponent(accountId)}`)),
-      transparencySection("project-server.feedback", () => projectServerJson(`/api/learning-feedback?user_id=${encodeURIComponent(accountId)}`)),
+      transparencySection("project-server.projects", () => projectServerJson(`/api/projects?user_id=${encodeURIComponent(accountId)}`, projectAccess(accountId))),
+      transparencySection("project-server.feedback", () => projectServerJson(`/api/learning-feedback?user_id=${encodeURIComponent(accountId)}`, projectAccess(accountId, "project.admin"))),
       transparencySection("device-management.devices", () => deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`)),
       transparencySection("device-management.purchase-contexts", () => deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/purchase-contexts`)),
       transparencySection("device-management.audit-events", () => deviceManagementJson(`/api/device-management/customer-data-access/audit-events?accountId=${encodeURIComponent(accountId)}`)),
-      transparencySection("ai-usage.credits", () => aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`)),
-      transparencySection("ai-usage.events", () => aiUsageJson(`/api/ai-usage/events?account_id=${encodeURIComponent(accountId)}`)),
+      transparencySection("ai-usage.credits", () => aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`, aiUsageAccess(accountId))),
+      transparencySection("ai-usage.events", () => aiUsageJson(`/api/ai-usage/events?account_id=${encodeURIComponent(accountId)}`, aiUsageAccess(accountId))),
       transparencySection("hardware-shop.offers", () => hardwareShopJson("/api/hardware-shop/offers")),
     ]);
     const ownDevices = sectionItems(devices).map(sanitizeDevice);
@@ -109,6 +109,26 @@ function createAccountTransparencyFactory({
         sourceStatus(hardwareOffers),
       ],
     };
+  };
+}
+
+function projectAccess(accountId, scope = "project.read") {
+  return {
+    internalAuth: {
+      scopes: [scope],
+      // The account comes from the authenticated Identity session, never from
+      // a browser supplied account_id query parameter.
+      delegation: { account_id: String(accountId), project_ids: [], entitlements: ["ai_assistant"] },
+    },
+  };
+}
+
+function aiUsageAccess(accountId) {
+  return {
+    internalAuth: {
+      scopes: ["ai.usage.read"],
+      delegation: { account_id: String(accountId), project_ids: [], entitlements: ["ai_assistant"] },
+    },
   };
 }
 

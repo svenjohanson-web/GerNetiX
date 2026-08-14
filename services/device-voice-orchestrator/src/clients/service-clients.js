@@ -1,39 +1,51 @@
 const { DeviceVoiceError } = require("../errors");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
 class DeviceManagementClient {
-  constructor(baseUrl) {
+  constructor(baseUrl, signingKey = "") {
     this.baseUrl = String(baseUrl).replace(/\/$/, "");
+    this.signingKey = signingKey;
   }
 
   async authorizeVoiceSession(deviceId, payload) {
     return requestJson(`${this.baseUrl}/devices/${encodeURIComponent(deviceId)}/voice-authorize`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${issueInternalToken({ iss: "device-voice-orchestrator", sub: "device-voice-orchestrator", aud: "device-management-server", scopes: ["device.voice.authorize"] }, this.signingKey)}` },
       body: JSON.stringify(payload),
     });
   }
 }
 
 class AiUsageClient {
-  constructor(baseUrl) {
+  constructor(baseUrl, signingKey = "") {
     this.baseUrl = String(baseUrl).replace(/\/$/, "");
+    this.signingKey = signingKey;
   }
 
-  async preflight(payload) {
-    return requestJson(`${this.baseUrl}/preflight`, jsonRequest(payload), true);
+  async preflight(payload, delegationContext) {
+    return requestJson(`${this.baseUrl}/preflight`, jsonRequest(payload, this.authHeaders(delegationContext)), true);
   }
 
-  async complete(eventId, payload) {
-    return requestJson(`${this.baseUrl}/events/${encodeURIComponent(eventId)}/complete`, jsonRequest(payload));
+  async complete(eventId, payload, delegationContext) {
+    return requestJson(`${this.baseUrl}/events/${encodeURIComponent(eventId)}/complete`, jsonRequest(payload, this.authHeaders(delegationContext)));
   }
 
-  async fail(eventId, payload) {
-    return requestJson(`${this.baseUrl}/events/${encodeURIComponent(eventId)}/fail`, jsonRequest(payload));
+  async fail(eventId, payload, delegationContext) {
+    return requestJson(`${this.baseUrl}/events/${encodeURIComponent(eventId)}/fail`, jsonRequest(payload, this.authHeaders(delegationContext)));
+  }
+
+  authHeaders(context = {}) {
+    const scopes = ["ai.usage.consume"];
+    const common = { iss: "device-voice-orchestrator", sub: "device-voice-orchestrator", aud: "ai-usage-server", scopes };
+    return {
+      Authorization: `Bearer ${issueInternalToken(common, this.signingKey)}`,
+      "X-GerNetiX-Delegation": issueInternalToken({ ...common, kind: "delegated_user_action", context }, this.signingKey),
+    };
   }
 }
 
-function jsonRequest(payload) {
-  return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) };
+function jsonRequest(payload, headers = {}) {
+  return { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) };
 }
 
 async function requestJson(url, options, allowPaymentRequired = false) {
