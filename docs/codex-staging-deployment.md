@@ -28,7 +28,7 @@ Das Tool deployt exakt den aktuellen, bereits gepushten Git-Commit auf den Stagi
 | Identity-UI, Route, Browserlogik oder Hardware-Assistent entwickeln | gezielte Tests; bei interaktiver Pruefung lokaler Identity-Remote-Dev-Modus | nicht automatisch; nur bei ausdruecklichem Staging-Auftrag oder notwendigem VPS-Nachweis |
 | Servicecode ohne VPS-spezifische Abhaengigkeit | Unit-/Contract-Tests des betroffenen Dienstes | nur fuer Integration, gemeinsamen Datenstand oder ausdrueckliche Abnahme |
 | Zusammenspiel mit zentraler PostgreSQL, Passkeys, privatem DNS, TLS oder mehreren VPS-Diensten | lokale Tests, danach Deployment-Plan | Staging ist fuer den Endnachweis erforderlich |
-| Nginx- oder Edge-Assets | lokale Konfigurations-/Contract-Tests | gezieltes Edge-Reload, kein pauschaler Full-Deploy |
+| Nginx- oder Edge-Assets | lokale Konfigurations-/Contract-Tests | gezieltes Neuerstellen der zustandslosen Edge-Container, kein pauschaler Full-Deploy |
 | Host-Firewall | lokaler Syntax-/Contract-Test | gezielte validierte Firewall-Aktualisierung |
 | Compose, Docker-Basis, Persistenz, Migration oder unbekannte Runtime-Datei | passende lokale Tests und bewusste Risikoabnahme | vollstaendiger Sicherheitslauf |
 | Nur Doku, Modelle, Graph oder Tests | lokale Pruefung | kein Container-Neustart |
@@ -291,11 +291,13 @@ mit dem neuen Ziel-Commit und waehlt den kleinsten sicheren Ablauf:
   wegen des direkten Imports dem Identity Server zugeordnet. Identity besitzt
   fuer den haeufigen UI-/API-Pfad ein eigenes schlankes Image ohne PlatformIO,
   die Abhaengigkeiten der anderen Domaenendienste oder Migrationswerkzeuge. Bei
-  Identity-Aenderungen werden HTTP- und HTTPS-Nginx syntaktisch geprueft und
-  ohne Containerwechsel neu geladen, damit die neue Identity-Adresse sicher
-  aufgeloest wird; danach wird der private PWA-Endpunkt getestet.
+  Identity-Aenderungen erstellen HTTP- und HTTPS-Nginx gezielt neu und pruefen
+  beide Konfigurationen syntaktisch, damit neue Upstream-Adressen und atomar
+  durch Git ersetzte Bind-Mount-Dateien sicher uebernommen werden; danach wird
+  der private PWA-Endpunkt getestet.
 - Aenderungen unter `infra/vps/nginx/` verwenden ein gezieltes validiertes
-  Edge-Reload. Aenderungen unter `infra/vps/security/` verwenden eine gezielte
+  Neuerstellen der beiden zustandslosen Edge-Container. Aenderungen unter
+  `infra/vps/security/` verwenden eine gezielte
   validierte Firewall-Aktualisierung. Beide erzwingen allein keinen Full-Deploy.
 - Infrastruktur-, Compose-, Dockerfile-, Migrations- oder nicht eindeutig
   zuordenbare Aenderungen verwenden immer den vollstaendigen Sicherheitslauf.
@@ -348,4 +350,5 @@ einmal gebaut.
 - Niemals `docker compose down -v`, Volume-Loeschungen oder SQLite-Kopien ausfuehren.
 - Ein fehlgeschlagenes Deployment anhand der ersten konkreten Fehlerausgabe diagnostizieren; keine wiederholten Startvarianten ausprobieren.
 - Nach einem Fehler nicht blind erneut deployen. Erst die benannte Phase und die bereits ausgegebenen Logs auswerten; derselbe unveraenderte Befehl wird erst nach behobener Ursache wiederholt.
+- Hat ein abgebrochener Lauf den VPS bereits auf den Zielcommit gestellt, den Wiederanlauf zuerst mit `node tools/staging-deploy.js --force-full --plan` ausweisen und danach genau einmal mit `node tools/staging-deploy.js --force-full` ausfuehren. So wird der vollstaendige Sicherheitslauf nicht wegen einer nun leeren Commit-Differenz uebersprungen.
 - Production ist nicht Staging. Dieses Tool darf nicht fuer Production-Ziele verwendet werden.
