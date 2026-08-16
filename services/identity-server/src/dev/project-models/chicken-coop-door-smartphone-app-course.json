@@ -1,0 +1,184 @@
+{
+  "slug": "chicken-coop-door-smartphone-app",
+  "project_story": {
+    "kind": "development_project",
+    "title": "Von der sicheren Türlogik zur eigenen Smartphone-App",
+    "problem": "Eine motorisierte Hühnerstalltür soll vom Smartphone bedienbar sein, ohne dass Funk, App oder ein veralteter Bildschirmanzeigestand die lokale Sicherheit ersetzen.",
+    "learning_goal": "Du entwirfst einen klaren Türzustandsvertrag, entwickelst eine installierbare Smartphone-Web-App und verbindest sie über denselben API-Vertrag wahlweise mit dem WLAN-Controller oder einem WLAN-zu-LoRa-Gateway.",
+    "working_method": "Drei Lessons trennen Systemvertrag, App-Umsetzung und Ende-zu-Ende-Abnahme. Die App sendet nur Bedienabsichten; Endlagen, Hindernis, Stromgrenze und Fahrzeit bleiben im Stallcontroller.",
+    "result": "Am Ende besitzt du eine eigene App-Oberfläche, die bestätigte Zustände zeigt, Öffnen, Schließen und Stopp anfordert, Netzwerkfehler sichtbar behandelt und den LoRa-Gatewayweg korrekt einordnet.",
+    "continuation_rule": "Jede Lesson übernimmt den Vertrag der vorherigen und verändert nicht die lokale Sicherheitsgrenze.",
+    "standalone_rule": "Jede Lesson besitzt einen vorbereiteten Startstand und kann einzeln bearbeitet werden."
+  },
+  "project": {
+    "slug": "chicken-coop-door-smartphone-app",
+    "title": "Eigene Smartphone-App für die Hühnerstalltür",
+    "area": "Mobile App, IoT und sichere Fernbedienung",
+    "summary": "Entwickle eine installierbare Smartphone-Web-App, die eine sichere Stalltür über WLAN oder über ein LoRa-Gateway bedient und nur bestätigte Zustände anzeigt.",
+    "learning_category": "mobile",
+    "access_model": "free",
+    "hardware_profile_id": "runtime.browser_text",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "tags": ["topic:automation", "client:mobile", "platform:esp32", "topic:actuators", "topic:networking", "level:beginner"],
+    "source_files": [
+      { "path": "app/index.html", "role": "user_code" },
+      { "path": "app/app.js", "role": "user_code" },
+      { "path": "app/manifest.webmanifest", "role": "configuration" },
+      { "path": "app/sw.js", "role": "user_code" },
+      { "path": "docs/door-api.md", "role": "architecture_model" },
+      { "path": "docs/door-state-machine.puml", "role": "architecture_model" },
+      { "path": "docs/testplan.md", "role": "decision_record" },
+      { "path": "docs/radio-boundary.md", "role": "decision_record" }
+    ],
+    "project_lesson_assignments": [
+      { "lesson_id": "development_lesson.chicken_door.system_contract", "prerequisite_lesson_ids": [] },
+      { "lesson_id": "development_lesson.chicken_door.smartphone_pwa", "prerequisite_lesson_ids": ["development_lesson.chicken_door.system_contract"] },
+      { "lesson_id": "development_lesson.chicken_door.acceptance", "prerequisite_lesson_ids": ["development_lesson.chicken_door.smartphone_pwa"] }
+    ],
+    "steps": [
+      { "title": "Systemgrenze festlegen", "text": "Trenne Smartphone, Funkweg, Stallcontroller und reale Türmechanik.", "insight": "Die App fordert eine Bewegung an; nur der Controller darf sie lokal freigeben." },
+      { "title": "Türzustände modellieren", "text": "Beschreibe bestätigte, bewegte, blockierte und unbekannte Zustände.", "insight": "Unbekannt ist ein echter Zustand und darf nicht als offen oder geschlossen dargestellt werden." },
+      { "title": "API-Vertrag schreiben", "text": "Definiere Statusabfrage, eindeutige Befehle und bestätigte Rückmeldungen.", "insight": "Angenommen bedeutet noch nicht erfolgreich ausgeführt." },
+      { "title": "App-Oberfläche aufbauen", "text": "Erstelle Statusanzeige und große, zugängliche Bedienelemente.", "insight": "Die wichtigste Information ist der bestätigte Zustand, nicht die zuletzt gedrückte Taste." },
+      { "title": "App mit der API verbinden", "text": "Lade Status, sende Befehlskennungen und behandle Timeouts.", "insight": "Ein Netzwerkfehler muss sichtbar werden und Bewegungsbefehle sperren." },
+      { "title": "Installierbarkeit ergänzen", "text": "Füge Manifest und Service Worker hinzu, ohne API-Antworten offline zu cachen.", "insight": "Offline darf die App-Hülle erscheinen, aber kein alter Türzustand als aktuell gelten." },
+      { "title": "Fehlerfälle beherrschen", "text": "Prüfe Funkverlust, unbekannte Position, Blockade und doppelte Befehle.", "insight": "Sichere Bedienung entsteht aus definierten Fehlerreaktionen, nicht aus einer grünen Statusfarbe." },
+      { "title": "Ende zu Ende testen", "text": "Nimm App, API und Stallcontroller mit positiven, negativen und gestörten Fällen ab.", "insight": "Der Test beobachtet reale Zustandsübergänge statt nur HTTP-Antworten." },
+      { "title": "LoRa-Gateway einordnen", "text": "Ersetze nur den Transportweg und bewahre Befehl, Kennung und Rückmeldung.", "insight": "Das Smartphone spricht mit einem Gateway; die Sicherheitsentscheidung bleibt am Stall." }
+    ]
+  },
+  "development_lessons": [
+    {
+      "id": "development_lesson.chicken_door.system_contract",
+      "title": "Sicherer Vertrag vor der App",
+      "summary": "Trenne Bedienabsicht, Funkweg, Controllerzustand und reale Türbewegung.",
+      "step_ids": ["door-system-boundary", "door-state-model", "door-api-contract"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.chicken_door.system_contract",
+        "runtime": "browser",
+        "hardware_required": false,
+        "primary_source_path": "docs/door-api.md",
+        "source_paths": ["docs/door-api.md", "docs/door-state-machine.puml", "docs/radio-boundary.md"]
+      }
+    },
+    {
+      "id": "development_lesson.chicken_door.smartphone_pwa",
+      "title": "Die eigene Smartphone-App bauen",
+      "summary": "Baue Statusanzeige, Befehle und installierbare App-Hülle mit bewusstem Offline-Verhalten.",
+      "step_ids": ["door-app-shell", "door-app-api", "door-app-installation"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.chicken_door.smartphone_pwa.with_contract",
+        "runtime": "browser",
+        "hardware_required": false,
+        "primary_source_path": "app/index.html",
+        "source_paths": ["app/index.html", "app/app.js", "app/manifest.webmanifest", "app/sw.js", "docs/door-api.md"]
+      }
+    },
+    {
+      "id": "development_lesson.chicken_door.acceptance",
+      "title": "Fehlerfälle, Abnahme und LoRa-Gateway",
+      "summary": "Prüfe die vollständige Bedienkette und ersetze bei Bedarf nur den Transport durch LoRa.",
+      "step_ids": ["door-failure-behavior", "door-end-to-end-test", "door-lora-gateway"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.chicken_door.acceptance.with_pwa",
+        "runtime": "distributed_system",
+        "hardware_required": false,
+        "primary_source_path": "docs/testplan.md",
+        "source_paths": ["docs/testplan.md", "docs/radio-boundary.md", "docs/door-api.md", "docs/door-state-machine.puml"]
+      }
+    }
+  ],
+  "view_manifest": {
+    "schema_version": 6,
+    "title": "Hühnerstalltür-App: sicher fernbedienen",
+    "summary": "Neun Schritte führen vom Zustandsvertrag über die Smartphone-App bis zur WLAN- oder LoRa-Abnahme.",
+    "mode": "guided_ide",
+    "primary_source_path": "app/index.html",
+    "views": [
+      {
+        "id": "door-system-boundary", "lesson_id": "development_lesson.chicken_door.system_contract", "type": "explanation",
+        "title": "Vier Rollen sauber trennen", "summary": "Ordne App, Transport, Controller und Mechanik jeweils genau eine Verantwortung zu.",
+        "completion": { "type": "choice", "prompt": "Wer entscheidet, ob ein Schließbefehl wegen eines Hindernisses abgebrochen wird?", "options": [{ "id": "app", "label": "Die Smartphone-App" }, { "id": "gateway", "label": "Das Funk-Gateway" }, { "id": "controller", "label": "Der Stallcontroller" }], "correct_option": "controller", "success": "Richtig: Nur der lokale Controller sieht Sensorik und Motorzustand rechtzeitig.", "failure": "Funk und App dürfen die lokale Sicherheitsentscheidung nicht ersetzen." },
+        "payload": { "cards": [{ "title": "Smartphone-App", "text": "Zeigt bestätigte Zustände und sendet Bedienabsichten." }, { "title": "WLAN oder LoRa-Gateway", "text": "Transportiert Nachrichten, entscheidet aber nicht über die Mechanik." }, { "title": "Stallcontroller", "text": "Prüft Endlagen, Hindernis, Strom, Fahrzeit und lokale Taster." }, { "title": "Türmechanik", "text": "Besitzt Führung, Kraftbegrenzung und manuelle Entriegelung." }] }
+      },
+      {
+        "id": "door-state-model", "lesson_id": "development_lesson.chicken_door.system_contract", "type": "plantuml", "source_path": "docs/door-state-machine.puml",
+        "title": "Der tatsächliche Türzustand", "summary": "Modelliere Öffnen, Schließen, Stoppen, Blockade und unbekannte Position.",
+        "validation": { "type": "plantuml_contains", "must_contain": ["@startuml", "unknown", "blocked", "@enduml"] },
+        "payload": { "learning_text": ["Die App darf nicht aus dem letzten Tastendruck ableiten, wo die Tür steht.", "Nur Sensor- und Controllerereignisse bestätigen einen neuen Zustand."], "task": "Verfolge im Statechart einen Schließbefehl bis geschlossen und danach denselben Befehl bis blockiert.", "expected_result": "Du kannst erklären, welche Rückmeldung die App in beiden Fällen zeigen muss.", "why": "Ein explizites Zustandsmodell verhindert optimistische, aber falsche Anzeigen." }
+      },
+      {
+        "id": "door-api-contract", "lesson_id": "development_lesson.chicken_door.system_contract", "type": "source_analysis", "source_path": "docs/door-api.md",
+        "title": "Angenommen ist nicht ausgeführt", "summary": "Definiere Status- und Befehlsnachrichten mit eindeutiger Kennung.",
+        "payload": { "learning_text": ["POST bestätigt zunächst nur die Annahme eines Befehls. Der danach gelesene Controllerzustand ist die fachliche Rückmeldung.", "Eine command_id verhindert, dass eine Wiederholung nach einem Timeout dieselbe Bewegung doppelt startet."], "task": "Markiere im Vertrag command_id, desired_action, controller_state, last_confirmed_at und fault.", "expected_result": "Befehl, Annahme und tatsächlicher Zustand sind getrennt und korrelierbar.", "why": "Netzwerkantwort und physische Bewegung enden nicht gleichzeitig." }
+      },
+      {
+        "id": "door-app-shell", "lesson_id": "development_lesson.chicken_door.smartphone_pwa", "type": "source_analysis", "source_path": "app/index.html",
+        "title": "Eine ruhige, eindeutige Bedienoberfläche", "summary": "Baue Status, letzte Bestätigung und drei große Aktionen.",
+        "payload": { "learning_text": ["Öffnen und Schließen bleiben deaktiviert, solange kein aktueller Controllerzustand vorliegt.", "Stopp ist optisch und semantisch von Bewegungsbefehlen getrennt."], "task": "Prüfe Live-Region, Zeitstempel, Statushinweis und die Beschriftung aller Bedienelemente.", "expected_result": "Die Oberfläche ist mit Touch, Tastatur und Screenreader eindeutig bedienbar.", "why": "Fernbedienung braucht klare Rückmeldung, nicht möglichst viele Bedienelemente." }
+      },
+      {
+        "id": "door-app-api", "lesson_id": "development_lesson.chicken_door.smartphone_pwa", "type": "source_analysis", "source_path": "app/app.js",
+        "title": "Status laden und Absichten senden", "summary": "Verbinde die App ohne optimistische Türanimation mit dem Vertrag.",
+        "payload": { "learning_text": ["Die App verwendet relative API-Pfade und läuft dadurch am WLAN-Controller oder am LoRa-Gateway gegen denselben Origin.", "Nach einem Befehl bleibt die Anzeige bei bewegend, bis der Controller den Folgezustand meldet."], "task": "Verfolge refreshStatus(), requestAction() und enterUnknownState(). Finde jede Stelle, an der Befehle gesperrt werden.", "expected_result": "Timeout und ungültige Antwort führen sichtbar zu unbekannt; eine angenommene Aktion wird nicht als Erfolg angezeigt.", "why": "Die App muss Unsicherheit erhalten, statt sie kosmetisch zu verbergen." }
+      },
+      {
+        "id": "door-app-installation", "lesson_id": "development_lesson.chicken_door.smartphone_pwa", "type": "source_analysis", "source_path": "app/sw.js",
+        "title": "Installierbar, aber offline ehrlich", "summary": "Cache nur die App-Hülle und niemals Türstatus oder Befehlsantworten.",
+        "payload": { "learning_text": ["Ein Service Worker darf statische Oberfläche cachen. Requests unter /api/door werden immer ans Netzwerk weitergegeben.", "Für echte Installation ist ein sicherer HTTPS-Origin erforderlich; im reinen lokalen HTTP-Test bleibt die Oberfläche eine Browser-App."], "task": "Prüfe, welche Dateien vorab gecacht werden und warum API-Pfade vom Cache ausgeschlossen sind.", "expected_result": "Die App startet offline mit unbekanntem Status und bietet keine scheinbar erfolgreichen Befehle an.", "why": "Offline-Komfort darf nicht zur falschen fachlichen Wahrheit werden." }
+      },
+      {
+        "id": "door-failure-behavior", "lesson_id": "development_lesson.chicken_door.acceptance", "type": "explanation",
+        "title": "Fehler sichtbar und lokal beherrschbar machen", "summary": "Ordne jedem Fehler eine App-Reaktion und eine Controller-Reaktion zu.",
+        "completion": { "type": "choice", "prompt": "Was zeigt die App nach einem Timeout beim Schließen?", "options": [{ "id": "closed", "label": "Geschlossen, weil der Befehl gesendet wurde" }, { "id": "unknown", "label": "Verbindung unklar; tatsächlichen Zustand vor Ort prüfen" }, { "id": "retry", "label": "Automatisch erneut schließen" }], "correct_option": "unknown", "success": "Richtig: Ohne Rückmeldung bleibt der physische Zustand unbekannt.", "failure": "Weder Tastendruck noch HTTP-Versand beweisen die reale Endlage." },
+        "payload": { "cards": [{ "title": "Funkverlust", "text": "App zeigt unbekannt; Controller beendet nur nach seinen lokalen Regeln." }, { "title": "Hindernis", "text": "Controller stoppt und meldet blockiert; kein automatischer Wiederholungsbefehl." }, { "title": "Endschalter widersprechen sich", "text": "Controller meldet Fehler und sperrt normale Fahrt." }, { "title": "Doppelter command_id", "text": "Gateway oder Controller antwortet idempotent und startet keine zweite Bewegung." }] }
+      },
+      {
+        "id": "door-end-to-end-test", "lesson_id": "development_lesson.chicken_door.acceptance", "type": "source_analysis", "source_path": "docs/testplan.md",
+        "title": "Die reale Kette abnehmen", "summary": "Prüfe Normalfall, negative Fälle und Verbindungsabbruch.",
+        "payload": { "learning_text": ["Ein API-200 allein ist kein bestandener Türtest.", "Beobachtet werden App-Anzeige, Controllerzustand, Endlage, Stopp und Mechanik gemeinsam."], "task": "Führe den Testplan zuerst mit entkoppeltem Motor, danach mit begrenzter Mechanik und zuletzt über den gewählten Funkweg aus.", "expected_result": "Jeder Testfall besitzt Ausgangszustand, Aktion, erwartete Controllerreaktion und sichtbare App-Rückmeldung.", "why": "Der Ende-zu-Ende-Nachweis verbindet Software mit der physisch wirksamen Grenze." }
+      },
+      {
+        "id": "door-lora-gateway", "lesson_id": "development_lesson.chicken_door.acceptance", "type": "story_slide",
+        "title": "LoRa ersetzt den Transport, nicht den Vertrag", "summary": "Setze zwischen App und Stall ein bewusstes Gateway.",
+        "completion": { "type": "acknowledge", "label": "Gatewaygrenze verstanden" },
+        "payload": { "model_lines": [{ "label": "Smartphone", "text": "Spricht per WLAN und HTTPS mit dem Gateway." }, { "label": "Gateway", "text": "Übersetzt Status und Befehle in kleine authentifizierte LoRa-Telegramme." }, { "label": "LoRa-Strecke", "text": "Überträgt command_id, Zähler, Aktion und Bestätigung mit begrenzter Datenrate." }, { "label": "Stallcontroller", "text": "Prüft Wiederholung, Nachrichtenauthentizität und lokale Sicherheitsbedingungen." }, { "label": "Grenze", "text": "Kein direkter LoRa-Zugriff vom Smartphone und keine öffentliche Portfreigabe zum ESP32." }] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "app/index.html", "role": "user_code", "content_type": "text/html",
+      "content": "<!doctype html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n  <meta name=\"theme-color\" content=\"#10231d\">\n  <link rel=\"manifest\" href=\"manifest.webmanifest\">\n  <title>Stalltür</title>\n  <style>body{font:18px system-ui;max-width:34rem;margin:auto;padding:1.25rem;background:#0b1220;color:#eef6f4}.card{padding:1.25rem;border:1px solid #385568;border-radius:1rem;background:#13202d}.state{font-size:2rem;font-weight:700}.actions{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:1rem}button{min-height:3.5rem;font:inherit;font-weight:700;border:0;border-radius:.8rem}button[data-action=stop]{grid-column:1/-1;background:#f4c15d;color:#17120a}button:disabled{opacity:.45}</style>\n</head>\n<body>\n  <main class=\"card\" aria-labelledby=\"title\">\n    <p>GerNetiX Lernprojekt</p><h1 id=\"title\">Hühnerstalltür</h1>\n    <p id=\"connection\" role=\"status\" aria-live=\"polite\">Verbindung wird geprüft …</p>\n    <p class=\"state\" id=\"doorState\">Unbekannt</p>\n    <p>Zuletzt bestätigt: <time id=\"confirmedAt\">noch nie</time></p>\n    <p id=\"fault\" role=\"alert\" hidden></p>\n    <div class=\"actions\">\n      <button type=\"button\" data-action=\"open\" disabled>Öffnen</button>\n      <button type=\"button\" data-action=\"close\" disabled>Schließen</button>\n      <button type=\"button\" data-action=\"stop\" disabled>Stopp</button>\n    </div>\n  </main>\n  <script src=\"app.js\"></script>\n</body>\n</html>\n"
+    },
+    {
+      "path": "app/app.js", "role": "user_code", "content_type": "text/javascript",
+      "content": "const stateElement = document.querySelector(\"#doorState\");\nconst connectionElement = document.querySelector(\"#connection\");\nconst confirmedAtElement = document.querySelector(\"#confirmedAt\");\nconst faultElement = document.querySelector(\"#fault\");\nconst actionButtons = Array.from(document.querySelectorAll(\"[data-action]\"));\nlet refreshTimer = 0;\n\nconst labels = { open: \"Offen\", closed: \"Geschlossen\", opening: \"Öffnet\", closing: \"Schließt\", stopped: \"Gestoppt\", blocked: \"Blockiert\", unknown: \"Unbekannt\" };\n\nfunction setButtonsEnabled(enabled) {\n  for (const button of actionButtons) button.disabled = !enabled;\n}\n\nfunction enterUnknownState(message) {\n  stateElement.textContent = labels.unknown;\n  connectionElement.textContent = message;\n  confirmedAtElement.textContent = \"nicht aktuell\";\n  faultElement.hidden = true;\n  setButtonsEnabled(false);\n}\n\nfunction renderStatus(status) {\n  const knownState = Object.hasOwn(labels, status.controller_state) ? status.controller_state : \"unknown\";\n  stateElement.textContent = labels[knownState];\n  connectionElement.textContent = \"Mit dem Stallcontroller verbunden\";\n  confirmedAtElement.dateTime = status.last_confirmed_at;\n  confirmedAtElement.textContent = new Date(status.last_confirmed_at).toLocaleString();\n  faultElement.hidden = !status.fault;\n  faultElement.textContent = status.fault ? `Störung: ${status.fault}` : \"\";\n  setButtonsEnabled(knownState !== \"unknown\");\n}\n\nasync function refreshStatus() {\n  window.clearTimeout(refreshTimer);\n  try {\n    const response = await fetch(\"/api/door/status\", { cache: \"no-store\", signal: AbortSignal.timeout(3500) });\n    if (!response.ok) throw new Error(`status_${response.status}`);\n    renderStatus(await response.json());\n  } catch {\n    enterUnknownState(\"Keine aktuelle Rückmeldung – Zustand vor Ort prüfen\");\n  } finally {\n    refreshTimer = window.setTimeout(refreshStatus, 3000);\n  }\n}\n\nasync function requestAction(desiredAction) {\n  setButtonsEnabled(false);\n  connectionElement.textContent = `${desiredAction} wird angefordert …`;\n  try {\n    const response = await fetch(\"/api/door/commands\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({ command_id: crypto.randomUUID(), desired_action: desiredAction }),\n      signal: AbortSignal.timeout(3500),\n    });\n    if (!response.ok) throw new Error(`command_${response.status}`);\n    const result = await response.json();\n    connectionElement.textContent = result.accepted ? \"Befehl angenommen – warte auf Controllerzustand\" : \"Befehl abgelehnt\";\n    await refreshStatus();\n  } catch {\n    enterUnknownState(\"Befehlsausgang unklar – nicht automatisch wiederholen\");\n  }\n}\n\nfor (const button of actionButtons) button.addEventListener(\"click\", () => requestAction(button.dataset.action));\nif (\"serviceWorker\" in navigator) navigator.serviceWorker.register(\"sw.js\");\nrefreshStatus();\n"
+    },
+    {
+      "path": "app/manifest.webmanifest", "role": "configuration", "content_type": "application/manifest+json",
+      "content": "{\n  \"name\": \"GerNetiX Hühnerstalltür\",\n  \"short_name\": \"Stalltür\",\n  \"start_url\": \"./\",\n  \"display\": \"standalone\",\n  \"background_color\": \"#0b1220\",\n  \"theme_color\": \"#10231d\",\n  \"description\": \"Lokale Bedienoberfläche für die Hühnerstalltür\"\n}\n"
+    },
+    {
+      "path": "app/sw.js", "role": "user_code", "content_type": "text/javascript",
+      "content": "const SHELL_CACHE = \"chicken-door-shell-v1\";\nconst SHELL_FILES = [\"./\", \"index.html\", \"app.js\", \"manifest.webmanifest\"];\n\nself.addEventListener(\"install\", (event) => {\n  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_FILES)));\n});\n\nself.addEventListener(\"activate\", (event) => {\n  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== SHELL_CACHE).map((key) => caches.delete(key)))));\n});\n\nself.addEventListener(\"fetch\", (event) => {\n  const url = new URL(event.request.url);\n  if (url.pathname.startsWith(\"/api/door/\")) return;\n  if (event.request.method !== \"GET\") return;\n  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then((response) => response || caches.match(\"index.html\"))));\n});\n"
+    },
+    {
+      "path": "docs/door-api.md", "role": "architecture_model", "content_type": "text/markdown",
+      "content": "# Tür-API-Vertrag\n\nDie App verwendet relative Pfade. Im WLAN-Weg liefert der lokale Controller oder ein lokales HTTPS-Gateway App und API am selben Origin aus. Im LoRa-Weg stellt das Gateway denselben Vertrag bereit. Ein realer Betrieb benötigt HTTPS, eine individuelle Geräte- beziehungsweise Nutzerberechtigung und darf den Stallcontroller nicht per Router-Portfreigabe öffentlich machen.\n\n## Status lesen\n\n`GET /api/door/status`\n\n```json\n{\n  \"controller_state\": \"closed\",\n  \"last_confirmed_at\": \"2026-08-08T18:30:00Z\",\n  \"active_command_id\": null,\n  \"fault\": null\n}\n```\n\nErlaubte Zustände sind `open`, `closed`, `opening`, `closing`, `stopped`, `blocked` und `unknown`. Der Zeitpunkt stammt vom Controller oder Gateway und ist keine Browserannahme.\n\n## Bedienabsicht senden\n\n`POST /api/door/commands`\n\n```json\n{ \"command_id\": \"eindeutige-uuid\", \"desired_action\": \"close\" }\n```\n\nErlaubte Aktionen sind `open`, `close` und `stop`. Die Antwort `{ \"accepted\": true, \"command_id\": \"…\" }` bestätigt nur die Annahme. Erst spätere Statusantworten bestätigen `opening`, `closing`, eine Endlage oder einen Fehler. Dieselbe `command_id` ist idempotent und darf keine zweite Bewegung starten.\n\n## Sicherheitsgrenze\n\nEndlagen, Hindernis, Motorstrom, maximale Fahrzeit, lokaler Stopp und Handentriegelung sind keine API-Funktionen. Sie wirken unabhängig von App, WLAN, LoRa, Gateway und Internetzugang direkt am Stallcontroller.\n"
+    },
+    {
+      "path": "docs/door-state-machine.puml", "role": "architecture_model", "content_type": "text/x-plantuml",
+      "content": "@startuml\n[*] --> unknown\nunknown --> opening : überwachte Referenzfahrt\nunknown --> closing : überwachte Referenzfahrt\nclosed --> opening : open angefordert\nopen --> closing : close angefordert\nopening --> open : Endlage offen bestätigt\nclosing --> closed : Endlage geschlossen bestätigt\nopening --> stopped : stop oder Timeout\nclosing --> stopped : stop oder Timeout\nopening --> blocked : Hindernis oder Überstrom\nclosing --> blocked : Hindernis oder Überstrom\nstopped --> opening : open angefordert und lokal freigegeben\nstopped --> closing : close angefordert und lokal freigegeben\nblocked --> stopped : Störung vor Ort quittiert\n@enduml\n"
+    },
+    {
+      "path": "docs/testplan.md", "role": "decision_record", "content_type": "text/markdown",
+      "content": "# Ende-zu-Ende-Testplan\n\n## Vorbereitung\n\n1. Zuerst Motor elektrisch ohne Tür testen.\n2. Danach Mechanik bei reduzierter Kraft und mit erreichbarer Handentriegelung ankoppeln.\n3. Lokalen Stop, beide Endlagen und Hindernisabschaltung vor jeder Funkfunktion abnehmen.\n\n## Testfälle\n\n| Ausgang | Aktion | Controller | App |\n| --- | --- | --- | --- |\n| geschlossen | öffnen | opening, danach open | Öffnet, danach Offen mit neuem Zeitstempel |\n| offen | schließen | closing, danach closed | Schließt, danach Geschlossen |\n| bewegt | stopp | stopped, Motor aus | Gestoppt |\n| schließt | Hindernis | blocked, Motor aus, kein Auto-Retry | Blockiert mit Störung |\n| beliebig | Funk abbrechen | nur lokale Regeln, keine neue Bewegung | Unbekannt; Aktionen gesperrt |\n| beliebig | command_id wiederholen | keine zweite Bewegung | identische Annahme oder bekannte Antwort |\n| Endschalter unplausibel | beliebige Fahrt | Fehler, normale Fahrt gesperrt | Störung sichtbar |\n\nEin bestandener Test benötigt die beobachtete reale Controller- und Mechanikreaktion. Eine erfolgreiche HTTP- oder LoRa-Übertragung allein genügt nicht.\n"
+    },
+    {
+      "path": "docs/radio-boundary.md", "role": "decision_record", "content_type": "text/markdown",
+      "content": "# WLAN- und LoRa-Grenze\n\n## WLAN\n\nApp und API verwenden denselben lokalen Origin. Für Installation als PWA, Service Worker und Berechtigungen ist ein vertrauenswürdiger HTTPS-Origin erforderlich. Ein reiner lokaler HTTP-Prototyp bleibt eine Browser-App. Internetzugriff erfolgt nicht durch eine öffentliche ESP32-Portfreigabe, sondern später nur über einen ausdrücklich geschützten VPN- oder Gatewayweg.\n\n## LoRa\n\nSmartphones besitzen üblicherweise kein direkt nutzbares LoRa-Funkmodul. Die App spricht per WLAN und HTTPS mit einem lokalen Gateway. Das Gateway übersetzt denselben API-Vertrag in kleine LoRa-Telegramme. Jedes Telegramm trägt mindestens Befehlskennung, monotonen Zähler, Aktion und Nachrichtenauthentifizierung; Bestätigungen enthalten Controllerzustand und korrelierte Befehlskennung.\n\nLoRa ersetzt ausschließlich den Transport. Endlagen, Hindernis, Motorstrom, maximale Fahrzeit und Stop bleiben im Stallcontroller. Regionale Frequenz-, Leistungs-, Sendezeit- und Gerätevorgaben sind einzuhalten.\n"
+    }
+  ]
+}

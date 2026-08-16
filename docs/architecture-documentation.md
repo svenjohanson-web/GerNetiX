@@ -78,6 +78,12 @@ Die verbindliche Trennung zwischen wiederverwendbaren Lernprojekten, Courses,
 Learning Paths und kaufbaren Bundles sowie die Bestandsordnung stehen im
 [Katalogvertrag fuer Lernangebote](learning-catalog-governance.md).
 
+Das öffentliche Nachbauprojekt der ferngesteuerten Hühnerstalltür, seine
+lokale Sicherheitsgrenze, die alternativen WLAN-/LoRa-Wege und das zugehörige
+Smartphone-App-Lernprojekt sind unter
+[Ferngesteuerte Hühnerstalltür und Smartphone-App-Lernprojekt](project-remote-chicken-coop-door.md)
+beschrieben.
+
 Die verbindliche Trennung des Plattform-Startpfads in kritischen Bootstrap,
 routenbezogene Summary-Abschnitte, eigene Domaenenendpunkte und lazy geladene
 Browsermodule steht im

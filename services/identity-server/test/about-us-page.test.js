@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedItem, navigationModel } = require("../test-support/navigation-model");
 
 const root = path.join(__dirname, "..");
 const publicAbout = fs.readFileSync(path.join(root, "public", "ueber-uns", "index.html"), "utf8");
@@ -23,8 +24,8 @@ test("serves a dedicated public About us chapter", () => {
 });
 
 test("offers the chapter in public and authenticated navigation", () => {
-  assert.match(landing, /href="\/ueber-uns\/">Über uns/);
-  assert.match(appHtml, /href="\/app\/about\/"[^>]*data-route="about"/);
+  assert.ok(navigationModel.anonymous.some((item) => item.href === "/ueber-uns/"));
+  assert.equal(authenticatedItem("/app/about/").route, "about");
   assert.match(appHtml, /id="aboutView"/);
   assert.match(appJs, /about: "aboutView"/);
   assert.match(appJs, /about: \[[\s\S]*Über uns/);

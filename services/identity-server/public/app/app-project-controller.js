@@ -40,31 +40,37 @@ function renderProjects() {
     const tagMatches = state.learningCatalogTag === "all" || project.tags?.includes(state.learningCatalogTag);
     return categoryMatches && tagMatches;
   }).sort((left, right) => Number(right.slug === requestedCatalogSlug) - Number(left.slug === requestedCatalogSlug));
-  projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => `
-    <a class="project-card learning-catalog-card${project.slug === requestedCatalogSlug ? " is-linked" : ""} learning-project-tile"
-      href="/app/learning-project-overview/?project=${encodeURIComponent(project.id)}"
-      data-open-learning-project-overview="${escapeAttribute(project.id)}"
-      data-catalog-slug="${escapeAttribute(project.slug)}">
-      <div>
-        <div class="learning-catalog-card-head">
-          <p class="eyebrow">${escapeHtml(learningHeadlineLabel(project))}</p>
-          <span class="learning-access-badge ${escapeAttribute(project.accessModel || "subscription")}">${escapeHtml(learningAccessLabel(project.accessModel))}</span>
+  projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => {
+    const destination = learningProjectDestination(project);
+    return `
+      <a class="project-card learning-catalog-card${project.slug === requestedCatalogSlug ? " is-linked" : ""} learning-project-tile"
+        href="${escapeAttribute(destination)}"
+        data-open-learning-project-overview="${escapeAttribute(project.id)}"
+        data-catalog-slug="${escapeAttribute(project.slug)}">
+        <div>
+          <div class="learning-catalog-card-head">
+            <p class="eyebrow">${escapeHtml(learningHeadlineLabel(project))}</p>
+            <span class="learning-access-badge ${escapeAttribute(project.accessModel || "subscription")}">${escapeHtml(learningAccessLabel(project.accessModel))}</span>
+          </div>
+          <h2>${escapeHtml(project.name)}</h2>
+          <p>${escapeHtml(project.description)}</p>
         </div>
-        <h2>${escapeHtml(project.name)}</h2>
-        <p>${escapeHtml(project.description)}</p>
-      </div>
-      <div class="learning-classification">
-        <span class="learning-category-badge">${escapeHtml(learningCategoryLabel(project.learningCategory))}</span>
-        <ul class="learning-tag-list" aria-label="Tags">
-          ${(project.tags || []).map((tag) => `<li>${escapeHtml(learningTagLabel(tag))}</li>`).join("")}
-        </ul>
-      </div>
-    </a>
-  `).join("") : `<p class="empty">${escapeHtml(learningText("emptyCatalog", "Im Lernprojekt-Katalog sind noch keine Projekte verfügbar."))}</p>`;
+        <div class="learning-classification">
+          <span class="learning-category-badge">${escapeHtml(learningCategoryLabel(project.learningCategory))}</span>
+          <ul class="learning-tag-list" aria-label="Tags">
+            ${(project.tags || []).map((tag) => `<li>${escapeHtml(learningTagLabel(tag))}</li>`).join("")}
+          </ul>
+        </div>
+      </a>
+    `;
+  }).join("") : `<p class="empty">${escapeHtml(learningText("emptyCatalog", "Im Lernprojekt-Katalog sind noch keine Projekte verfügbar."))}</p>`;
   document.querySelectorAll("#projectList [data-open-learning-project-overview]").forEach((tile) => {
     tile.addEventListener("click", (event) => {
       event.preventDefault();
-      navigate(`/app/learning-project-overview/?project=${encodeURIComponent(tile.dataset.openLearningProjectOverview)}`);
+      const project = catalogProjects.find((item) => item.id === tile.dataset.openLearningProjectOverview);
+      const destination = learningProjectDestination(project);
+      if (destination.startsWith("/app/")) navigate(destination);
+      else window.location.assign(destination);
     });
   });
   if (requestedCatalogSlug) {
@@ -135,6 +141,7 @@ function renderLearningProjectOverview() {
     `;
   } else {
     const structure = LearningProjectView.lessonStructure(project);
+    const hasAccess = hasLearningProjectAccess(project);
     target.innerHTML = `
       <header class="learning-project-overview-head">
         <p class="eyebrow">${escapeHtml(learningHeadlineLabel(project))}</p>
@@ -191,7 +198,9 @@ function renderLearningProjectOverview() {
       </section>
       <div class="button-row learning-project-overview-actions">
         <button type="button" data-back-to-learning-catalog>${escapeHtml(learningText("back", "Zurück"))}</button>
-        <button class="primary" type="button" data-start-learning-project="${escapeAttribute(project.id)}">${escapeHtml(learningText("startProject", "Lernprojekt starten"))}</button>
+        ${hasAccess
+          ? `<button class="primary" type="button" data-start-learning-project="${escapeAttribute(project.id)}">${escapeHtml(learningText("startProject", "Lernprojekt starten"))}</button>`
+          : `<a class="button-link primary" href="${escapeAttribute(learningProjectPurchaseUrl(project))}">Zugang auswählen</a>`}
         <span class="helper-text" data-learning-project-start-status aria-live="polite"></span>
       </div>
     `;
@@ -359,12 +368,35 @@ function learningHeadlineLabel(project) {
 
 function learningAccessLabel(accessModel) {
   const labels = {
-    de: { free: "Frei verfügbar", purchased: "Kurs gekauft", subscription: "Im Abo enthalten" },
-    en: { free: "Available free", purchased: "Course purchased", subscription: "Included in subscription" },
-    nl: { free: "Gratis beschikbaar", purchased: "Cursus gekocht", subscription: "In abonnement inbegrepen" },
+    de: { free: "Frei verfügbar", purchased: "Einzeln kaufen", subscription: "Im Abo enthalten" },
+    en: { free: "Available free", purchased: "Buy separately", subscription: "Included in subscription" },
+    nl: { free: "Gratis beschikbaar", purchased: "Los kopen", subscription: "In abonnement inbegrepen" },
   };
   const localized = labels[currentLearningLocale()] || labels.de;
   return localized[accessModel] || localized.subscription;
+}
+
+function learningProjectDestination(project) {
+  if (!project) return "/app/learn/";
+  return hasLearningProjectAccess(project)
+    ? `/app/learning-project-overview/?project=${encodeURIComponent(project.id)}`
+    : learningProjectPurchaseUrl(project);
+}
+
+function hasLearningProjectAccess(project) {
+  if (!project || project.accessModel === "free") return Boolean(project);
+  const entitlements = new Set(state.billing?.entitlements || []);
+  return entitlements.has("learn_guided_projects")
+    || entitlements.has(`learning_course:${project.courseId}`)
+    || entitlements.has(`learning_project:${project.slug}`);
+}
+
+function learningProjectPurchaseUrl(project) {
+  const params = new URLSearchParams({
+    course: project?.slug || project?.id || "",
+    access: project?.accessModel === "subscription" ? "abo" : "kauf",
+  });
+  return `/kurse/?${params}`;
 }
 
 function renderLearn() {

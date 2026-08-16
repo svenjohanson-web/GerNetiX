@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const { normalizeAppPath } = require("../src/dev/http-utils");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 const read = (file) => fs.readFileSync(path.join(appRoot, file), "utf8");
@@ -16,7 +17,8 @@ const controller = read("reference-library-controller.js");
 const css = read("reference-library-route.css");
 
 test("offers Nachschlagewerke as a dedicated authenticated menu route", () => {
-  assert.match(html, /href="\/app\/nachschlagewerke\/" data-route="nachschlagewerke"/);
+  assert.equal(authenticatedItem("/app/nachschlagewerke/").route, "nachschlagewerke");
+  assert.match(html, /app\.js\?v=20260808-reference-library-route-2/);
   assert.match(app, /nachschlagewerke: "referenceLibraryView"/);
   assert.match(shell, /nachschlagewerke:[\s\S]*label: "Nachschlagewerke"/);
   assert.equal(normalizeAppPath("/app/nachschlagewerke/"), "/index.html");
@@ -25,6 +27,7 @@ test("offers Nachschlagewerke as a dedicated authenticated menu route", () => {
 test("loads the reference library view, styles and controller only on demand", () => {
   assert.doesNotMatch(html, /reference-library-controller\.js|reference-library-route\.css|id="referenceLibraryView"/);
   assert.match(shell, /route === "nachschlagewerke"[\s\S]*loadRouteFragment\("referenceLibraryView"[\s\S]*reference-library-route\.css[\s\S]*reference-library-controller\.js/);
+  assert.match(shell, /const version = "20260805-route-lazy-3"/);
   assert.match(fragment, /^<section id="referenceLibraryView"/);
   assert.doesNotMatch(fragment, /<script/);
 });

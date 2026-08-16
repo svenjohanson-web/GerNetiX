@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Eine sichere, ferngesteuerte Hühnerstalltür mit ESP32 sowie wahlweise WLAN oder LoRa nachbauen." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+  <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
+  <title>Ferngesteuerte Hühnerstalltür nachbauen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a>
+      <a href="/ueber-uns/">Über uns</a>
+      <a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a>
+      <a href="/flashbox-einrichten/">FlashBox einrichten</a>
+      <a href="/wissen/">Wissensportal</a>
+      <a href="/hilfe/">Hilfe</a>
+      <a href="/support/">Support</a>
+      <a href="/shop/">Webshop</a>
+      <a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>Hühnerstalltür</span>
+    </nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Anleitung · ESP32, WLAN oder LoRa</p>
+        <h1 id="project-title">Eine Hühnerstalltür, die aus der Ferne gehorcht – und vor Ort sicher bleibt.</h1>
+        <p class="lead">Baue eine motorisierte Kleinspannungs-Tür mit Endlagen, Hinderniserkennung, lokalem Stopp und eindeutiger Rückmeldung. Du entscheidest, ob der Bedienweg über WLAN oder über eine LoRa-Funkstrecke läuft.</p>
+        <p><strong>Lieferstatus:</strong> Ausgearbeitete Bau- und Systemanleitung. Eine geprüfte, direkt flashbare Firmware ist noch nicht veröffentlicht.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="system-title">
+      <p class="eyebrow">Das Projekt</p>
+      <h2 id="system-title">Die Tür entscheidet lokal, der Funk übermittelt nur Wünsche.</h2>
+      <p>Der Stallcontroller kennt die wirkliche Türposition und steuert den Motor. Ein Befehl wie <code>öffnen</code>, <code>schließen</code> oder <code>stopp</code> ist nur eine Absicht: Endschalter, Motorstrom, Hindernissensor und lokaler Stopptaster entscheiden weiterhin direkt am Stall, ob und wie gefahren werden darf.</p>
+      <figure>
+        <img src="/assets/chicken-coop-door-radio-paths.svg" width="1200" height="620" alt="Zwei Bedienwege: Das Smartphone erreicht den Stallcontroller über WLAN oder über ein WLAN-zu-LoRa-Gateway. Der Stallcontroller steuert Motor, Endlagen und Hinderniserkennung lokal." />
+        <figcaption>WLAN spricht IP bis zum Controller. Bei LoRa benötigt das Smartphone ein Gateway; Smartphones besitzen üblicherweise kein direkt nutzbares LoRa-Funkmodul.</figcaption>
+      </figure>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="variants-title">
+      <h2 id="variants-title">Wähle deinen Funkweg</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile">
+          <p class="eyebrow">Variante A</p>
+          <h3>WLAN</h3>
+          <p>Der ESP32 verbindet sich mit deinem Haus-WLAN oder eröffnet für die Inbetriebnahme ein eigenes Gerätenetz. Eine lokale Weboberfläche oder App spricht über einen klar begrenzten API-Vertrag mit dem Controller.</p>
+          <p><strong>Passt gut, wenn:</strong> Der Stall zuverlässig vom vorhandenen WLAN erreicht wird und du Status, Konfiguration oder spätere Updates komfortabel übertragen möchtest.</p>
+        </article>
+        <article class="panel maker-project-tile">
+          <p class="eyebrow">Variante B</p>
+          <h3>LoRa</h3>
+          <p>Ein zweiter Mikrocontroller am Haus oder eine eigene Handfernbedienung überträgt kleine, authentifizierte Telegramme zum Stall. Ein Gateway stellt der Smartphone-App denselben logischen Türvertrag bereit.</p>
+          <p><strong>Passt gut, wenn:</strong> WLAN den Stall nicht stabil erreicht und wenige kurze Befehle sowie Zustandsmeldungen über eine größere Entfernung genügen.</p>
+        </article>
+      </div>
+      <p><strong>Nicht verwechseln:</strong> LoRa ist die Funkmodulation; LoRaWAN ist eine Gateway- und Serverarchitektur. Für dieses Punkt-zu-Punkt-Projekt genügt LoRa, sofern Frequenzplan, Sendeleistung, Sendezeit und Gerätekonformität für die Region eingehalten werden.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="material-title">
+      <p class="eyebrow">Material</p>
+      <h2 id="material-title">Robuste Mechanik und getrennte Leistungsversorgung zuerst.</h2>
+      <ul>
+        <li>ESP32-Board mit passendem Gehäuse und einer stabilen 5-V- oder 3,3-V-Versorgung</li>
+        <li>12-V-Getriebemotor mit Trommel und geführter Schnur oder ein begrenzter 12-V-Linearantrieb</li>
+        <li>H-Brücken-Motortreiber mit ausreichender Stromreserve und Freilaufpfad</li>
+        <li>Zwei unabhängige Endlagenschalter für vollständig offen und vollständig geschlossen</li>
+        <li>Motorstrommessung oder geeigneter Hindernissensor als zweite Abschaltbedingung</li>
+        <li>Gut erreichbarer lokaler Stopptaster, Handentriegelung und sichtbare Zustandsanzeige</li>
+        <li>12-V-Netzteil, zur Leitung passende Sicherung, Abzweigschutz und wetterfestes Gehäuse</li>
+        <li>Für LoRa: zwei passende, regional zulässige LoRa-Module mit abgestimmten Antennen</li>
+      </ul>
+      <p>Motor und Logik erhalten getrennt geführte, gemeinsam bezogene Versorgungszweige. Der Motorstrom darf nicht durch das ESP32-Board fließen. Netzspannung bleibt in einem geschlossenen, dafür geeigneten Netzteil und wird nicht offen im Stall verdrahtet.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="build-title">
+      <p class="eyebrow">Bauweg</p>
+      <h2 id="build-title">Mechanik prüfen, dann lokal fahren, zuletzt Funk ergänzen.</h2>
+      <ol>
+        <li><strong>Tür leichtgängig bauen:</strong> Führung, Seilweg und Handentriegelung ohne Motor prüfen. Die Tür darf weder verkanten noch aus der Führung fallen.</li>
+        <li><strong>Endlagen montieren:</strong> Beide Schalter so anbringen, dass sie vor dem mechanischen Anschlag sicher auslösen. Kabelbruch muss als unbekannte Position und nicht als freie Fahrt behandelt werden.</li>
+        <li><strong>Motor begrenzen:</strong> Stromlimit und maximale Fahrzeit zuerst mit entkoppelter oder unbelasteter Mechanik einstellen.</li>
+        <li><strong>Lokale Bedienung abnehmen:</strong> Öffnen, Schließen und Stopp direkt am Stall testen. Ein Hindernis muss die Bewegung beenden; ein Neustart darf nicht automatisch weiterdrücken.</li>
+        <li><strong>Zustandsmodell ergänzen:</strong> Mindestens <code>offen</code>, <code>geschlossen</code>, <code>öffnet</code>, <code>schließt</code>, <code>gestoppt</code>, <code>blockiert</code> und <code>unbekannt</code> unterscheiden.</li>
+        <li><strong>Funk anbinden:</strong> Zuerst Status lesen, danach Stopp und erst zuletzt Bewegungsbefehle freigeben. Jeder Befehl erhält eine eindeutige Kennung; die Rückmeldung nennt den tatsächlich bestätigten Zustand.</li>
+      </ol>
+    </section>
+
+    <section class="panel" aria-labelledby="safety-title">
+      <p class="eyebrow">Sicherheitsgrenze</p>
+      <h2 id="safety-title">Keine Bewegung darf allein vom Funk abhängen.</h2>
+      <ul>
+        <li>Bei Funkverlust fährt die Tür nicht blind weiter und startet keine automatische Wiederholung.</li>
+        <li>Bei unbekannter Position ist nur eine bewusst überwachte Referenzfahrt mit reduzierter Kraft zulässig.</li>
+        <li>Endschalter, Fahrzeitlimit und Überstromabschaltung wirken im Stallcontroller, nicht in App, Gateway oder Cloud.</li>
+        <li>Die Konstruktion benötigt Quetschschutz, eine ungefährliche Kraftbegrenzung und eine jederzeit erreichbare manuelle Entriegelung.</li>
+        <li>Automatische Zeit- oder Dämmerungssteuerung ist eine spätere Erweiterung. Sie muss Tiere im Fahrweg erkennen oder einen nachweislich sicheren mechanischen Schutz besitzen.</li>
+      </ul>
+      <p><strong>Wichtig:</strong> Dieser Maker-Aufbau ist keine zertifizierte Maschinensteuerung. Vor unbeaufsichtigtem Betrieb müssen Mechanik, elektrische Auslegung, Witterungsschutz und alle Fehlerfälle am realen Stall fachkundig beurteilt und getestet werden.</p>
+    </section>
+
+    <section class="panel product-cta maker-download-cta" aria-labelledby="learning-title">
+      <div>
+        <p class="eyebrow">Passendes Lernprojekt</p>
+        <h2 id="learning-title">Baue die Smartphone-Steuerung selbst.</h2>
+        <p>Im Lernprojekt entwickelst du den Türzustandsvertrag und eine installierbare Smartphone-Web-App. Du lernst, bestätigte Zustände von Bedienwünschen zu trennen, Offline-Fehler sichtbar zu machen und bei LoRa ein bewusstes Gateway einzusetzen.</p>
+      </div>
+      <a class="primary-action" href="/app/learning-project-overview/?project=catalog_chicken-coop-door-smartphone-app">Zum App-Lernprojekt →</a>
+    </section>
+  </main>
+
+  <footer>
+    <span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
+    <nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/nachbauprojekte/">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
+  </footer>
+  <script src="/navigation-model.js?v=20260816-unified-navigation-1"></script><script src="/landing.js?v=20260816-unified-navigation-1"></script>
+</body>
+</html>

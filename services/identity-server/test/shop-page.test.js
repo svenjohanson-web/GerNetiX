@@ -5,6 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const { normalizeAppPath } = require("../src/dev/http-utils");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const publicRoot = path.join(__dirname, "..", "public");
@@ -21,7 +22,7 @@ const server = [
 
 test("adds the GerNetiX webshop as an Identity platform area", () => {
   assert.equal(normalizeAppPath("/app/shop/"), "/index.html");
-  assert.match(html, /href="\/shop\/">Webshop<\/a>/);
+  assert.equal(authenticatedItem("/shop/").label, "Webshop");
   assert.match(html, /id="shopView"/);
   assert.match(app, /shop: "shopView"/);
   assert.match(app, /label: "Webshop", route: "\/app\/shop\/"/);

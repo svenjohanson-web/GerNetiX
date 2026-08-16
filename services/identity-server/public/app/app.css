@@ -28,7 +28,7 @@
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
 button, input, select, textarea { font: inherit; }
 button, a { cursor: pointer; }
-.app-shell { position: relative; width: 100%; max-width: none; margin: 0 auto; padding: 22px; }
+.app-shell { position: relative; width: 100%; max-width: none; margin: 0 auto; padding: 0 22px 22px; }
 .topbar, .section-head, .top-actions, .button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .nexi-product-empty { max-width: 760px; }
 .nexi-product-empty .button-link { display: inline-flex; width: fit-content; margin-top: 8px; border: 1px solid var(--accent); border-radius: 7px; padding: 10px 13px; background: var(--accent); color: #fff; font-weight: 750; text-decoration: none; }
@@ -41,7 +41,7 @@ button, a { cursor: pointer; }
 @media (max-width: 720px) { .nexi-related-paths { grid-template-columns: 1fr; } }
 .topbar {
   position: sticky;
-  top: 10px;
+  top: 0;
   z-index: 40;
   margin-bottom: 18px;
   backdrop-filter: blur(14px);
@@ -1360,7 +1360,7 @@ button.danger:hover {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  padding: 4px 8px 8px;
+  padding: 0 8px 8px;
   overflow: hidden;
 }
 .ide-workspace-active .topbar {
@@ -1520,12 +1520,12 @@ button.danger:hover {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  padding: 4px 8px 8px;
+  padding: 0 8px 8px;
   overflow: visible;
 }
 .development-workspace-active .topbar {
   position: sticky;
-  top: 4px;
+  top: 0;
   z-index: 40;
   flex: 0 0 auto;
   min-height: 44px;
@@ -2008,7 +2008,7 @@ button.danger:hover {
 .web-interface-tabs button.active { background: #164e63; color: #cffafe; }
 
 .debug-workspace-active { height: 100dvh; overflow: hidden; }
-.debug-workspace-active .app-shell { display: flex; flex-direction: column; height: 100dvh; padding: 4px 8px 8px; overflow: hidden; }
+.debug-workspace-active .app-shell { display: flex; flex-direction: column; height: 100dvh; padding: 0 8px 8px; overflow: hidden; }
 .debug-workspace-active .topbar { flex: 0 0 auto; min-height: 44px; margin-bottom: 6px; padding: 5px 8px; border-radius: 7px; }
 .debug-workspace-active #debugView { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .debug-workspace-shell { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; height: 100%; min-height: 0; }
@@ -3361,7 +3361,7 @@ button.danger:hover {
 }
 .development-hardware-active .app-shell {
   min-height: 100dvh;
-  padding: 8px 12px 18px;
+  padding: 0 12px 18px;
 }
 .hardware-configuration-workspace {
   display: grid;

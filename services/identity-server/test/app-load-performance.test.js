@@ -41,7 +41,11 @@ test("platform scripts download in parallel and route-only knowledge assets stay
   assert.equal(scripts.some((match) => match[2].includes("app-community-controller.js")), false);
   assert.equal(scripts.some((match) => match[2].includes("community-portal-controller.js")), false);
   assert.equal(scripts.some((match) => match[2].includes("community-marketplace-controller.js")), false);
-  assert.deepEqual(synchronousScripts.map((match) => match[2].split("?")[0]), ["/app/initial-view-router.js"]);
+  assert.deepEqual(synchronousScripts.map((match) => match[2].split("?")[0]), [
+    "/navigation-model.js",
+    "/app/initial-view-router.js",
+    "/app/app-navigation.js",
+  ]);
   assert.equal(scripts.every((match) => match[2].includes("?v=")), true);
   assert.match(webRoutes, /versioned: url\.searchParams\.has\("v"\)/);
   assert.equal(staticCacheControl("/app/app.js", { versioned: true }), "public, max-age=31536000, immutable");

@@ -14,6 +14,7 @@ const LearningProjectLocales = (() => {
     "yaml-fundamentals": ["YAML fundamentals – describe structured data clearly", "Learn YAML without prior knowledge and create a small project configuration with values, lists and nested structures."],
     "storage-learning-story": ["From a stored value to a data platform", "Build the data storage for an intelligent plant station step by step: first without persistent storage, then on the ESP32 and finally on a local server."],
     "measurement-tools-basics": ["Using measurement tools", "Use a multimeter, logic analyzer and oscilloscope to test safe low-voltage circuits systematically."],
+    "chicken-coop-door-smartphone-app": ["Build your own smartphone app for the chicken-coop door", "Develop an installable smartphone web app that controls a safe coop door through Wi-Fi or a LoRa gateway and only displays confirmed states."],
     "plant-watering-control": ["Plant watering control", "Measure moisture and switch a pump in a controlled way."],
     },
     nl: {
@@ -30,6 +31,7 @@ const LearningProjectLocales = (() => {
       "yaml-fundamentals": ["YAML-basis – gestructureerde gegevens duidelijk beschrijven", "Leer YAML zonder voorkennis en maak een kleine projectconfiguratie met waarden, lijsten en geneste structuren."],
       "storage-learning-story": ["Van opgeslagen waarde naar dataplatform", "Bouw de gegevensopslag voor een intelligent plantenstation stap voor stap: eerst zonder permanente opslag, daarna op de ESP32 en ten slotte op een lokale server."],
       "measurement-tools-basics": ["Werken met meetinstrumenten", "Onderzoek veilige laagspanningsschakelingen systematisch met multimeter, logic analyzer en oscilloscoop."],
+      "chicken-coop-door-smartphone-app": ["Bouw je eigen smartphone-app voor de kippenhokdeur", "Ontwikkel een installeerbare smartphone-webapp die een veilige kippenhokdeur via wifi of een LoRa-gateway bedient en alleen bevestigde toestanden toont."],
       "plant-watering-control": ["Besturing van plantenbewatering", "Meet vocht en schakel een pomp gecontroleerd in."],
     },
   };

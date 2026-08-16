@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 const publicRoot = path.join(__dirname, "..", "public");
 const i18nSource = fs.readFileSync(path.join(publicRoot, "app", "i18n", "i18n.js"), "utf8");
@@ -36,7 +37,7 @@ test("browser i18n resolves supported locales without localStorage persistence",
 test("platform keeps the persistent language control in the header without duplicating it in the profile", () => {
   assert.match(platformHtml, /DE · EN · NL[\s\S]*id="platformLanguage"/);
   assert.match(platformHtml, /🌐/);
-  assert.match(platformHtml, /data-i18n="profile\.menu">Profil<\/a>/);
+  assert.equal(authenticatedItem("/app/account-setup/").i18n, "profile.menu");
   assert.doesNotMatch(platformHtml, /id="profileLanguage"|profileLanguageStatus|account-language-settings/);
   assert.doesNotMatch(platformSource, /#profileLanguage|#profileLanguageStatus/);
   assert.match(platformHtml, /\/app\/i18n\/i18n\.js/);

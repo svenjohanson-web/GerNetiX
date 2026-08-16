@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedItem, navigationModel } = require("../test-support/navigation-model");
 
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
@@ -14,11 +15,11 @@ const client = readPlatformAppSource();
 const css = fs.readFileSync(path.join(root, "public", "app", "community-routes.css"), "utf8");
 
 test("keeps Messages permanently visible outside the authenticated hamburger groups", () => {
-  const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
-  const accountGroupEnd = menu.indexOf("</details>", menu.indexOf('platform.menu.account'));
-  const messagesIndex = menu.indexOf('id="messagesMenuLink"');
-  assert.ok(messagesIndex > accountGroupEnd);
-  assert.match(menu, /id="messagesMenuLink" class="utility menu-fixed-action" href="\/app\/messages\/" data-route="messages">Nachrichten<\/a>/);
+  const messages = authenticatedItem("messagesMenuLink");
+  assert.ok(navigationModel.authenticated.fixed.includes(messages));
+  assert.deepEqual({ href: messages.href, route: messages.route, className: messages.className }, {
+    href: "/app/messages/", route: "messages", className: "utility menu-fixed-action",
+  });
   assert.match(client, /messages: "messagesView"/);
   assert.match(client, /if \(route === "messages"\) loadMessages\(\)/);
 });

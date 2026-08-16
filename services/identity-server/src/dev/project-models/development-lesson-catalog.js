@@ -3,6 +3,7 @@
 const programmingFundamentals = require("./programming-fundamentals-course.json");
 const storageLearningStory = require("./storage-learning-story-course.json");
 const esp32CameraStreaming = require("./esp32-camera-streaming-course.json");
+const chickenCoopDoorSmartphoneApp = require("./chicken-coop-door-smartphone-app-course.json");
 
 function createDevelopmentLessonCatalog(bundles) {
   const lessonsById = new Map();
@@ -103,6 +104,12 @@ const developmentLessonCatalog = createDevelopmentLessonCatalog([
     lessons: esp32CameraStreaming.development_lessons,
     views: esp32CameraStreaming.view_manifest.views,
     sources: esp32CameraStreaming.sources,
+  },
+  {
+    id: "lesson_bundle.chicken_coop_door_smartphone_app",
+    lessons: chickenCoopDoorSmartphoneApp.development_lessons,
+    views: chickenCoopDoorSmartphoneApp.view_manifest.views,
+    sources: chickenCoopDoorSmartphoneApp.sources,
   },
 ]);
 

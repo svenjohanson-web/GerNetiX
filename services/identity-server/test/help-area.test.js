@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const knowledgeSourceRoot = path.join(__dirname, "..", "src", "knowledge", "articles");
@@ -62,14 +63,14 @@ const synchronousMotorPhaseB = fs.readFileSync(path.join(__dirname, "..", "publi
 const synchronousMotorPhaseC = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-3-phase-c.svg"), "utf8");
 
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
-  assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
-  assert.match(html, /id="helpMenuLink" class="utility public-information-link menu-fixed-action" href="\/hilfe\/">Hilfe<\/a>/);
-  assert.doesNotMatch(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
+  assert.equal(authenticatedItem("helpMenuLink").href, "/hilfe/");
+  assert.equal(authenticatedItem("helpMenuLink").className, "utility public-information-link menu-fixed-action");
+  assert.equal(authenticatedItem("/")?.href, undefined);
   assert.match(html, /class="public-header-brand" href="\/" aria-label="GerNetiX Startseite"/);
   assert.match(html, /class="public-header-brand"[\s\S]*src="\/gernetix-wordmark\.png"/);
   assert.doesNotMatch(html, /href="\/produkte\/"/);
-  assert.match(html, /href="\/app\/community\/" data-route="community" data-i18n="platform\.nav\.community">Community<\/a>/);
-  assert.match(html, /id="loginMenuLink" class="utility public-information-link menu-session-action" href="\/app\/auth\/">Anmelden<\/a>/);
+  assert.equal(authenticatedItem("/app/community/").route, "community");
+  assert.equal(authenticatedItem("loginMenuLink").label, "Anmelden");
   assert.match(html, /data-open-route="\/wissen\/"[\s\S]*Wissensportal/);
   assert.match(html, /id="informationView"/);
   assert.match(html, /id="informationMount"/);

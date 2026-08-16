@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedItem } = require("../test-support/navigation-model");
 const {
   canReadKnowledgeChapter,
   findKnowledgeChapterRelease,
@@ -154,7 +155,7 @@ test("exposes entitlement-filtered updates and an authenticated read endpoint", 
 
 test("shows knowledge releases in the extensible dashboard news area and marks only opened chapters", () => {
   assert.match(html, /id="dashboardNews"[\s\S]*Was gibt es Neues\?/);
-  assert.match(html, /id="knowledgeUpdateMenuBadge"/);
+  assert.equal(authenticatedItem("/wissen/").badgeId, "knowledgeUpdateMenuBadge");
   assert.match(css, /\.knowledge-update-count\[hidden\] \{ display: none; \}/);
   assert.match(app, /updates\.length === 1 \? "platform\.nav\.new" : "platform\.nav\.new_count"/);
   assert.match(app, /updates\.length === 1 \? "Neu" : `Neu · \$\{updates\.length\}`/);

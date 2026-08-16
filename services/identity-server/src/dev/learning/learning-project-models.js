@@ -24,6 +24,7 @@ const { createPlantWateringControlCourseModel } = require("../project-models/pla
 const { createEmbeddedRuntimeAndInterruptsCourseModel } = require("../project-models/embedded-runtime-and-interrupts-course");
 const { createEmbeddedCHardwareControlCourseModel } = require("../project-models/embedded-c-hardware-control-course");
 const { createAvrFrameworkResourceBudgetCourseModel } = require("../project-models/avr-framework-resource-budget-course");
+const { createChickenCoopDoorSmartphoneAppCourseModel } = require("../project-models/chicken-coop-door-smartphone-app-course");
 
 const definitions = [
   ["arduinoBlinkCourseModel", () => createArduinoBlinkCourseModel()],
@@ -49,6 +50,7 @@ const definitions = [
   ["embeddedRuntimeAndInterruptsCourseModel", () => createEmbeddedRuntimeAndInterruptsCourseModel()],
   ["embeddedCHardwareControlCourseModel", () => createEmbeddedCHardwareControlCourseModel()],
   ["avrFrameworkResourceBudgetCourseModel", () => createAvrFrameworkResourceBudgetCourseModel()],
+  ["chickenCoopDoorSmartphoneAppCourseModel", () => createChickenCoopDoorSmartphoneAppCourseModel()],
 ];
 
 function createLearningProjectModels({ readWorkspaceText }) {
