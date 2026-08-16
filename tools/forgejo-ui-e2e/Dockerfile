@@ -9,6 +9,7 @@ COPY services/project-server/src ./services/project-server/src
 COPY services/shared ./services/shared
 COPY services/identity-server/src/dev/project-repository-read.js ./services/identity-server/src/dev/project-repository-read.js
 COPY services/identity-server/src/dev/project-repository-contract-stub.js ./services/identity-server/src/dev/project-repository-contract-stub.js
+COPY services/identity-server/src/services/user-action-events.js ./services/identity-server/src/services/user-action-events.js
 COPY services/identity-server/src/dev/server/project-routes.js ./services/identity-server/src/dev/server/project-routes.js
 COPY services/identity-server/src/dev/server/route-registry.js ./services/identity-server/src/dev/server/route-registry.js
 COPY services/identity-server/public/app/project-repository-card.js ./services/identity-server/public/app/project-repository-card.js
