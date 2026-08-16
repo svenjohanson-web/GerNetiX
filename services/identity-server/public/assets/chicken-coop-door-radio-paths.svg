@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">WLAN- und LoRa-Bedienweg der Hühnerstalltür</title>
+  <desc id="desc">Das Smartphone erreicht den Stallcontroller entweder über das Haus-WLAN oder über ein WLAN-zu-LoRa-Gateway. Sicherheitsentscheidungen bleiben beim Stallcontroller.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#10231d"/></linearGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d7a56d"/><stop offset="1" stop-color="#8b5e34"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#62e5cc"/></marker>
+    <style>
+      .box{fill:#13202d;stroke:#3b5265;stroke-width:2}.accent{fill:#113f40;stroke:#38d6c1;stroke-width:2}.title{fill:#f0f6fa;font:700 26px system-ui,sans-serif}.label{fill:#e7edf4;font:650 21px system-ui,sans-serif}.small{fill:#aebdca;font:17px system-ui,sans-serif}.route{fill:none;stroke:#62e5cc;stroke-width:5;marker-end:url(#arrow)}.signal{fill:none;stroke:#f4c15d;stroke-width:4;stroke-dasharray:9 10;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="620" rx="30" fill="url(#bg)"/>
+  <text x="54" y="58" class="title">Zwei Funkwege, eine lokale Sicherheitsentscheidung</text>
+
+  <rect x="55" y="112" width="245" height="390" rx="26" class="box"/>
+  <rect x="105" y="152" width="145" height="270" rx="24" fill="#081019" stroke="#7890a5" stroke-width="5"/>
+  <rect x="124" y="190" width="107" height="175" rx="8" fill="#113f40"/>
+  <circle cx="177" cy="393" r="12" fill="#38d6c1"/>
+  <text x="177" y="463" text-anchor="middle" class="label">Smartphone-App</text>
+  <text x="177" y="490" text-anchor="middle" class="small">Status · Öffnen · Stopp</text>
+
+  <rect x="415" y="94" width="290" height="145" rx="22" class="accent"/>
+  <text x="560" y="142" text-anchor="middle" class="label">WLAN-Variante</text>
+  <text x="560" y="177" text-anchor="middle" class="small">lokales IP-Netz</text>
+  <text x="560" y="207" text-anchor="middle" class="small">kleiner API-Vertrag</text>
+
+  <rect x="415" y="338" width="290" height="165" rx="22" class="box"/>
+  <text x="560" y="384" text-anchor="middle" class="label">LoRa-Gateway</text>
+  <text x="560" y="419" text-anchor="middle" class="small">Smartphone ↔ WLAN/HTTPS</text>
+  <text x="560" y="450" text-anchor="middle" class="small">Gateway ↔ LoRa-Telegramm</text>
+  <text x="560" y="480" text-anchor="middle" class="small">kein direktes Smartphone-LoRa</text>
+
+  <rect x="820" y="112" width="325" height="390" rx="26" class="accent"/>
+  <text x="982" y="154" text-anchor="middle" class="label">Stallcontroller</text>
+  <text x="982" y="185" text-anchor="middle" class="small">ESP32 · lokale Zustandsmaschine</text>
+  <rect x="875" y="223" width="214" height="126" rx="14" fill="url(#door)" stroke="#f2d0a8" stroke-width="3"/>
+  <path d="M982 223v126M875 285h214" stroke="#70451f" stroke-width="7"/>
+  <circle cx="909" cy="380" r="18" fill="#f4c15d"/>
+  <circle cx="1055" cy="380" r="18" fill="#f4c15d"/>
+  <text x="982" y="426" text-anchor="middle" class="small">Motor · Endlagen · Hindernis</text>
+  <text x="982" y="458" text-anchor="middle" class="small">Stopptaster · Handentriegelung</text>
+
+  <path d="M300 190H415" class="route"/>
+  <path d="M705 166H820" class="route"/>
+  <path d="M300 411H415" class="route"/>
+  <path d="M705 420C760 420 765 360 820 360" class="signal"/>
+  <text x="347" y="178" class="small">WLAN</text>
+  <text x="742" y="398" class="small">LoRa</text>
+
+  <rect x="340" y="544" width="520" height="48" rx="24" fill="#2e2430" stroke="#f4c15d"/>
+  <text x="600" y="575" text-anchor="middle" class="small">Funk übermittelt Befehle – Sicherheit bleibt am Stall.</text>
+</svg>

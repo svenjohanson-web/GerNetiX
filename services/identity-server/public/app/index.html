@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
+    <script src="/navigation-model.js?v=20260816-unified-navigation-1"></script>
     <script src="/app/initial-view-router.js?v=20260805-hardware-lab-route-1"></script>
     <script defer src="/app/app-shell-early.js?v=20260805-shell-menu-1"></script>
     <link rel="stylesheet" href="/app/app.css?v=20260812-knowledge-library-3" />
@@ -50,52 +51,8 @@
         </div>
       </header>
 
-      <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
-        <a href="/app/dashboard/" data-route="dashboard" data-i18n="platform.nav.dashboard">Übersicht</a>
-        <a href="/app/applications/" data-route="applications" data-i18n="platform.nav.applications">Meine Anwendungen</a>
-        <details class="app-menu-group">
-          <summary data-i18n="platform.menu.learn_develop">Lernen &amp; Entwickeln</summary>
-          <div>
-            <a href="/app/learn/" data-route="learn" data-i18n="platform.nav.learning">Lernplattform</a>
-            <a href="/app/development-platform/" data-route="development-platform" data-i18n="platform.nav.development">Entwicklungsplattform</a>
-            <a class="utility" href="/app/quiz/" data-route="quiz" data-i18n="platform.nav.quiz">Quiz</a>
-            <a class="utility public-information-link" href="/wissen/"><span data-i18n="platform.nav.knowledge_store">Wissensspeicher</span> <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
-            <a class="utility" href="/app/nachschlagewerke/" data-route="nachschlagewerke" data-i18n="platform.nav.reference_library">Nachschlagewerke</a>
-            <a href="/app/community/" data-route="community" data-i18n="platform.nav.community">Community</a>
-            <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
-          </div>
-        </details>
-        <details class="app-menu-group">
-          <summary data-i18n="platform.menu.boards_tools">Boards &amp; Werkzeuge</summary>
-          <div>
-            <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
-            <a id="hardwareLabMenuLink" class="utility" href="/app/hardware-lab/" data-route="hardware-lab" data-i18n="platform.nav.hardware_lab">KI-Hardware-Assistent</a>
-            <button id="deviceWifiSetupMenuButton" class="utility menu-tool-action" type="button">Device-WLAN-Setup</button>
-            <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
-            <a class="utility public-information-link" href="/flashbox-einrichten/">FlashBox einrichten</a>
-          </div>
-        </details>
-        <details class="app-menu-group">
-          <summary data-i18n="platform.menu.service_shop">Service &amp; Shop</summary>
-          <div>
-            <a class="utility" href="/app/about/" data-route="about" data-i18n="footer.about">Über uns</a>
-            <a class="utility public-information-link" href="/support/">Support</a>
-            <a class="utility public-information-link" href="/leistungen/" data-i18n="nav.services">Leistungen</a>
-            <a class="utility public-information-link" href="/shop/">Webshop</a>
-          </div>
-        </details>
-        <details class="app-menu-group app-menu-group-private">
-          <summary data-i18n="platform.menu.account">Konto</summary>
-          <div>
-            <a class="utility" href="/app/account-setup/" data-route="account-setup" data-i18n="profile.menu">Profil</a>
-            <a class="utility" href="/app/billing/" data-route="billing" data-i18n="platform.nav.billing">Billing</a>
-          </div>
-        </details>
-        <a id="helpMenuLink" class="utility public-information-link menu-fixed-action" href="/hilfe/">Hilfe</a>
-        <a id="messagesMenuLink" class="utility menu-fixed-action" href="/app/messages/" data-route="messages">Nachrichten</a>
-        <a id="loginMenuLink" class="utility public-information-link menu-session-action" href="/app/auth/">Anmelden</a>
-        <button id="logoutButton" class="menu-logout menu-session-action" type="button" data-i18n="platform.nav.logout">Abmelden</button>
-      </nav>
+      <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche"></nav>
+      <script src="/app/app-navigation.js?v=20260816-unified-navigation-1"></script>
 
       <section id="dashboardView" class="view">
         <section class="dashboard-hero" aria-labelledby="dashboardTitle">
@@ -1581,11 +1538,11 @@
     <script defer src="/app/app-shell-controller.js?v=20260812-knowledge-library-3"></script>
     <script defer src="/app/app-dashboard-controller.js?v=20260805-applications-1"></script>
     <script defer src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app-project-controller.js?v=20260808-learning-progress-map-2"></script>
+    <script defer src="/app/app-project-controller.js?v=20260808-learning-access-sales-1"></script>
     <script defer src="/app/app-billing-controller.js?v=20260803-storage-policy-1"></script>
     <script defer src="/app/app-runtime-utils.js?v=20260807-flat-guided-learning-2"></script>
     <script defer src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app.js?v=20260807-flat-guided-learning-2"></script>
+    <script defer src="/app/app.js?v=20260808-reference-library-route-2"></script>
     <script defer src="/app/app-event-bindings.js?v=20260805-shell-menu-1"></script>
   </body>
 </html>

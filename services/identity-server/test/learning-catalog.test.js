@@ -45,7 +45,7 @@ test("catalog cards show only the learning offer, not implementation facts", () 
 
 test("catalog classifies free, purchased and subscription access", () => {
   assert.match(app, /free: "Frei verfügbar"/);
-  assert.match(app, /purchased: "Kurs gekauft"/);
+  assert.match(app, /purchased: "Einzeln kaufen"/);
   assert.match(app, /subscription: "Im Abo enthalten"/);
   assert.match(app, /en: \{ free: "Available free"/);
   assert.match(app, /nl: \{ free: "Gratis beschikbaar"/);
@@ -220,6 +220,44 @@ test("catalog includes the free measurement tools learning project", () => {
   assert.match(server, /learningProjectModel\.createViewManifest/);
   assert.match(server, /learningProjectModel\.createSources/);
   assert.match(app, /"topic:measurement": "Messtechnik"/);
+});
+
+test("catalog includes the chicken-coop door smartphone app learning project", () => {
+  const course = require("../src/dev/project-models/chicken-coop-door-smartphone-app-course.json");
+  const model = require("../src/dev/project-models/chicken-coop-door-smartphone-app-course");
+  assert.equal(course.project.slug, "chicken-coop-door-smartphone-app");
+  assert.equal(course.project.learning_category, "mobile");
+  assert.equal(course.project.access_model, "free");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_text");
+  assert.deepEqual(course.project.required_capability_ids, []);
+  assert.ok(course.project.tags.includes("client:mobile"));
+  assert.ok(course.project.tags.includes("topic:automation"));
+  assert.equal(course.development_lessons.length, 3);
+  assert.equal(course.view_manifest.views.length, 9);
+  assert.deepEqual(course.project.project_lesson_assignments.map((item) => item.lesson_id), [
+    "development_lesson.chicken_door.system_contract",
+    "development_lesson.chicken_door.smartphone_pwa",
+    "development_lesson.chicken_door.acceptance",
+  ]);
+  assert.match(JSON.stringify(course), /Angenommen ist nicht ausgeführt/);
+  assert.match(JSON.stringify(course), /API-Antworten offline zu cachen/);
+  assert.match(JSON.stringify(course), /kein direkt nutzbares LoRa-Funkmodul/i);
+  assert.match(course.sources.find((source) => source.path === "app/app.js").content, /crypto\.randomUUID\(\)/);
+  assert.match(course.sources.find((source) => source.path === "app/sw.js").content, /\/api\/door\//);
+  assert.equal(typeof model.createChickenCoopDoorSmartphoneAppCourseModel, "function");
+  const courseModel = model.createChickenCoopDoorSmartphoneAppCourseModel();
+  const created = courseModel.createProject(
+    (slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }),
+    (title, text, insight) => ({ title, text, insight }),
+  );
+  assert.equal(created.project_lesson_assignments.length, 3);
+  assert.equal(courseModel.createViewManifest(created, { primarySourcePath: () => "app/index.html" }).views.length, 9);
+  assert.equal(courseModel.createSources({ lessonId: "development_lesson.chicken_door.smartphone_pwa" }).length, 5);
+  assert.match(learningModels, /createChickenCoopDoorSmartphoneAppCourseModel/);
+  assert.match(learningModels, /chickenCoopDoorSmartphoneAppCourseModel/);
+  assert.match(learningModels, /models\.map\(\(model\) => model\.createProject/);
+  assert.match(server, /learningProjectModel\.createViewManifest/);
+  assert.match(server, /learningProjectModel\.createSources/);
 });
 
 test("button-to-smartphone course starts with a simulated button and serial-monitor lab", () => {
