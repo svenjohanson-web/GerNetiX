@@ -140,6 +140,9 @@ eine externe Simulationsruntime einzuführen.
 Die [lineare AC-Kleinsignalanalyse](virtual-electronics-lab-spice-ac-analysis-work-package.md)
 erweitert denselben Auftrag um begrenzte logarithmische RLC-Sweeps, komplexe
 MNA-Ergebnisse und den passenden `.ac`-Netlist-Export.
+Die [sichtbare AC-/Bode-Analyse](virtual-electronics-lab-spice-visible-ac-work-package.md)
+bindet diesen Vertrag über virtuelle Tastköpfe, RC-Vorlage, Bode-Kurven und
+eine nur lesbare Netlist in die bestehende freie Laborfläche ein.
 Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
 Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
 der optionalen, creditgebundenen KI-Hilfe ist in

@@ -205,6 +205,14 @@ Imaginärteil, Betrag und Phase; derselbe Auftrag erzeugt im Export `AC` und
 den Rechenaufwand. Das Modell bleibt linear und verwendet keine realen
 Herstellerbauteile.
 
+Das Template **Freie AC-Simulation · RC-Tiefpass** macht diesen Pfad in der
+gemeinsamen Laborfläche sichtbar. Der Nutzer wählt die AC-Quelle sowie Start,
+Stopp und Punkte pro Dekade. Die vorhandenen differentiellen Tastköpfe liefern
+Verstärkung und Phase für zwei Bode-Kurven und eine Ergebnistabelle. Zusätzlich
+zeigt das Labor die aus genau diesem Auftrag erzeugte, nur lesbare
+SPICE-Netlist. Schaltungsänderungen invalidieren Kurven und Netlist; ein freier
+Raw-SPICE-Editor bleibt ausgeschlossen.
+
 ### Aufbau
 
 Der Durchstich ist die neue gemeinsame Einstiegfläche und führt über ein vereinfachtes Laufzeitmodell

@@ -6,6 +6,7 @@ import {
 export const FREE_DC_DIVIDER_PRESET_ID = "dc-divider";
 export const FREE_EMPTY_PRESET_ID = "empty";
 export const FREE_RC_CHARGE_PRESET_ID = "rc-charge";
+export const FREE_RC_LOWPASS_PRESET_ID = "rc-lowpass";
 
 export function createFreeEmptyMeasurementSetup() {
   return {
@@ -89,4 +90,12 @@ export function createFreeRcChargeDocument() {
   connect("r1", "n", "c1", "p");
   connect("c1", "n", "gnd1", "0");
   return runtime.getSnapshot();
+}
+
+export function createFreeRcLowpassDocument() {
+  return createFreeRcChargeDocument();
+}
+
+export function createFreeRcLowpassMeasurementSetup() {
+  return createFreeRcChargeMeasurementSetup();
 }

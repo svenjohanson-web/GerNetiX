@@ -55,8 +55,8 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(oscilloscope, /ΔV/);
   assert.match(oscilloscope, /setPointerCapture/);
   assert.match(overview, /src="\.\/app\.js/);
-  assert.match(overview, /app\.js\?v=20260817-free-empty-1/);
-  assert.match(overview, /styles\.css\?v=20260817-free-empty-1/);
+  assert.match(overview, /app\.js\?v=20260817-spice-ac-ui-1/);
+  assert.match(overview, /styles\.css\?v=20260817-spice-ac-ui-1/);
   assert.match(overview, /id="labTemplateSelect"/);
   assert.match(readLab("app.js"), /listLabTemplates/);
   assert.match(readLab("app.js"), /loadSelectedTemplate/);

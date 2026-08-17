@@ -1193,7 +1193,8 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   font-variant-numeric: tabular-nums;
 }
 
-.elab-free-transient {
+.elab-free-transient,
+.elab-free-ac {
   margin: 12px 0;
   padding: 12px;
   border: 1px solid #31465c;
@@ -1201,20 +1202,23 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   background: rgba(5, 12, 20, .55);
 }
 
-.elab-free-transient-head {
+.elab-free-transient-head,
+.elab-free-ac-head {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 14px;
 }
 
-.elab-free-transient-head p {
+.elab-free-transient-head p,
+.elab-free-ac-head p {
   margin: 3px 0 0;
   color: var(--muted);
   font-size: 12px;
 }
 
-.elab-free-transient-controls {
+.elab-free-transient-controls,
+.elab-free-ac-controls {
   display: flex;
   align-items: end;
   justify-content: end;
@@ -1222,7 +1226,8 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   flex-wrap: wrap;
 }
 
-.elab-free-transient-controls label {
+.elab-free-transient-controls label,
+.elab-free-ac-controls label {
   display: grid;
   grid-template-columns: auto minmax(70px, 95px) auto;
   align-items: center;
@@ -1230,7 +1235,9 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   font-size: 12px;
 }
 
-.elab-free-transient-controls input {
+.elab-free-transient-controls input,
+.elab-free-ac-controls input,
+.elab-free-ac-controls select {
   min-width: 0;
   padding: 7px;
   border: 1px solid #3b526d;
@@ -1259,6 +1266,69 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   stroke: #55d7ff;
   stroke-width: 3;
   vector-effect: non-scaling-stroke;
+}
+
+.elab-free-ac-plots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.elab-free-ac-plots figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.elab-free-ac-plots figcaption {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.elab-free-ac-plot {
+  display: block;
+  width: 100%;
+  min-height: 130px;
+  border: 1px solid #2a3d50;
+  border-radius: 6px;
+  background: #07101a;
+}
+
+.elab-free-ac-plot line {
+  stroke: #53687d;
+  stroke-width: 1;
+}
+
+.elab-free-ac-plot polyline {
+  fill: none;
+  stroke: #80e6a8;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.elab-free-ac-plot [data-free-ac-phase-trace] {
+  stroke: #ffbe66;
+}
+
+.elab-free-netlist {
+  margin-top: 10px;
+}
+
+.elab-free-netlist summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.elab-free-netlist pre {
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #2a3d50;
+  border-radius: 6px;
+  background: #07101a;
+  color: #cce8f5;
+  font-size: 11px;
 }
 
 .elab-free-transient-table {
@@ -1307,12 +1377,14 @@ html[data-public-theme=light] .elab-free-board {
 
 html[data-public-theme=light] .elab-free-probe-workbench,
 html[data-public-theme=light] .elab-free-measurement-item,
-html[data-public-theme=light] .elab-free-transient {
+html[data-public-theme=light] .elab-free-transient,
+html[data-public-theme=light] .elab-free-ac {
   border-color: #b9afa0;
   background: rgba(245, 247, 250, .72);
 }
 
-html[data-public-theme=light] .elab-free-transient-plot {
+html[data-public-theme=light] .elab-free-transient-plot,
+html[data-public-theme=light] .elab-free-ac-plot {
   border-color: #b9afa0;
   background: #f7fafc;
 }
@@ -1332,7 +1404,9 @@ html[data-public-theme=light] .elab-free-measurement-item select {
   border-color: #b9afa0;
 }
 
-html[data-public-theme=light] .elab-free-transient-controls input {
+html[data-public-theme=light] .elab-free-transient-controls input,
+html[data-public-theme=light] .elab-free-ac-controls input,
+html[data-public-theme=light] .elab-free-ac-controls select {
   color: var(--text);
   background: #fffdf8;
   border-color: #b9afa0;
@@ -1361,11 +1435,13 @@ html[data-public-theme=light] .elab-free-transient-controls input {
     grid-template-columns: 1fr;
   }
 
-  .elab-free-transient-head {
+  .elab-free-transient-head,
+  .elab-free-ac-head {
     display: grid;
   }
 
-  .elab-free-transient-controls {
+  .elab-free-transient-controls,
+  .elab-free-ac-controls {
     justify-content: start;
   }
 }
@@ -1393,8 +1469,13 @@ html[data-public-theme=light] .elab-free-transient-controls input {
     text-align: left;
   }
 
-  .elab-free-transient-controls {
+  .elab-free-transient-controls,
+  .elab-free-ac-controls {
     display: grid;
+  }
+
+  .elab-free-ac-plots {
+    grid-template-columns: 1fr;
   }
 
   .elab-free-measurement-create,

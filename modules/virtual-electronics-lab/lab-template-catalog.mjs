@@ -21,6 +21,7 @@ const BUTTON_DEBOUNCE_LONG_START_CODE = BUTTON_DEBOUNCE_PROGRAM_START_CODE.repla
 const FREE_DC_DIVIDER_START_NOTE = "// Freie DC-Simulation: Schaltung und Messung werden über Labor-Commands verändert.";
 const FREE_EMPTY_START_NOTE = "// Leere Laborfläche: Bauteile und Messpunkte werden über Labor-Commands hinzugefügt.";
 const FREE_RC_CHARGE_START_NOTE = "// Freie Transientensimulation: RC-Ladevorgang mit begrenztem Zeitschrittmodell.";
+const FREE_RC_LOWPASS_START_NOTE = "// Freie AC-Simulation: RC-Tiefpass mit Bode-Darstellung und SPICE-Netlist.";
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object") {
@@ -305,6 +306,39 @@ const TEMPLATE_ENTRIES = [
       { id: "gnd", label: "GND" },
     ],
     startCode: FREE_RC_CHARGE_START_NOTE,
+    modelLimits: {
+      minVoltageV: -24,
+      maxVoltageV: 24,
+      minCurrentA: -5,
+      maxCurrentA: 5,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
+      maxRuntimeMs: 2000,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
+    id: "elab-tpl-free-rc-lowpass",
+    version: "1.0.0",
+    title: "Freie AC-Simulation · RC-Tiefpass",
+    shortDescription: "Untersuche Betrag und Phase eines RC-Tiefpasses und sieh die daraus erzeugte SPICE-Netlist.",
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "rc-lowpass",
+    },
+    recommendedInstruments: ["oscilloscope", "multimeter"],
+    recommendedMeasurementPoints: [
+      { id: "v1-p", label: "Versorgung" },
+      { id: "c1-p", label: "Filterausgang" },
+      { id: "gnd", label: "GND" },
+    ],
+    startCode: FREE_RC_LOWPASS_START_NOTE,
     modelLimits: {
       minVoltageV: -24,
       maxVoltageV: 24,

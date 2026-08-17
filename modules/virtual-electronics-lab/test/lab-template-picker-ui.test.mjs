@@ -63,3 +63,10 @@ test("leere Laborfläche nutzt das bestehende freie Labor und seinen Resetpfad",
   assert.match(freeCircuitSource, /Die Laborfläche ist leer/);
   assert.match(freeCircuitSource, /createFreeCircuitCommandRuntime\(\{ document: initialDocument \}\)/);
 });
+
+test("AC-Tiefpassvorlage verwendet die freie Laborfläche und den vorhandenen Resetpfad", () => {
+  assert.match(freeCircuitSource, /presetId === FREE_RC_LOWPASS_PRESET_ID/);
+  assert.match(freeCircuitSource, /createFreeRcLowpassDocument/);
+  assert.match(freeCircuitSource, /createFreeRcLowpassMeasurementSetup/);
+  assert.match(freeCircuitSource, /data-free-action="reset"/);
+});

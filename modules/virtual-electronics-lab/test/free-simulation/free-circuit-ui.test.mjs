@@ -88,3 +88,17 @@ test("FREE-009: leere Vorlage bleibt in derselben Command-basierten Laborfläche
   assert.match(source, /Wähle links ein erstes Bauteil aus/);
   assert.match(styles, /\.elab-free-empty-state/);
 });
+
+test("SPICE-003: AC-Auftrag, Tastköpfe, Bode-Kurven und Netlist bleiben in derselben Laborfläche", () => {
+  assert.match(source, /FREE_RC_LOWPASS_PRESET_ID/);
+  assert.match(source, /executeLearningSimulationRequest/);
+  assert.match(source, /evaluateAcVoltageProbes/);
+  assert.match(source, /exportSpiceNetlist/);
+  assert.match(source, /AC-Anregungsquelle/);
+  assert.match(source, /data-free-ac-magnitude-trace/);
+  assert.match(source, /data-free-ac-phase-trace/);
+  assert.match(source, /Erzeugte SPICE-Netlist/);
+  assert.match(source, /Schaltung geändert; AC-Analyse erneut berechnen/);
+  assert.match(styles, /\.elab-free-ac-plots/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.elab-free-ac-plots/);
+});

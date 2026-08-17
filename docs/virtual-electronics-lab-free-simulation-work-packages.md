@@ -163,3 +163,7 @@ Teilumfang deterministisch, ohne die Providerentscheidung vorwegzunehmen.
 Darauf baut die umgesetzte
 [ELAB-SPICE-002 AC-Kleinsignalanalyse](virtual-electronics-lab-spice-ac-analysis-work-package.md)
 mit begrenztem logarithmischem RLC-Sweep und `.ac`-Export auf.
+Die umgesetzte
+[ELAB-SPICE-003 sichtbare AC-/Bode-Analyse](virtual-electronics-lab-spice-visible-ac-work-package.md)
+macht denselben Auftrag über RC-Vorlage, virtuelle Tastköpfe, Betrag, Phase und
+eine nur lesbare SPICE-Netlist in der freien Laborfläche bedienbar.

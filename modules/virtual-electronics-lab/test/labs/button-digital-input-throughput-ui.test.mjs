@@ -254,8 +254,8 @@ test("Responsive und Light-Theme Styles für die neue Lab-UI", () => {
 test("Eng begrenzte öffentliche Modulroute und neuer gemeinsamer Cache-Buster", () => {
   assert.ok(routeSource.includes("input-models\\/[^/]+\\.mjs"));
   assert.ok(routeSource.includes("ai\\/[^/]+\\.mjs"));
-  assert.match(indexSource, /app\.js\?v=20260817-free-empty-1/);
-  assert.match(indexSource, /styles\.css\?v=20260817-free-empty-1/);
+  assert.match(indexSource, /app\.js\?v=20260817-spice-ac-ui-1/);
+  assert.match(indexSource, /styles\.css\?v=20260817-spice-ac-ui-1/);
 });
 
 test("Kein Netzwerk, keine Persistenz, keine Clock, kein Zufall in der neuen UI-Datei", () => {
