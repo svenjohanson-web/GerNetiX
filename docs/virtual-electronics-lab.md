@@ -196,6 +196,15 @@ Fachliche Knoten- und Komponenten-IDs bleiben im Export nachvollziehbar. LED,
 Taster, AC-Analyse und Raw-SPICE sind weiterhin ausdrücklich nicht Bestandteil
 dieses ersten Netlist-Vertrags.
 
+Die darauf aufbauende lineare AC-Kleinsignalanalyse unterstützt logarithmische
+Sweeps von 1 Hz bis 1 MHz für ideale Spannungsquellen, R, C und L. Der Auftrag
+wählt eine vorhandene Spannungsquelle als AC-Anregung mit Amplitude und Phase.
+Der komplexe MNA-Lernsolver liefert Knoten- und Zweigwerte als Realteil,
+Imaginärteil, Betrag und Phase; derselbe Auftrag erzeugt im Export `AC` und
+`.ac dec`. Höchstens 201 Frequenzpunkte sowie die Schaltungsgrenzen begrenzen
+den Rechenaufwand. Das Modell bleibt linear und verwendet keine realen
+Herstellerbauteile.
+
 ### Aufbau
 
 Der Durchstich ist die neue gemeinsame Einstiegfläche und führt über ein vereinfachtes Laufzeitmodell

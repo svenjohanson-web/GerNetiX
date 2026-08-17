@@ -137,6 +137,9 @@ Der [einheitliche Simulations- und Netlist-Vertrag](virtual-electronics-lab-spic
 führt DC und Transient über einen providerneutralen Auftrag zusammen und
 erzeugt daraus eine deterministische, begrenzte SPICE-Netlist, ohne bereits
 eine externe Simulationsruntime einzuführen.
+Die [lineare AC-Kleinsignalanalyse](virtual-electronics-lab-spice-ac-analysis-work-package.md)
+erweitert denselben Auftrag um begrenzte logarithmische RLC-Sweeps, komplexe
+MNA-Ergebnisse und den passenden `.ac`-Netlist-Export.
 Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
 Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
 der optionalen, creditgebundenen KI-Hilfe ist in

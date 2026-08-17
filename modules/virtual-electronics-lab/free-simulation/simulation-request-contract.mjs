@@ -2,12 +2,21 @@ import { normalizeCircuitDocument } from "./circuit-document-contract.mjs";
 
 export const SIMULATION_REQUEST_CONTRACT = Object.freeze({
   schemaVersion: "1.0.0",
-  supportedAnalyses: Object.freeze(["dc-operating-point", "transient"]),
+  supportedAnalyses: Object.freeze(["dc-operating-point", "transient", "ac-sweep"]),
   transientLimits: Object.freeze({
     minTimeStepS: 1e-6,
     maxTimeStepS: 1e-2,
     maxStopTimeS: 1,
     maxSteps: 1_000,
+  }),
+  acSweepLimits: Object.freeze({
+    minFrequencyHz: 1,
+    maxFrequencyHz: 1_000_000,
+    minPointsPerDecade: 1,
+    maxPointsPerDecade: 50,
+    maxSamples: 201,
+    minPhaseDeg: -180,
+    maxPhaseDeg: 180,
   }),
 });
 
@@ -34,12 +43,39 @@ function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function normalizeAnalysis(input) {
+function normalizeAcAnalysis(input, circuit) {
+  const allowed = ["type", "startFrequencyHz", "stopFrequencyHz", "pointsPerDecade", "excitation"];
+  if (Object.keys(input).some((key) => !allowed.includes(key)) || !isObject(input.excitation)) return null;
+  if (Object.keys(input.excitation).some((key) => !["sourceComponentId", "amplitudeV", "phaseDeg"].includes(key))) return null;
+  const { startFrequencyHz, stopFrequencyHz, pointsPerDecade } = input;
+  const { sourceComponentId, amplitudeV, phaseDeg } = input.excitation;
+  const limits = SIMULATION_REQUEST_CONTRACT.acSweepLimits;
+  if (!Number.isFinite(startFrequencyHz) || !Number.isFinite(stopFrequencyHz)
+    || startFrequencyHz < limits.minFrequencyHz || stopFrequencyHz > limits.maxFrequencyHz
+    || stopFrequencyHz <= startFrequencyHz) return null;
+  if (!Number.isInteger(pointsPerDecade) || pointsPerDecade < limits.minPointsPerDecade || pointsPerDecade > limits.maxPointsPerDecade) return null;
+  const estimatedSamples = Math.ceil(Math.log10(stopFrequencyHz / startFrequencyHz) * pointsPerDecade) + 1;
+  if (estimatedSamples > limits.maxSamples) return null;
+  const source = circuit.components.find((component) => component.id === sourceComponentId);
+  if (!source || source.type !== "dc-voltage-source") return null;
+  if (!Number.isFinite(amplitudeV) || amplitudeV <= 0 || amplitudeV > circuit.modelLimits.maxVoltageV) return null;
+  if (!Number.isFinite(phaseDeg) || phaseDeg < limits.minPhaseDeg || phaseDeg > limits.maxPhaseDeg) return null;
+  return {
+    type: input.type,
+    startFrequencyHz,
+    stopFrequencyHz,
+    pointsPerDecade,
+    excitation: { sourceComponentId, amplitudeV, phaseDeg },
+  };
+}
+
+function normalizeAnalysis(input, circuit) {
   if (!isObject(input) || typeof input.type !== "string") return null;
   if (input.type === "dc-operating-point") {
     if (Object.keys(input).some((key) => key !== "type")) return null;
     return { type: input.type };
   }
+  if (input.type === "ac-sweep") return normalizeAcAnalysis(input, circuit);
   if (input.type !== "transient" || Object.keys(input).some((key) => !["type", "timeStepS", "stopTimeS"].includes(key))) return null;
   const { timeStepS, stopTimeS } = input;
   const limits = SIMULATION_REQUEST_CONTRACT.transientLimits;
@@ -56,7 +92,7 @@ export function normalizeSimulationRequest(input) {
   if (input.schemaVersion !== SIMULATION_REQUEST_CONTRACT.schemaVersion) return failure(ERRORS.VERSION);
   const circuit = normalizeCircuitDocument(input.circuit);
   if (!circuit.ok) return failure(ERRORS.CIRCUIT, { cause: circuit.errors[0]?.code || "ELAB_FREE_UNKNOWN" });
-  const analysis = normalizeAnalysis(input.analysis);
+  const analysis = normalizeAnalysis(input.analysis, circuit.document);
   if (!analysis) return failure(ERRORS.ANALYSIS);
   return deepFreeze({
     ok: true,

@@ -160,3 +160,6 @@ Die anschließende SPICE-Reihe beginnt mit dem umgesetzten
 [ELAB-SPICE-001 Simulations- und Netlist-Vertrag](virtual-electronics-lab-spice-simulation-contract-work-package.md).
 Er vereinheitlicht DC- und Transientenaufträge und exportiert den linearen
 Teilumfang deterministisch, ohne die Providerentscheidung vorwegzunehmen.
+Darauf baut die umgesetzte
+[ELAB-SPICE-002 AC-Kleinsignalanalyse](virtual-electronics-lab-spice-ac-analysis-work-package.md)
+mit begrenztem logarithmischem RLC-Sweep und `.ac`-Export auf.

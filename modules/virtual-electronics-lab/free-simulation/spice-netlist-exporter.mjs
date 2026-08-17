@@ -40,8 +40,12 @@ function componentNodes(component) {
   return [portNode(component, "p"), portNode(component, "n")];
 }
 
-function componentValue(component) {
-  if (component.type === "dc-voltage-source") return `DC ${formatNumber(component.parameters.voltage.value)}`;
+function componentValue(component, analysis) {
+  if (component.type === "dc-voltage-source") {
+    const dc = `DC ${formatNumber(component.parameters.voltage.value)}`;
+    if (analysis.type !== "ac-sweep" || component.id !== analysis.excitation.sourceComponentId) return dc;
+    return `${dc} AC ${formatNumber(analysis.excitation.amplitudeV)} ${formatNumber(analysis.excitation.phaseDeg)}`;
+  }
   const parameter = { resistor: "resistance", capacitor: "capacitance", inductor: "inductance" }[component.type];
   return formatNumber(component.parameters[parameter].value);
 }
@@ -84,10 +88,11 @@ export function exportSpiceNetlist(input) {
     const name = componentNames.get(component.id);
     lines.push(`* component ${name} = ${component.id}`);
     const [positive, negative] = componentNodes(component);
-    lines.push(`${name} ${nodeNames.get(positive)} ${nodeNames.get(negative)} ${componentValue(component)}`);
+    lines.push(`${name} ${nodeNames.get(positive)} ${nodeNames.get(negative)} ${componentValue(component, analysis)}`);
   }
   if (analysis.type === "dc-operating-point") lines.push(".op");
-  else lines.push(`.tran ${formatNumber(analysis.timeStepS)} ${formatNumber(analysis.stopTimeS)} 0 UIC`);
+  else if (analysis.type === "transient") lines.push(`.tran ${formatNumber(analysis.timeStepS)} ${formatNumber(analysis.stopTimeS)} 0 UIC`);
+  else lines.push(`.ac dec ${analysis.pointsPerDecade} ${formatNumber(analysis.startFrequencyHz)} ${formatNumber(analysis.stopFrequencyHz)}`);
   lines.push(".end");
   const netlist = `${lines.join("\n")}\n`;
 

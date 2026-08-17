@@ -48,6 +48,19 @@ test("SPICE-001: Transientenauftrag exportiert R, C und begrenzte Analyse", () =
   assert.match(result.result.netlist, /\.tran 0\.0001 0\.01 0 UIC\n\.end\n$/);
 });
 
+test("SPICE-002: AC-Auftrag exportiert Quellenanregung und Dekadensweep", () => {
+  const result = exportSpiceNetlist(request(createFreeRcChargeDocument(), {
+    type: "ac-sweep",
+    startFrequencyHz: 10,
+    stopFrequencyHz: 100_000,
+    pointsPerDecade: 10,
+    excitation: { sourceComponentId: "v1", amplitudeV: 1, phaseDeg: -30 },
+  }));
+  assert.equal(result.ok, true);
+  assert.match(result.result.netlist, /V1 \S+ 0 DC 5 AC 1 -30\n/);
+  assert.match(result.result.netlist, /\.ac dec 10 10 100000\n\.end\n$/);
+});
+
 test("SPICE-001: nicht unterstützte Bauteile und fehlender Inhalt werden abgelehnt", () => {
   const runtime = createFreeCircuitCommandRuntime();
   runtime.dispatch({ type: FREE_CIRCUIT_COMMAND_TYPES.AddComponent, componentId: "gnd1", componentType: "gnd" });

@@ -1,3 +1,4 @@
+import { simulateFreeAcSweep } from "./ac-learning-solver.mjs";
 import { simulateFreeDcOperatingPoint } from "./dc-learning-solver-adapter.mjs";
 import { normalizeSimulationRequest } from "./simulation-request-contract.mjs";
 import { simulateFreeTransient } from "./transient-learning-solver.mjs";
@@ -20,6 +21,7 @@ export function executeLearningSimulationRequest(input) {
   }
   const { circuit, analysis } = normalized.request;
   if (analysis.type === "dc-operating-point") return deepFreeze(simulateFreeDcOperatingPoint(circuit));
+  if (analysis.type === "ac-sweep") return deepFreeze(simulateFreeAcSweep(normalized.request));
   return deepFreeze(simulateFreeTransient(circuit, {
     timeStepS: analysis.timeStepS,
     stopTimeS: analysis.stopTimeS,
