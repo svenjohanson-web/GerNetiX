@@ -218,9 +218,9 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-06 | Echte Commit-Historie und Restore | umgesetzt; PostgreSQL-Produktivmodus ist Forgejo-only | Historien-/Restore-Tests plus Staging-Durchstich |
 | FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | lokal umgesetzt | UI-/Agenten-Contract |
-| FG-09 | SQL-zu-Git-Migrationswerkzeug | aktueller Baum auf Staging migriert; Historienimport und Ledger fuer externe Altbestaende offen | deterministischer Dry-run plus Staging-Plan/Apply |
+| FG-09 | SQL-zu-Git-Migrationswerkzeug | abgeschlossen; alle 23 Projektbindungen erreichbar, Wiederholungsplan ohne offene Migration | deterministischer Dry-run plus Staging-Plan/Apply |
 | FG-10 | Projektweiser Cutover und Rollback | Staging-Cutover vollstaendig nachgewiesen | null offene Bindungen, alle gebundenen Repositories erreichbar |
-| FG-11 | SQL-Quelltabellen stilllegen | Runtime umgesetzt; Tabellen bis Aufbewahrungsfreigabe erhalten | Negativtests und Schemaaudit |
+| FG-11 | SQL-Quelltabellen stilllegen | Runtime und kontrollierter Retirement-Lauf lokal umgesetzt; physischer Staging-Lauf freigabepflichtig | Negativtests, Plan-Fingerprint, Backup-Gate und Schemaaudit |
 | FG-12 | Board-Support-Repositories | auf Staging provisioniert und commitgebunden | Katalog-/Manifest-/Commit-Vertrag plus Remote-Nachweis |
 | FG-13 | Backup, Restore und Upgrade | lokaler Backup-/Restore-/Verschluesselungs-/Upgradevertrag umgesetzt; externer RPO/RTO-Nachweis offen | isolierter Restore- und Upgrade-Test |
 | FG-14 | Monitoring, Quoten und Betrieb | umgesetzt und auf Staging inventarisiert | Operations-Sicht und Alarme |
@@ -633,32 +633,37 @@ Abnahme fuer den heutigen Bestand:
 
 Lokal umgesetzt: Aktive Forgejo-Projekte lesen und schreiben Dateien,
 Historie, Restore, Versionen, Builds und Speicherverbrauch ausschliesslich am
-gebundenen Commit. Der PostgreSQL-Runtime-Modus startet standardmaessig nur
-noch mit Forgejo und verweigert den SQL-Quellmodus, sofern er nicht fuer einen
-bewussten Legacy-Import explizit freigegeben wird. Negativtests versehen alle
-SQL-Quellmethoden mit einer harten Fehlergrenze und decken Erzeugung,
-Konfigurationscommit, freie Mehrdatei-Commits sowie ungebundene Laufzeitzugriffe
-auf Liste, Suche, Lesen, Schreiben, Loeschen, Version, Build und Debug ab. Die
-Tabellen bleiben als nicht fuehrender Legacy-/Importbestand erhalten, bis die
-betriebliche Aufbewahrungsfreigabe eine destruktive Schemaaenderung erlaubt.
-Neue Eintraege und Aenderungen in `project_sources` werden zusaetzlich durch
-Repository-Code und PostgreSQL-Trigger abgewiesen. `project_versions` darf nur
-noch Git-Light-Metadaten mit Commitreferenz speichern; neue `sources`,
-`source_snapshot` oder `project_snapshot` werden ebenfalls im Code und per
-Trigger blockiert. Projekt- und Buildmetadaten besitzen dieselbe rekursive
-Payload-Schranke. Der alte SQLite-zu-PostgreSQL-Importer verweigert deshalb
-Projektquellen und Vollsnapshots; solche Bestaende muessen direkt ueber FG-09
-nach Git migriert werden. Das inhaltsfreie FG-09-Ledger bleibt als technische
-Migrationsmetadaten zulaessig.
+gebundenen Commit. PostgreSQL laesst sich auch mit dem frueheren Legacy-Flag
+nicht mehr als Projektdateispeicher starten. Seine Schemaanlage erzeugt
+`project_sources` nicht mehr; die PostgreSQL-Repositorymethoden fuer Lesen,
+Listen, Schreiben und Loeschen brechen ohne Datenbankabfrage hart ab. Auch die
+zentrale Alt-Domainmigration fuehrt `project_sources` nicht mehr als Ziel.
+
+Der gesonderte FG-11-Retirement-Lauf trennt Planung und Anwendung. Der Plan
+inventarisiert ausschliesslich aggregierte Mengen, prueft jede betroffene
+Projekt-ID auf eine aktive Forgejo-Bindung und bildet aus dem exakten Bestand
+einen SHA-256-Fingerprint. Apply akzeptiert nur denselben Fingerprint und einen
+konkret bezeichneten, gehashten PostgreSQL-Sicherungspunkt. Innerhalb einer
+Transaktion sperrt er die betroffenen Tabellen, entfernt rekursiv alte
+`sources`-, `source_snapshot`- und `project_snapshot`-Felder aus Projekt-,
+Versions- und Buildmetadaten und loescht anschliessend `project_sources` samt
+alter Triggerfunktion. Veraendert sich der Bestand oder fehlt eine aktive
+Forgejo-Bindung, erfolgt ein vollstaendiger Abbruch vor der Mutation.
+
+Die read-only Staging-Vorinventur vom 17. August 2026 fand 23 von 23 aktiv
+gebundene Projekte, 547 Legacy-Quellzeilen in 23 Projekten, keine
+Versionssnapshots und zwei Build-Job-Dokumente mit alten Vollsnapshots. Kein
+betroffener Bestand war ungebunden. Diese Zahlen sind noch kein
+Loeschnachweis; der physische Lauf benoetigt weiterhin die ausdrueckliche
+Freigabe fuer Push, Deployment, Sicherungspunkt und die genannten Ziele.
 
 Ziel:
 
-- Alle Laufzeitleser von `project_sources` und Quellen in
-  `project_versions.raw_json` entfernen.
-- Migrationspfade und Altadapter klar als read-only kennzeichnen.
-- Tabellen erst nach Backup-, Restore- und Aufbewahrungsfreigabe entfernen.
-- Ressourcenmessung auf Forgejo-Repositorygroesse und Artifact Store
-  umstellen.
+- Keine PostgreSQL-Runtimeabhaengigkeit von `project_sources` erhalten.
+- Historische Vollsnapshots nur nach exaktem Plan und Sicherungsnachweis
+  bereinigen.
+- `project_sources` physisch entfernen und bei Neustarts nicht neu anlegen.
+- Ressourcenmessung ausschliesslich ueber Forgejo und Artifact Store fuehren.
 
 Abnahme:
 

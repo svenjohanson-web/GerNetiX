@@ -172,10 +172,11 @@ Damit kann dasselbe Release auf mehreren Rechnern verwendet werden, ohne lokal e
   Forgejo-Datenbank und das Repository-Volume hinzu.
 - Aktive Projektquellen, Versionen und Build-Snapshots liegen ausschliesslich
   in Forgejo beziehungsweise referenzieren einen festen Git-Commit. Der
-  PostgreSQL-Runtime-Modus verweigert einen SQL-Quellbetrieb. Die Tabellen
-  `project_sources` und historische Snapshotfelder bleiben nur fuer explizite
-  Legacy-Imports und bis zur Backup-/Retention-Freigabe erhalten. Die
-  abgeschlossene Runtime-Umstellung ist in
+  PostgreSQL-Runtime-Modus verweigert einen SQL-Quellbetrieb auch mit dem
+  frueheren Legacy-Flag und legt `project_sources` nicht mehr an. Ein
+  gesonderter, fingerprint- und backupgesicherter Retirement-Lauf entfernt
+  den vorhandenen Altbestand nach expliziter Betriebsfreigabe. Die
+  Runtime-Umstellung und der physische Stilllegungsvertrag sind in
   [Forgejo-Projektrepositories und lesbare Projektdateien](forgejo-project-repository-work-packages.md)
   mit ihren lokalen und betrieblichen Nachweisen beschrieben.
 - `gernetix-services.sqlite` bleibt nur als read-only Altquelle der idempotenten Migrationen erhalten. Kein produktiver Compose-Dienst schreibt weiter hinein.
