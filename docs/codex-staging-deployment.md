@@ -269,6 +269,14 @@ VPS-Commit, berechnet die Commit-Differenz und nennt Modus, Dienste,
 Edge-/Firewall-Aktionen und den Grund fuer einen Full-Deploy. Jeder echte
 Deployment-Lauf zeigt diesen Plan automatisch vor der ersten VPS-Aenderung.
 
+Wenn eine geschuetzte VPS-Konfiguration ohne Git-Runtime-Diff bewusst in alle
+Container uebernommen werden muss, kann nach ausdruecklicher Freigabe zuerst
+`node tools/staging-deploy.js --plan --force-full` und danach genau einmal
+`node tools/staging-deploy.js --force-full` verwendet werden. Der Orchestrator
+uebergibt dabei absichtlich eine nicht existierende vorherige Commit-ID, damit
+auch der serverseitige Klassifizierer garantiert den vollstaendigen Ablauf
+waehlt; lokale und entfernte Plananzeige duerfen sich nicht widersprechen.
+
 Das Tool bricht ab, wenn:
 
 - der lokale Arbeitsbaum nicht sauber ist,

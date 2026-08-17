@@ -245,7 +245,9 @@ function main() {
   const upstream = run("git", ["rev-parse", "@{upstream}"], { capture: true, quiet: true });
   if (commit !== upstream) throw new Error("Der aktuelle Commit ist noch nicht zum Upstream-Branch gepusht.");
 
-  const forcedPreviousCommit = args.forceFull ? run("git", ["rev-parse", "HEAD^"], { capture: true, quiet: true }) : "";
+  // The all-zero object cannot exist. This makes the remote classifier select
+  // the full path too; HEAD^ could still yield "none" for a docs-only HEAD.
+  const forcedPreviousCommit = args.forceFull ? "0".repeat(40) : "";
   const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, migrateArtifacts: args.migrateArtifacts, forcedPreviousCommit });
   process.stdout.write(`Staging-Deploy: ${branch} @ ${commit.slice(0, 12)} -> ${host}:${remoteDir}\n`);
   if (args.dryRun) {
@@ -261,7 +263,7 @@ function main() {
     ? run("git", ["diff", "--name-only", previousCommit, commit], { capture: true, quiet: true }).split(/\r?\n/).filter(Boolean)
     : [];
   const plan = args.forceFull
-    ? { mode: "full", services: [], edge: false, firewall: false, reasons: ["Ausdrueckliche Wiederaufnahme eines abgebrochenen vollstaendigen Deployments."], changedFiles }
+    ? { mode: "full", services: [], edge: false, firewall: false, reasons: ["Ausdruecklich angeforderter vollstaendiger Staging-Lauf."], changedFiles }
     : createDeploymentPlan(changedFiles, { historyIsLinear });
   process.stdout.write(formatDeploymentPlan(plan, previousCommit, commit));
   if (args.plan) return;

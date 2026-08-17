@@ -757,9 +757,9 @@ Umgesetzter erster Umfang:
   katalogisierten Quellen existieren auf Staging. Radar-Raumpraesenz wurde als
   Produktquelle mit Commit `ba80be29e73069fce622dc4d3529e69311fcd63d`
   und ES3C28P als Board-Support-Quelle mit Commit
-  `52ac6f3f98e7c1b52d676132a61fafe8d560cb01` gepusht. Die erneute
-  Entwicklerkonto-Berechtigungspruefung fuer diese zwei neuen Repositories
-  bleibt ein eigener Betriebsnachweis.
+  `52ac6f3f98e7c1b52d676132a61fafe8d560cb01` gepusht. Das bestehende
+  nichtadministrative Entwicklerkonto `sven` besitzt auf allen neun Quellen
+  nachweislich genau die vorgesehene Schreibberechtigung.
 - `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
   konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
   ausserhalb des GerNetiX-Infrastruktur-Repositories an.

@@ -122,6 +122,18 @@ test("parses an explicit full-deployment recovery", () => {
   assert.equal(parseArgs(["--force-full"]).forceFull, true);
 });
 
+test("force-full uses an impossible previous commit for the remote classifier", () => {
+  const previousCommit = "0".repeat(40);
+  const command = remoteDeployCommand({
+    branch: "main",
+    commit: "a".repeat(40),
+    remoteDir: "/opt/gernetix",
+    forcedPreviousCommit: previousCommit,
+  });
+  assert.match(command, new RegExp(previousCommit));
+  assert.doesNotMatch(command, /previous_commit=\$\(git rev-parse HEAD\)/);
+});
+
 test("quotes remote values and deploys an exact commit", () => {
   assert.equal(shellQuote("/opt/gernetix"), "'/opt/gernetix'");
   const command = remoteDeployCommand({
