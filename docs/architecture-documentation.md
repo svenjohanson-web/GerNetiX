@@ -105,6 +105,34 @@ Das öffentliche [Virtuelle Elektroniklabor](virtual-electronics-lab.md)
 grenzt anonyme, hardwarefreie Messsimulationen bewusst von Nachbauprojekten,
 der angemeldeten Plattform und realer Hardwareansteuerung ab.
 
+Das gemeinsame Elektroniklabor wird weiterhin in kontrollierten Durchstichen
+ausgebaut. Sein
+[Lastenheft-Entwurf](virtual-electronics-lab-requirements-draft.md), der
+[Zielarchitektur-Entwurf](virtual-electronics-lab-target-architecture-draft.md)
+und die
+[Codex-Arbeitsanweisung](codex-virtual-electronics-lab-implementation-procedure.md)
+halten den aktuellen Planungsstand fest. Kontrollierte Arbeitspakete grenzen
+den [GPIO-LED-Durchstich](virtual-electronics-lab-gpio-led-vertical-slice-spec.md),
+den [PWM-LED-Durchstich](virtual-electronics-lab-pwm-led-vertical-slice-spec.md),
+die
+[Oszilloskop-Anbindung](virtual-electronics-lab-pwm-oscilloscope-vertical-slice-spec.md),
+das
+[PT1000-Umweltmodell](virtual-electronics-lab-pt1000-environment-model-work-package.md)
+und den
+[linearen DC-Arbeitspunkt-Solver](virtual-electronics-lab-dc-operating-point-solver-work-package.md)
+voneinander ab. Der jeweilige Dokumentstatus und der SQLite-Graph bestimmen,
+ob ein Paket nur geplant oder bereits implementiert ist.
+Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
+Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
+der optionalen, creditgebundenen KI-Hilfe ist in
+der [Fehlersuch-Roadmap](virtual-electronics-lab-fault-search-roadmap.md)
+zusammengefasst.
+Die serverseitige Grenze der KI-Hilfe ist im
+[FS-012-Arbeitspaket](virtual-electronics-lab-live-ai-work-package.md)
+festgelegt: Simulation und manuelle Fehlersuche bleiben statisch, während nur
+der bestätigungspflichtige Assistent den Identity Server, AI Usage und OpenAI
+Responses verwendet.
+
 Die betriebliche Sicht auf fehlgeschlagene oder haengende Schaltflaechen und
 Nutzerablaeufe, einschliesslich lokaler Datenschutzgrenze, Ereignismodell,
 Dashboard und Alarmierung, beschreibt das

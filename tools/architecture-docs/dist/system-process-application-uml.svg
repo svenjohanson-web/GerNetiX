@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Anwendungen koennen bis zu 16 kompatible Account-Geraete binden; Project Server speichert die geordnete Liste, Device Management bestaetigt Besitz und Status. Entwicklungs-Discovery bleibt bis zur ausdruecklichen IDE-Projektspeicherung fluechtiger Browserzustand. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL. Erst gespeicherte Projektdateien und Historie liegen nach dem aktivierten Cutover-Gate in privaten Forgejo-Git-Repositories; geschuetzte Basissoftware und Produkte liegen in getrennten System-Repositories, Binaries im Artifact Store. Generative KI und Embeddings verwenden standardmaessig die kostenkontrollierte OpenAI API; ein lokales LLM ist nicht vorausgesetzt. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
+  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Anwendungen koennen bis zu 16 kompatible Account-Geraete binden; Project Server speichert die geordnete Liste, Device Management bestaetigt Besitz und Status. Entwicklungs-Discovery bleibt bis zur ausdruecklichen IDE-Projektspeicherung fluechtiger Browserzustand. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL. Erst gespeicherte Projektdateien und Historie liegen nach dem aktivierten Cutover-Gate in privaten Forgejo-Git-Repositories; geschuetzte Basissoftware und Produkte liegen in getrennten System-Repositories, Binaries im Artifact Store. Generative KI und Embeddings verwenden standardmaessig die kostenkontrollierte OpenAI API; dazu gehoert die optionale, session- und creditgebundene Hilfe im ansonsten anonym nutzbaren Elektroniklabor. Ein lokales LLM ist nicht vorausgesetzt. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -280,7 +280,7 @@
   <path class="line" d="M 855 179 L 1265 320"/>
   <text class="label" x="980" y="258">KI-Werkzeuge · Preflight + Tokens</text>
   <path class="line dashed" d="M 855 179 C 1080 300, 1320 700, 1445 914"/>
-  <text class="label" x="1130" y="560">Hardware + Anforderungen · Structured Output · store=false</text>
+  <text class="label" x="1130" y="560">Hardware + Anforderungen + Elektroniklabor · Structured Output · store=false</text>
   <path class="line" d="M 1360 432 L 1170 347"/>
   <path class="line" d="M 1170 432 L 1145 432"/>
   <path class="line" d="M 1265 204 L 1530 795"/>

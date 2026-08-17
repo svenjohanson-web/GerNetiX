@@ -145,6 +145,7 @@ function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, de
       code_generation: { provider: "api", reason: "Codegenerierung verwendet OpenAI Responses mit dem kostenoptimierten Standardmodell.", costPolicy: "external_costs_with_preflight" },
       help_chat: { provider: "api", reason: "Help-Chat verwendet OpenAI Responses nur mit kuratierten Hilfeartikeln.", costPolicy: "external_costs_with_preflight" },
       requirements_workshop: { provider: "api", reason: "Der Lernworkshop spiegelt Anforderungen strukturiert ueber OpenAI Responses.", costPolicy: "external_costs_with_preflight" },
+      electronics_lab_troubleshooting: { provider: "api", reason: "Der Elektroniklabor-Assistent erklaert minimierte Fehlersuch-Snapshots ueber OpenAI Responses.", costPolicy: "external_costs_with_preflight" },
     };
     return Object.fromEntries(Object.entries(defaults).map(([task, fallback]) => {
       const route = input && typeof input === "object" ? input[task] || {} : {};

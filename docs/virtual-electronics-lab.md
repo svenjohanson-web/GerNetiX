@@ -8,8 +8,9 @@ keine Hardware, keine Anmeldung und keine Installation. Sein Zweck ist, den
 praktischen Lernansatz der Plattform vor einem Kauf oder Login erlebbar zu
 machen und in passende Wissenskapitel sowie Lernprojekte zu führen.
 
-Der erste Baustein heißt **Oszilloskop und Signalgenerator**. Weitere
-Messwerkzeuge folgen innerhalb derselben Laborumgebung.
+Der erste Baustein heißt **Durchstich** als gemeinsamer Einstieg in die neue
+Quellcode-orientierte Architektur. Anschließend folgen bestehende
+Messwerkzeuge wie Oszilloskop und Signalgenerator in derselben Laborumgebung.
 
 ## Produktgrenze
 
@@ -17,15 +18,16 @@ Messwerkzeuge folgen innerhalb derselben Laborumgebung.
 | --- | --- |
 | deterministische Simulation elektrischer Signale und idealisierter Schaltungen | Nachbauanleitung, Teileliste oder Firmware-Download |
 | Interaktive Mess- und Einstellübungen | Anschluss an reale Geräte, USB, WebSerial oder Flashen |
-| Öffentliche, anonyme Nutzung ohne Speicherung | Account-, Projekt- oder Telemetriedaten |
+| Öffentliche, anonyme Labornutzung ohne Speicherung; optionale KI-Hilfe nach Anmeldung und Creditprüfung | Projektpersistenz, Telemetrie oder KI-Zwang |
 | Verweise in Wissensportal und Lernbereich | Ersatz für Sicherheitsunterweisung oder reale Messpraxis |
 
 Das Labor ist eine statische öffentliche Browseranwendung, ausgeliefert durch
 den Identity Server unter einem eigenen Pfad, zum Beispiel
-`/technik-labs/`. Es braucht keinen eigenen Serverprozess, keine Datenbank und
-keinen API-Aufruf. Fortschritt, Auswahl und Einstellungen bleiben ausschließlich
-im flüchtigen Browserzustand. Ein späteres freiwilliges Konto- oder
-Lernfortschrittsangebot wäre ein eigener, ausdrücklich geplanter Schritt.
+`/technik-labs/`. Simulation, Fehlersuche, Auswahl und Einstellungen benötigen
+keinen eigenen Serverprozess, keine Datenbank und keinen API-Aufruf; sie bleiben
+im flüchtigen Browserzustand. Nur die optionale KI-Hilfe ruft nach Anmeldung den
+Identity-Endpunkt `POST /api/platform/electronics-lab/assistant` auf und wird
+über AI Usage an verfügbare Credits gebunden.
 
 Die Umsetzung liegt als eigenständiges Modul unter
 `modules/virtual-electronics-lab/`. Identity bindet dieses Modul ausschließlich
@@ -37,6 +39,7 @@ Identity, Konten und den anderen Labs getrennt.
 
 | Lab | Lernziel | Erste Ausbaustufe |
 | --- | --- | --- |
+| Durchstich: Programm → GPIO 5 → LED → Oszilloskop | Gemeinsamer Einstieg: Quellcode wird über typisierten Befehlspfad in MCU, GPIO, Schaltung und Messgerät übertragen | `pinMode`/`digitalWrite`, codegesteuerte PWM, LED-Puls-/Mittelstrom und angeschlossenes CH1-Oszilloskop |
 | Oszilloskop, Signalgenerator und Frequenzzähler | Signale sichtbar machen und Messgeräte bewusst einstellen | zwei Generatorausgänge, Zweikanal-Oszilloskop, Frequenzzähler, XY-Modus und FFT-Ansicht |
 | Filterlabor | analoge Filter auslegen und mit Wechselspannung vermessen | Sinusquelle, Zweikanal-Zeitbild, Frequenz-Sweep und Bode-Diagramm für RC- und RLC-Filter |
 | Radiolabor | AM- und FM-Empfang vom modulierten Signal bis zum Ton verstehen | AM-Hüllkurvendemodulator, FM-Superhet mit 10,7-MHz-ZF und freischaltbare Stationsansage |
@@ -52,11 +55,100 @@ deterministischer Signalkern erzeugt aus eindeutig sichtbaren Parametern
 Abtastwerte. Jedes Werkzeug interpretiert diese Werte entsprechend seiner
 Messgrenze.
 
-## Erstes Lab: Oszilloskop und Signalgenerator
+## Erstes Lab: Durchstich und Oszilloskop-Übergang
+
+Der implementierte Durchstich startet bewusst mit einer statischen GPIO-Ausgabe.
+Ein vorbereitetes PWM-Beispiel erweitert denselben Aufbau, ohne ein frei
+parametriertes PWM-Bauteil einzuführen. Frequenz und Tastgrad entstehen aus dem
+Quellcode des virtuellen Mikrocontrollers. Das kompakte CH1-Oszilloskop misst
+den gemeinsamen Trace erst, nachdem Tastkopfspitze und Masseklemme an die
+sichtbaren Messpunkte angeschlossen wurden. Reset stellt stets den Startcode
+des aktuell geladenen Beispiels wieder her.
+
+Das zugrunde liegende `LabProject` enthält versionierte Metadaten, Schaltung,
+Controller-Quellcode, Modellversionen, Instrumente und Messpunkte. Änderungen
+an Instrumentenanschlüssen laufen ausschließlich über Commands; ausgegebene
+Snapshots sind defensive Kopien. Damit bleibt der Schritt zu einer späteren
+Projektpersistenz vorbereitet, ohne im öffentlichen Labor bereits Daten zu
+speichern.
+
+### Getestete Modellbausteine für die nächsten Durchstiche
+
+Unter den sichtbaren GPIO-/PWM- und PT1000-Durchstichen arbeiten folgende
+getestete Rechenkerne:
+
+- PT1000-Kennlinie von `-200 °C` bis `850 °C`,
+- linearer DC-Arbeitspunkt-Solver für Widerstände sowie ideale Gleichspannungs-
+  und Gleichstromquellen,
+- idealisierter ADC-Quantisierer mit Referenzspannung und 1 bis 24 Bit,
+- idealisiertes Tastermodell mit Pull-up, Pull-down und unabhängig wählbarer
+  Kontaktreferenz nach GND oder VCC; eine Betätigung ohne Pegeländerung wird
+  deterministisch als Warnung ausgewiesen,
+- integrierte PT1000-Messkette aus Sensor, Spannungsteiler, DC-Solver und ADC,
+- kontrollierte Virtual-MCU-ADC-Programmlaufzeit für `pinMode(A0, INPUT)` und
+  `adcValue = analogRead(A0)` ohne native Ausführung von Nutzerquellcode,
+- kontrollierte Virtual-MCU-Digitaleingangs-Programmlaufzeit für Pin `4` mit
+  `INPUT_PULLUP`, `INPUT_PULLDOWN`, `INPUT` und `digitalRead(4)`,
+- deterministisches Floating-Eingangsmodell mit einer ausdrücklich
+  idealisierten Samplefolge für fehlende Pull-Widerstände,
+- deterministisches Tasterprellmodell mit expliziter virtueller Mikrosekunden-
+  Zeit und einer begrenzten, versionierten digitalen Messspur,
+- deterministischer Entprellkern und kontrollierte Virtual-MCU-Runtime, bei der
+  `debounceUs` im realitätsnahen Mikrocontroller-Startcode geändert wird,
+- Taster-Programmdurchstich-Runtime, die den Quellcode-Pull-Modus über das
+  idealisierte Tastermodell bis zu `buttonState` führt und über einen
+  typisierten Command automatische, GND- oder VCC-Kontaktverdrahtung sowie
+  command-basiert fortgeschaltete Floating-Samples abbildet,
+- PT1000-Programmdurchstich, der Umgebungstemperatur, Messkette und
+  Virtual-MCU-Quellcode über eine kontrollierte Command-Runtime verbindet.
+
+Bei `0 °C`, `3,3 V`, einem Festwiderstand von `1000 Ω` und 12 Bit liefert die
+integrierte Messkette `1000 Ω`, `1,65 V` und ADC-Code `2048`. Der sichtbare
+Bedienablauf erlaubt Umgebungstemperatur und Controller-Quellcode zu ändern,
+zeigt Schaltung und Messwerte und verweist auf den Übergang zum echten Labor.
+
+Der sichtbare Taster-Durchstich verbindet Quellcodeeditor, internen Pull-up
+oder Pull-down, GPIO `4` und den Tasterzustand. Drücken oder Lösen führt die
+kontrollierte Simulation erneut aus. Das Schaltbild hebt den aktiven
+Pull-Zweig und bei gedrücktem Taster den passenden Gegenpol hervor; Pegel und
+`buttonState` stammen ausschließlich aus der gemeinsamen Runtime.
+Die Runtime kann den Kontakt zusätzlich bewusst an denselben Pegel wie den
+Pull-Widerstand legen. Beim Drücken bleibt der Eingang dann unverändert und
+liefert die stabile Warnung `BUTTON_CONTACT_NO_LEVEL_CHANGE`; dies ist der
+maschinengeprüfte Kern der sichtbaren Fehlersuchaufgabe. Im vorhandenen
+Tasterlabor kann der Nutzer zwischen freiem Prüfen und Fehlersuche wechseln,
+die falsche Verbindung nach `3,3 V` beobachten, den Kontakt nach `GND`
+umverdrahten und die Reparatur durch `LOW` beziehungsweise `buttonState = 0`
+bestätigen. Reset stellt den ursprünglichen Fehlerfall wieder her.
+
+Ein zweiter Fehlerfall startet mit `INPUT` ohne Pull-Widerstand. Wiederholte
+Messungen zeigen die feste Floating-Folge; erfolgreich ist die Aufgabe erst,
+wenn `INPUT_PULLUP` im Quellcode ergänzt und sowohl der offene HIGH- als auch
+der gedrückte LOW-Zustand gemessen wurde. Der dritte Fehlerfall zeigt
+Tasterprellen als gemeinsame digitale Messspur. Cursor, Rohflankenzahl,
+entprellte Programmflanken und der stabile Wert ab `1.800 µs` lesen dieselbe
+virtuelle Zeitbasis; die Ansicht verweist auf Massebezug und aufbauabhängige
+Prellzeiten im echten Labor.
+
+Die Prellansicht zeigt Rohkontakt und entprellten Programmwert auf gemeinsamer
+Zeitachse. Zwei Fehlerfälle starten mit `300 µs` beziehungsweise `2.000 µs`;
+der Nutzer repariert ausschließlich den Quellcode und bestätigt den Erfolg an
+Flankenanzahl und Verzögerung. Die Zahlen gelten nur für das Lehrprofil.
+
+Der KI-Vertrag minimiert den Labor-Snapshot und akzeptiert nur Erklärungen,
+Messvorschläge oder ausdrücklich bestätigungspflichtige Reparatur-Diffs aus
+einer kleinen Command-Allowlist. Standalone-Entwicklung verwendet sichtbare,
+netzwerkfreie Fixtures. Unter `/technik-labs/` nutzt die optionale Live-Hilfe
+einen sessiongebundenen Identity-Endpunkt mit Credit-Preflight, Structured
+Output, `store: false` und erneuter serverseitiger Vertragsvalidierung. Kein
+Vorschlag wird automatisch angewandt; die Fehlersuche bleibt ohne KI vollständig
+nutzbar.
 
 ### Aufbau
 
-Der Signalgenerator ist Teil des Oszilloskop-Labs, kein eigenständiges Programm.
+Der Durchstich ist die neue gemeinsame Einstiegfläche und führt über ein vereinfachtes Laufzeitmodell
+zu sichtbar berechnetem LED-Verhalten. Der Signalgenerator bleibt Teil des Oszilloskop-Labs
+und ist kein eigenständiges Programm.
 Er besitzt zwei Ausgänge, die direkt auf Kanal 1 und Kanal 2 gelegt werden.
 
 ```text
@@ -253,8 +345,10 @@ Einrasten des Senders nach.
 - Keine reale Hardwareansteuerung, keine USB-/Seriell-Schnittstelle und keine
   Übernahme von Browserdaten aus Geräten.
 - Keine Eingabe persönlicher, Standort-, Netzwerk- oder Projektdaten.
-- Keine KI, keine API-Anfrage und keine serverseitige Mess- oder
-  Nutzungsprotokollierung in der ersten öffentlichen Version.
+- Keine API-Anfrage für Simulation oder manuelle Fehlersuche. Die optionale
+  Live-KI sendet nur den minimierten Fehlersuchkontext nach Anmeldung und
+  Creditprüfung; Provider-Schlüssel bleiben serverseitig und `store: false`
+  verhindert Providerpersistenz durch diese Route.
 - Der Bereich arbeitet ausschließlich mit Modellwerten und sichtbaren,
   reproduzierbaren Parametern.
 - Sicherheitshinweise sind kurz, situationsbezogen und trennen

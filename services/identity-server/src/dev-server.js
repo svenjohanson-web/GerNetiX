@@ -30,6 +30,7 @@ const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { createHelpAssistant } = require("./dev/help-assistant");
 const { createRequirementsWorkshopAssistant } = require("./dev/requirements-workshop-assistant");
+const { createElectronicsLabAssistant } = require("./dev/electronics-lab-assistant");
 const { createProjectRepositoryRead } = require("./dev/project-repository-read");
 const { developmentProjectSources } = require("./dev/development-project-structure");
 const { completeBrowserFlashDefinitions, esp32FirmwareAddress, usesGerNetixOtaAppLayout } = require("./dev/browser-flash-manifest");
@@ -86,6 +87,7 @@ const { registerCommunityRoutes } = require("./dev/server/community-routes");
 const { registerBuildRoutes } = require("./dev/server/build-routes");
 const { registerHardwareLabRoutes } = require("./dev/server/hardware-lab-routes");
 const { registerRequirementsWorkshopRoutes } = require("./dev/server/requirements-workshop-routes");
+const { registerElectronicsLabRoutes } = require("./dev/server/electronics-lab-routes");
 const { customerArtifactList } = require("./dev/server/build-artifact-visibility");
 const { registerProjectRoutes } = require("./dev/server/project-routes");
 const { registerSystemRoutes } = require("./dev/server/system-routes");
@@ -356,6 +358,17 @@ const developmentAssistant = createDevelopmentAssistant({
 });
 const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
 const requirementsWorkshopAssistant = createRequirementsWorkshopAssistant({ aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
+const electronicsLabAssistant = createElectronicsLabAssistant({
+  aiUsageJson,
+  llmConfigStore,
+  projectServerUserId,
+  readJsonBody,
+  sendJson,
+  enabled: process.env.ELECTRONICS_LAB_AI_ENABLED !== "0",
+  rateLimit: Number(process.env.ELECTRONICS_LAB_AI_RATE_LIMIT || 8),
+  rateWindowMs: Number(process.env.ELECTRONICS_LAB_AI_RATE_WINDOW_MS || 60_000),
+  auditEvent: recordSystemEvent,
+});
 const builtInDemoAccounts = [
   { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword, subscription_plan: "premium_demo" },
   { user_id: "acct-basis-demo", username: basisDemoUsername, email: basisDemoEmail, password: basisDemoPassword, subscription_plan: "free" },
@@ -901,6 +914,11 @@ registerRequirementsWorkshopRoutes({
   registry: routeRegistry,
   requireSession: sessionAccess.requireSession,
   requirementsWorkshopAssistant,
+});
+registerElectronicsLabRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  electronicsLabAssistant,
 });
 registerProjectRoutes({
   registry: routeRegistry,

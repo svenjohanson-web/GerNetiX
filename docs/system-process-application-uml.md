@@ -47,9 +47,11 @@ Vertrag steht unter
 Diese Sicht zeigt die aktuell erkennbaren lokalen Serverprozesse, Benutzer-Applikationen und Service-Abhaengigkeiten. Sie ist als UML-nahes Komponentendiagramm in Mermaid gepflegt.
 
 Das [Virtuelle Elektroniklabor](virtual-electronics-lab.md) ist kein
-neuer Prozess: Es wird als anonyme, statische Browseroberfläche durch den
-Identity Server ausgeliefert, verwendet weder API noch Persistenz und steuert
-keine reale Hardware an.
+neuer Prozess: Simulation und manuelle Fehlersuche werden als anonyme,
+statische Browseroberfläche durch den Identity Server ausgeliefert, verwenden
+weder API noch Persistenz und steuern keine reale Hardware an. Ausschließlich
+die optionale KI-Hilfe nutzt nach Anmeldung den Identity-Endpunkt, AI Usage und
+OpenAI Responses; Reparaturen bleiben im Browser bestätigungspflichtig.
 
 Bildartefakt: [system-process-application-uml.svg](system-process-application-uml.svg)
 
@@ -226,13 +228,13 @@ flowchart LR
     hardwareShop --> hardwareCatalog
   identity --> deviceManagement
   identity --> telemetryServer
-  identity -->|"Plattform-KI einschließlich Hardware-Assistent"| aiUsage
+  identity -->|"Plattform-KI einschließlich Hardware- und Elektroniklabor-Assistent"| aiUsage
   identity --> aiContext
   aiContext -->|"Embeddings: text-embedding-3-small<br/>serverseitiger API-Key"| externalLlm
   aiContext --> runtimePostgres
   runtimePostgres --> aiContextDb
   identity -->|"kuratierte Help-Wissenssuche"| aiContext
-  identity -->|"KI-Routen: gpt-5-nano<br/>AI-Usage-Preflight, store=false<br/>Help + Anforderungswerkstatt"| externalLlm
+  identity -->|"KI-Routen: gpt-5-nano<br/>AI-Usage-Preflight, store=false<br/>Help + Anforderungswerkstatt + Elektroniklabor"| externalLlm
   identity -->|"SMTP/TLS"| ionosMail["IONOS Mail"]
   identity -->|"token-geschuetzte Auth-/Runtime-Ereignisse"| adminTool
   identity -->|"token-geschuetztes Linkinventar"| adminTool
@@ -353,6 +355,7 @@ flowchart LR
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
 | Identity Server mit KI-Hardware-Assistent | 4300 | `/app/hardware-lab/` und `/api/platform/hardware-lab/*` | Sitzungsgeschuetzter OpenAI-Dialog und Quellenaufnahme fuer selbst gekaufte oder fremde Community-Board-Kandidaten, dynamisches strukturiertes Boardprofil, serverseitige Bindung an `identity.user_id`, Persistenz im zentralen Identity-PostgreSQL, verpflichtender Discovery-Firmware- und Hardware-Pruefstatus sowie freiwillige einwilligungsgebundene Meldung zur GerNetiX-Gegenpruefung; kein eigener Prozess und keine Account-ID aus dem Browser |
 | Identity Server mit KI-Anforderungswerkstatt | 4300 | Lernprojektkatalog unter `/app/learn/`, accountgebundene Projektansicht und `POST /api/platform/requirements-workshop/feedback` | Regulaeres freies Lernprojekt mit vier Lessons, neun Schritten und Project-Server-Fortschritt; der gefuehrte OpenAI-Verstaendnisspiegel verwendet Structured Output, AI-Usage-Preflight, pseudonymisierten Safety-Identifier und `store: false`. Freier Anforderungstext und KI-Ergebnis werden nicht fachlich persistiert |
+| Identity Server mit Elektroniklabor-Assistent | 4300 | oeffentliches `/technik-labs/` und sessiongeschuetztes `POST /api/platform/electronics-lab/assistant` | Simulation und manuelle Fehlersuche bleiben anonym, statisch und ohne Persistenz. Nur die optionale KI-Hilfe verwendet minimierten FS-006-Kontext, AI-Usage-Preflight, Structured Output, pseudonymisierten Safety-Identifier und `store: false`; Reparatur-Commands werden serverseitig erneut validiert und erst nach sichtbarer Browserbestaetigung angewandt |
 | Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | Recovery-, Credential- und Connectivity-Abläufe fuer bestehende Boards; kein Einstieg fuer den KI-Hardware-Assistenten |
 | Community Platform | 5200 | intern im Docker-Netz | Community-Portal mit Forum, Ideenwerkstatt, Projekt-Showcase, privater Projektbegleitung, internen Nachrichten und Kleinanzeigen fuer gebrauchte Elektronik; Support, Fragen und Meldungen werden ausschließlich über getrennte Admin-Akteure mit eigener Capability geprüft; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
@@ -400,7 +403,7 @@ flowchart LR
 | Identity Server | Admin Tool | Allowlist-validierte browserseitige WebAuthn-Fehler, fehlgeschlagene serverseitige Passkey-Loginphasen und weitere auffaellige Runtime-Vorgaenge ueber einen eigenen token-geschuetzten Ingest als persistente Systemereignisse |
 | Identity Server / Link-Prüf-CLI | Admin Tool | Liefert token-geschützt deduplizierte Linkziele, vollständige Fundstellen und Prüfergebnisse; authentifizierte Ziele werden mit einem technischen Testkonto geprüft, dessen Credentials nicht persistiert werden |
 | GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und Architektur-Bausteine, sucht fuer GerNetiX Help ausschliesslich kuratiertes Help-Wissen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
-| GerNetiX Plattform UI / Identity Server | OpenAI Responses API | Standardpfad fuer Chat, Architektur, Artefakte, Code, Hardware-Labor, Help und die Anforderungswerkstatt; `gpt-5-nano` ist der kostenoptimierte Standard und jeder kostenpflichtige Aufruf durchlaeuft AI Usage |
+| GerNetiX Plattform UI / Identity Server | OpenAI Responses API | Standardpfad fuer Chat, Architektur, Artefakte, Code, Hardware-Labor, Help, Anforderungswerkstatt und optionale Elektroniklabor-Hilfe; `gpt-5-nano` ist der kostenoptimierte Standard und jeder kostenpflichtige Aufruf durchlaeuft AI Usage |
 | GerNetiX Plattform UI / Identity Server | IONOS Mail | Sendet Verifizierungs- und Passwort-Reset-E-Mails ueber SMTP/TLS; IONOS bleibt Mailserver und speichert keine GerNetiX-Anwendungsdaten |
 | GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer die Entwicklungsplattform |
 | GerNetiX Plattform UI | GerNetiX Serial Service | TLS- und loopbackgebundene, kurzlebige Sitzung fuer Board-Erkennung, USB-Flash, seriellen Status, lokale WLAN-Provisionierung und die lokale Nexi-Stimmeinrichtung; die Plattform bleibt die einzige Bedienoberfläche |
