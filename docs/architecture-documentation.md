@@ -143,6 +143,11 @@ MNA-Ergebnisse und den passenden `.ac`-Netlist-Export.
 Die [sichtbare AC-/Bode-Analyse](virtual-electronics-lab-spice-visible-ac-work-package.md)
 bindet diesen Vertrag über virtuelle Tastköpfe, RC-Vorlage, Bode-Kurven und
 eine nur lesbare Netlist in die bestehende freie Laborfläche ein.
+Die [naechsten parallelen SPICE-Arbeitspakete](virtual-electronics-lab-next-parallel-spice-work-packages.md)
+halten den umgesetzten Capability-, Provider- und Ergebnisvertrag, die
+AC-Kennwertauswertung sowie den kanonischen Solver-/Netlist-Orakelkorpus fest.
+Ein echter WASM-Provider bleibt weiterhin hinter den dokumentierten Build-,
+Lizenz-, Worker- und Ressourcengates.
 Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
 Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
 der optionalen, creditgebundenen KI-Hilfe ist in

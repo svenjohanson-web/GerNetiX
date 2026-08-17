@@ -1,6 +1,6 @@
 # Elektroniklabor: nächste parallele SPICE-Arbeitspakete
 
-Status: geplant, noch nicht zur Umsetzung gestartet
+Status: erste Welle inklusive ELAB-SPICE-006 umgesetzt und lokal verifiziert
 
 ## Ziel
 
@@ -14,6 +14,8 @@ ein normaler Parallelagent arbeiten. Weitere Pakete werden nur gequeued.
 ## Erste parallele Welle
 
 ### ELAB-SPICE-004: Component-Capability-Vertrag
+
+**Status:** umgesetzt
 
 **Bearbeitung:** Spark 1  
 **Abhängigkeit:** SPICE-001 bis SPICE-003  
@@ -41,6 +43,8 @@ Abnahme:
 - keine Bestandsdatei wird geändert.
 
 ### ELAB-SPICE-005: Providerport und Solver-Ergebnisvertrag
+
+**Status:** umgesetzt
 
 **Bearbeitung:** normaler Parallelagent  
 **Abhängigkeit:** SPICE-001 bis SPICE-003  
@@ -71,6 +75,8 @@ Abnahme:
 
 ### ELAB-AC-001: AC-Kennwertauswertung
 
+**Status:** umgesetzt
+
 **Bearbeitung:** Spark 2  
 **Abhängigkeit:** SPICE-003  
 **Dateigrenze:** ausschließlich neue Auswerte- und Testdatei
@@ -100,6 +106,8 @@ Abnahme:
 ## Danach unabhängig queuebar
 
 ### ELAB-SPICE-006: Kanonischer Fixture-/Orakelkorpus
+
+**Status:** umgesetzt
 
 **Bearbeitung:** Spark oder Parallelagent  
 **Abhängigkeit:** SPICE-001 bis SPICE-003
@@ -167,10 +175,15 @@ Ein serverseitiger SPICE-Dienst ist kein stiller Ersatz für den beschlossenen
 Browser-Worker. Er würde vor Implementierung eine neue Architektur-, Security-,
 Betriebs- und Kostenentscheidung benötigen.
 
-## Empfohlener Start
+## Umsetzungsnachweis der ersten Welle
 
-1. Spark 1: SPICE-004.
-2. Parallelagent: SPICE-005.
-3. Spark 2: AC-001.
-4. Nach dem ersten freien Slot: SPICE-006.
-5. Root prüft alle Ergebnisse gemeinsam; erst danach beginnt Welle zwei.
+- SPICE-004 beschreibt die vorhandenen Bauteilfaehigkeiten ohne vorgezogene
+  Solverversprechen.
+- SPICE-005 normalisiert Providerauftraege und Ergebnisse fail-closed; Raw-SPICE
+  bleibt ausserhalb der Schnittstelle.
+- AC-001 berechnet Start, Stopp, Maximum und den ersten abfallenden
+  Drei-dB-Durchgang deterministisch.
+- SPICE-006 verifiziert Lernsolver und Netlistexport mit versionierten
+  Referenzfaellen und expliziten Toleranzen.
+
+Die zweite Welle beginnt erst nach gemeinsamer Regression und Graphabgleich.

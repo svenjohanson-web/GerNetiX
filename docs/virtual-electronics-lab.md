@@ -213,6 +213,16 @@ zeigt das Labor die aus genau diesem Auftrag erzeugte, nur lesbare
 SPICE-Netlist. Schaltungsänderungen invalidieren Kurven und Netlist; ein freier
 Raw-SPICE-Editor bleibt ausgeschlossen.
 
+Ein eigener Capability-Vertrag beschreibt fuer jeden funktionalen Bauteiltyp,
+welche der vorhandenen DC-, Transienten-, AC- und Netlistpfade ihn tatsaechlich
+unterstuetzen. Der neue Providerport akzeptiert ausschliesslich normalisierte
+Simulationsauftraege und validiert begrenzte, versionierte Solverergebnisse;
+der Lernsolver bleibt weiterhin Standard. Die AC-Auswertung ermittelt aus den
+Tastkopfspuren Start, Stopp, Maximum sowie den ersten abfallenden
+Drei-dB-Durchgang. Ein versionierter Orakelkorpus prueft Spannungsteiler,
+RC-/RL-Verhalten, Phase, Vorzeichen, Mapping und stabile Fehlerfaelle mit
+expliziten Toleranzen. Eine externe SPICE-Engine ist damit noch nicht aktiviert.
+
 ### Aufbau
 
 Der Durchstich ist die neue gemeinsame Einstiegfläche und führt über ein vereinfachtes Laufzeitmodell
