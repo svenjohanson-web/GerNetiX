@@ -188,6 +188,14 @@ außerhalb dieses Lernmodells. Eine mögliche ngspice-WASM-Erweiterung ist
 technisch geprüft, wird aber erst nach reproduzierbarem Eigenbau, Lizenzprüfung
 und Worker-/Ressourcenisolation übernommen.
 
+Der providerneutrale Simulationsauftrag vereinheitlicht inzwischen
+DC-Arbeitspunkt und Transientenanalyse. Derselbe normalisierte Auftrag kann
+über die vorhandenen Lernsolver ausgeführt oder als deterministische
+SPICE-Netlist für GND, ideale DC-Quellen, R, C und L exportiert werden.
+Fachliche Knoten- und Komponenten-IDs bleiben im Export nachvollziehbar. LED,
+Taster, AC-Analyse und Raw-SPICE sind weiterhin ausdrücklich nicht Bestandteil
+dieses ersten Netlist-Vertrags.
+
 ### Aufbau
 
 Der Durchstich ist die neue gemeinsame Einstiegfläche und führt über ein vereinfachtes Laufzeitmodell

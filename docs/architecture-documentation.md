@@ -133,6 +133,10 @@ einen typisierten MeasurementTrace für DC- und Transientenmessungen ein.
 Die [leere Laborfläche](virtual-electronics-lab-empty-workbench-work-package.md)
 ergänzt denselben freien Command- und Messpfad um einen Startzustand ohne
 vorgegebene Schaltung.
+Der [einheitliche Simulations- und Netlist-Vertrag](virtual-electronics-lab-spice-simulation-contract-work-package.md)
+führt DC und Transient über einen providerneutralen Auftrag zusammen und
+erzeugt daraus eine deterministische, begrenzte SPICE-Netlist, ohne bereits
+eine externe Simulationsruntime einzuführen.
 Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
 Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
 der optionalen, creditgebundenen KI-Hilfe ist in

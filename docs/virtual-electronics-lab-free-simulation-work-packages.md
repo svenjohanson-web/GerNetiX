@@ -156,3 +156,7 @@ Spannungsteiler.
 Die geplante Reihe FREE-001 bis FREE-009 ist abgeschlossen. Ein echter
 ngspice-WASM-Provider ist ausdrücklich kein offenes Reststück dieser Reihe,
 sondern eine spätere Integrationsentscheidung nach Erfüllung aller Gates.
+Die anschließende SPICE-Reihe beginnt mit dem umgesetzten
+[ELAB-SPICE-001 Simulations- und Netlist-Vertrag](virtual-electronics-lab-spice-simulation-contract-work-package.md).
+Er vereinheitlicht DC- und Transientenaufträge und exportiert den linearen
+Teilumfang deterministisch, ohne die Providerentscheidung vorwegzunehmen.
