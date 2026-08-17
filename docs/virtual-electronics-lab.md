@@ -223,6 +223,17 @@ Drei-dB-Durchgang. Ein versionierter Orakelkorpus prueft Spannungsteiler,
 RC-/RL-Verhalten, Phase, Vorzeichen, Mapping und stabile Fehlerfaelle mit
 expliziten Toleranzen. Eine externe SPICE-Engine ist damit noch nicht aktiviert.
 
+Zwei weitere Vorlagen bilden einen RC-Hochpass und einen seriellen
+RLC-Resonanzkreis in derselben freien Laborflaeche ab. Ein DOM-freies
+AC-View-Model bereitet Plotpunkte, Kennwertkarten, Tabelle sowie leere,
+fehlerhafte und invalidierte Zustaende vor; dieselbe bestehende Laborflaeche
+zeigt diese Daten nun responsiv an. Der neue Worker-Host verwendet vorerst nur
+eine Fake-Engine: ein geschlossenes Protokoll, genau einen Auftrag pro Worker,
+sicheren Abbruch und einen auf hoechstens zwei Sekunden begrenzten Timeout.
+Ressourcengates begrenzen Schaltung, Knoten, normalisierte Engineeingabe,
+Ergebniswerte und den kuenftigen WASM-Linearspeicher. Er aktiviert weder
+ngspice noch eine Raw-SPICE-Oberflaeche.
+
 ### Aufbau
 
 Der Durchstich ist die neue gemeinsame Einstiegfläche und führt über ein vereinfachtes Laufzeitmodell

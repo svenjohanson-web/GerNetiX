@@ -1,6 +1,6 @@
 # Elektroniklabor: nächste parallele SPICE-Arbeitspakete
 
-Status: erste Welle inklusive ELAB-SPICE-006 umgesetzt und lokal verifiziert
+Status: beide Wellen bis ELAB-SPICE-008 und ELAB-AC-004 lokal umgesetzt und verifiziert; Graphabgleich der zweiten Welle ausstehend
 
 ## Ziel
 
@@ -118,6 +118,8 @@ verwenden explizite Toleranzen. Keine Providerdatei und keine neue Runtime.
 
 ### ELAB-AC-002: Weitere AC-Templates
 
+**Status:** lokal umgesetzt und getestet
+
 **Bearbeitung:** Spark  
 **Abhängigkeit:** SPICE-003
 
@@ -133,6 +135,8 @@ AC-Quelle und Reset müssen vollständig getestet sein.
 
 ### ELAB-AC-003: AC-Ergebnis-View-Model
 
+**Status:** lokal umgesetzt und getestet
+
 **Bearbeitung:** Spark  
 **Abhängigkeit:** AC-001
 
@@ -140,6 +144,8 @@ Reiner DOM-freier Adapter für Plotpunkte, Kennwertkarten, Tabelle sowie
 Success-, Empty-, Error- und Invalidated-Zustände.
 
 ### ELAB-SPICE-007: Isolierter Worker mit Fake-Engine
+
+**Status:** lokal umgesetzt und getestet
 
 **Bearbeitung:** Spark, anschließend Root-Review  
 **Abhängigkeit:** SPICE-005 und SPICE-006
@@ -149,6 +155,8 @@ Lebenszyklus und Timeouttest mit Fake-Engine. Noch kein WASM oder ngspice.
 
 ### ELAB-SPICE-008: Ressourcen- und Missbrauchsgates
 
+**Status:** lokal umgesetzt und getestet
+
 **Bearbeitung:** Spark, anschließend Root-Review  
 **Abhängigkeit:** SPICE-007
 
@@ -157,6 +165,8 @@ Netlist, 64.000 Ergebniswerte, zwei Sekunden und 64 MiB. Keine Teilergebnisse
 oder Zustandsübernahme nach Timeout/Crash.
 
 ### ELAB-AC-004: Kennwerte und Zustände sichtbar integrieren
+
+**Status:** lokal umgesetzt, getestet und im Browser geprüft
 
 **Bearbeitung:** Root/GPT-5.6  
 **Abhängigkeit:** AC-001 und AC-003
@@ -186,4 +196,13 @@ Betriebs- und Kostenentscheidung benötigen.
 - SPICE-006 verifiziert Lernsolver und Netlistexport mit versionierten
   Referenzfaellen und expliziten Toleranzen.
 
-Die zweite Welle beginnt erst nach gemeinsamer Regression und Graphabgleich.
+Die zweite Welle ergaenzt den Katalog um RC-Hochpass und seriellen
+RLC-Resonanzkreis. Das DOM-freie AC-View-Model bildet Plotpunkte, Kennwerte,
+Tabellen und Ergebniszustaende ab. Der Worker-Host verwendet ein geschlossenes
+Protokoll, genau einen Auftrag je Worker und beendet Erfolg, Fehler, Abbruch
+oder Timeout spaetestens nach zwei Sekunden. Vor und nach dem Worker gelten
+die Grenzen von 32 Komponenten, 64 Knoten, 16 KiB normalisierter Engineeingabe
+und 64.000 Ergebniswerten; der Fake-WASM-Vertrag fixiert 64 MiB Linearspeicher
+ohne Wachstum. Die bestehende Laborflaeche zeigt AC-Kennwerte, logarithmische
+Plots, Tabelle und Ergebniszustaende responsiv an. Eine echte Engine ist
+weiterhin nicht angebunden.

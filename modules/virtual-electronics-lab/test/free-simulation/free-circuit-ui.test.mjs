@@ -98,7 +98,23 @@ test("SPICE-003: AC-Auftrag, Tastköpfe, Bode-Kurven und Netlist bleiben in ders
   assert.match(source, /data-free-ac-magnitude-trace/);
   assert.match(source, /data-free-ac-phase-trace/);
   assert.match(source, /Erzeugte SPICE-Netlist/);
-  assert.match(source, /Schaltung geändert; AC-Analyse erneut berechnen/);
+  assert.match(source, /state: "invalidated"/);
   assert.match(styles, /\.elab-free-ac-plots/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.elab-free-ac-plots/);
+});
+
+test("AC-004: Kennwerte und Ergebniszustände verwenden das gemeinsame AC-View-Model", () => {
+  assert.match(source, /createAcResultViewModel/);
+  assert.match(source, /state: "success"/);
+  assert.match(source, /state: "error"/);
+  assert.match(source, /state: "empty"/);
+  assert.match(source, /state: "invalidated"/);
+  assert.match(source, /data-free-ac-metrics/);
+  assert.match(source, /−3-dB-Eckfrequenz/);
+  assert.match(source, /Phase an der Eckfrequenz/);
+  assert.doesNotMatch(source, /function bodePoints/);
+  assert.match(styles, /\.elab-free-ac-metrics/);
+  assert.match(styles, /\.elab-free-ac-table-wrap\s*\{[^}]*overflow-x: auto/s);
+  assert.match(styles, /html\[data-public-theme=light\] \.elab-free-ac > \.elab-throughput-warnings/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.elab-free-ac-metrics\s*\{[^}]*grid-template-columns: 1fr/s);
 });

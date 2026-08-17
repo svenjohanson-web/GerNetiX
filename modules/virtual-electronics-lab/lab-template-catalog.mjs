@@ -21,7 +21,9 @@ const BUTTON_DEBOUNCE_LONG_START_CODE = BUTTON_DEBOUNCE_PROGRAM_START_CODE.repla
 const FREE_DC_DIVIDER_START_NOTE = "// Freie DC-Simulation: Schaltung und Messung werden über Labor-Commands verändert.";
 const FREE_EMPTY_START_NOTE = "// Leere Laborfläche: Bauteile und Messpunkte werden über Labor-Commands hinzugefügt.";
 const FREE_RC_CHARGE_START_NOTE = "// Freie Transientensimulation: RC-Ladevorgang mit begrenztem Zeitschrittmodell.";
+const FREE_RC_HIGHPASS_START_NOTE = "// Freie AC-Simulation: RC-Hochpass mit Bode-Darstellung und SPICE-Netlist.";
 const FREE_RC_LOWPASS_START_NOTE = "// Freie AC-Simulation: RC-Tiefpass mit Bode-Darstellung und SPICE-Netlist.";
+const FREE_SERIES_RLC_START_NOTE = "// Freie AC-Simulation: Serieller RLC-Resonanzkreis mit Messung über dem Widerstand.";
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object") {
@@ -322,6 +324,39 @@ const TEMPLATE_ENTRIES = [
     },
   },
   {
+    id: "elab-tpl-free-rc-highpass",
+    version: "1.0.0",
+    title: "Freie AC-Simulation · RC-Hochpass",
+    shortDescription: "Untersuche Betrag und Phase eines RC-Hochpasses und verändere Grenzfrequenz oder Verdrahtung.",
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "rc-highpass",
+    },
+    recommendedInstruments: ["oscilloscope", "multimeter"],
+    recommendedMeasurementPoints: [
+      { id: "c1-p", label: "Filtereingang" },
+      { id: "c1-n", label: "Filterausgang" },
+      { id: "gnd", label: "GND" },
+    ],
+    startCode: FREE_RC_HIGHPASS_START_NOTE,
+    modelLimits: {
+      minVoltageV: -24,
+      maxVoltageV: 24,
+      minCurrentA: -5,
+      maxCurrentA: 5,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
+      maxRuntimeMs: 2000,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
     id: "elab-tpl-free-rc-lowpass",
     version: "1.0.0",
     title: "Freie AC-Simulation · RC-Tiefpass",
@@ -339,6 +374,39 @@ const TEMPLATE_ENTRIES = [
       { id: "gnd", label: "GND" },
     ],
     startCode: FREE_RC_LOWPASS_START_NOTE,
+    modelLimits: {
+      minVoltageV: -24,
+      maxVoltageV: 24,
+      minCurrentA: -5,
+      maxCurrentA: 5,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
+      maxRuntimeMs: 2000,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
+    id: "elab-tpl-free-series-rlc",
+    version: "1.0.0",
+    title: "Freie AC-Simulation · Serieller RLC-Resonanzkreis",
+    shortDescription: "Finde die Resonanzfrequenz des seriellen RLC-Kreises über die Spannung am Widerstand.",
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "series-rlc-resonance",
+    },
+    recommendedInstruments: ["oscilloscope", "multimeter"],
+    recommendedMeasurementPoints: [
+      { id: "r1-p", label: "Quellenausgang" },
+      { id: "l1-p", label: "Knoten nach R" },
+      { id: "gnd", label: "GND" },
+    ],
+    startCode: FREE_SERIES_RLC_START_NOTE,
     modelLimits: {
       minVoltageV: -24,
       maxVoltageV: 24,

@@ -7,7 +7,9 @@ import {
 } from "../free-simulation/free-circuit-command-runtime.mjs";
 import {
   FREE_RC_CHARGE_PRESET_ID,
+  FREE_RC_HIGHPASS_PRESET_ID,
   FREE_RC_LOWPASS_PRESET_ID,
+  FREE_SERIES_RLC_PRESET_ID,
   FREE_EMPTY_PRESET_ID,
   createFreeDcDividerDocument,
   createFreeDcDividerMeasurementSetup,
@@ -15,10 +17,15 @@ import {
   createFreeEmptyMeasurementSetup,
   createFreeRcChargeDocument,
   createFreeRcChargeMeasurementSetup,
+  createFreeRcHighpassDocument,
+  createFreeRcHighpassMeasurementSetup,
   createFreeRcLowpassDocument,
   createFreeRcLowpassMeasurementSetup,
+  createFreeSeriesRlcDocument,
+  createFreeSeriesRlcMeasurementSetup,
 } from "../free-simulation/free-circuit-presets.mjs";
 import { evaluateAcVoltageProbes } from "../free-simulation/ac-voltage-probe-evaluator.mjs";
+import { createAcResultViewModel } from "../free-simulation/ac-result-view-model.mjs";
 import { executeLearningSimulationRequest } from "../free-simulation/simulation-request-runtime.mjs";
 import { exportSpiceNetlist } from "../free-simulation/spice-netlist-exporter.mjs";
 import { simulateFreeDcOperatingPoint } from "../free-simulation/dc-learning-solver-adapter.mjs";
@@ -121,17 +128,23 @@ export function createFreeCircuitSimulationLab() {
   function loadTemplate(template) {
     const presetId = template?.entry?.presetId;
     const useRcCharge = presetId === FREE_RC_CHARGE_PRESET_ID;
+    const useRcHighpass = presetId === FREE_RC_HIGHPASS_PRESET_ID;
     const useRcLowpass = presetId === FREE_RC_LOWPASS_PRESET_ID;
+    const useSeriesRlc = presetId === FREE_SERIES_RLC_PRESET_ID;
     const useRcNetwork = useRcCharge || useRcLowpass;
     const useEmptyWorkbench = presetId === FREE_EMPTY_PRESET_ID;
     initialDocument = useEmptyWorkbench
       ? createFreeEmptyDocument()
-      : useRcLowpass ? createFreeRcLowpassDocument()
+      : useSeriesRlc ? createFreeSeriesRlcDocument()
+        : useRcHighpass ? createFreeRcHighpassDocument()
+          : useRcLowpass ? createFreeRcLowpassDocument()
         : useRcCharge ? createFreeRcChargeDocument() : createFreeDcDividerDocument();
     runtime = createFreeCircuitCommandRuntime({ document: initialDocument });
     initialMeasurementSetup = useEmptyWorkbench
       ? createFreeEmptyMeasurementSetup()
-      : useRcLowpass ? createFreeRcLowpassMeasurementSetup()
+      : useSeriesRlc ? createFreeSeriesRlcMeasurementSetup()
+        : useRcHighpass ? createFreeRcHighpassMeasurementSetup()
+          : useRcLowpass ? createFreeRcLowpassMeasurementSetup()
         : useRcNetwork ? createFreeRcChargeMeasurementSetup() : createFreeDcDividerMeasurementSetup();
     measurementRuntime = createMeasurementRuntime({ setup: initialMeasurementSetup, document: initialDocument });
     historyRuntime = createFreeSimulationHistory({ document: initialDocument, measurementSetup: initialMeasurementSetup });
@@ -150,7 +163,7 @@ export function createFreeCircuitSimulationLab() {
           <div class="elab-free-measurement-head"><div><h3>Messungen</h3><p>Messpunkte entsprechen Prüfösen; ein Tastkopf misst zwischen Plusspitze und Referenzspitze.</p></div><button type="button" data-free-action="simulate">DC-Arbeitspunkt berechnen</button></div>
           <p class="elab-throughput-warnings" data-free-simulation-status>Simulation noch nicht gestartet.</p>
           <section class="elab-free-transient"><div class="elab-free-transient-head"><div><h4>Transientenanalyse</h4><p>DC-Quellen springen bei t = 0+ auf ihren Wert; C-Spannung und L-Strom starten bei null.</p></div><div class="elab-free-transient-controls"><label>Dauer <input type="number" min="0.001" max="1000" step="0.1" value="10" aria-label="Transientendauer in Millisekunden"> ms</label><label>Zeitschritt <input type="number" min="1" max="10000" step="1" value="100" aria-label="Transientenzeitschritt in Mikrosekunden"> µs</label><button type="button" data-free-action="simulate-transient">Transiente berechnen</button></div></div><p class="elab-throughput-warnings" data-free-transient-status>Transientenanalyse noch nicht gestartet.</p><svg class="elab-free-transient-plot" viewBox="0 0 600 180" role="img" aria-label="Spannungsverlauf des ersten Tastkopfs"><line x1="0" y1="170" x2="600" y2="170"></line><line x1="0" y1="10" x2="0" y2="170"></line><polyline data-free-transient-trace points=""></polyline></svg><table class="elab-free-transient-table"><thead><tr><th>Tastkopf</th><th>Endwert</th><th>Minimum</th><th>Maximum</th></tr></thead><tbody data-free-transient-results></tbody></table></section>
-          <section class="elab-free-ac"><div class="elab-free-ac-head"><div><h4>AC-/Bode-Analyse</h4><p>Die gewählte DC-Quelle regt das lineare RLC-Netzwerk zusätzlich mit 1 V bei 0° an.</p></div><div class="elab-free-ac-controls"><label>AC-Quelle <select aria-label="AC-Anregungsquelle" data-free-ac-source></select></label><label>Start <input type="number" min="1" max="999999" step="1" value="10" aria-label="AC-Startfrequenz in Hertz"> Hz</label><label>Stopp <input type="number" min="2" max="1000000" step="1" value="100000" aria-label="AC-Stoppfrequenz in Hertz"> Hz</label><label>Punkte/Dekade <input type="number" min="1" max="50" step="1" value="10" aria-label="AC-Punkte pro Dekade"></label><button type="button" data-free-action="simulate-ac">Bode berechnen</button></div></div><p class="elab-throughput-warnings" data-free-ac-status>AC-Analyse noch nicht gestartet.</p><div class="elab-free-ac-plots"><figure><figcaption>Verstärkung / dB</figcaption><svg class="elab-free-ac-plot" viewBox="0 0 600 180" role="img" aria-label="Bode-Betragsgang des ersten Tastkopfs"><line x1="0" y1="170" x2="600" y2="170"></line><polyline data-free-ac-magnitude-trace points=""></polyline></svg></figure><figure><figcaption>Phase / Grad</figcaption><svg class="elab-free-ac-plot" viewBox="0 0 600 180" role="img" aria-label="Bode-Phasengang des ersten Tastkopfs"><line x1="0" y1="170" x2="600" y2="170"></line><polyline data-free-ac-phase-trace points=""></polyline></svg></figure></div><table class="elab-free-transient-table"><thead><tr><th>Tastkopf</th><th>Start</th><th>Stopp</th><th>Phase am Stopp</th></tr></thead><tbody data-free-ac-results></tbody></table><details class="elab-free-netlist"><summary>Erzeugte SPICE-Netlist</summary><pre data-free-ac-netlist>Netlist noch nicht erzeugt.</pre></details></section>
+          <section class="elab-free-ac"><div class="elab-free-ac-head"><div><h4>AC-/Bode-Analyse</h4><p>Die gewählte DC-Quelle regt das lineare RLC-Netzwerk zusätzlich mit 1 V bei 0° an.</p></div><div class="elab-free-ac-controls"><label>AC-Quelle <select aria-label="AC-Anregungsquelle" data-free-ac-source></select></label><label>Start <input type="number" min="1" max="999999" step="1" value="10" aria-label="AC-Startfrequenz in Hertz"> Hz</label><label>Stopp <input type="number" min="2" max="1000000" step="1" value="100000" aria-label="AC-Stoppfrequenz in Hertz"> Hz</label><label>Punkte/Dekade <input type="number" min="1" max="50" step="1" value="10" aria-label="AC-Punkte pro Dekade"></label><button type="button" data-free-action="simulate-ac">Bode berechnen</button></div></div><p class="elab-throughput-warnings" data-free-ac-status>AC-Analyse noch nicht gestartet.</p><div class="elab-free-ac-metrics" data-free-ac-metrics aria-label="AC-Kennwerte"></div><div class="elab-free-ac-plots"><figure><figcaption>Verstärkung / dB</figcaption><svg class="elab-free-ac-plot" viewBox="0 0 600 180" role="img" aria-label="Bode-Betragsgang des ersten Tastkopfs"><line x1="0" y1="170" x2="600" y2="170"></line><polyline data-free-ac-magnitude-trace points=""></polyline></svg></figure><figure><figcaption>Phase / Grad</figcaption><svg class="elab-free-ac-plot" viewBox="0 0 600 180" role="img" aria-label="Bode-Phasengang des ersten Tastkopfs"><line x1="0" y1="170" x2="600" y2="170"></line><polyline data-free-ac-phase-trace points=""></polyline></svg></figure></div><div class="elab-free-ac-table-wrap"><table class="elab-free-transient-table"><thead><tr><th>Tastkopf</th><th>Start</th><th>Stopp</th><th>Maximum</th><th>−3-dB-Eckfrequenz</th><th>Phase an der Eckfrequenz</th></tr></thead><tbody data-free-ac-results></tbody></table></div><details class="elab-free-netlist"><summary>Erzeugte SPICE-Netlist</summary><pre data-free-ac-netlist>Netlist noch nicht erzeugt.</pre></details></section>
           <section class="elab-free-probe-workbench"><div><h4>Messpunkte</h4><div class="elab-free-measurement-create"><select aria-label="Knoten für neuen Messpunkt" data-free-point-node></select><button type="button" data-free-action="add-point">Messpunkt setzen</button></div><div class="elab-free-measurement-list" data-free-point-list></div></div><div><h4>Virtuelle Tastköpfe</h4><div class="elab-free-measurement-create"><select aria-label="Plusspitze" data-free-probe-positive></select><select aria-label="Referenzspitze" data-free-probe-reference></select><button type="button" data-free-action="add-probe">Tastkopf anschließen</button></div><div class="elab-free-measurement-list" data-free-probe-list></div></div></section>
           <p class="elab-throughput-result" data-free-measurement-status></p>
           <div class="elab-free-results"><section><h4>Tastkopfmessung</h4><table><thead><tr><th>Tastkopf</th><th>Spitzen</th><th>Spannung</th></tr></thead><tbody data-free-probe-results></tbody></table></section><section><h4>Knotenspannungen</h4><table><thead><tr><th>Knoten</th><th>Spannung</th></tr></thead><tbody data-free-node-results></tbody></table></section><section><h4>Zweigwerte</h4><table><thead><tr><th>Bauteil</th><th>Strom</th><th>Leistung</th></tr></thead><tbody data-free-branch-results></tbody></table></section></div>
@@ -188,6 +201,7 @@ export function createFreeCircuitSimulationLab() {
     const acStopInput = target.querySelector('[aria-label="AC-Stoppfrequenz in Hertz"]');
     const acPointsInput = target.querySelector('[aria-label="AC-Punkte pro Dekade"]');
     const acStatus = target.querySelector("[data-free-ac-status]");
+    const acMetrics = target.querySelector("[data-free-ac-metrics]");
     const acMagnitudeTrace = target.querySelector("[data-free-ac-magnitude-trace]");
     const acPhaseTrace = target.querySelector("[data-free-ac-phase-trace]");
     const acResults = target.querySelector("[data-free-ac-results]");
@@ -518,54 +532,96 @@ export function createFreeCircuitSimulationLab() {
       };
     }
 
-    function bodePoints(samples, valueOf) {
-      const values = samples.map(valueOf);
-      if (!values.length || values.some((value) => !Number.isFinite(value))) return "";
-      const minimum = Math.min(...values);
-      const maximum = Math.max(...values);
-      const span = Math.max(maximum - minimum, 1e-12);
-      return values.map((value, index) => {
-        const x = values.length === 1 ? 0 : index * 600 / (values.length - 1);
-        const y = 170 - ((value - minimum) / span) * 160;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
-      }).join(" ");
+    function acPlotPoints(points) {
+      return points.map((point) => `${(point.x * 600).toFixed(2)},${(10 + (point.y * 160)).toFixed(2)}`).join(" ");
     }
 
-    function renderAc(request, response) {
-      lastAcResponse = response?.ok ? response : null;
+    function renderAcView(viewResponse) {
       acMagnitudeTrace.setAttribute("points", "");
       acPhaseTrace.setAttribute("points", "");
       acResults.replaceChildren();
-      acNetlist.textContent = "Netlist noch nicht erzeugt.";
-      if (!response?.ok) {
-        setText(acStatus, response?.errors?.map((error) => error.message).join(" ") || "AC-Analyse fehlgeschlagen.");
+      acMetrics.replaceChildren();
+      if (!viewResponse?.ok) {
+        setText(acStatus, viewResponse?.errors?.[0]?.message || "AC-Ergebnis kann nicht dargestellt werden.");
         return;
       }
-      const evaluated = evaluateAcVoltageProbes(measurementRuntime.getSnapshot(), runtime.getSnapshot(), response);
-      if (!evaluated.ok || !evaluated.traces.length) {
-        setText(acStatus, "Für die Bode-Darstellung wird mindestens ein gültiger Tastkopf benötigt.");
-        return;
+      const { view } = viewResponse;
+      setText(acStatus, view.status.message);
+      if (view.state !== "success") return;
+
+      const magnitude = view.plots.magnitude.traces[0];
+      const phase = view.plots.phase.traces[0];
+      acMagnitudeTrace.setAttribute("points", acPlotPoints(magnitude?.points || []));
+      acPhaseTrace.setAttribute("points", acPlotPoints(phase?.points || []));
+
+      for (const card of view.metricCards) {
+        const article = document.createElement("article");
+        const heading = document.createElement("h5");
+        const values = document.createElement("dl");
+        heading.textContent = card.label;
+        for (const metric of card.metrics) {
+          const term = document.createElement("dt");
+          const value = document.createElement("dd");
+          term.textContent = metric.label;
+          value.textContent = metric.available ? `${formatNumber(metric.value, metric.unit === "Hz" ? 2 : 3)} ${metric.unit}` : "nicht im Sweep";
+          values.append(term, value);
+        }
+        article.append(heading, values);
+        acMetrics.append(article);
       }
-      for (const trace of evaluated.traces) {
-        const first = trace.samples[0];
-        const last = trace.samples.at(-1);
+
+      for (const rowData of view.table.rows) {
         const row = document.createElement("tr");
-        for (const value of [trace.label, `${formatNumber(first.gainDb, 2)} dB`, `${formatNumber(last.gainDb, 2)} dB`, `${formatNumber(last.phaseDeg, 1)}°`]) {
+        const values = [
+          rowData.label,
+          `${formatNumber(rowData.startGainDb, 2)} dB`,
+          `${formatNumber(rowData.stopGainDb, 2)} dB`,
+          `${formatNumber(rowData.maximumGainDb, 2)} dB`,
+          rowData.threeDbFrequencyHz === null ? "—" : `${formatNumber(rowData.threeDbFrequencyHz, 2)} Hz`,
+          rowData.phaseAtThreeDbFrequencyDeg === null ? "—" : `${formatNumber(rowData.phaseAtThreeDbFrequencyDeg, 1)}°`,
+        ];
+        for (const value of values) {
           const cell = document.createElement("td");
           cell.textContent = value;
           row.append(cell);
         }
         acResults.append(row);
       }
-      const firstTrace = evaluated.traces[0];
-      acMagnitudeTrace.setAttribute("points", bodePoints(firstTrace.samples, (sample) => sample.gainDb));
-      acPhaseTrace.setAttribute("points", bodePoints(firstTrace.samples, (sample) => sample.phaseDeg));
+
+      if (view.warnings.length) setText(acStatus, `${view.status.message} ${view.warnings.map((warning) => warning.message).join(" ")}`);
+    }
+
+    function renderAc(request, response) {
+      lastAcResponse = response?.ok ? response : null;
+      acNetlist.textContent = "Netlist noch nicht erzeugt.";
+      if (!response?.ok) {
+        renderAcView(createAcResultViewModel({
+          state: "error",
+          errors: (response?.errors || [{ code: "ELAB_AC_ANALYSIS_FAILED", message: "AC-Analyse fehlgeschlagen." }])
+            .map((error) => ({ code: error.code || "ELAB_AC_ANALYSIS_FAILED", message: error.message || "AC-Analyse fehlgeschlagen." })),
+        }));
+        return;
+      }
+      const evaluated = evaluateAcVoltageProbes(measurementRuntime.getSnapshot(), runtime.getSnapshot(), response);
+      if (!evaluated.ok || !evaluated.traces.length) {
+        renderAcView(createAcResultViewModel({
+          state: "error",
+          errors: [{ code: "ELAB_AC_PROBE_REQUIRED", message: "Für die Bode-Darstellung wird mindestens ein gültiger Tastkopf benötigt." }],
+        }));
+        return;
+      }
+      renderAcView(createAcResultViewModel({ state: "success", probeEvaluation: evaluated }));
       const netlist = exportSpiceNetlist(request);
       acNetlist.textContent = netlist.ok ? netlist.result.netlist : netlist.errors?.[0]?.message || "Netlist konnte nicht erzeugt werden.";
-      setText(acStatus, `${response.result.sampleCount} Frequenzpunkte · ${formatNumber(response.result.samples[0].frequencyHz)} Hz bis ${formatNumber(response.result.samples.at(-1).frequencyHz)} Hz · 1 V / 0°.`);
     }
 
     function runAcAnalysis() {
+      if (!acSourceSelect.value || measurementRuntime.getSnapshot().voltageProbes.length === 0) {
+        lastAcResponse = null;
+        acNetlist.textContent = "Netlist noch nicht erzeugt.";
+        renderAcView(createAcResultViewModel({ state: "empty" }));
+        return;
+      }
       const request = acRequest();
       renderAc(request, executeLearningSimulationRequest(request));
     }
@@ -579,13 +635,10 @@ export function createFreeCircuitSimulationLab() {
       probeResults.replaceChildren();
       transientResults.replaceChildren();
       transientTrace.setAttribute("points", "");
-      acResults.replaceChildren();
-      acMagnitudeTrace.setAttribute("points", "");
-      acPhaseTrace.setAttribute("points", "");
+      renderAcView(createAcResultViewModel({ state: "invalidated" }));
       acNetlist.textContent = "Netlist noch nicht erzeugt.";
       setText(simulationStatus, "Schaltung geändert; DC-Arbeitspunkt erneut berechnen.");
       setText(transientStatus, "Schaltung geändert; Transiente erneut berechnen.");
-      setText(acStatus, "Schaltung geändert; AC-Analyse erneut berechnen.");
     }
 
     for (const componentType of CIRCUIT_DOCUMENT_CONTRACT.supportedComponentTypes) {

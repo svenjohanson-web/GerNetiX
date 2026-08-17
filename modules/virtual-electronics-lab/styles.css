@@ -1275,6 +1275,46 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   margin: 8px 0;
 }
 
+.elab-free-ac-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.elab-free-ac-metrics article {
+  padding: 9px;
+  border: 1px solid #2a3d50;
+  border-radius: 6px;
+  background: rgba(7, 16, 26, .72);
+}
+
+.elab-free-ac-metrics h5 {
+  margin: 0 0 7px;
+}
+
+.elab-free-ac-metrics dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.elab-free-ac-metrics dt {
+  color: var(--muted);
+}
+
+.elab-free-ac-metrics dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.elab-free-ac-table-wrap {
+  overflow-x: auto;
+}
+
 .elab-free-ac-plots figure {
   min-width: 0;
   margin: 0;
@@ -1389,6 +1429,17 @@ html[data-public-theme=light] .elab-free-ac-plot {
   background: #f7fafc;
 }
 
+html[data-public-theme=light] .elab-free-ac-metrics article {
+  border-color: #b9afa0;
+  background: rgba(255, 253, 248, .82);
+}
+
+html[data-public-theme=light] .elab-free-ac > .elab-throughput-warnings {
+  border-color: #c69b5b;
+  background: #fff8e8;
+  color: #713800;
+}
+
 html[data-public-theme=light] .elab-free-parameters input,
 html[data-public-theme=light] .elab-free-parameters select,
 html[data-public-theme=light] .elab-free-wiring select {
@@ -1475,6 +1526,10 @@ html[data-public-theme=light] .elab-free-ac-controls select {
   }
 
   .elab-free-ac-plots {
+    grid-template-columns: 1fr;
+  }
+
+  .elab-free-ac-metrics {
     grid-template-columns: 1fr;
   }
 
