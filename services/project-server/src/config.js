@@ -13,7 +13,7 @@ function createConfig(env = process.env) {
   const persistenceBackend = env.PERSISTENCE_BACKEND || env.PROJECT_SERVER_PERSISTENCE_BACKEND || "sqlite";
   const postgresRuntime = ["postgres", "postgresql"].includes(persistenceBackend);
   const repositoryStoreBackend = env.PROJECT_REPOSITORY_STORE || (postgresRuntime ? "forgejo" : "sql");
-  if (postgresRuntime && repositoryStoreBackend !== "forgejo" && env.PROJECT_ALLOW_LEGACY_SQL_SOURCES !== "true") {
+  if (postgresRuntime && repositoryStoreBackend !== "forgejo") {
     throw new Error("legacy_sql_project_sources_runtime_forbidden");
   }
 

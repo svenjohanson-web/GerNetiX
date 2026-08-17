@@ -9,7 +9,7 @@ test("creates separated project tables with cascading ownership", async () => {
   await repository.ensureSchema();
 
   assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS project_projects/);
-  assert.match(pool.calls[0].text, /project_sources/);
+  assert.doesNotMatch(pool.calls[0].text, /project_sources/);
   assert.match(pool.calls[0].text, /REFERENCES project_projects\(project_id\) ON DELETE CASCADE/);
   assert.match(pool.calls[0].text, /project_resource_policies/);
   assert.match(pool.calls[0].text, /project_learning_progress/);
@@ -22,9 +22,18 @@ test("creates separated project tables with cascading ownership", async () => {
   assert.match(pool.calls[0].text, /commit_sha text/);
   assert.match(pool.calls[0].text, /idx_project_build_jobs_commit/);
   assert.match(pool.calls[0].text, /project_repository_migrations/);
-  assert.match(pool.calls[0].text, /project_sources_write_forbidden/);
-  assert.match(pool.calls[0].text, /PROJECT_SQL_SOURCE_WRITE_FORBIDDEN/);
+  assert.doesNotMatch(pool.calls[0].text, /project_sources_write_forbidden/);
   assert.match(pool.calls[0].text, /project_versions_snapshot_forbidden/);
+});
+
+test("never reads, writes, or deletes retired PostgreSQL project sources", async () => {
+  const pool = new RecordingPool();
+  const repository = new PostgresProjectRepository(pool);
+  await assert.rejects(repository.findSource("project-1", "main.cpp"), /PROJECT_SQL_SOURCE_READ_FORBIDDEN/);
+  await assert.rejects(repository.listSources("project-1"), /PROJECT_SQL_SOURCE_READ_FORBIDDEN/);
+  await assert.rejects(repository.saveSource({ project_id: "project-1" }), /PROJECT_SQL_SOURCE_WRITE_FORBIDDEN/);
+  await assert.rejects(repository.deleteSource("project-1", "main.cpp"), /PROJECT_SQL_SOURCE_WRITE_FORBIDDEN/);
+  assert.equal(pool.calls.length, 0);
 });
 
 test("stores repository and commit binding as queryable build metadata", async () => {

@@ -21,7 +21,11 @@ test("keeps SQL sources only for isolated local storage and requires Forgejo for
   assert.equal(postgres.repositoryStoreBackend, "forgejo");
   assert.equal(postgres.requireForgejoForNewProjects, true);
   assert.throws(() => projectConfig({ PERSISTENCE_BACKEND: "postgres", PROJECT_REPOSITORY_STORE: "sql" }), /legacy_sql_project_sources_runtime_forbidden/);
-  assert.equal(projectConfig({ PERSISTENCE_BACKEND: "postgres", PROJECT_REPOSITORY_STORE: "sql", PROJECT_ALLOW_LEGACY_SQL_SOURCES: "true" }).repositoryStoreBackend, "sql");
+  assert.throws(() => projectConfig({
+    PERSISTENCE_BACKEND: "postgres",
+    PROJECT_REPOSITORY_STORE: "sql",
+    PROJECT_ALLOW_LEGACY_SQL_SOURCES: "true",
+  }), /legacy_sql_project_sources_runtime_forbidden/);
   const config = projectConfig({
     PROJECT_REPOSITORY_STORE: "forgejo",
     PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS: "true",

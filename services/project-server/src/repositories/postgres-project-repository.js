@@ -41,14 +41,6 @@ class PostgresProjectRepository {
         ON project_projects (repository_provider, repository_name)
         WHERE repository_provider IS NOT NULL AND repository_name IS NOT NULL;
 
-      CREATE TABLE IF NOT EXISTS project_sources (
-        project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
-        path text NOT NULL,
-        raw_json jsonb NOT NULL,
-        updated_at timestamptz NOT NULL,
-        PRIMARY KEY (project_id, path)
-      );
-
       CREATE TABLE IF NOT EXISTS project_build_jobs (
         build_job_id text PRIMARY KEY,
         project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
@@ -189,16 +181,6 @@ class PostgresProjectRepository {
         updated_at timestamptz NOT NULL
       );
 
-      CREATE OR REPLACE FUNCTION gernetix_reject_project_source_write()
-      RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN
-        RAISE EXCEPTION 'PROJECT_SQL_SOURCE_WRITE_FORBIDDEN' USING ERRCODE = 'integrity_constraint_violation';
-      END $$;
-      DROP TRIGGER IF EXISTS project_sources_write_forbidden ON project_sources;
-      CREATE TRIGGER project_sources_write_forbidden
-        BEFORE INSERT OR UPDATE ON project_sources
-        FOR EACH ROW EXECUTE FUNCTION gernetix_reject_project_source_write();
-
       CREATE OR REPLACE FUNCTION gernetix_reject_project_version_snapshot()
       RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
@@ -299,21 +281,20 @@ class PostgresProjectRepository {
   }
 
   async findSource(projectId, sourcePath) {
-    return first(await this.pool.query(
-      "SELECT raw_json FROM project_sources WHERE project_id=$1 AND path=$2",
-      [projectId, sourcePath],
-    ));
+    void projectId;
+    void sourcePath;
+    throw new Error("PROJECT_SQL_SOURCE_READ_FORBIDDEN");
   }
 
   async listSources(projectId) {
-    return rows(await this.pool.query(
-      "SELECT raw_json FROM project_sources WHERE project_id=$1 ORDER BY path",
-      [projectId],
-    ));
+    void projectId;
+    throw new Error("PROJECT_SQL_SOURCE_READ_FORBIDDEN");
   }
 
   async deleteSource(projectId, sourcePath) {
-    return (await this.pool.query("DELETE FROM project_sources WHERE project_id=$1 AND path=$2", [projectId, sourcePath])).rowCount > 0;
+    void projectId;
+    void sourcePath;
+    throw new Error("PROJECT_SQL_SOURCE_WRITE_FORBIDDEN");
   }
 
   async saveBuildJob(job) {
@@ -616,7 +597,6 @@ class PostgresProjectRepository {
       await client.query("BEGIN");
       const counts = {};
       for (const [key, table] of [
-        ["sources", "project_sources"],
         ["build_jobs", "project_build_jobs"],
         ["artifacts", "project_artifacts"],
         ["feedback", "project_feedback"],
@@ -628,6 +608,7 @@ class PostgresProjectRepository {
           [projectId],
         )).rows[0].count);
       }
+      counts.sources = 0;
       counts.consents = Number((await client.query(`
         SELECT COUNT(*) AS count
         FROM project_consents c
