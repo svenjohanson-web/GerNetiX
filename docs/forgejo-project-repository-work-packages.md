@@ -14,11 +14,13 @@ Mitgliedschaften, Berechtigungen, Tarif, Repository-Bindung, Build-Jobs,
 Freigaben und Audit. Build-Binaries bleiben im getrennten Artifact Store.
 
 Diese Zielentscheidung loest die bisherige SQL-basierte Git-Light-Architektur
-ab. Fuer den Staging-Kundenbestand ist keine Bestandsmigration erforderlich:
-Die einzigen accountgebundenen Altprojekte gehoerten zum freigegebenen
-Demo-/Testbestand von `Sven02` und wurden vollstaendig geloescht. Das vorhandene
-SQL-zu-Git-Werkzeug bleibt als technische Rueckfallhilfe erhalten, wird aber
-nicht auf diesen Bestand angewendet.
+ab. Der fruehere accountgebundene Demo-/Testbestand von `Sven02` wurde nach
+Freigabe geloescht. Bei der abschliessenden Staging-Inventur am 17. August 2026
+wurden daneben elf noch ungebundene Entwicklungs-, Verifikations- und
+historische System-Template-Staende gefunden. Sie wurden mit dem kontrollierten
+Plan-/Apply-Werkzeug nichtdestruktiv in private Forgejo-Repositories migriert;
+der anschliessende Plan meldete null offene Bindungen. Das deterministische
+FG-09-Historienwerkzeug bleibt fuer externe Altbestaende erhalten.
 
 Katalogdefinitionen bleiben kuenftig virtuell. Architektur-Discovery und
 Konfiguration eines neuen Entwicklungsprojekts sind fluechtige
@@ -207,7 +209,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 
 | ID | Ergebnis | Status | Hauptnachweis |
 | --- | --- | --- | --- |
-| FG-00 | Architektur- und Speichergrenze | dokumentiert | Graph- und Doku-Konsistenz |
+| FG-00 | Architektur- und Speichergrenze | umgesetzt und auf Staging abgeglichen | Graph- und Doku-Konsistenz |
 | FG-01 | Projektdatei- und Schemakontrakt | lokal umgesetzt | Schema-/Roundtrip-Tests |
 | FG-02 | Abgesicherter Forgejo-Betrieb | lokal einschliesslich Container-Restore nachgewiesen | Compose-/Security-/Restore-Contract |
 | FG-03 | Forgejo- und Git-Adapter | umgesetzt, Staging-Durchstich bestanden | Adapter-Integrationstest |
@@ -216,12 +218,12 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-06 | Echte Commit-Historie und Restore | umgesetzt; PostgreSQL-Produktivmodus ist Forgejo-only | Historien-/Restore-Tests plus Staging-Durchstich |
 | FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | lokal umgesetzt | UI-/Agenten-Contract |
-| FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
-| FG-10 | Projektweiser Cutover und Rollback | fuer den Staging-Kundenbestand entfallen und nachgewiesen | Nullbestand nach freigegebener Demo-Bereinigung |
+| FG-09 | SQL-zu-Git-Migrationswerkzeug | aktueller Baum auf Staging migriert; Historienimport und Ledger fuer externe Altbestaende offen | deterministischer Dry-run plus Staging-Plan/Apply |
+| FG-10 | Projektweiser Cutover und Rollback | Staging-Cutover vollstaendig nachgewiesen | null offene Bindungen, alle gebundenen Repositories erreichbar |
 | FG-11 | SQL-Quelltabellen stilllegen | Runtime umgesetzt; Tabellen bis Aufbewahrungsfreigabe erhalten | Negativtests und Schemaaudit |
-| FG-12 | Board-Support-Repositories | lokal umgesetzt | Katalog-/Manifest-/Commit-Vertrag |
+| FG-12 | Board-Support-Repositories | auf Staging provisioniert und commitgebunden | Katalog-/Manifest-/Commit-Vertrag plus Remote-Nachweis |
 | FG-13 | Backup, Restore und Upgrade | lokaler Backup-/Restore-/Verschluesselungs-/Upgradevertrag umgesetzt; externer RPO/RTO-Nachweis offen | isolierter Restore- und Upgrade-Test |
-| FG-14 | Monitoring, Quoten und Betrieb | lokal umgesetzt | Operations-Sicht und Alarme |
+| FG-14 | Monitoring, Quoten und Betrieb | umgesetzt und auf Staging inventarisiert | Operations-Sicht und Alarme |
 | FG-15 | Privater Entwickler-Clone-/Push-Zugang | umgesetzt und auf Staging nachgewiesen | Loopback-/Tunnel-, Berechtigungs-, Checkout-, Integritaets- und Push-Dry-run-Vertrag |
 | FG-16 | Repository-Karte im Entwicklungsbereich | lokal umgesetzt | UI-/Autorisierungs-Contract |
 | FG-17 | Schablonen erzeugen eigene Kunden-Repositories | lokal end-to-end umgesetzt | Projektionsmatrix, Mutation und Build-Contract |
@@ -555,7 +557,12 @@ Binaerdateien, Pfadkonflikte und mehrdeutige Historien. Zusaetzlich kann der
 Project Server den aktuellen, validierten Projektbaum nach ausdruecklichem
 `--apply` in ein privates Forgejo-Repository schreiben und die aktive Bindung
 mit Zielcommit speichern. Historische SQL-Versionen und ein separates
-Migrationsledger sind weiterhin nicht enthalten.
+Migrationsledger fuer spaetere externe Altbestaende sind weiterhin nicht
+enthalten. Fuer den aktuellen Stagingbestand wurde am 17. August 2026 zuerst
+ein Plan mit elf ungebundenen Staenden erstellt und danach jeder Stand
+nichtdestruktiv migriert. Die Abschlussinventur meldete 23 gebundene,
+erreichbare Projektrepositories, null ungebundene Projekte und null nicht
+erreichbare Bindungen.
 
 Ziel:
 
@@ -593,6 +600,16 @@ Entscheidung vom 9. August 2026:
 - Das generische FG-09-Werkzeug bleibt im Quellstand, falls spaeter bewusst ein
   externer Altbestand importiert werden soll. Es ist kein offener Schritt fuer
   den heutigen Staging-Cutover.
+
+Ergaenzender Abschluss vom 17. August 2026:
+
+- Eine erneute Vollinventur fand elf technische beziehungsweise historische
+  Reststaende ausserhalb des bereits geloeschten `Sven02`-Bestands.
+- Der kontrollierte Plan-/Apply-Ablauf band alle elf an private
+  Forgejo-Repositories. Der Wiederholungsplan meldete danach `count: 0`.
+- Alle 23 Projektbindungen waren anschliessend erreichbar. Zehn schon zuvor
+  vorhandene, ungebundene Forgejo-Repositories bleiben als Orphans sichtbar
+  und werden gemaess FG-14 nicht automatisch geloescht.
 
 Abnahme fuer den heutigen Bestand:
 
@@ -633,13 +650,17 @@ Abnahme:
 
 ## FG-12 - Board-Support-Repositories
 
-Lokal umgesetzt: `gernetix.board-support` Version 1 beschreibt Hardware-ID,
+Umgesetzt und auf Staging nachgewiesen: `gernetix.board-support` Version 1 beschreibt Hardware-ID,
 semantische Releaseversion, erlaubte Dateirollen, Quell-/Zielpfade und
 SHA-256. Der ES3C28P-Katalog verweist auf die systemgefuehrte Quelle; das
 Projekt friert den serverseitig freigegebenen Commit im Board-Snapshot ein.
 Der Build liest exakt diesen Commit, validiert alle Hashes und materialisiert
 Boarddefinition, Partitionstabelle und Header kollisionsgeschuetzt. Ein
-Standard-ESP32-Board bleibt ohne eigene Supportreferenz.
+Standard-ESP32-Board bleibt ohne eigene Supportreferenz. Das private Repository
+`gernetix-platform/board-support-esp32-s3-es3c28p` wurde mit Commit
+`52ac6f3f98e7c1b52d676132a61fafe8d560cb01` provisioniert; Manifest und alle
+drei Nutzdateien wurden vor dem Push gegen Rollen, Zielpfade und SHA-256
+validiert.
 
 Ziel:
 
@@ -732,9 +753,13 @@ Umgesetzter erster Umfang:
 - `tools/connect-staging.js` transportiert diesen Port ausschliesslich durch
   den bestehenden privaten SSH-/WireGuard-Weg nach `127.0.0.1:13300`.
 - Ein normales, nicht administratives Entwicklerkonto erhaelt Schreibrechte
-  nur auf die freigegebenen System- und Produkt-Repositories. Sieben Quellen
-  sind auf Staging nachgewiesen; Radar-Raumpraesenz ist als achte Quelle lokal
-  vorbereitet, aber noch nicht provisioniert oder gepusht.
+  nur auf die freigegebenen System- und Produkt-Repositories. Alle neun
+  katalogisierten Quellen existieren auf Staging. Radar-Raumpraesenz wurde als
+  Produktquelle mit Commit `ba80be29e73069fce622dc4d3529e69311fcd63d`
+  und ES3C28P als Board-Support-Quelle mit Commit
+  `52ac6f3f98e7c1b52d676132a61fafe8d560cb01` gepusht. Die erneute
+  Entwicklerkonto-Berechtigungspruefung fuer diese zwei neuen Repositories
+  bleibt ein eigener Betriebsnachweis.
 - `tools/setup-forgejo-workspace.js` speichert den begrenzten Token ueber den
   konfigurierten Git-Credential-Helper und legt eigenstaendige Arbeitskopien
   ausserhalb des GerNetiX-Infrastruktur-Repositories an.

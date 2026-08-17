@@ -149,7 +149,7 @@
     <text class="smallText" x="1480" y="548" text-anchor="middle">SMTP/TLS</text>
 
     <rect class="node tool" x="965" y="505" width="180" height="54" rx="10"/>
-    <text class="titleText" x="1055" y="529" text-anchor="middle">Forgejo · Adapter lokal</text>
+    <text class="titleText" x="1055" y="529" text-anchor="middle">Forgejo · Staging aktiv</text>
     <text class="smallText" x="1055" y="548" text-anchor="middle">Projekte + System-/Board-Support</text>
 
     <rect class="node domain" x="1170" y="505" width="190" height="54" rx="10"/>
