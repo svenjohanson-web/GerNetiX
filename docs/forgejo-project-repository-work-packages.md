@@ -220,7 +220,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-08 | IDE und KI-Patchfluss | lokal umgesetzt | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | abgeschlossen; alle 23 Projektbindungen erreichbar, Wiederholungsplan ohne offene Migration | deterministischer Dry-run plus Staging-Plan/Apply |
 | FG-10 | Projektweiser Cutover und Rollback | Staging-Cutover vollstaendig nachgewiesen | null offene Bindungen, alle gebundenen Repositories erreichbar |
-| FG-11 | SQL-Quelltabellen stilllegen | Runtime und kontrollierter Retirement-Lauf lokal umgesetzt; physischer Staging-Lauf freigabepflichtig | Negativtests, Plan-Fingerprint, Backup-Gate und Schemaaudit |
+| FG-11 | SQL-Quelltabellen stilllegen | abgeschlossen und auf Staging physisch nachgewiesen | Negativtests, Plan-Fingerprint, Backup-Gate und Schemaaudit |
 | FG-12 | Board-Support-Repositories | auf Staging provisioniert und commitgebunden | Katalog-/Manifest-/Commit-Vertrag plus Remote-Nachweis |
 | FG-13 | Backup, Restore und Upgrade | lokaler Backup-/Restore-/Verschluesselungs-/Upgradevertrag umgesetzt; externer RPO/RTO-Nachweis offen | isolierter Restore- und Upgrade-Test |
 | FG-14 | Monitoring, Quoten und Betrieb | umgesetzt und auf Staging inventarisiert | Operations-Sicht und Alarme |
@@ -650,12 +650,17 @@ Versions- und Buildmetadaten und loescht anschliessend `project_sources` samt
 alter Triggerfunktion. Veraendert sich der Bestand oder fehlt eine aktive
 Forgejo-Bindung, erfolgt ein vollstaendiger Abbruch vor der Mutation.
 
-Die read-only Staging-Vorinventur vom 17. August 2026 fand 23 von 23 aktiv
+Der freigegebene Staging-Lauf vom 17. August 2026 fand 23 von 23 aktiv
 gebundene Projekte, 547 Legacy-Quellzeilen in 23 Projekten, keine
-Versionssnapshots und zwei Build-Job-Dokumente mit alten Vollsnapshots. Kein
-betroffener Bestand war ungebunden. Diese Zahlen sind noch kein
-Loeschnachweis; der physische Lauf benoetigt weiterhin die ausdrueckliche
-Freigabe fuer Push, Deployment, Sicherungspunkt und die genannten Ziele.
+Versionssnapshots und zwei Build-Job-Dokumente mit alten Vollsnapshots. Vor
+Apply wurden ein vollstaendiger PostgreSQL-Dump sowie ein konsistenter Satz
+aus Forgejo-Datenbank und `forgejo_data` unter der Referenz
+`staging-fg11-20260817T155700Z-a79962f` erzeugt und per SHA-256 beziehungsweise
+`pg_restore --list` geprueft. Apply akzeptierte exakt den zuvor bestaetigten
+Fingerprint, entfernte 547 Quellzeilen, bereinigte beide Build-Dokumente und
+loeschte `project_sources` samt alter Triggerfunktion. Der Wiederholungsplan
+meldet null Zeilen und null Snapshotdokumente. Project Server, Forgejo und
+PostgreSQL sind danach gesund; alle 23 Projektbindungen bleiben aktiv.
 
 Ziel:
 

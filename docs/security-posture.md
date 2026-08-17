@@ -109,16 +109,20 @@ Stand der letzten VPS-Pruefung: **2026-07-19**
 
 ## Aktuelle Beobachtungen
 
-- 2026-08-17: FG-11 entfernt lokal jede PostgreSQL-Runtimeabhaengigkeit von
+- 2026-08-17: FG-11 entfernt jede PostgreSQL-Runtimeabhaengigkeit von
   `project_sources`: Die Schemaanlage erzeugt die Tabelle nicht mehr, das
   fruehere Legacy-Flag kann den SQL-Quellmodus nicht mehr aktivieren und alle
   PostgreSQL-Quellmethoden brechen ohne Abfrage ab. Der physische
   Retirement-Lauf verlangt aktive Forgejo-Bindungen, einen unveraenderten
   SHA-256-Plan-Fingerprint und einen konkret bezeichneten, gehashten
-  PostgreSQL-Sicherungspunkt. Die read-only Staging-Vorinventur fand 547
-  Legacy-Quellzeilen, zwei Build-Snapshots, keine Versionssnapshots und keine
-  ungebundenen betroffenen Projekte. Push, Deployment und destruktiver
-  Staging-Apply bleiben bis zur ausdruecklichen Zielfreigabe offen.
+  PostgreSQL-Sicherungspunkt. Der freigegebene Staging-Apply wurde nach einem
+  geprueften PostgreSQL-Dump und einem konsistenten Forgejo-Sicherungssatz mit
+  exakt dem bestaetigten Fingerprint ausgefuehrt. 547 Legacy-Quellzeilen und
+  zwei Build-Snapshots wurden entfernt; Quelltabelle und Triggerfunktion sind
+  nicht mehr vorhanden. Der Wiederholungsplan meldet null Projektinhalte,
+  23 von 23 Bindungen bleiben aktiv und die drei betroffenen Dienste sind
+  gesund. Der Sicherungssatz liegt weiterhin nur im geschuetzten VPS-Backup-
+  Verzeichnis; externe Aufbewahrung und produktives RPO/RTO gehoeren zu FG-13.
 
 - 2026-08-07: Der Desktop-Prozessmonitor verwendet auf dem VPS den dedizierten Maschinenbenutzer `gernetix-monitor` mit eigenem SSH-Schlüssel, ohne Passwort, ohne Docker-Gruppenzugriff und ohne Portweiterleitungen. Ein root-eigener Wrapper erlaubt ausschließlich feste read-only Diagnoseaktionen. `security`, `compose-ps` und `link-integrity` wurden mit `visudo` und über WireGuard erfolgreich getestet. `user-action-alerts` ist lokal als vierte, auf minimierte Operations-Aggregate begrenzte Aktion implementiert und contract-getestet; Installation und kontrollierter WireGuard-Nachweis stehen aus. Der bisherige Root-Zugang bleibt als getrennt zu prüfender Deployment-/Recovery-Zugang bestehen.
 
