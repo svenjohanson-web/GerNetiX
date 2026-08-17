@@ -148,6 +148,9 @@ halten den umgesetzten Capability-, Provider- und Ergebnisvertrag, die
 AC-Kennwertauswertung sowie den kanonischen Solver-/Netlist-Orakelkorpus fest.
 Ein echter WASM-Provider bleibt weiterhin hinter den dokumentierten Build-,
 Lizenz-, Worker- und Ressourcengates.
+Die [kompakte Arbeitspaket-Uebersicht](virtual-electronics-lab-work-package-status.md)
+trennt abgeschlossene Pakete, definierte offene Pakete, ausstehende Nachweise
+und noch nicht paketierte Architekturthemen.
 Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
 Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
 der optionalen, creditgebundenen KI-Hilfe ist in
