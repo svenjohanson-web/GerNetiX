@@ -254,6 +254,7 @@ test("adds protected binary product assets to the immutable build package", asyn
   const approvedCommit = "d".repeat(40);
   const repository = new InMemoryProjectRepository();
   const audio = Buffer.from([0, 1, 2, 255]);
+  let repositoryFiles = [];
   const productFiles = [
     { path: "src/user_main.cpp", content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n' },
     { path: "assets/story.pcm8", content_base64: audio.toString("base64"), binary: true },
@@ -268,11 +269,16 @@ test("adds protected binary product assets to the immutable build package", asyn
     }],
     projectRepositoryStore: {
       readProtectedFiles: async () => productFiles,
-      provisionProject: async () => ({
-        provider: "forgejo", organization: "gernetix-projects", repository_name: "project-audio",
-        repository_id: "789", clone_url: "http://forgejo:3000/gernetix-projects/project-audio.git",
-        default_branch: "main", head_sha: "a".repeat(40), state: "active",
-      }),
+      provisionProject: async (input) => {
+        repositoryFiles = input.changes.map((file) => ({ ...file, size_bytes: Buffer.byteLength(file.content) }));
+        return {
+          provider: "forgejo", organization: "gernetix-projects", repository_name: "project-audio",
+          repository_id: "789", clone_url: "http://forgejo:3000/gernetix-projects/project-audio.git",
+          default_branch: "main", head_sha: "a".repeat(40), state: "active",
+        };
+      },
+      readFiles: async () => repositoryFiles,
+      tree: async () => repositoryFiles.map((file) => file.path),
     },
   });
   const created = await service.createProject({
@@ -280,9 +286,7 @@ test("adds protected binary product assets to the immutable build package", asyn
     system_source_id: "product-audio",
     build_config: { platform: "espressif32", framework: "arduino", board: "esp32dev", environment: "esp32dev", user_source_path: "src/user_main.cpp" },
   });
-  await repository.saveProject({ ...(await repository.findProject(created.project_id)), repository_binding: null });
-
-  const job = await service.createBuildJob(created.project_id);
+  const job = await service.createBuildJob(created.project_id, { commit_sha: created.repository_binding.head_sha });
   const buildPackage = await service.createBuildPackage(job.build_job_id);
   assert.deepEqual(buildPackage.files.find((file) => file.path === "assets/story.pcm8").content, { base64: audio.toString("base64") });
   assert.equal(buildPackage.files.find((file) => file.path === "assets/story.pcm8").sha256, require("node:crypto").createHash("sha256").update(audio).digest("hex"));

@@ -76,6 +76,7 @@ class HardwareCatalogService {
       cpu_core: input.cpu_core || "",
       clock_hz: Number(input.clock_hz) || 0,
       firmware_build_target_id: input.firmware_build_target_id || "",
+      board_support_source_id: input.board_support_source_id || "",
       vendor: input.vendor || "",
       form_factor: input.form_factor || "",
       sensor_type_id: input.sensor_type_id || "",

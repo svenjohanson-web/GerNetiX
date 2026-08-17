@@ -53,4 +53,6 @@ compose exec -T forgejo forgejo --version >"$backup_dir/forgejo-version.txt" 2>/
 
 trap - EXIT HUP INT TERM
 restart_forgejo
+backup_version=$(grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' "$backup_dir/forgejo-version.txt" | head -n 1)
+"$(dirname "$0")/report-forgejo-operation.sh" forgejo.backup.completed "$backup_version"
 printf 'Konsistentes Forgejo-Backup erstellt: %s\n' "$backup_dir"

@@ -31,6 +31,13 @@ uebereinstimmen. Runtime-Secrets gehoeren nicht in den Satz; fuer einen echten
 Disaster-Recovery-Lauf werden sie getrennt gesichert und kontrolliert
 bereitgestellt.
 
+Vor der Uebertragung an einen externen, vom Deployment-Zugang getrennten
+Speicher wird der Satz mit einem offline verwalteten Age-X25519-Empfaenger
+verschluesselt. `tools/encrypt-forgejo-backup.sh` prueft zuerst die internen
+SHA-256-Werte, akzeptiert nur ein neues Ziel, setzt Modus `0600` und schreibt
+eine Pruefsumme der verschluesselten Datei. Der private Age-Schluessel liegt
+weder auf dem VPS noch im Repository.
+
 `tools/restore-forgejo-backup.sh` prueft vor Docker-Zugriff Vollstaendigkeit,
 regulaere Dateien ohne Symlinks, exakte Manifesteintraege, SHA-256, sichere
 Archivpfade und die gepinnte Patchversion. Bei falscher Pruefsumme,
@@ -136,6 +143,28 @@ vorhandenen Stand zurueck und fuehrt keinen Cutover aus.
 
 Keine Passwoerter, Tokens, Clone-Credentials oder anderen Secrets werden in
 den Nachweis aufgenommen.
+
+## Isolierter Upgrade-Vertrag
+
+`tools/verify-forgejo-upgrade.sh` akzeptiert ausschliesslich feste Quell- und
+Ziel-Patchversionen. Es stellt zuerst einen geprueften Backup-Satz mit der
+Quellversion in einem neuen `gernetix-forgejo-restore-*`-Projekt wieder her,
+ueberschreibt kein bestehendes Ziel, startet danach nur in diesem isolierten
+Projekt das gepinnte Zielimage, wartet auf Health und fuehrt
+`forgejo doctor check --all` aus. Sein Fehler-Trap entfernt ausschliesslich
+das synthetische Upgrade-Projekt und dessen Volumes. Ein echter Upgrade-Plan
+benoetigt weiterhin einen neuen Backup-Sicherungspunkt, ein freigegebenes
+Wartungsfenster und einen dokumentierten Rollback; der lokale Vertrag nimmt
+keinen Staging- oder Produktionswechsel vor.
+
+Ist `FORGEJO_OPERATIONS_EVENT_URL` auf einen HTTPS-Endpunkt oder den lokalen
+Admin-Tool-Loopback und `FORGEJO_OPERATIONS_EVENT_TOKEN` auf den getrennten
+System-Event-Ingest gesetzt, melden die drei Helfer nach Erfolg ausschliesslich
+Operationstyp und Forgejo-Patchversion. Ohne beide Werte findet kein
+Netzwerkzugriff statt; Teilkonfiguration oder ein anderes HTTP-Ziel wird
+abgewiesen. Dadurch kann die Operations-Sicht letzten Backup-, Restore- und
+Upgrade-Nachweis anzeigen, ohne Pfade, Repositorynamen oder Secrets zu
+persistieren.
 
 ## Lokaler Nachweisstand
 

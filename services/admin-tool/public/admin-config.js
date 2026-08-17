@@ -813,11 +813,15 @@ function renderSourceRepositories() {
   const systemRepositories = data.system_repositories || [];
   const projectRepositories = data.project_repositories || [];
   const builds = data.builds || [];
+  const recovery = data.recovery || {};
   const metricRoot = document.querySelector("#sourceRepositoryMetrics");
   if (!metricRoot) return;
   metricRoot.innerHTML = [
     metricCard("Systemquellen", formatNumber(summary.system_repositories || 0), `${formatNumber(summary.system_repositories_ready || 0)} freigegeben`),
-    metricCard("Projekt-Repositories", formatNumber(summary.project_repositories || 0), `${formatNumber(summary.projects_without_repository || 0)} ohne Forgejo`),
+    metricCard("Projekt-Repositories", formatNumber(summary.project_repositories || 0), `${formatNumber(summary.project_repositories_unavailable || 0)} nicht erreichbar`),
+    metricCard("Git / LFS", formatBytes(summary.repository_size_bytes || 0), `${formatBytes(summary.lfs_size_bytes || 0)} LFS`),
+    metricCard("Betriebsalarme", formatNumber(summary.alerts || 0), `${formatNumber(summary.orphan_project_repositories || 0)} verwaiste Repositories`),
+    metricCard("Letztes Backup", recovery.last_backup ? formatDateTime(recovery.last_backup.occurred_at) : "–", recovery.last_restore ? `Restore ${formatDateTime(recovery.last_restore.occurred_at)}` : "kein Restore-Nachweis"),
     metricCard("Builds", formatNumber(summary.builds || 0), "commitgebunden"),
     metricCard("Artefakte", formatNumber(summary.artifacts || 0), "im Artifact Store"),
   ].join("");
@@ -825,13 +829,17 @@ function renderSourceRepositories() {
     ? systemRepositories.map((item) => {
       const ready = item.exists && item.commit_sha;
       const repository = `${item.organization || "-"}/${item.repository_name || "-"}`;
-      return `<tr><td><strong>${escapeHtml(item.title || item.source_id)}</strong><small>${escapeHtml(item.source_id || "")}</small></td><td>${escapeHtml(item.kind === "basissoftware" ? "Basissoftware" : "Produkt")}</td><td>${escapeHtml(repository)}</td><td><code>${escapeHtml(shortSha(item.commit_sha))}</code></td><td><span class="status-pill ${ready ? "ok" : "warning"}">${ready ? "bereit" : item.exists ? "Commit fehlt" : "Repository fehlt"}</span></td></tr>`;
+      const kind = item.kind === "basissoftware" ? "Basissoftware" : item.kind === "board_support" ? "Board-Support" : "Produkt";
+      return `<tr><td><strong>${escapeHtml(item.title || item.source_id)}</strong><small>${escapeHtml(item.source_id || "")}</small></td><td>${escapeHtml(kind)}</td><td>${escapeHtml(repository)}</td><td><code>${escapeHtml(shortSha(item.commit_sha))}</code></td><td><span class="status-pill ${ready ? "ok" : "warning"}">${ready ? "bereit" : item.exists ? "Commit fehlt" : "Repository fehlt"}</span></td></tr>`;
     }).join("")
     : `<tr><td colspan="5" class="empty-cell">${escapeHtml(state.sourceRepositoriesLoading ? "Quellen werden geladen ..." : data.error || "Keine Systemquellen konfiguriert.")}</td></tr>`;
   document.querySelector("#projectRepositoryRows").innerHTML = projectRepositories.length
     ? projectRepositories.map((item) => {
       const reference = item.basissoftware_references?.[0];
-      return `<tr><td><strong>${escapeHtml(item.title || item.project_id)}</strong><small>${escapeHtml(item.project_id || "")}</small></td><td>${escapeHtml(item.user_id || "-")}</td><td>${escapeHtml(item.repository ? `${item.repository.organization}/${item.repository.repository_name}` : "-")}<small>${escapeHtml(shortSha(item.repository?.head_sha))}</small></td><td>${reference ? `${escapeHtml(reference.repository_name)}<small>${escapeHtml(shortSha(reference.commit_sha))}</small>` : "-"}</td><td>${formatNumber(item.build_count || 0)}</td><td>${formatNumber(item.artifact_count || 0)}</td><td><span class="status-pill ${item.repository?.state === "active" ? "ok" : "warning"}">${item.repository?.state === "active" ? "Forgejo aktiv" : "Migration offen"}</span></td></tr>`;
+      const available = item.inspection_state === "available";
+      const active = item.repository?.state === "active";
+      const status = available ? "erreichbar" : active ? "nicht erreichbar" : "Migration offen";
+      return `<tr><td><strong>${escapeHtml(item.title || item.project_id)}</strong><small>${escapeHtml(item.project_id || "")}</small></td><td>${escapeHtml(item.user_id || "-")}</td><td>${escapeHtml(item.repository ? `${item.repository.organization}/${item.repository.repository_name}` : "-")}<small>${escapeHtml(shortSha(item.repository?.head_sha))} · ${formatBytes(item.repository_size_bytes || 0)} · ${formatNumber(item.object_count || 0)} Objekte · ${formatNumber(item.latency_ms || 0)} ms</small></td><td>${reference ? `${escapeHtml(reference.repository_name)}<small>${escapeHtml(shortSha(reference.commit_sha))}</small>` : "-"}</td><td>${formatNumber(item.build_count || 0)}</td><td>${formatNumber(item.artifact_count || 0)}</td><td><span class="status-pill ${available ? "ok" : active ? "error" : "warning"}">${escapeHtml(status)}</span></td></tr>`;
     }).join("")
     : `<tr><td colspan="7" class="empty-cell">Keine Projekte vorhanden.</td></tr>`;
   document.querySelector("#repositoryBuildRows").innerHTML = builds.length

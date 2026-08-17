@@ -145,6 +145,51 @@ class ForgejoProjectRepositoryStore {
       html_url: repository?.html_url || "",
     };
   }
+
+  async inspectProjectRepository(binding = {}) {
+    requireConfiguredBinding(binding, this.organization);
+    const startedAt = Date.now();
+    const repository = await this.client.getRepository(binding.organization, binding.repository_name);
+    if (!repository) throw new ProjectServerError("project_repository_not_found", "Das gebundene Forgejo-Projekt-Repository wurde nicht gefunden.", 503);
+    const paths = await this.tree(binding, binding.head_sha);
+    return {
+      exists: true,
+      archived: Boolean(repository.archived),
+      empty: Boolean(repository.empty),
+      repository_size_bytes: safeKilobytes(repository.size),
+      lfs_size_bytes: safeBytes(repository.lfs_size),
+      object_count: paths.length,
+      latency_ms: Date.now() - startedAt,
+      html_url: repository.html_url || "",
+    };
+  }
+
+  async listOrphanProjectRepositories(bindings = []) {
+    const boundNames = new Set(bindings
+      .filter((binding) => binding?.provider === "forgejo" && binding.organization === this.organization)
+      .map((binding) => binding.repository_name));
+    return (await this.client.listOrganizationRepositories(this.organization))
+      .filter((repository) => String(repository?.name || "").startsWith("project-") && !boundNames.has(repository.name))
+      .map((repository) => ({
+        organization: this.organization,
+        repository_name: repository.name,
+        repository_id: repository.id === undefined ? "" : String(repository.id),
+        archived: Boolean(repository.archived),
+        repository_size_bytes: safeKilobytes(repository.size),
+        lfs_size_bytes: safeBytes(repository.lfs_size),
+        html_url: repository.html_url || "",
+      }));
+  }
+}
+
+function safeKilobytes(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.round(number * 1024) : 0;
+}
+
+function safeBytes(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.round(number) : 0;
 }
 
 function repositoryBinding(organization, repositoryName, repository, remoteUrl, defaultBranch, headSha) {

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Anwendungen koennen bis zu 16 kompatible Account-Geraete binden; Project Server speichert die geordnete Liste, Device Management bestaetigt Besitz und Status. Entwicklungs-Discovery bleibt bis zur ausdruecklichen IDE-Projektspeicherung fluechtiger Browserzustand. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL. Erst gespeicherte Projektdateien und Historie liegen nach dem aktivierten Cutover-Gate in privaten Forgejo-Git-Repositories; geschuetzte Basissoftware und Produkte liegen in getrennten System-Repositories, Binaries im Artifact Store. Generative KI und Embeddings verwenden standardmaessig die kostenkontrollierte OpenAI API; dazu gehoert die optionale, session- und creditgebundene Hilfe im ansonsten anonym nutzbaren Elektroniklabor. Ein lokales LLM ist nicht vorausgesetzt. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
+  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Anwendungen koennen bis zu 16 kompatible Account-Geraete binden; Project Server speichert die geordnete Liste, Device Management bestaetigt Besitz und Status. Entwicklungs-Discovery bleibt bis zur ausdruecklichen IDE-Projektspeicherung fluechtiger Browserzustand. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL. Aktive Projektdateien und Historie liegen ausschliesslich in privaten Forgejo-Git-Repositories; geschuetzte Basissoftware, Produkte und Board-Support liegen in getrennten System-Repositories, Binaries im Artifact Store. Die interne Operations-Sicht erfasst Repository-Health, Latenz, Groesse, Objektzahl und Orphans. Generative KI und Embeddings verwenden standardmaessig die kostenkontrollierte OpenAI API; dazu gehoert die optionale, session- und creditgebundene Hilfe im ansonsten anonym nutzbaren Elektroniklabor. Ein lokales LLM ist nicht vorausgesetzt. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -98,7 +98,7 @@
 
     <rect class="node domain" x="965" y="150" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="174" text-anchor="middle">Project Server</text>
-    <text class="smallText" x="1055" y="193" text-anchor="middle">Projekt + Board-Snapshot :4800</text>
+    <text class="smallText" x="1055" y="193" text-anchor="middle">Forgejo-only + Operations :4800</text>
 
     <rect class="node domain" x="1170" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="174" text-anchor="middle">Build-Pool · erster Compute-Adapter</text>
@@ -150,7 +150,7 @@
 
     <rect class="node tool" x="965" y="505" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="529" text-anchor="middle">Forgejo · Adapter lokal</text>
-    <text class="smallText" x="1055" y="548" text-anchor="middle">private Projekt-Git-Repositories</text>
+    <text class="smallText" x="1055" y="548" text-anchor="middle">Projekte + System-/Board-Support</text>
 
     <rect class="node domain" x="1170" y="505" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="529" text-anchor="middle">Device Voice Orchestrator</text>
@@ -217,7 +217,7 @@
 
     <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
     <text class="titleText" x="992" y="880" text-anchor="middle">Forgejo DB + Repository-Volume</text>
-    <text class="smallText" x="992" y="899" text-anchor="middle">DB forgejo · forgejo_data · Dateien + Historie</text>
+    <text class="smallText" x="992" y="899" text-anchor="middle">DB + Daten · Git/LFS · Dateien + Historie</text>
 
     <rect class="node store" x="1125" y="858" width="250" height="52" rx="10"/>
     <text class="titleText" x="1250" y="880" text-anchor="middle">Dasselbe PostgreSQL + pgvector</text>

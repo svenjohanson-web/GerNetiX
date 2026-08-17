@@ -79,11 +79,23 @@ class AdminService {
     if (!this.serviceClients?.projectServerBaseUrl) {
       throw new AdminToolError("project_server_not_configured", "Der Project Server ist nicht konfiguriert.", 503);
     }
-    return this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary", {
-      headers: this.serviceClients.projectAdminReadToken
-        ? { "X-GerNetiX-Project-Admin-Token": this.serviceClients.projectAdminReadToken }
-        : {},
-    });
+    const [summary, events] = await Promise.all([
+      this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary", {
+        headers: this.serviceClients.projectAdminReadToken
+          ? { "X-GerNetiX-Project-Admin-Token": this.serviceClients.projectAdminReadToken }
+          : {},
+      }),
+      this.repository.listSystemEvents ? this.repository.listSystemEvents({ source_service: "forgejo-operations" }) : [],
+    ]);
+    const latest = (eventType) => events.find((event) => event.event_type === eventType) || null;
+    return {
+      ...summary,
+      recovery: {
+        last_backup: latest("forgejo.backup.completed"),
+        last_restore: latest("forgejo.restore.completed"),
+        last_upgrade: latest("forgejo.upgrade.completed"),
+      },
+    };
   }
 
   async syntheticChecks(filter = {}) {

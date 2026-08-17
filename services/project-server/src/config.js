@@ -10,16 +10,22 @@ function createConfig(env = process.env) {
   const sqlitePath = env.PROJECT_SERVER_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH
     ? path.resolve(env.PROJECT_SERVER_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH)
     : path.join(runtimeRoot, "gernetix-projects.sqlite");
+  const persistenceBackend = env.PERSISTENCE_BACKEND || env.PROJECT_SERVER_PERSISTENCE_BACKEND || "sqlite";
+  const postgresRuntime = ["postgres", "postgresql"].includes(persistenceBackend);
+  const repositoryStoreBackend = env.PROJECT_REPOSITORY_STORE || (postgresRuntime ? "forgejo" : "sql");
+  if (postgresRuntime && repositoryStoreBackend !== "forgejo" && env.PROJECT_ALLOW_LEGACY_SQL_SOURCES !== "true") {
+    throw new Error("legacy_sql_project_sources_runtime_forbidden");
+  }
 
   return {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 4800),
     publicBaseUrl: env.PROJECT_SERVER_BASE_URL || "",
-    persistenceBackend: env.PERSISTENCE_BACKEND || env.PROJECT_SERVER_PERSISTENCE_BACKEND || "sqlite",
+    persistenceBackend,
     runtimeRoot,
     sqlitePath,
-    repositoryStoreBackend: env.PROJECT_REPOSITORY_STORE || "sql",
-    requireForgejoForNewProjects: env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS === "true",
+    repositoryStoreBackend,
+    requireForgejoForNewProjects: env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS === "true" || (postgresRuntime && env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS !== "false"),
     adminReadToken: env.PROJECT_ADMIN_READ_TOKEN || "",
     systemRepositories: createSystemRepositoryCatalog(env),
     forgejo: {

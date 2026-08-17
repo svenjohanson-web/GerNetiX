@@ -10,6 +10,9 @@ const restoreScript = path.join(root, "tools", "restore-forgejo-backup.sh");
 const composeFile = path.join(root, "tools", "forgejo-backup-restore-test.compose.yaml");
 const e2eScript = fs.readFileSync(path.join(root, "tools", "forgejo-backup-restore-e2e.sh"), "utf8");
 const runbook = fs.readFileSync(path.join(root, "docs", "forgejo-backup-restore-runbook.md"), "utf8");
+const encryptionScript = fs.readFileSync(path.join(root, "tools", "encrypt-forgejo-backup.sh"), "utf8");
+const upgradeScript = fs.readFileSync(path.join(root, "tools", "verify-forgejo-upgrade.sh"), "utf8");
+const reportingScript = fs.readFileSync(path.join(root, "tools", "report-forgejo-operation.sh"), "utf8");
 
 function createBackupSet(directory) {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -115,4 +118,30 @@ test("synthetic E2E contract proves restored clone, tree, history and safe negat
   assert.match(e2eScript, /docker volume ls --filter/);
   assert.match(e2eScript, /down --volumes --remove-orphans/);
   assert.doesNotMatch(e2eScript, /compose\.vps\.yaml|\.env\.vps|staging|deploy/);
+});
+
+test("external backup encryption validates checksums and never overwrites an existing target", () => {
+  assert.match(encryptionScript, /FORGEJO_BACKUP_AGE_RECIPIENT/);
+  assert.match(encryptionScript, /sha256sum -c SHA256SUMS/);
+  assert.match(encryptionScript, /age --encrypt --recipient/);
+  assert.match(encryptionScript, /Verschluesseltes Ziel existiert bereits/);
+  assert.match(encryptionScript, /chmod 0600/);
+});
+
+test("upgrade verification restores in isolation, pins both versions and runs forgejo doctor", () => {
+  assert.match(upgradeScript, /RESTORE_COMPOSE_PROJECT/);
+  assert.match(upgradeScript, /UPGRADE_FROM_VERSION/);
+  assert.match(upgradeScript, /UPGRADE_TO_VERSION/);
+  assert.match(upgradeScript, /forgejo doctor check --all/);
+  assert.match(upgradeScript, /down --volumes --remove-orphans/);
+  assert.doesNotMatch(upgradeScript, /compose\.vps\.yaml|\.env\.vps/);
+});
+
+test("operations reporting accepts only fixed events and safe ingest targets", () => {
+  assert.match(reportingScript, /forgejo\.backup\.completed/);
+  assert.match(reportingScript, /forgejo\.restore\.completed/);
+  assert.match(reportingScript, /forgejo\.upgrade\.completed/);
+  assert.match(reportingScript, /https:\/\/\*/);
+  assert.match(reportingScript, /http:\/\/127\.0\.0\.1:\*/);
+  assert.match(reportingScript, /X-GerNetiX-System-Event-Token/);
 });

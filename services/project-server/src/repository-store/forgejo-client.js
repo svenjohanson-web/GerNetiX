@@ -20,6 +20,17 @@ class ForgejoClient {
     return this.request("GET", `/api/v1/orgs/${segment(name)}`, { readRetries: 1, notFound: true });
   }
 
+  async listOrganizationRepositories(name) {
+    const repositories = [];
+    for (let page = 1; page <= 100; page += 1) {
+      const batch = await this.request("GET", `/api/v1/orgs/${segment(name)}/repos?limit=50&page=${page}`, { readRetries: 1 });
+      if (!Array.isArray(batch)) throw new ProjectServerError("forgejo_response_invalid", "Forgejo hat eine ungültige Repository-Liste geliefert.", 502);
+      repositories.push(...batch);
+      if (batch.length < 50) return repositories;
+    }
+    throw new ProjectServerError("forgejo_repository_list_too_large", "Die Forgejo-Repository-Liste überschreitet das sichere Seitenlimit.", 503);
+  }
+
   async createOrganization(input = {}) {
     const username = repositoryName(input.username);
     return this.request("POST", "/api/v1/orgs", { body: {

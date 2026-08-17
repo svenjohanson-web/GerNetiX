@@ -170,13 +170,14 @@ Damit kann dasselbe Release auf mehreren Rechnern verwendet werden, ohne lokal e
   PostgreSQL-Datenbank `gernetix_runtime` umgestellt. Die beschlossene
   Forgejo-Zielarchitektur fuegt fuer Projektdateien die getrennte
   Forgejo-Datenbank und das Repository-Volume hinzu.
-- Projektquellen und SQL-Git-Light-Versionen liegen heute noch in
-  `project_sources`, `project_versions.raw_json` und BuildJob-Snapshots. Die
-  beschlossene Forgejo-Migration ist in
+- Aktive Projektquellen, Versionen und Build-Snapshots liegen ausschliesslich
+  in Forgejo beziehungsweise referenzieren einen festen Git-Commit. Der
+  PostgreSQL-Runtime-Modus verweigert einen SQL-Quellbetrieb. Die Tabellen
+  `project_sources` und historische Snapshotfelder bleiben nur fuer explizite
+  Legacy-Imports und bis zur Backup-/Retention-Freigabe erhalten. Die
+  abgeschlossene Runtime-Umstellung ist in
   [Forgejo-Projektrepositories und lesbare Projektdateien](forgejo-project-repository-work-packages.md)
-  in projektweise abnehmbaren Arbeitspaketen beschrieben. Bis zum Cutover
-  bleibt SQL fuehrend; danach bleiben diese Bestaende nur read-only fuer
-  Migration und kontrollierten Rollback erhalten.
+  mit ihren lokalen und betrieblichen Nachweisen beschrieben.
 - `gernetix-services.sqlite` bleibt nur als read-only Altquelle der idempotenten Migrationen erhalten. Kein produktiver Compose-Dienst schreibt weiter hinein.
 - Provisioning, Recovery, Context Manager und Community AI halten kurzlebigen Workflow-State im Prozessspeicher. Dauerhafte Ergebnisse werden ueber Device Management, Community, AI Context oder `build_artifacts` uebernommen.
 - Die lokale JSON-Datei der LLM-Routing-Konfiguration ist nur noch Altimport; produktiv liegt die Konfiguration verschluesselt in PostgreSQL.

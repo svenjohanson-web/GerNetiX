@@ -209,22 +209,22 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | --- | --- | --- | --- |
 | FG-00 | Architektur- und Speichergrenze | dokumentiert | Graph- und Doku-Konsistenz |
 | FG-01 | Projektdatei- und Schemakontrakt | lokal umgesetzt | Schema-/Roundtrip-Tests |
-| FG-02 | Abgesicherter Forgejo-Betrieb | lokal umgesetzt, Betriebstest offen | Compose-/Security-Contract |
+| FG-02 | Abgesicherter Forgejo-Betrieb | lokal einschliesslich Container-Restore nachgewiesen | Compose-/Security-/Restore-Contract |
 | FG-03 | Forgejo- und Git-Adapter | umgesetzt, Staging-Durchstich bestanden | Adapter-Integrationstest |
 | FG-04 | Repository-Provisionierung | fuer neue Projekte und Vorlagen umgesetzt | Projekt-/Template-Contract |
-| FG-05 | Git-basiertes Quellen-API | Staging fuer neue Kundenprojekte bestanden, Altpfad-Stilllegung offen | CRUD-/Konflikt-/Pfadtests plus Staging-Durchstich |
-| FG-06 | Echte Commit-Historie und Restore | Staging fuer neue Kundenprojekte bestanden, Altpfad-Stilllegung offen | Historien-/Restore-Tests plus Staging-Durchstich |
+| FG-05 | Git-basiertes Quellen-API | umgesetzt; PostgreSQL-Produktivmodus ist Forgejo-only | CRUD-/Konflikt-/Pfadtests plus Staging-Durchstich |
+| FG-06 | Echte Commit-Historie und Restore | umgesetzt; PostgreSQL-Produktivmodus ist Forgejo-only | Historien-/Restore-Tests plus Staging-Durchstich |
 | FG-07 | Commitgebundener Build | fuer die ESP32-S3-Touch-Spielesammlung auf Staging nachgewiesen | Build-Reproduzierbarkeit |
-| FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
+| FG-08 | IDE und KI-Patchfluss | lokal umgesetzt | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
 | FG-10 | Projektweiser Cutover und Rollback | fuer den Staging-Kundenbestand entfallen und nachgewiesen | Nullbestand nach freigegebener Demo-Bereinigung |
-| FG-11 | SQL-Quelltabellen stilllegen | offen | Negativtests und Schemaaudit |
-| FG-12 | Board-Support-Repositories | offen | Katalog-/Commit-Vertrag |
-| FG-13 | Backup, Restore und Upgrade | Backupvertrag lokal, Restore offen | isolierter Restore-Test |
-| FG-14 | Monitoring, Quoten und Betrieb | Health lokal, Operations-Sicht offen | Operations-Sicht und Alarme |
+| FG-11 | SQL-Quelltabellen stilllegen | Runtime umgesetzt; Tabellen bis Aufbewahrungsfreigabe erhalten | Negativtests und Schemaaudit |
+| FG-12 | Board-Support-Repositories | lokal umgesetzt | Katalog-/Manifest-/Commit-Vertrag |
+| FG-13 | Backup, Restore und Upgrade | lokaler Backup-/Restore-/Verschluesselungs-/Upgradevertrag umgesetzt; externer RPO/RTO-Nachweis offen | isolierter Restore- und Upgrade-Test |
+| FG-14 | Monitoring, Quoten und Betrieb | lokal umgesetzt | Operations-Sicht und Alarme |
 | FG-15 | Privater Entwickler-Clone-/Push-Zugang | umgesetzt und auf Staging nachgewiesen | Loopback-/Tunnel-, Berechtigungs-, Checkout-, Integritaets- und Push-Dry-run-Vertrag |
 | FG-16 | Repository-Karte im Entwicklungsbereich | lokal umgesetzt | UI-/Autorisierungs-Contract |
-| FG-17 | Schablonen erzeugen eigene Kunden-Repositories | Repository-Materialisierung umgesetzt, Feldwirkung teilweise | Projektions-/Wirkungs-Contract |
+| FG-17 | Schablonen erzeugen eigene Kunden-Repositories | lokal end-to-end umgesetzt | Projektionsmatrix, Mutation und Build-Contract |
 
 ## FG-00 - Architektur- und Speichergrenze
 
@@ -264,10 +264,12 @@ Abnahme:
 
 ## FG-02 - Abgesicherter Forgejo-Betrieb
 
-Lokal umgesetzt sind der gepinnte interne Forgejo-Dienst, eigene Datenbank
-und Rolle, persistentes Volume, Healthcheck, deaktivierte Registrierung,
-Actions, SSH und Push-to-create sowie getrennte Runtime-Secrets. Offen bleibt
-der Nachweis mit einem real gestarteten Container inklusive Neustartpersistenz.
+Umgesetzt und lokal mit einem real gestarteten Container nachgewiesen sind der
+gepinnte interne Forgejo-Dienst, eigene Datenbank und Rolle, persistentes
+Volume, Healthcheck, deaktivierte Registrierung, Actions, SSH und
+Push-to-create sowie getrennte Runtime-Secrets. Der isolierte
+Backup-/Restore-Test weist Repositoryinhalt, Historie und Volume-Persistenz
+ueber den Neustart hinaus nach.
 
 Ziel:
 
@@ -299,8 +301,11 @@ Lokal umgesetzt:
 - echter lokaler Git-Integrationstest fuer Initialcommit, Mehrdatei-Commit,
   No-op und Konflikt.
 
-Noch offen ist der Integrationstest gegen den gepinnten Forgejo-Container aus
-FG-02 einschliesslich Archivierung und Tokenrotation.
+Der Integrationstest gegen den gepinnten Forgejo-Container und der
+Staging-Durchstich weisen Provisionierung, Lesen, Schreiben, Konflikt und
+Archivierung nach. Die Trennung der Provisionierungs- und Runtime-Tokens ist
+als Konfigurations- und Security-Vertrag getestet; eine echte Rotation ist
+ein wiederkehrender Betriebsvorgang und kein offener Implementierungsschritt.
 
 Ziel:
 
@@ -328,8 +333,11 @@ Provisionierungsstatus, Default-Branch und Head-SHA als abfragbare
 Projektmetadaten. Fehler werden ohne Secret als Provisionierungsstatus am
 Projekt festgehalten.
 
-Noch offen sind Template-Repositories, idempotente Wiederaufnahme aller
-Teilfehlersituationen und der Forgejo-Container-End-to-End-Nachweis.
+Systemvorlagen werden an einen exakten freigegebenen Commit gebunden und in
+ein eigenes privates Kundenrepository materialisiert. Teilfehler hinterlassen
+einen sichtbaren Provisionierungsstatus, Quotenfehler entfernen den noch
+nicht provisionierten Projektdatensatz, und der Forgejo-End-to-End-Nachweis
+ist bestanden.
 
 Ziel:
 
@@ -364,9 +372,10 @@ Head-Konfliktfaellen getestet. Der Staging-Durchstich vom 2026-08-09 legte aus
 einer Systemschablone ein neues Sven02-Kundenprojekt mit privatem Repository
 an, schrieb zwei Dateien atomar in einen Commit und wies einen veralteten Head
 ohne Inhaltsverlust ab. Das Testprojekt wurde danach geloescht und sein
-Repository archiviert. Noch offen ist nur die spaetere technische Stilllegung
-des SQL-Altpfads; eine Kunden-Bestandsmigration ist mangels Altbestand nicht
-erforderlich.
+Repository archiviert. Der PostgreSQL-Runtime-Modus ist inzwischen
+Forgejo-only; der SQL-Altpfad bleibt ausschliesslich fuer isolierte lokale
+Speicherung und kontrollierte Legacy-Importe erhalten. Eine
+Kunden-Bestandsmigration ist mangels Altbestand nicht erforderlich.
 
 Ziel:
 
@@ -392,8 +401,10 @@ linearer Commit. Der reale Staging-Nachweis bestand mit vier linearen Commits:
 Initialstand, atomarer Mehrdatei-Commit, Weiterbearbeitung und Restore aus der
 benannten Version. Baum, Dateiinhalt, Diff und Historie wurden am echten
 Forgejo-Repository gelesen; danach wurden Kundenprojekt und aktive Bindung
-kontrolliert entfernt beziehungsweise archiviert. Offen bleibt die spaetere
-technische Stilllegung der SQL-Vollsnapshots.
+kontrolliert entfernt beziehungsweise archiviert. Im PostgreSQL-Runtime-Modus
+werden keine SQL-Vollsnapshots mehr gelesen oder neu geschrieben; die
+Altspalten bleiben bis zur Aufbewahrungsfreigabe nur als Legacy-Bestand
+erhalten.
 
 Ziel:
 
@@ -424,8 +435,9 @@ veraendert das Paket nicht. Forgejo-BuildJobs speichern weder
 `project_snapshot` noch `source_snapshot`. Build-Ergebnis und
 Artefaktmetadaten uebernehmen Repository-, Commit- und Package-Referenz.
 
-Der SQL-Altpfad behaelt seine Snapshots bis zum projektweisen Cutover. Offen
-bleibt die spaetere Stilllegung dieses SQL-Quellenpfads. Der echte
+Der SQL-Altpfad ist auf isolierte lokale Entwicklung und kontrollierte
+Legacy-Importe begrenzt; der PostgreSQL-Runtime-Modus akzeptiert fuer Builds
+nur eine aktive Forgejo-Bindung. Der echte
 Forgejo-/Compiler-Durchstich auf Staging ist fuer die ESP32-S3-Touch-
 Spielesammlung bestanden: Ein kurzlebiges Kundenprojekt erhielt ein eigenes
 privates Repository, das commitgebundene Build-Paket wurde durch PlatformIO
@@ -593,6 +605,17 @@ Abnahme fuer den heutigen Bestand:
 
 ## FG-11 - SQL-Quelltabellen stilllegen
 
+Lokal umgesetzt: Aktive Forgejo-Projekte lesen und schreiben Dateien,
+Historie, Restore, Versionen, Builds und Speicherverbrauch ausschliesslich am
+gebundenen Commit. Der PostgreSQL-Runtime-Modus startet standardmaessig nur
+noch mit Forgejo und verweigert den SQL-Quellmodus, sofern er nicht fuer einen
+bewussten Legacy-Import explizit freigegeben wird. Negativtests versehen alle
+SQL-Quellmethoden mit einer harten Fehlergrenze und decken Erzeugung,
+Konfigurationscommit, freie Mehrdatei-Commits sowie ungebundene Laufzeitzugriffe
+auf Liste, Suche, Lesen, Schreiben, Loeschen, Version, Build und Debug ab. Die
+Tabellen bleiben als nicht fuehrender Legacy-/Importbestand erhalten, bis die
+betriebliche Aufbewahrungsfreigabe eine destruktive Schemaaenderung erlaubt.
+
 Ziel:
 
 - Alle Laufzeitleser von `project_sources` und Quellen in
@@ -609,6 +632,14 @@ Abnahme:
 - Datenbankinventar enthaelt keine fuehrenden Projektquellinhalte mehr.
 
 ## FG-12 - Board-Support-Repositories
+
+Lokal umgesetzt: `gernetix.board-support` Version 1 beschreibt Hardware-ID,
+semantische Releaseversion, erlaubte Dateirollen, Quell-/Zielpfade und
+SHA-256. Der ES3C28P-Katalog verweist auf die systemgefuehrte Quelle; das
+Projekt friert den serverseitig freigegebenen Commit im Board-Snapshot ein.
+Der Build liest exakt diesen Commit, validiert alle Hashes und materialisiert
+Boarddefinition, Partitionstabelle und Header kollisionsgeschuetzt. Ein
+Standard-ESP32-Board bleibt ohne eigene Supportreferenz.
 
 Ziel:
 
@@ -633,8 +664,13 @@ Lokal umgesetzt sind der konsistente Backupvertrag fuer Forgejo-Datenbank und
 isolierter Restore an einem realen Forgejo-Teststand. Der Restore vergleicht
 Dateibaum, Inhalte, Branch, HEAD und Zwei-Commit-Historie und weist falsche
 Pruefsummen sowie unvollstaendige Sicherungssaetze vor der Volume-Anlage ab.
-Upgrade-, externer Verschluesselungs- und RPO/RTO-Betriebsnachweis bleiben
-offen.
+Zusaetzlich validiert der Verschluesselungshelfer den Sicherungssatz vor einer
+Age-X25519-Verschluesselung, ueberschreibt keine Ziele und erzeugt eine externe
+Pruefsumme. Der Upgrade-Helfer restauriert die gesicherte Patchversion in ein
+neues isoliertes Compose-Projekt, startet erst dort die fest gepinnte
+Zielversion und fuehrt `forgejo doctor check --all` aus. Offen bleiben allein
+die Ausfuehrung gegen einen spaeter freigegebenen Zielrelease sowie der
+externe Aufbewahrungs- und produktive RPO/RTO-Betriebsnachweis.
 
 Ziel:
 
@@ -654,6 +690,21 @@ Abnahme:
 - Restore-Nachweis dokumentiert RPO, RTO und verwendete Versionen.
 
 ## FG-14 - Monitoring, Quoten und Betrieb
+
+Lokal umgesetzt: Die token-geschuetzte Operations-Sicht erfasst fuer System-
+und Projekt-Repositories Erreichbarkeit, Latenz, Git-/LFS-Groesse,
+Objektanzahl, Build- und Artefaktbezug. Sie erkennt fehlende Bindungen,
+nicht erreichbare Repositories, fehlgeschlagene Builds und verwaiste
+Forgejo-Projektrepositories lesend und loescht nichts automatisch. Git-, LFS-
+und Artifact-Store-Quoten sind getrennte Policy-Felder; die bisherige
+`max_storage_bytes`-Eingabe bleibt als kompatibler Alias fuer Git bestehen.
+Synthetische Tests decken Ausfall, Head-Konflikt, Quotenueberschreitung und
+Orphan-Erkennung ab, ohne Dateiinhalt, Commitnachricht oder Nutzernamen in
+technische Fehler aufzunehmen.
+Erfolgreiche Backup-, Restore- und Upgrade-Helfer koennen ueber den festen
+token-geschuetzten Operations-Ingest ein minimiertes Ereignis melden; das
+Admin Tool zeigt daraus den jeweils letzten Nachweiszeitpunkt und nur die
+Forgejo-Patchversion.
 
 Ziel:
 
@@ -754,7 +805,7 @@ Abnahme:
 
 ## FG-17 - Schablonen materialisieren Projektdateien
 
-Umgesetzt im ersten Schritt:
+Lokal umgesetzt:
 
 - Der Project Server erzeugt deterministische, sichtbare Dateien unter
   `gernetix/` fuer Projekt, Architektur, Software-Einheiten, Hardware,
@@ -782,10 +833,12 @@ Umgesetzt im ersten Schritt:
   Feldwirkung, No-op, Secret-Redaktion und unmittelbare Projektbaum-Aktualisierung
   ab.
 
-Noch offen sind die vollstaendige Laufzeitwirkung jeder Feldklasse und der
-End-to-End-Nachweis ueber alle Dialoge am echten Repository. Der atomare
-Forgejo-Commit mit `expected_head_sha` ist fuer die vorhandenen Projektionen
-lokal umgesetzt. Ein Build-Drift-Gate rekonstruiert die Konfiguration aus dem
+Die verbindliche Dialog-zu-Datei-Matrix steht in
+`docs/project-configuration-projection-matrix.md`. Mutationstests decken jede
+Feldklasse ab. Der End-to-End-Test schreibt Board, Basissoftware, Peripherie,
+Webserver und Kommunikation nacheinander mit Head-CAS in das aktive
+Repository, prueft No-op ohne Leercommit und materialisiert anschliessend den
+gepinnten Build. Ein Build-Drift-Gate rekonstruiert die Konfiguration aus dem
 gebundenen Commit und bricht mit `build_configuration_drift` ab, wenn
 eingecheckte erzeugte Konfigurations-, Header- oder PlatformIO-Dateien davon
 abweichen.

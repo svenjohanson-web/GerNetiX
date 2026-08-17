@@ -71,6 +71,30 @@ test("derives the board document and generated header from the same software-uni
   assert.match(boardHeader, /GERNETIX_BOARD_CONFIGURATION_NAME "ESP32 Kamera"/);
 });
 
+test("maps every effective dialog field class to a deterministic project file", () => {
+  const cases = [
+    ["architecture", "gernetix/configuration/architecture-dialog.json", (project) => { project.view_manifest.architecture_dialog.goal = "Neue Architektur"; }],
+    ["architecture diagram", "gernetix/architecture/project.puml", (project) => { project.view_manifest.views[0].payload.source += "\ncomponent API"; }],
+    ["board", "gernetix/hardware/boards/iot_device_1.json", (project) => { project.software_units[0].build_config.board_configuration.board_features.display.pins.cs = 18; project.view_manifest.views[1].payload.components[0].board_configuration.board_features.display.pins.cs = 18; }],
+    ["board header", "Komponenten/IoT-Device 1/include/gernetix_board_configuration.h", (project) => { project.software_units[0].build_config.board_configuration.name = "Neue Kamera"; project.view_manifest.views[1].payload.components[0].board_configuration.name = "Neue Kamera"; }],
+    ["peripheral", "gernetix/configuration/board-peripherals/iot_device_1.json", (project) => { project.software_units[0].build_config.component_hardware_features.iot_device_1.enabled.push("spi"); }],
+    ["basissoftware", "gernetix/configuration/basissoftware/camera.json", (project) => { project.software_units[0].build_config.basissoftware_configuration.mqtt.enabled = true; }],
+    ["software and web", "gernetix/configuration/software-features/camera.json", (project) => { project.software_units[0].build_config.component_features.webserver.title = "Neuer Webserver"; }],
+    ["communication", "gernetix/configuration/communication.json", (project) => { project.view_manifest.communication_setup.access_point.ssid = "Neue-SSID"; }],
+    ["PWA", "gernetix/configuration/pwa-dashboard.json", (project) => { project.view_manifest.pwa_dashboard.title = "Neue PWA"; }],
+    ["events", "gernetix/configuration/events.json", (project) => { project.view_manifest.event_configuration.worker.event_name = "new_tick"; }],
+    ["games", "gernetix/configuration/game.json", (project) => { project.view_manifest.game_configuration.selected_game_ids.push("asteroids"); }],
+    ["home automation", "gernetix/configuration/home-automation.json", (project) => { project.view_manifest.home_automation_configuration.coordinator = "camera"; }],
+  ];
+  const before = new Map(projectConfigurationSources(representativeProject()).map((source) => [source.path, source.content]));
+  for (const [fieldClass, expectedPath, mutate] of cases) {
+    const changed = representativeProject();
+    mutate(changed);
+    const after = new Map(projectConfigurationSources(changed).map((source) => [source.path, source.content]));
+    assert.notEqual(after.get(expectedPath), before.get(expectedPath), `${fieldClass} muss ${expectedPath} verändern`);
+  }
+});
+
 function representativeProject() {
   const boardConfiguration = {
     schema_version: 1,

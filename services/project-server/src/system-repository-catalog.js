@@ -10,6 +10,18 @@ const SYSTEM_REPOSITORY_DEFINITIONS = Object.freeze([
   Object.freeze({ source_id: "gernetix-product-game-collection-esp32", title: "Spielesammlung ESP32-S3 Touch", kind: "product", organization: "gernetix-products", repository_name: "spielesammlung-esp32-s3-touch", commit_environment: "FORGEJO_ESP32_GAME_COLLECTION_COMMIT", local_directory: "spielesammlung-esp32-s3-touch" }),
   Object.freeze({ source_id: "gernetix-product-camera-touch-display", title: "ESP32-Kamera auf Touchdisplay", kind: "product", organization: "gernetix-products", repository_name: "kamera-touchdisplay", commit_environment: "FORGEJO_CAMERA_TOUCH_DISPLAY_COMMIT", local_directory: "kamera-touchdisplay" }),
   Object.freeze({ source_id: "gernetix-product-radar-room-presence", title: "Radar-Raumpräsenz", kind: "product", organization: "gernetix-products", repository_name: "radar-raumpraesenz", commit_environment: "FORGEJO_RADAR_ROOM_PRESENCE_COMMIT", local_directory: "radar-raumpraesenz" }),
+  Object.freeze({
+    source_id: "gernetix-board-support-esp32-s3-es3c28p",
+    title: "Board-Support ESP32-S3 ES3C28P",
+    kind: "board_support",
+    organization: "gernetix-platform",
+    repository_name: "board-support-esp32-s3-es3c28p",
+    commit_environment: "FORGEJO_ESP32_S3_ES3C28P_BOARD_SUPPORT_COMMIT",
+    local_directory: "board-support-esp32-s3-es3c28p",
+    manifest_path: "gernetix/board-support.json",
+    hardware_item_id: "hardware.processor_board.esp32_s3_es3c28p",
+    release_version: "1.0.0",
+  }),
 ]);
 
 function createSystemRepositoryCatalog(env = process.env) {
@@ -40,6 +52,7 @@ function createSystemRepositoryCatalog(env = process.env) {
       target_root: "Komponenten/IoT-Device 1",
       excluded_paths: ["gernetix/system-repository.json"],
     }),
+    systemRepositoryDefinition(SYSTEM_REPOSITORY_DEFINITIONS[8], env),
   ];
   const configured = parseConfiguredRepositories(env.PROJECT_SYSTEM_REPOSITORIES_JSON);
   const byId = new Map(defaults.map((item) => [item.source_id, item]));
@@ -48,15 +61,20 @@ function createSystemRepositoryCatalog(env = process.env) {
 }
 
 function systemRepositoryDefinition(definition, env, materialization = null) {
-  return systemRepository(
-    definition.source_id,
-    definition.title,
-    definition.kind,
-    definition.organization,
-    definition.repository_name,
-    env[definition.commit_environment],
-    materialization,
-  );
+  return {
+    ...systemRepository(
+      definition.source_id,
+      definition.title,
+      definition.kind,
+      definition.organization,
+      definition.repository_name,
+      env[definition.commit_environment],
+      materialization,
+    ),
+    ...(definition.manifest_path ? { manifest_path: definition.manifest_path } : {}),
+    ...(definition.hardware_item_id ? { hardware_item_id: definition.hardware_item_id } : {}),
+    ...(definition.release_version ? { release_version: definition.release_version } : {}),
+  };
 }
 
 function parseConfiguredRepositories(value) {
@@ -92,7 +110,7 @@ function normalizeSystemRepository(input = {}) {
   const commitSha = String(input.commit_sha || "").trim().toLowerCase();
   if (commitSha && !SHA_PATTERN.test(commitSha)) throw new Error(`project_system_repository_commit_invalid:${sourceId}`);
   const kind = String(input.kind || "product").trim().toLowerCase();
-  if (!['basissoftware', 'product'].includes(kind)) throw new Error(`project_system_repository_kind_invalid:${sourceId}`);
+  if (!["basissoftware", "product", "board_support"].includes(kind)) throw new Error(`project_system_repository_kind_invalid:${sourceId}`);
   return {
     source_id: sourceId,
     title: String(input.title || sourceId).trim().slice(0, 120),
@@ -104,6 +122,11 @@ function normalizeSystemRepository(input = {}) {
     commit_sha: commitSha,
     protected: true,
     ...(kind === "product" && input.materialization ? { materialization: normalizeMaterialization(input.materialization, sourceId) } : {}),
+    ...(kind === "board_support" ? {
+      manifest_path: safeRelativePath(input.manifest_path || "gernetix/board-support.json", "manifest_path", sourceId),
+      hardware_item_id: String(input.hardware_item_id || "").trim(),
+      release_version: String(input.release_version || "").trim(),
+    } : {}),
   };
 }
 

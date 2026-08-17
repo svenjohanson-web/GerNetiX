@@ -21,6 +21,7 @@ tools/yaml-graph-sqlite/out/model-graph.sqlite
 ```
 
 Beim Import werden die generierten Graph-Tabellen aus Legacy-YAML neu aufgebaut. Die Authoring-Tabellen `graph_authored_artifacts` und `graph_authored_relationships` bleiben erhalten und werden wieder in den kanonischen Graphen gemischt.
+Existiert eine Artefakt-ID sowohl im Legacy-YAML als auch in `graph_authored_artifacts`, ersetzt der authored SQLite-Eintrag den Legacy-Bootstrap. Nur Mehrfachvorkommen innerhalb derselben aktiven Quellenebene gelten als Duplikat.
 Das ist der Bootstrap- und Vergleichspfad von YAML nach SQLite, nicht der normale Pflegeweg.
 
 ## Graph-first Pflege

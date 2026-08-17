@@ -554,9 +554,13 @@ function importGraph(dbPath = DEFAULT_DB_PATH) {
   const extracted = extractArtifacts(files);
   const db = openDatabase(dbPath);
   const authoredArtifacts = readAuthoredArtifacts(db);
-  const artifacts = [...extracted.artifacts, ...authoredArtifacts];
+  const authoredArtifactIds = new Set(authoredArtifacts.map((artifact) => artifact.id));
+  const artifacts = [
+    ...extracted.artifacts.filter((artifact) => !authoredArtifactIds.has(artifact.id)),
+    ...authoredArtifacts
+  ];
   const occurrences = [
-    ...extracted.occurrences,
+    ...extracted.occurrences.filter((occurrence) => !authoredArtifactIds.has(occurrence.id)),
     ...authoredArtifacts.map((artifact) => ({
       id: artifact.id,
       sourceFile: artifact.sourceFile,

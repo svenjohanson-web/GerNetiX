@@ -139,4 +139,5 @@ printf '%s\n' "$restored_version" | grep -Eq "(^|[^0-9])${expected_version}([^0-
 }
 
 trap - EXIT HUP INT TERM
+"$(dirname "$0")/report-forgejo-operation.sh" forgejo.restore.completed "$expected_version"
 printf 'Isolierter Forgejo-Restore bereit: %s (Version %s)\n' "$compose_project" "$expected_version"

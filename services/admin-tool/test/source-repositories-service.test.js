@@ -7,7 +7,7 @@ const { AdminService } = require("../src");
 test("forwards the repository read token only from Admin Tool to Project Server", async () => {
   let request;
   const service = new AdminService({
-    repository: {}, accessPolicy: {}, llmConfigStore: {},
+    repository: { listSystemEvents: async () => [{ event_type: "forgejo.backup.completed", occurred_at: "2026-08-17T10:00:00.000Z" }] }, accessPolicy: {}, llmConfigStore: {},
     serviceClients: { projectServerBaseUrl: "http://project.test", projectAdminReadToken: "read-token" },
     fetchImpl: async (url, options) => {
       request = { url, options };
@@ -18,4 +18,6 @@ test("forwards the repository read token only from Admin Tool to Project Server"
   assert.equal(result.summary.builds, 4);
   assert.equal(request.url, "http://project.test/api/internal/repositories/summary");
   assert.equal(request.options.headers["X-GerNetiX-Project-Admin-Token"], "read-token");
+  assert.equal(result.recovery.last_backup.event_type, "forgejo.backup.completed");
+  assert.equal(result.recovery.last_restore, null);
 });

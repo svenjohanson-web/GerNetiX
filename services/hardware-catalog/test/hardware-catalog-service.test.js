@@ -31,6 +31,8 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.ok(touchBoard.capability_ids.includes("capability.display_output"));
   assert.ok(touchBoard.capability_ids.includes("capability.touchscreen_input"));
   const es3c28p = await service.getHardwareItem("hardware.processor_board.esp32_s3_es3c28p");
+  assert.equal(es3c28p.board_support_source_id, "gernetix-board-support-esp32-s3-es3c28p");
+  assert.equal(es3c28p.platformio_build.board_support_source_id, "gernetix-board-support-esp32-s3-es3c28p");
   const cameraBoard = await service.getHardwareItem("hardware.processor_board.ai_thinker_esp32_cam");
   const waveshareCamera = await service.getHardwareItem("hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   const waveshareAudio = await service.getHardwareItem("hardware.processor_board.waveshare_esp32_s3_audio_board");

@@ -245,10 +245,7 @@ class PostgresProjectRepository {
         COALESCE(p.raw_json->'device_ids', '[]'::jsonb) AS device_ids,
         p.raw_json->>'created_at' AS created_at,
         p.raw_json->>'updated_at' AS updated_at,
-        EXISTS (
-          SELECT 1 FROM project_sources source
-          WHERE source.project_id=p.project_id AND source.path='project-app/manifest.json'
-        ) AS has_project_app
+        false AS has_project_app
       FROM project_projects p
       ${where}
       ORDER BY p.updated_at DESC
