@@ -4,6 +4,10 @@ import {
   ELAB_DS_002_PWM_START_CODE,
   createThroughputRuntime,
 } from "./gpio-led-throughput-runtime.js";
+import {
+  LED_CURRENT_CONTROL_PROGRAM_START_CODE,
+  runLedCurrentControlProgram,
+} from "../virtual-mcu/led-current-control-program-runtime.mjs";
 
 const OSCILLOSCOPE_INSTRUMENT_ID = "scope-1";
 const OSCILLOSCOPE_CHANNEL_ID = "ch1";
@@ -94,10 +98,18 @@ export function createGpioLedThroughputLab() {
     source: ELAB_DS_001_START_CODE,
     templateSource: ELAB_DS_001_START_CODE,
     selectedLead: null,
+    currentControlMode: false,
   };
 
   function loadTemplate(template) {
     const sourceFile = typeof template?.startCode === "string" ? template.startCode : ELAB_DS_001_START_CODE;
+    state.currentControlMode = template?.entry?.presetId === "current-control";
+    if (state.currentControlMode) {
+      state.source = sourceFile;
+      state.templateSource = sourceFile;
+      state.selectedLead = null;
+      return { ok: true, sourceFile };
+    }
     runtime.dispatch({ type: COMMAND_TYPES.ResetSimulation });
     const response = runtime.dispatch({ type: COMMAND_TYPES.UpdateSourceFile, sourceFile });
     if (response.ok) {
@@ -127,7 +139,142 @@ export function createGpioLedThroughputLab() {
     return runtime.dispatch({ type: COMMAND_TYPES.UpdateSourceFile, sourceFile: state.source });
   }
 
+  function mountCurrentControl(target) {
+    target.innerHTML = `<article class="lab-card elab-current-control"><h2>Durchstich · LED-Stromregelung</h2><p class="elab-throughput-reality">Kontrolliertes Lernmodell: Das Mikrocontrollerprogramm liest den Shunt über ADC A0 und verändert PWM an GPIO 5.</p><div class="elab-throughput-layout"><section class="elab-throughput-circuit"><div class="elab-throughput-circuit-head"><strong>Virtueller Aufbau mit Stromrücklesung</strong><span class="elab-throughput-small">GPIO 5 → LED → 10-Ω-Shunt → GND; A0 misst die Shunt-Spannung.</span></div><svg class="elab-throughput-schematic elab-current-control-schematic" viewBox="0 0 760 310" role="img" aria-label="LED-Schaltung mit PWM-Ausgang, Shunt und ADC-Stromrücklesung"><rect x="45" y="75" width="155" height="145" rx="12" fill="none" stroke="#5f7084" stroke-width="3"/><text x="68" y="112" fill="#9fb3c8" font-size="14">virtueller MCU</text><text x="68" y="143" fill="#f2f7ff" font-size="12">GPIO 5 · PWM</text><text x="68" y="188" fill="#f2f7ff" font-size="12">A0 · ADC</text><line class="schematic-wire" x1="200" y1="135" x2="310" y2="135"/><path class="schematic-component schematic-resistor" d="M310 113 L310 157 L430 157 M310 113 L430 113" fill="none" stroke-width="3"/><path class="schematic-led" d="M430 115 L472 135 L430 157 Z M478 120 V150" fill="none" stroke-width="3"/><line class="schematic-wire" x1="478" y1="135" x2="555" y2="135"/><rect x="535" y="135" width="42" height="75" fill="none" stroke="#ffb35a" stroke-width="3"/><text x="527" y="230" fill="#9fb3c8" font-size="12">Shunt 10 Ω</text><line class="schematic-wire" x1="556" y1="210" x2="556" y2="265"/><line class="schematic-wire" x1="130" y1="265" x2="556" y2="265"/><line class="schematic-wire" x1="130" y1="220" x2="130" y2="265"/><line class="schematic-wire" x1="535" y1="175" x2="260" y2="175"/><line class="schematic-wire" x1="260" y1="175" x2="200" y2="185"/><text x="275" y="197" fill="#75ec5f" font-size="12">Shunt-Spannung → ADC</text><text x="530" y="285" fill="#9fb3c8" font-size="12">GND</text></svg><div class="elab-throughput-reality-bridge"><strong>Vom virtuellen zum echten Labor</strong><span>Im Lernmodell sind ADC, Shunt, LED-Kennlinie und Temperatur idealisiert.</span><span>Eine reale Leistungs-LED benötigt einen geeigneten Treiber, thermische Auslegung und häufig eine schnellere analoge Stromregelung.</span><span>Der Aufbau ist kein Ersatz für einen realen Konstantstromtreiber.</span></div></section><section class="elab-throughput-control"><section class="elab-throughput-program"><label for="elab-current-control-source">Quellcode</label><textarea id="elab-current-control-source" spellcheck="false"></textarea><div class="elab-throughput-actions"><button type="button" data-control-action="start">Regelung simulieren</button><button type="button" data-control-action="reset">Zurücksetzen</button><button type="button" data-control-action="fault-target">Fehler: Sollwert zu hoch</button><button type="button" data-control-action="fault-gain">Fehler: Regler instabil</button></div><p class="elab-throughput-small">Repariere den Fehler ausschließlich im Quellcode und starte die Messung erneut.</p></section><section class="elab-throughput-measurements"><h3>Messwerte</h3><div class="elab-throughput-kpi">${createKpi("PWM-Spannung", "control-pwm-voltage")}${createKpi("PWM-Tastgrad", "control-pwm-duty")}${createKpi("LED-Strom", "control-led-current")}${createKpi("Shunt-Spannung", "control-shunt-voltage")}${createKpi("ADC-Wert", "control-adc-code")}${createKpi("Programm-Sollwert", "control-target")}</div><p class="elab-throughput-warnings" data-control-warnings>Simulation noch nicht gestartet.</p><p class="elab-throughput-result" data-control-result></p></section><section class="elab-throughput-scope" aria-label="Stromrücklesungs-Messspur"><h3>Messspur · Stromrücklesung</h3><div class="elab-throughput-scope-frame"><canvas data-control-canvas width="760" height="260" aria-label="Verlauf von LED-Strom und Sollstrom"></canvas></div><div class="elab-current-control-trace"><table><thead><tr><th>Schritt</th><th>Zeit</th><th>PWM</th><th>ADC</th><th>Strom</th></tr></thead><tbody data-control-trace-body></tbody></table></div></section></section></div></article>`;
+
+    const sourceArea = target.querySelector("#elab-current-control-source");
+    const resultOutput = target.querySelector("[data-control-result]");
+    const warningsOutput = target.querySelector("[data-control-warnings]");
+    const traceBody = target.querySelector("[data-control-trace-body]");
+    const canvas = target.querySelector("[data-control-canvas]");
+    const outputs = {
+      pwmVoltage: target.querySelector('[data-output="control-pwm-voltage"]'),
+      duty: target.querySelector('[data-output="control-pwm-duty"]'),
+      current: target.querySelector('[data-output="control-led-current"]'),
+      shunt: target.querySelector('[data-output="control-shunt-voltage"]'),
+      adc: target.querySelector('[data-output="control-adc-code"]'),
+      target: target.querySelector('[data-output="control-target"]'),
+    };
+    sourceArea.value = state.source;
+
+    const drawTrace = (result) => {
+      const trace = result?.trace || [];
+      const width = canvas.clientWidth || canvas.width || 760;
+      const height = canvas.clientHeight || canvas.height || 260;
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(width * ratio));
+      canvas.height = Math.max(1, Math.floor(height * ratio));
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.fillStyle = "#050a10";
+      ctx.fillRect(0, 0, width, height);
+      const left = 45;
+      const top = 18;
+      const right = width - 18;
+      const bottom = height - 28;
+      ctx.strokeStyle = "#263748";
+      for (let line = 0; line <= 5; line += 1) {
+        const y = top + ((bottom - top) * line) / 5;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+      }
+      if (!trace.length) return;
+      const maxCurrentA = Math.max(0.001, result.targetCurrentA * 1.5, ...trace.map((entry) => entry.measuredCurrentA));
+      const toX = (index) => left + ((right - left) * index) / Math.max(1, trace.length - 1);
+      const toY = (currentA) => bottom - ((bottom - top) * currentA) / maxCurrentA;
+      ctx.strokeStyle = "#75ec5f";
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(left, toY(result.targetCurrentA));
+      ctx.lineTo(right, toY(result.targetCurrentA));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "#ffb35a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      trace.forEach((entry, index) => {
+        const x = toX(index);
+        const y = toY(entry.measuredCurrentA);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.fillStyle = "#a8b7c5";
+      ctx.font = "12px ui-monospace, SFMono-Regular, Consolas, monospace";
+      ctx.fillText("orange: ADC-Strom · grün: Sollstrom", left, height - 8);
+    };
+
+    const renderResult = (response) => {
+      traceBody.replaceChildren();
+      if (!response.ok) {
+        const first = response.errors?.[0];
+        setText(resultOutput, first ? `${first.message} (Zeile ${first.line}, Spalte ${first.column})` : "Simulation fehlgeschlagen.");
+        setText(warningsOutput, "Quellcode prüfen.");
+        drawTrace(null);
+        return;
+      }
+      const result = response.result;
+      const last = result.trace[result.trace.length - 1];
+      setText(outputs.pwmVoltage, "0,00–3,30 V");
+      setText(outputs.duty, toDisplayDuty(result.finalDutyPercent));
+      setText(outputs.current, toDisplayCurrent(result.finalMeasuredCurrentA));
+      setText(outputs.shunt, `${formatNumber(last.shuntVoltageV * 1000, 3)} mV`);
+      setText(outputs.adc, `${last.adcCode} / 4095`);
+      setText(outputs.target, toDisplayCurrent(result.targetCurrentA));
+      setText(resultOutput, `Virtuelle Laufzeit ${formatNumber(result.simulationDurationUs / 1000, 1)} ms · ${result.controlSteps} Programmschritte.`);
+      setText(warningsOutput, response.warnings.length
+        ? response.warnings.map((entry) => entry.message).join(" ")
+        : "Sollstrom innerhalb der idealisierten ADC-Auflösung erreicht.");
+      for (const entry of result.trace.slice(-8)) {
+        const row = document.createElement("tr");
+        for (const value of [
+          String(entry.step),
+          `${formatNumber(entry.virtualTimeUs / 1000, 1)} ms`,
+          toDisplayDuty(entry.dutyPercent),
+          String(entry.adcCode),
+          toDisplayCurrent(entry.measuredCurrentA),
+        ]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.append(cell);
+        }
+        traceBody.append(row);
+      }
+      drawTrace(result);
+    };
+
+    const setSource = (source) => {
+      state.source = source;
+      sourceArea.value = source;
+      setText(resultOutput, "Quellcode geändert – Simulation erneut starten.");
+    };
+
+    sourceArea.addEventListener("input", () => {
+      state.source = sourceArea.value;
+    });
+    target.querySelector('[data-control-action="start"]').addEventListener("click", () => {
+      renderResult(runLedCurrentControlProgram({ sourceFile: sourceArea.value }));
+    });
+    target.querySelector('[data-control-action="reset"]').addEventListener("click", () => {
+      setSource(state.templateSource);
+      renderResult(runLedCurrentControlProgram({ sourceFile: state.templateSource }));
+    });
+    target.querySelector('[data-control-action="fault-target"]').addEventListener("click", () => {
+      setSource(LED_CURRENT_CONTROL_PROGRAM_START_CODE.replace("targetCurrentA = 0.002", "targetCurrentA = 0.02"));
+    });
+    target.querySelector('[data-control-action="fault-gain"]').addEventListener("click", () => {
+      setSource(LED_CURRENT_CONTROL_PROGRAM_START_CODE.replace("proportionalGain = 10000.0", "proportionalGain = 100000.0"));
+    });
+    renderResult(runLedCurrentControlProgram({ sourceFile: state.source }));
+  }
+
   function mount(target) {
+    if (state.currentControlMode) {
+      mountCurrentControl(target);
+      return;
+    }
     target.innerHTML = `<article class="lab-card"><h2>Durchstich · GPIO 5 → LED</h2><p class="elab-throughput-reality">Generisches Lernmodell – keine ESP32-Emulation. LED und GPIO-Solver sind idealisiert.</p><div class="elab-throughput-layout"><section class="elab-throughput-circuit"><div class="elab-throughput-circuit-head"><strong>Virtueller Aufbau</strong><span class="elab-throughput-small">Tastkopfspitze an <strong>GPIO 5</strong>, Masseklemme an <strong>GND</strong> anschließen.</span></div><svg class="elab-throughput-schematic" viewBox="0 0 760 280" role="img" aria-label="Schaltung mit GPIO 5, GPIO-Ausgang und LED"><rect x="70" y="120" width="120" height="80" fill="none" stroke="#5f7084" stroke-width="3" rx="11" /><text x="84" y="164" fill="#9fb3c8" font-size="13">GPIO-MCU</text><line class="schematic-wire" x1="190" y1="160" x2="300" y2="160" /><path class="schematic-component schematic-resistor" d="M300 138 L300 182 L460 182 M300 138 L460 138" fill="none" stroke-width="3" /><path class="schematic-led" d="M460 140 L500 160 L460 182 Z M504 148 V172" fill="none" stroke-width="3" /><line class="schematic-wire" x1="500" y1="160" x2="585" y2="160" /><circle class="elab-throughput-measurement-point" data-measurement-point="gnd" cx="585" cy="218" r="9"></circle><line class="schematic-wire" x1="585" y1="160" x2="585" y2="218" /><line class="schematic-wire" x1="70" y1="205" x2="585" y2="205" /><line class="schematic-wire" x1="70" y1="205" x2="70" y2="250" /><line class="schematic-wire" x1="585" y1="205" x2="585" y2="250" /><circle class="elab-throughput-measurement-point" data-measurement-point="gpio-5" cx="190" cy="160" r="9"></circle><text x="180" y="190" fill="#9fb3c8" font-size="12">GPIO 5</text><text x="560" y="245" fill="#9fb3c8" font-size="12">GND</text><rect x="530" y="132" width="110" height="56" rx="6" fill="#111927" stroke="#425469"/><text x="542" y="163" fill="#f2f7ff" font-size="11">LED</text><text x="70" y="252" fill="#a8b7c5" font-size="11">Massepunkt</text><text x="185" y="150" fill="#a8b7c5" font-size="11">GPIO 5</text></svg><div class="elab-throughput-probe-strip"><div><button type="button" data-probe-action="pick-tip">Tastkopfspitze auswählen</button><button type="button" data-probe-action="pick-reference">Masseklemme auswählen</button></div><div class="elab-throughput-probe-strip-state"><span data-connection-status="tip">Tastkopf: nicht verbunden</span><span data-connection-status="reference">Masse: nicht verbunden</span></div><div class="elab-throughput-probe-strip-actions"><button type="button" data-action="detach-tip">Tastkopf lösen</button><button type="button" data-action="detach-reference">Masse lösen</button></div><p class="elab-throughput-small" data-probe-info>Tippe auf einen Messpunkt, nachdem du die gewünschte Leitung gewählt hast.</p><div class="elab-throughput-lead-lines" data-lead-lines><span class="elab-throughput-lead-line elab-throughput-lead-line-tip"></span><span class="elab-throughput-lead-line elab-throughput-lead-line-reference"></span></div></div><div class="elab-throughput-reality-bridge"><strong>Vom virtuellen zum echten Labor</strong><span>Modell: 3,3 V · 330 Ω · LED U<sub>F</sub> 2,0 V.</span><span>Real: Firmware flashen, gemeinsame Masse verbinden, Tastkopfspitze an GPIO 5 und Masseklemme an GND.</span><span>Das Lernoszilloskop ist idealisiert; am echten Aufbau zuerst Massebezug und zulässige Spannungen prüfen.</span></div></section><section class="elab-throughput-control"><section class="elab-throughput-program"><label for="elab-throughput-source">Quellcode</label><textarea id="elab-throughput-source" spellcheck="false">${state.source}</textarea><div class="elab-throughput-actions"><button type="button" data-action="start">Simulation starten</button><button type="button" data-action="reset">Zurücksetzen</button><button type="button" data-action="load-example">PWM-Beispiel laden</button></div></section><section class="elab-throughput-measurements"><h3>Werte</h3><div class="elab-throughput-kpi">${createKpi("GPIO-Level", "gpio-level")}${createKpi("GPIO-Spannung", "gpio-voltage")}${createKpi("LED-Pulsstrom", "led-current")}${createKpi("LED-Mittelstrom", "led-mean-current")}${createKpi("LED-Zustand", "led-state")}${createKpi("PWM-Frequenz", "pwm-frequency")}${createKpi("PWM-Periode", "pwm-period")}${createKpi("Tastgrad", "pwm-duty")}${createKpi("HIGH-Dauer", "pwm-high")}${createKpi("LOW-Dauer", "pwm-low")}</div><p class="elab-throughput-warnings" data-warnings></p><p class="elab-throughput-result" data-result></p><p class="elab-throughput-disclaimer">Formel: I_LED = max(0, (U_GPIO - U_F_LED) / R). PWM entsteht im virtuellen Mikrocontroller und wird als GPIO-Trace gemessen.</p></section><section class="elab-throughput-scope" aria-label="CH1-Oszilloskop"><h3>Kompaktes Oszilloskop · CH1</h3><p class="elab-throughput-small">Anschlüsse CH1: Spitze und Bezug</p><div class="elab-throughput-scope-settings"><span>Kupplung: DC</span><span>Spannungsteilung: 1×</span><span>V/div: 1 V</span><span>s/div: 500 µs</span><span>Trigger: 1,65 V · steigend</span></div><div class="elab-throughput-scope-frame"><canvas data-scope-canvas width="760" height="260" aria-label="Oszilloskopbild"></canvas><div class="elab-throughput-scope-readout">Min.: <output data-scope-min>—</output> · Max.: <output data-scope-max>—</output> · Vpp: <output data-scope-pp>—</output> · f: <output data-scope-frequency>—</output> · T: <output data-scope-period>—</output> · Duty: <output data-scope-duty>—</output> · Trigger: <output data-scope-trigger>—</output></div></div><p class="elab-throughput-result" data-scope-status></p></section></section></div></article>`;
 
     const sourceArea = target.querySelector("#elab-throughput-source");

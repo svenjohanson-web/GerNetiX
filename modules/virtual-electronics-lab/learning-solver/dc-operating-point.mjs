@@ -401,7 +401,7 @@ function rowScale(row, startColumn = 0) {
   return scale;
 }
 
-function solveLinearSystem(originalMatrix, originalRhs) {
+export function solveDeterministicLinearSystem(originalMatrix, originalRhs) {
   const size = originalMatrix.length;
   const matrix = originalMatrix.map((row) => [...row]);
   const rhs = [...originalRhs];
@@ -632,7 +632,7 @@ export function solveDcOperatingPoint(circuit) {
   }
 
   const system = buildMnaSystem(normalizedCircuit);
-  const solved = solveLinearSystem(system.matrix, system.rhs);
+  const solved = solveDeterministicLinearSystem(system.matrix, system.rhs);
   if (!solved.ok) {
     return {
       ok: false,

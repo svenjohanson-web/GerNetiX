@@ -221,8 +221,8 @@ function validateInstruments(instruments) {
   return { ok: true, value: Object.freeze(normalized) };
 }
 
-function validateMeasurementPoints(points) {
-  if (!Array.isArray(points) || points.length === 0 || points.length > 24) return { ok: false };
+function validateMeasurementPoints(points, { allowEmpty = false } = {}) {
+  if (!Array.isArray(points) || (!allowEmpty && points.length === 0) || points.length > 24) return { ok: false };
   const normalized = [];
   const labelsById = new Map();
 
@@ -249,7 +249,7 @@ function validateMeasurementPoints(points) {
     }
   }
 
-  if (!normalized.length || normalized.length > 12) return { ok: false };
+  if ((!allowEmpty && !normalized.length) || normalized.length > 12) return { ok: false };
   normalized.sort((a, b) => compareText(a.id, b.id));
   return { ok: true, value: Object.freeze(normalized.map((point) => deepFreeze(point))) };
 }
@@ -345,7 +345,9 @@ export function validateLabTemplate(template) {
   const instruments = validateInstruments(template.recommendedInstruments);
   if (!instruments.ok) return fail(ERRORS.INVALID_INSTRUMENTS);
 
-  const measurementPoints = validateMeasurementPoints(template.recommendedMeasurementPoints);
+  const measurementPoints = validateMeasurementPoints(template.recommendedMeasurementPoints, {
+    allowEmpty: area === "free-simulation" && entry.value.presetId === "empty",
+  });
   if (!measurementPoints.ok) return fail(ERRORS.INVALID_MEASUREMENT_POINTS);
 
   const startCode = normalizeCode(template.startCode);

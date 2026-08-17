@@ -10,9 +10,10 @@ import { createLcrMeterLab } from "./labs/lcr-meter.js";
 import { createGpioLedThroughputLab } from "./labs/gpio-led-throughput.js";
 import { createPt1000ThroughputLab } from "./labs/pt1000-adc-throughput.js?v=20260816-pt1000-ui-1";
 import { createButtonDigitalInputThroughputLab } from "./labs/button-digital-input-throughput.js?v=20260817-debounce-ai-1";
+import { createFreeCircuitSimulationLab } from "./labs/free-circuit-simulation.js?v=20260817-free-empty-1";
 import { createFixtureTroubleshootingAssistantClient } from "./ai/troubleshooting-assistant-fixture.mjs?v=20260817-debounce-ai-1";
 import { createLiveTroubleshootingAssistantClient } from "./ai/troubleshooting-assistant-client.mjs?v=20260817-debounce-ai-1";
-import { getLabTemplate, listLabTemplates } from "./lab-template-catalog.mjs?v=20260817-template-picker-1";
+import { getLabTemplate, listLabTemplates } from "./lab-template-catalog.mjs?v=20260817-free-empty-1";
 
 const troubleshootingAssistantClient = window.location.pathname.startsWith("/technik-labs")
   ? createLiveTroubleshootingAssistantClient()
@@ -22,6 +23,7 @@ const labs = [
   createGpioLedThroughputLab(),
   createPt1000ThroughputLab(),
   createButtonDigitalInputThroughputLab({ assistantClient: troubleshootingAssistantClient }),
+  createFreeCircuitSimulationLab(),
   createOscilloscopeLab(),
   createFilterLab(),
   createRadioLab(),

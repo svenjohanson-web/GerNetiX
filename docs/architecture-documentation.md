@@ -104,6 +104,9 @@ begrenzte Umsetzung wird in der
 Das öffentliche [Virtuelle Elektroniklabor](virtual-electronics-lab.md)
 grenzt anonyme, hardwarefreie Messsimulationen bewusst von Nachbauprojekten,
 der angemeldeten Plattform und realer Hardwareansteuerung ab.
+Die Entscheidung gegen eine vorschnelle externe Simulationsruntime und die
+verbindlichen Gates für einen späteren isolierten Provider dokumentiert der
+[SPICE-/WASM-Machbarkeitsnachweis](virtual-electronics-lab-spice-wasm-feasibility.md).
 
 Das gemeinsame Elektroniklabor wird weiterhin in kontrollierten Durchstichen
 ausgebaut. Sein
@@ -120,8 +123,16 @@ das
 [PT1000-Umweltmodell](virtual-electronics-lab-pt1000-environment-model-work-package.md)
 und den
 [linearen DC-Arbeitspunkt-Solver](virtual-electronics-lab-dc-operating-point-solver-work-package.md)
+und den
+[ersten freien Simulationsdurchstich](virtual-electronics-lab-free-simulation-work-packages.md)
 voneinander ab. Der jeweilige Dokumentstatus und der SQLite-Graph bestimmen,
 ob ein Paket nur geplant oder bereits implementiert ist.
+Der [gemeinsame LabProject-Messpfad](virtual-electronics-lab-shared-project-measurement-work-package.md)
+vereinigt den freien Schaltungs- und Messaufbau an der Analysegrenze und führt
+einen typisierten MeasurementTrace für DC- und Transientenmessungen ein.
+Die [leere Laborfläche](virtual-electronics-lab-empty-workbench-work-package.md)
+ergänzt denselben freien Command- und Messpfad um einen Startzustand ohne
+vorgegebene Schaltung.
 Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
 Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
 der optionalen, creditgebundenen KI-Hilfe ist in

@@ -55,8 +55,8 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(oscilloscope, /ΔV/);
   assert.match(oscilloscope, /setPointerCapture/);
   assert.match(overview, /src="\.\/app\.js/);
-  assert.match(overview, /app\.js\?v=20260817-template-picker-1/);
-  assert.match(overview, /styles\.css\?v=20260817-template-picker-1/);
+  assert.match(overview, /app\.js\?v=20260817-free-empty-1/);
+  assert.match(overview, /styles\.css\?v=20260817-free-empty-1/);
   assert.match(overview, /id="labTemplateSelect"/);
   assert.match(readLab("app.js"), /listLabTemplates/);
   assert.match(readLab("app.js"), /loadSelectedTemplate/);
@@ -67,8 +67,12 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(readLab("app.js"), /createGpioLedThroughputLab/);
   assert.match(readLab("app.js"), /createPt1000ThroughputLab/);
   assert.match(readLab("app.js"), /createButtonDigitalInputThroughputLab/);
+  assert.match(readLab("app.js"), /createFreeCircuitSimulationLab/);
   assert.match(readLab("app.js"), /createGpioLedThroughputLab\(\),\n\s*createPt1000ThroughputLab\(\),/);
   assert.match(readLab("app.js"), /createPt1000ThroughputLab\(\),\n\s*createButtonDigitalInputThroughputLab\(\{ assistantClient: troubleshootingAssistantClient \}\),/);
+  assert.match(routes, /free-simulation\\\/\[\^\/\]\+\\\.mjs/);
+  assert.match(routes, /domain\\\/\[\^\/\]\+\\\.mjs/);
+  assert.match(routes, /instruments\\\/\[\^\/\]\+\\\.mjs/);
   assert.match(readLab("app.js"), /createFilterLab/);
   assert.match(readLab("app.js"), /createRadioLab/);
   const labStyles = readLab("styles.css");
@@ -259,7 +263,8 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(dockerfile, /COPY --chown=node:node modules\/virtual-electronics-lab \.\/modules\/virtual-electronics-lab/);
   assert.match(routes, /\["\/technik-labs", "\/technik-labs\/"\][\s\S]*serveStatic\(res, virtualElectronicsLabDir, "\/index\.html"\)/);
   assert.ok(routes.includes("lab-template-(?:contract|catalog)\\.mjs"));
-  assert.ok(routes.includes("ai\\/[^/]+\\.mjs|labs\\/[^/]+\\.js"));
+  assert.ok(routes.includes("ai\\/[^/]+\\.mjs"));
+  assert.ok(routes.includes("labs\\/[^/]+\\.js"));
   assert.ok(routes.includes("serveStatic(res, virtualElectronicsLabDir, url.pathname.slice(\"/technik-labs\".length)"));
   assert.match(routes, /"\/technik-labs\/spektrumanalysator\/"[\s\S]*redirect\(res, "\/technik-labs\/\?lab=spectrum"\)/);
   assert.match(routes, /"\/technik-labs\/netzwerkanalysator\/"[\s\S]*redirect\(res, "\/technik-labs\/\?lab=vna"\)/);

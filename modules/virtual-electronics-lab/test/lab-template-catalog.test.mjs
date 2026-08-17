@@ -4,10 +4,12 @@ import test from "node:test";
 import * as gpioLedModule from "../labs/gpio-led-throughput.js";
 import * as pt1000Module from "../labs/pt1000-adc-throughput.js";
 import * as buttonModule from "../labs/button-digital-input-throughput.js";
+import * as freeCircuitModule from "../labs/free-circuit-simulation.js";
 import { ELAB_DS_001_START_CODE, ELAB_DS_002_PWM_START_CODE } from "../labs/gpio-led-throughput-runtime.js";
 import { ADC_PROGRAM_START_CODE } from "../virtual-mcu/adc-program-runtime.mjs";
 import { DIGITAL_INPUT_PROGRAM_START_CODE } from "../virtual-mcu/digital-input-program-runtime.mjs";
 import { BUTTON_DEBOUNCE_PROGRAM_START_CODE } from "../virtual-mcu/button-debounce-program-runtime.mjs";
+import { LED_CURRENT_CONTROL_PROGRAM_START_CODE } from "../virtual-mcu/led-current-control-program-runtime.mjs";
 import { validateLabTemplate } from "../lab-template-contract.mjs";
 import {
   ELAB_TPL_IDS,
@@ -35,8 +37,12 @@ const EXPECTED_IDS = [
   "elab-tpl-button-missing-pull",
   "elab-tpl-button-miswired",
   "elab-tpl-button-pullup",
+  "elab-tpl-free-dc-divider",
+  "elab-tpl-free-empty",
+  "elab-tpl-free-rc-charge",
   "elab-tpl-gpio-led-digital",
   "elab-tpl-gpio-led-pwm",
+  "elab-tpl-led-current-control",
   "elab-tpl-pt1000-adc-divider",
 ];
 
@@ -106,6 +112,7 @@ test("verifiziert echte Runtime-Referenzen pro Template", () => {
     "gpio-led-throughput": gpioLedModule,
     "pt1000-adc-throughput": pt1000Module,
     "button-digital-input-throughput": buttonModule,
+    "free-circuit-simulation": freeCircuitModule,
   };
 
   for (const template of ELAB_TPL_CATALOG_LIST) {
@@ -119,6 +126,10 @@ test("prüft reale Startcodes der Templates", () => {
   const expectedStartCodeById = {
     "elab-tpl-gpio-led-digital": ELAB_DS_001_START_CODE,
     "elab-tpl-gpio-led-pwm": ELAB_DS_002_PWM_START_CODE,
+    "elab-tpl-free-dc-divider": "// Freie DC-Simulation: Schaltung und Messung werden über Labor-Commands verändert.",
+    "elab-tpl-free-empty": "// Leere Laborfläche: Bauteile und Messpunkte werden über Labor-Commands hinzugefügt.",
+    "elab-tpl-free-rc-charge": "// Freie Transientensimulation: RC-Ladevorgang mit begrenztem Zeitschrittmodell.",
+    "elab-tpl-led-current-control": LED_CURRENT_CONTROL_PROGRAM_START_CODE,
     "elab-tpl-pt1000-adc-divider": ADC_PROGRAM_START_CODE,
     "elab-tpl-button-pullup": BUTTON_PULLUP_START_CODE,
     "elab-tpl-button-miswired": BUTTON_PULLUP_START_CODE,

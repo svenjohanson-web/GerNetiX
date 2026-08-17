@@ -5,6 +5,7 @@ import {
 import { ADC_PROGRAM_START_CODE } from "./virtual-mcu/adc-program-runtime.mjs";
 import { DIGITAL_INPUT_PROGRAM_START_CODE } from "./virtual-mcu/digital-input-program-runtime.mjs";
 import { BUTTON_DEBOUNCE_PROGRAM_START_CODE } from "./virtual-mcu/button-debounce-program-runtime.mjs";
+import { LED_CURRENT_CONTROL_PROGRAM_START_CODE } from "./virtual-mcu/led-current-control-program-runtime.mjs";
 import { validateLabTemplate } from "./lab-template-contract.mjs";
 
 const BUTTON_PULLUP_START_CODE = DIGITAL_INPUT_PROGRAM_START_CODE;
@@ -17,6 +18,9 @@ const BUTTON_DEBOUNCE_LONG_START_CODE = BUTTON_DEBOUNCE_PROGRAM_START_CODE.repla
   "const unsigned long debounceUs = 700;",
   "const unsigned long debounceUs = 2000;",
 );
+const FREE_DC_DIVIDER_START_NOTE = "// Freie DC-Simulation: Schaltung und Messung werden über Labor-Commands verändert.";
+const FREE_EMPTY_START_NOTE = "// Leere Laborfläche: Bauteile und Messpunkte werden über Labor-Commands hinzugefügt.";
+const FREE_RC_CHARGE_START_NOTE = "// Freie Transientensimulation: RC-Ladevorgang mit begrenztem Zeitschrittmodell.";
 
 function deepFreeze(value) {
   if (!value || typeof value !== "object") {
@@ -152,6 +156,41 @@ const TEMPLATE_ENTRIES = [
     },
   },
   {
+    id: "elab-tpl-led-current-control",
+    version: "1.0.0",
+    title: "LED-Strom per PWM regeln",
+    shortDescription: "Lies den LED-Strom über Shunt und ADC zurück und regle den PWM-Tastgrad im Mikrocontrollerprogramm.",
+    area: "basic-circuit",
+    entry: {
+      labId: "gpio-led-throughput",
+      runtimeEntrypoint: "createGpioLedThroughputLab",
+      presetId: "current-control",
+    },
+    recommendedInstruments: ["oscilloscope", "multimeter"],
+    recommendedMeasurementPoints: [
+      { id: "gpio-5", label: "GPIO 5" },
+      { id: "led", label: "LED Knoten" },
+      { id: "shunt", label: "Shunt-Spannung" },
+      { id: "adc-in", label: "ADC Eingang" },
+      { id: "gnd", label: "GND" },
+    ],
+    startCode: LED_CURRENT_CONTROL_PROGRAM_START_CODE,
+    modelLimits: {
+      minVoltageV: 0,
+      maxVoltageV: 3.3,
+      minCurrentA: 0,
+      maxCurrentA: 0.02,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
+      maxRuntimeMs: 2000,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
     id: "elab-tpl-pt1000-adc-divider",
     version: "1.0.0",
     title: "PT1000 → Spannungsteiler → ADC",
@@ -178,6 +217,101 @@ const TEMPLATE_ENTRIES = [
       maxCurrentA: 0.05,
       minTemperatureC: -30,
       maxTemperatureC: 80,
+      maxRuntimeMs: 2000,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
+    id: "elab-tpl-free-dc-divider",
+    version: "1.0.0",
+    title: "Freie DC-Simulation · Spannungsteiler",
+    shortDescription: "Starte mit Quelle und zwei Widerständen, ändere Werte, Bauteile und Verdrahtung frei.",
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "dc-divider",
+    },
+    recommendedInstruments: ["multimeter"],
+    recommendedMeasurementPoints: [
+      { id: "v1-p", label: "Versorgung" },
+      { id: "r1-n", label: "Teilermitte" },
+      { id: "gnd", label: "GND" },
+    ],
+    startCode: FREE_DC_DIVIDER_START_NOTE,
+    modelLimits: {
+      minVoltageV: -24,
+      maxVoltageV: 24,
+      minCurrentA: -5,
+      maxCurrentA: 5,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
+      maxRuntimeMs: 1500,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
+    id: "elab-tpl-free-empty",
+    version: "1.0.0",
+    title: "Freie Simulation · Leere Laborfläche",
+    shortDescription: "Beginne ohne vorgegebene Schaltung und füge Bauteile, Verbindungen und Messpunkte selbst hinzu.",
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "empty",
+    },
+    recommendedInstruments: ["multimeter", "oscilloscope"],
+    recommendedMeasurementPoints: [],
+    startCode: FREE_EMPTY_START_NOTE,
+    modelLimits: {
+      minVoltageV: -24,
+      maxVoltageV: 24,
+      minCurrentA: -5,
+      maxCurrentA: 5,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
+      maxRuntimeMs: 1500,
+    },
+    access: {
+      visibility: "public",
+      requiresAuthentication: false,
+      capabilities: ["measurement", "simulation"],
+    },
+  },
+  {
+    id: "elab-tpl-free-rc-charge",
+    version: "1.0.0",
+    title: "Freie Transientensimulation · RC-Ladevorgang",
+    shortDescription: "Beobachte die Kondensatorspannung nach dem Einschalten einer DC-Quelle und ändere R, C oder die Verdrahtung.",
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "rc-charge",
+    },
+    recommendedInstruments: ["oscilloscope", "multimeter"],
+    recommendedMeasurementPoints: [
+      { id: "v1-p", label: "Versorgung" },
+      { id: "c1-p", label: "Kondensatorspannung" },
+      { id: "gnd", label: "GND" },
+    ],
+    startCode: FREE_RC_CHARGE_START_NOTE,
+    modelLimits: {
+      minVoltageV: -24,
+      maxVoltageV: 24,
+      minCurrentA: -5,
+      maxCurrentA: 5,
+      minTemperatureC: -20,
+      maxTemperatureC: 85,
       maxRuntimeMs: 2000,
     },
     access: {

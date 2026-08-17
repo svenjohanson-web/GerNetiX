@@ -40,6 +40,7 @@ Identity, Konten und den anderen Labs getrennt.
 | Lab | Lernziel | Erste Ausbaustufe |
 | --- | --- | --- |
 | Durchstich: Programm → GPIO 5 → LED → Oszilloskop | Gemeinsamer Einstieg: Quellcode wird über typisierten Befehlspfad in MCU, GPIO, Schaltung und Messgerät übertragen | `pinMode`/`digitalWrite`, codegesteuerte PWM, LED-Puls-/Mittelstrom und angeschlossenes CH1-Oszilloskop |
+| Freie Elektronik-Simulation | Bauteile, Netze, Parameter und Messwerte kreativ in derselben Laborumgebung verändern | versioniertes CircuitDocument, typisierte Commands und linearer DC-Arbeitspunkt für GND, ideale Spannungsquellen und Widerstände |
 | Oszilloskop, Signalgenerator und Frequenzzähler | Signale sichtbar machen und Messgeräte bewusst einstellen | zwei Generatorausgänge, Zweikanal-Oszilloskop, Frequenzzähler, XY-Modus und FFT-Ansicht |
 | Filterlabor | analoge Filter auslegen und mit Wechselspannung vermessen | Sinusquelle, Zweikanal-Zeitbild, Frequenz-Sweep und Bode-Diagramm für RC- und RLC-Filter |
 | Radiolabor | AM- und FM-Empfang vom modulierten Signal bis zum Ton verstehen | AM-Hüllkurvendemodulator, FM-Superhet mit 10,7-MHz-ZF und freischaltbare Stationsansage |
@@ -100,7 +101,12 @@ getestete Rechenkerne:
   typisierten Command automatische, GND- oder VCC-Kontaktverdrahtung sowie
   command-basiert fortgeschaltete Floating-Samples abbildet,
 - PT1000-Programmdurchstich, der Umgebungstemperatur, Messkette und
-  Virtual-MCU-Quellcode über eine kontrollierte Command-Runtime verbindet.
+  Virtual-MCU-Quellcode über eine kontrollierte Command-Runtime verbindet,
+- idealisierte LED-Stromrücklesung aus vorhandenem PWM-Stromtrace,
+  10-Ω-Shunt und gemeinsamem 12-Bit-ADC-Quantisierer,
+- kontrollierte LED-Regelprogramm-Runtime mit Quellcode-Sollwert,
+  proportionalem Regelschritt, begrenztem PWM-Tastgrad und ausschließlich
+  virtueller Zeit.
 
 Bei `0 °C`, `3,3 V`, einem Festwiderstand von `1000 Ω` und 12 Bit liefert die
 integrierte Messkette `1000 Ω`, `1,65 V` und ADC-Code `2048`. Der sichtbare
@@ -143,6 +149,44 @@ einen sessiongebundenen Identity-Endpunkt mit Credit-Preflight, Structured
 Output, `store: false` und erneuter serverseitiger Vertragsvalidierung. Kein
 Vorschlag wird automatisch angewandt; die Fehlersuche bleibt ohne KI vollständig
 nutzbar.
+
+Das Template **LED-Strom per PWM regeln** bleibt in derselben GPIO-Laborfläche.
+Es zeigt PWM-Spannung, Tastgrad, LED-Strom, Shunt-Spannung, ADC-Code,
+Programm-Sollwert und die gemeinsame Strommessspur. Zwei vorbereitete
+Fehlerfälle laden einen unerreichbaren Sollwert oder eine ungeeignete
+Reglerverstärkung in den Editor; repariert wird ausschließlich im Quellcode.
+Das Lernmodell weist ausdrücklich darauf hin, dass reale Leistungs-LEDs einen
+geeigneten Treiber und eine thermische Auslegung benötigen.
+
+Der direkte Aufruf der freien Simulationsfläche startet weiterhin mit einem
+Spannungsteiler. Über die Vorlagenauswahl kann der Nutzer alternativ mit einer
+leeren Laborfläche ohne Bauteile, Knoten oder Messpunkte beginnen. Der Nutzer
+kann GND, DC-Quellen, Widerstände, Kondensatoren, Spulen, LEDs und Taster in ein
+gemeinsames CircuitDocument aufnehmen, Ports verbinden und Parameter ändern.
+Der aktuelle DC-Provider berechnet bewusst nur ideale Spannungsquellen und
+Widerstände; andere Typen bleiben im Dokument sichtbar und liefern eine klare
+Providerdiagnose. Ergebnisse stammen aus dem vorhandenen linearen
+Arbeitspunkt-Solver und zeigen Knotenspannungen, Zweigströme und Leistungen.
+Frei platzierbare Messpunkte bilden Prüfösen nach. Virtuelle Tastköpfe messen
+die Differenz zwischen Plus- und Referenzspitze mit korrektem Vorzeichen. Sie
+sind im ersten Modell ideal hochohmig; reale Eingangsimpedanz und
+Tastkopfkapazität werden ausdrücklich noch nicht simuliert.
+Schaltung, Messaufbau und Analysekonfiguration werden für die Auswertung als
+versionierter `LabProject`-Slice validiert. DC- und Transientenprovider
+veröffentlichen ihre Knotenspannungen in demselben typisierten
+`MeasurementTrace`; die Tastkopfauswertung liest ausschließlich diese
+gemeinsame Messspur und nicht unmittelbar eine eigene Solverwahrheit.
+Ein gemeinsamer, auf 50 Änderungen begrenzter In-Memory-Verlauf stellt
+Schaltungs- und Messaufbauzustand zusammen wieder her. Ungültige Commands
+werden nicht historisiert; ein neuer Bearbeitungszweig verwirft den alten
+Redo-Pfad.
+Die begrenzte Transientenanalyse verwendet denselben linearen MNA-Kern mit
+Backward-Euler-Integration. Sie unterstützt ideale DC-Quellen, R, C, L und
+statische Tasterzustände bei höchstens 1.000 Zeitschritten. Das RC-Template
+zeigt die differentielle Tastkopfmessung als Kurve; nichtlineare LEDs bleiben
+außerhalb dieses Lernmodells. Eine mögliche ngspice-WASM-Erweiterung ist
+technisch geprüft, wird aber erst nach reproduzierbarem Eigenbau, Lizenzprüfung
+und Worker-/Ressourcenisolation übernommen.
 
 ### Aufbau
 

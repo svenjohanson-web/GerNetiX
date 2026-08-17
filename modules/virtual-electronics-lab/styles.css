@@ -969,6 +969,441 @@ html[data-public-theme=light] .elab-button-wiring-actions button[aria-pressed="t
   }
 }
 
+.elab-free-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, .28fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.elab-free-palette,
+.elab-free-workbench,
+.elab-free-measurements {
+  padding: 14px;
+  border: 1px solid #2a3d50;
+  border-radius: 10px;
+  background: rgba(8, 15, 24, .58);
+}
+
+.elab-free-palette {
+  grid-row: span 2;
+}
+
+.elab-free-palette [data-free-palette] {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.elab-free-palette button,
+.elab-free-wiring button,
+.elab-free-measurement-head button,
+.elab-free-history button,
+.elab-free-component button {
+  min-height: 36px;
+}
+
+.elab-free-workbench-head,
+.elab-free-measurement-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.elab-free-workbench-meta {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.elab-free-history {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.elab-free-history output {
+  min-width: 135px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.elab-free-history button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.elab-free-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  min-height: 170px;
+  padding: 12px;
+  border: 1px solid #31465c;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(4, 9, 16, .88), rgba(7, 18, 28, .9));
+}
+
+.elab-free-empty-state {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.elab-free-component {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #425469;
+  border-radius: 8px;
+  background: #111927;
+}
+
+.elab-free-component > div:first-child,
+.elab-free-ports {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.elab-free-component > div:first-child span,
+.elab-free-ports span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.elab-free-ports span {
+  padding: 3px 6px;
+  border: 1px solid #3b526d;
+  border-radius: 999px;
+}
+
+.elab-free-parameters {
+  display: grid;
+  gap: 7px;
+}
+
+.elab-free-parameters label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(70px, .7fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.elab-free-parameters input,
+.elab-free-parameters select,
+.elab-free-wiring select {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #3b526d;
+  border-radius: 5px;
+  color: var(--text);
+  background: #101c2b;
+}
+
+.elab-free-wiring {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: end;
+}
+
+.elab-free-wiring label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.elab-free-measurements {
+  grid-column: 2;
+}
+
+.elab-free-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 12px 0;
+}
+
+.elab-free-probe-workbench {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #31465c;
+  border-radius: 8px;
+  background: rgba(5, 12, 20, .55);
+}
+
+.elab-free-measurement-create,
+.elab-free-measurement-list {
+  display: grid;
+  gap: 7px;
+}
+
+.elab-free-measurement-create {
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 8px;
+}
+
+.elab-free-measurement-create:has([data-free-probe-positive]) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.elab-free-measurement-create select,
+.elab-free-measurement-item select {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #3b526d;
+  border-radius: 5px;
+  color: var(--text);
+  background: #101c2b;
+}
+
+.elab-free-measurement-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, .7fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid #2a3d50;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.elab-free-measurement-item:has(> span) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.elab-free-results table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.elab-free-transient {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #31465c;
+  border-radius: 8px;
+  background: rgba(5, 12, 20, .55);
+}
+
+.elab-free-transient-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.elab-free-transient-head p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.elab-free-transient-controls {
+  display: flex;
+  align-items: end;
+  justify-content: end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.elab-free-transient-controls label {
+  display: grid;
+  grid-template-columns: auto minmax(70px, 95px) auto;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.elab-free-transient-controls input {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #3b526d;
+  border-radius: 5px;
+  color: var(--text);
+  background: #101c2b;
+}
+
+.elab-free-transient-plot {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  margin: 8px 0;
+  border: 1px solid #2a3d50;
+  border-radius: 6px;
+  background: #07101a;
+}
+
+.elab-free-transient-plot line {
+  stroke: #53687d;
+  stroke-width: 1;
+}
+
+.elab-free-transient-plot polyline {
+  fill: none;
+  stroke: #55d7ff;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.elab-free-transient-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.elab-free-transient-table th,
+.elab-free-transient-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #2a3d50;
+  text-align: right;
+}
+
+.elab-free-transient-table th:first-child,
+.elab-free-transient-table td:first-child {
+  text-align: left;
+}
+
+.elab-free-results th,
+.elab-free-results td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #2a3d50;
+  text-align: right;
+}
+
+.elab-free-results th:first-child,
+.elab-free-results td:first-child {
+  text-align: left;
+}
+
+html[data-public-theme=light] .elab-free-palette,
+html[data-public-theme=light] .elab-free-workbench,
+html[data-public-theme=light] .elab-free-measurements,
+html[data-public-theme=light] .elab-free-component {
+  background: rgba(255, 253, 248, .9);
+  border-color: #b9afa0;
+}
+
+html[data-public-theme=light] .elab-free-board {
+  background: linear-gradient(180deg, rgba(245, 247, 250, .92), rgba(232, 239, 244, .94));
+  border-color: #9ea9b8;
+}
+
+html[data-public-theme=light] .elab-free-probe-workbench,
+html[data-public-theme=light] .elab-free-measurement-item,
+html[data-public-theme=light] .elab-free-transient {
+  border-color: #b9afa0;
+  background: rgba(245, 247, 250, .72);
+}
+
+html[data-public-theme=light] .elab-free-transient-plot {
+  border-color: #b9afa0;
+  background: #f7fafc;
+}
+
+html[data-public-theme=light] .elab-free-parameters input,
+html[data-public-theme=light] .elab-free-parameters select,
+html[data-public-theme=light] .elab-free-wiring select {
+  color: var(--text);
+  background: #fffdf8;
+  border-color: #b9afa0;
+}
+
+html[data-public-theme=light] .elab-free-measurement-create select,
+html[data-public-theme=light] .elab-free-measurement-item select {
+  color: var(--text);
+  background: #fffdf8;
+  border-color: #b9afa0;
+}
+
+html[data-public-theme=light] .elab-free-transient-controls input {
+  color: var(--text);
+  background: #fffdf8;
+  border-color: #b9afa0;
+}
+
+@media (max-width: 1050px) {
+  .elab-free-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .elab-free-palette,
+  .elab-free-measurements {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .elab-free-palette [data-free-palette] {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .elab-free-wiring {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .elab-free-probe-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .elab-free-transient-head {
+    display: grid;
+  }
+
+  .elab-free-transient-controls {
+    justify-content: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .elab-free-wiring,
+  .elab-free-results {
+    grid-template-columns: 1fr;
+  }
+
+  .elab-free-workbench-head,
+  .elab-free-measurement-head {
+    display: grid;
+  }
+
+  .elab-free-workbench-meta {
+    justify-items: start;
+  }
+
+  .elab-free-history {
+    justify-content: start;
+  }
+
+  .elab-free-history output {
+    text-align: left;
+  }
+
+  .elab-free-transient-controls {
+    display: grid;
+  }
+
+  .elab-free-measurement-create,
+  .elab-free-measurement-create:has([data-free-probe-positive]),
+  .elab-free-measurement-item {
+    grid-template-columns: 1fr;
+  }
+}
+
 html[data-public-theme=light] .elab-pt1000-throughput-range-control input[type="number"] {
   background: #fffdf8;
   color: var(--text);
@@ -986,4 +1421,52 @@ html[data-public-theme=light] .elab-pt1000-throughput-schematic .schematic-wire 
 
 html[data-public-theme=light] .elab-pt1000-throughput-schematic .elab-pt1000-throughput-element {
   stroke: #2f3f53;
+}
+
+.elab-current-control .elab-throughput-program textarea {
+  min-height: 330px;
+}
+
+.elab-current-control-schematic {
+  min-height: 260px;
+}
+
+.elab-current-control-trace {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.elab-current-control-trace table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.elab-current-control-trace th,
+.elab-current-control-trace td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #2a3d50;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.elab-current-control-trace th:first-child,
+.elab-current-control-trace td:first-child {
+  text-align: left;
+}
+
+html[data-public-theme=light] .elab-current-control-trace th,
+html[data-public-theme=light] .elab-current-control-trace td {
+  border-color: #c4ccd6;
+}
+
+@media (max-width: 720px) {
+  .elab-current-control .elab-throughput-program textarea {
+    min-height: 280px;
+  }
+
+  .elab-current-control .elab-throughput-kpi {
+    grid-template-columns: 1fr;
+  }
 }

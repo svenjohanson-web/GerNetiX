@@ -104,6 +104,24 @@ test("verwirft Steuerzeichen in Messpunkt-Label", () => {
   assert.equal(result.errors[0].code, "ELAB_TPL_MEASUREMENT_POINTS_INVALID");
 });
 
+test("erlaubt leere Messpunkte ausschließlich für die leere freie Laborfläche", () => {
+  const emptyWorkbench = validateLabTemplate(template({
+    area: "free-simulation",
+    entry: {
+      labId: "free-circuit-simulation",
+      runtimeEntrypoint: "createFreeCircuitSimulationLab",
+      presetId: "empty",
+    },
+    recommendedMeasurementPoints: [],
+  }));
+  assert.equal(emptyWorkbench.ok, true);
+  assert.deepEqual(emptyWorkbench.template.recommendedMeasurementPoints, []);
+
+  const ordinaryTemplate = validateLabTemplate(template({ recommendedMeasurementPoints: [] }));
+  assert.equal(ordinaryTemplate.ok, false);
+  assert.equal(ordinaryTemplate.errors[0].code, "ELAB_TPL_MEASUREMENT_POINTS_INVALID");
+});
+
 test("verwirft unbekannte Top-Level-Felder", () => {
   const result = validateLabTemplate({ ...template(), unknownField: "x" });
   assert.equal(result.ok, false);

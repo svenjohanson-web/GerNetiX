@@ -1,7 +1,7 @@
 # Elektroniklabor: nächste Arbeitspakete nach FS-012
 
 Stand: 2026-08-17  
-Status: FS-013 bis TPL-003 lokal umgesetzt
+Status: FS-013 bis LED-003 lokal umgesetzt und getestet
 
 ## Ziel des nächsten Blocks
 
@@ -37,7 +37,7 @@ LED-003 Sichtbarer LED-Regelungsdurchstich
 
 **Status:** lokal umgesetzt am 2026-08-17
 
-**Bearbeitung:** GPT-5.6  
+**Bearbeitung:** GPT-5.6
 **Spark:** nicht sinnvoll; Sicherheits- und Serviceintegration
 
 Der vorhandene Elektroniklabor-Endpunkt erhält einen begrenzten
@@ -129,6 +129,8 @@ Abnahme:
 
 ## ELAB-LED-001: Idealisierte Stromrücklesung
 
+**Status:** durch Spark umgesetzt und durch GPT-5.6 abgenommen
+
 **Bearbeitung:** Spark, anschließend Review durch GPT-5.6  
 **Spark-Nutzen:** hoch; reine elektrische Messkette
 
@@ -144,8 +146,10 @@ Grenzen und noch keine Regelschleife oder UI.
 
 ## ELAB-LED-002: Kontrollierte LED-Regelprogramm-Runtime
 
-**Bearbeitung:** Spark, anschließend intensives Review durch GPT-5.6  
-**Spark-Nutzen:** mittel; isolierbar, aber parser- und zeitkritisch
+**Status:** durch GPT-5.6 umgesetzt und getestet
+
+**Bearbeitung:** GPT-5.6
+**Spark-Nutzen:** gering; Parser, elektrische Wahrheit und Zeitmodell sind eng gekoppelt
 
 Eine begrenzte Virtual-MCU-Runtime liest den Strom-ADC, verändert den
 PWM-Tastgrad und berechnet jeden Regelschritt in virtueller Zeit. Unterstützt
@@ -160,6 +164,8 @@ Abnahme:
 - kontrollierte Diagnose bei instabiler oder gesättigter Regelung.
 
 ## ELAB-LED-003: Sichtbarer LED-Stromregelungsdurchstich
+
+**Status:** durch GPT-5.6 umgesetzt, getestet und im Browser abgenommen
 
 **Bearbeitung:** GPT-5.6  
 **Spark:** nicht sinnvoll; UI, Instrumente, Fehlersuche und Realitätsbrücke
