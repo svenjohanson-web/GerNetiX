@@ -550,15 +550,20 @@ Abnahme:
 
 ## FG-09 - SQL-zu-Git-Migrationswerkzeug
 
-Lokal umgesetzt ist ein strikt read-only arbeitender Dry-run fuer PostgreSQL
-und Legacy-SQLite. Er erzeugt deterministische Baum- und Commitkennungen sowie
-einen schema-validierbaren Bericht und blockiert Secrets, unzulaessige
-Binaerdateien, Pfadkonflikte und mehrdeutige Historien. Zusaetzlich kann der
-Project Server den aktuellen, validierten Projektbaum nach ausdruecklichem
-`--apply` in ein privates Forgejo-Repository schreiben und die aktive Bindung
-mit Zielcommit speichern. Historische SQL-Versionen und ein separates
-Migrationsledger fuer spaetere externe Altbestaende sind weiterhin nicht
-enthalten. Fuer den aktuellen Stagingbestand wurde am 17. August 2026 zuerst
+FG-09 ist lokal vollstaendig umgesetzt. Der strikt read-only arbeitende
+Dry-run fuer PostgreSQL und Legacy-SQLite erzeugt deterministische Baum- und
+Commitkennungen sowie einen schema-validierbaren Bericht und blockiert Secrets,
+unzulaessige Binaerdateien, Pfadkonflikte und mehrdeutige Historien. Der nur
+nach ausdruecklichem `apply` erreichbare Schreiber uebernimmt den aktuellen
+Projektbaum und jede vorhandene lineare SQL-Version als deterministische
+Git-Commitkette. Er erhaelt Elternbezug, pseudonymisierten Ersteller,
+Zeitstempel, Nachricht und Binary-Artefaktreferenzen, prueft jeden erzeugten
+Commit gegen die vorab berechnete Kennung und schreibt erst danach den Branch.
+Ein inhaltsfreies PostgreSQL-Ledger haelt ausschliesslich Quell-/Berichtshash,
+Zielrepository/-commit, Zaehler, Status und Fehlercode. Wiederholungen
+akzeptieren nur denselben Quellhash und denselben bereits vorhandenen
+Ziel-Head; abweichende Staende werden blockiert. Fuer den aktuellen
+Stagingbestand wurde am 17. August 2026 zuerst
 ein Plan mit elf ungebundenen Staenden erstellt und danach jeder Stand
 nichtdestruktiv migriert. Die Abschlussinventur meldete 23 gebundene,
 erreichbare Projektrepositories, null ungebundene Projekte und null nicht
@@ -581,6 +586,10 @@ Abnahme:
 - Wiederholter Dry-run erzeugt identische Baum- und Commitzuordnungen.
 - Dateiinhalt, Pfadmenge, Projektmanifest und Versionsanzahl werden vor dem
   Cutover verglichen.
+- Ein Real-Git-Contract-Test weist eine zweistufige SQL-Historie mit exakt den
+  vorab berechneten Commit-IDs und beiden Dateistaenden nach.
+- Das Ledger enthaelt keine Projektdateien, Snapshots, Nachrichten oder rohe
+  Accountkennungen.
 
 ## FG-10 - Projektweiser Cutover und Rollback
 
@@ -632,6 +641,15 @@ Konfigurationscommit, freie Mehrdatei-Commits sowie ungebundene Laufzeitzugriffe
 auf Liste, Suche, Lesen, Schreiben, Loeschen, Version, Build und Debug ab. Die
 Tabellen bleiben als nicht fuehrender Legacy-/Importbestand erhalten, bis die
 betriebliche Aufbewahrungsfreigabe eine destruktive Schemaaenderung erlaubt.
+Neue Eintraege und Aenderungen in `project_sources` werden zusaetzlich durch
+Repository-Code und PostgreSQL-Trigger abgewiesen. `project_versions` darf nur
+noch Git-Light-Metadaten mit Commitreferenz speichern; neue `sources`,
+`source_snapshot` oder `project_snapshot` werden ebenfalls im Code und per
+Trigger blockiert. Projekt- und Buildmetadaten besitzen dieselbe rekursive
+Payload-Schranke. Der alte SQLite-zu-PostgreSQL-Importer verweigert deshalb
+Projektquellen und Vollsnapshots; solche Bestaende muessen direkt ueber FG-09
+nach Git migriert werden. Das inhaltsfreie FG-09-Ledger bleibt als technische
+Migrationsmetadaten zulaessig.
 
 Ziel:
 

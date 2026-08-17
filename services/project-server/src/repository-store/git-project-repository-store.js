@@ -42,6 +42,48 @@ class GitProjectRepositoryStore {
     });
   }
 
+  async importHistory(input = {}) {
+    const remoteUrl = validateRemoteUrl(input.remote_url);
+    const branch = validateBranch(input.branch || "main");
+    if (!Array.isArray(input.commits) || input.commits.length === 0 || input.commits.length > 1000) {
+      throw new ProjectServerError("repository_migration_commits_invalid", "Die Migrationshistorie muss zwischen 1 und 1000 Commits enthalten.");
+    }
+    return this.withWorkspace(async (workspace) => {
+      await this.git(["init", "--initial-branch", branch], workspace);
+      await this.configureIdentity(workspace);
+      await this.git(["remote", "add", "origin", remoteUrl], workspace);
+      let previousPaths = new Set();
+      for (const rawCommit of input.commits) {
+        const files = normalizeChanges(rawCommit.files, { allowEmpty: true, allowBinary: false, maxChanges: MAX_TREE_ENTRIES });
+        const nextPaths = new Set(files.map((file) => file.path));
+        const deletes = [...previousPaths].filter((entry) => !nextPaths.has(entry))
+          .map((entry) => ({ operation: "delete", path: entry }));
+        await applyChanges(workspace, [...deletes, ...files]);
+        await this.git(["add", "--all", "--", "."], workspace);
+        const identity = migrationIdentity(rawCommit);
+        await this.git([
+          "commit", "--allow-empty", "--message", migrationMessage(rawCommit.message),
+        ], workspace, { env: identity.env });
+        const headSha = await this.revParse(workspace, "HEAD");
+        const expected = validateSha(rawCommit.expected_commit_oid, "expected_commit_oid");
+        if (headSha !== expected) {
+          throw new ProjectServerError("repository_migration_commit_mismatch", "Der erzeugte Git-Commit stimmt nicht mit dem freigegebenen Migrationsplan überein.", 409, {
+            expected_commit_oid: expected,
+            actual_commit_oid: headSha,
+          });
+        }
+        previousPaths = nextPaths;
+      }
+      const headSha = await this.revParse(workspace, "HEAD");
+      try {
+        await this.git(["push", "origin", `HEAD:refs/heads/${branch}`], workspace);
+      } catch (error) {
+        throw gitConflict(error, "repository_migration_push_conflict", "Das Ziel-Repository wurde gleichzeitig verändert.");
+      }
+      return { head_sha: headSha, branch, commit_count: input.commits.length, no_change: false };
+    });
+  }
+
   async commit(input = {}) {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const branch = validateBranch(input.branch || "main");
@@ -371,7 +413,8 @@ function normalizeChanges(input, options = {}) {
   if (!Array.isArray(input) || (!options.allowEmpty && input.length === 0)) {
     throw new ProjectServerError("repository_changes_required", "Mindestens eine Dateiänderung ist erforderlich.");
   }
-  if (input.length > 100) throw new ProjectServerError("repository_change_limit_exceeded", "Ein Commit darf höchstens 100 Dateiänderungen enthalten.", 413);
+  const maxChanges = Number.isInteger(options.maxChanges) ? options.maxChanges : 100;
+  if (input.length > maxChanges) throw new ProjectServerError("repository_change_limit_exceeded", `Ein Commit darf höchstens ${maxChanges} Dateiänderungen enthalten.`, 413);
   let totalBytes = 0;
   const paths = new Set();
   return input.map((raw) => {
@@ -431,6 +474,33 @@ function validateSha(value, field) {
 function commitMessage(value, fallback) {
   const message = String(value || fallback).trim().replace(/[\r\n]+/g, " ").slice(0, 200);
   return message || fallback;
+}
+
+function migrationIdentity(input = {}) {
+  const name = String(input.author_name || "");
+  const email = String(input.author_email || "");
+  const timestamp = String(input.git_timestamp || "");
+  if (!/^GerNetiX Migration [a-f0-9]{12}$/.test(name)
+    || !/^migration\+[a-f0-9]{16}@invalid\.gernetix$/.test(email)
+    || !/^\d+ \+0000$/.test(timestamp)) {
+    throw new ProjectServerError("repository_migration_identity_invalid", "Die pseudonymisierte Migrationsidentität ist ungültig.");
+  }
+  return { env: {
+    GIT_AUTHOR_NAME: name,
+    GIT_AUTHOR_EMAIL: email,
+    GIT_AUTHOR_DATE: timestamp,
+    GIT_COMMITTER_NAME: name,
+    GIT_COMMITTER_EMAIL: email,
+    GIT_COMMITTER_DATE: timestamp,
+  } };
+}
+
+function migrationMessage(value) {
+  const message = String(value || "").replace(/\r\n?/g, "\n").trimEnd();
+  if (!message || Buffer.byteLength(message) > 16 * 1024 || message.includes("\0")) {
+    throw new ProjectServerError("repository_migration_message_invalid", "Die Migrations-Commitnachricht ist ungültig.");
+  }
+  return message;
 }
 
 function gitConflict(error, code, message, expectedHeadSha = "") {

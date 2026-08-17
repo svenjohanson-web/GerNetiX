@@ -11,6 +11,7 @@ class InMemoryProjectRepository {
     this.resourcePolicies = new Map((seed.resourcePolicies || []).map((item) => [item.plan_id, clone(item)]));
     this.versions = new Map((seed.versions || []).map((item) => [item.version_id, clone(item)]));
     this.projectAppSettings = new Map((seed.projectAppSettings || []).map((item) => [projectAppSettingsKey(item.project_id, item.account_id), clone(item)]));
+    this.repositoryMigrations = new Map((seed.repositoryMigrations || []).map((item) => [item.project_id, clone(item)]));
   }
 
   saveProject(project) {
@@ -156,6 +157,12 @@ class InMemoryProjectRepository {
     return Array.from(this.versions.values())
       .filter((item) => !filter.project_id || item.project_id === filter.project_id)
       .sort((left, right) => right.created_at.localeCompare(left.created_at)).map(clone);
+  }
+
+  findRepositoryMigration(projectId) { return clone(this.repositoryMigrations.get(projectId)); }
+  saveRepositoryMigration(entry) {
+    this.repositoryMigrations.set(entry.project_id, clone(entry));
+    return clone(entry);
   }
 
   findProjectAppSettings(projectId, accountId) {

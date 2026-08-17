@@ -48,6 +48,7 @@ COPY --chown=node:node firmware/shared/gernetix-runtime-core ./firmware/shared/g
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js
 COPY --chown=node:node tools/migrate-identity-sqlite-to-postgres.js ./tools/migrate-identity-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-project-sqlite-to-postgres.js ./tools/migrate-project-sqlite-to-postgres.js
+COPY --chown=node:node tools/forgejo-migration-dry-run.js ./tools/forgejo-migration-dry-run.js
 COPY --chown=node:node tools/migrate-telemetry-sqlite-to-postgres.js ./tools/migrate-telemetry-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-community-sqlite-to-postgres.js ./tools/migrate-community-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-device-management-sqlite-to-postgres.js ./tools/migrate-device-management-sqlite-to-postgres.js

@@ -8,6 +8,7 @@ const { execFileSync } = require("node:child_process");
 const test = require("node:test");
 const { createGitCommandRunner } = require("../src/repository-store/git-command-runner");
 const { GitProjectRepositoryStore } = require("../src/repository-store/git-project-repository-store");
+const { buildMigrationPayload } = require("../../../tools/forgejo-migration-dry-run");
 
 test("creates and updates a real repository atomically with an expected head", async (context) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-git-store-test-"));
@@ -132,6 +133,39 @@ test("rejects traversal duplicate paths and oversized files before invoking Git"
   await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "a.bin", content: "text\0binary" }] }), (error) => error.code === "repository_binary_forbidden");
   await assert.rejects(store.commit({ remote_url: "https://user:secret@forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: "a.txt", content: "x" }] }), /Remote/);
   await assert.rejects(store.commit({ remote_url: "https://forgejo.invalid/a.git", expected_head_sha: "a".repeat(40), changes: [{ path: ".GIT/config", content: "x" }] }), /Pfad/);
+});
+
+test("imports the complete SQL version chain with the precomputed deterministic commit IDs", async (context) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-git-migration-test-"));
+  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const remote = path.join(root, "remote");
+  run(["init", "--initial-branch", "main", remote]);
+  run(["-C", remote, "config", "receive.denyCurrentBranch", "updateInstead"]);
+  const fakeRemote = "https://forgejo.invalid/gernetix/migrated.git";
+  const actualRunner = createGitCommandRunner({ gitBinary: "git" });
+  const store = new GitProjectRepositoryStore({
+    tempRoot: root,
+    runGit: (args, options) => actualRunner(args.map((argument) => argument === fakeRemote ? remote : argument), options),
+  });
+  const project = {
+    project_id: "project-1", user_id: "user-private", title: "Migration",
+    status: "active", created_at: "2026-01-01T10:00:00.000Z", updated_at: "2026-02-01T10:00:00.000Z",
+  };
+  const payload = buildMigrationPayload({
+    source_kind: "test", projects: [project], read_errors: [],
+    sources: [{ project_id: "project-1", path: "README.md", content: "aktuell\n", content_type: "text/plain" }],
+    versions: [{
+      version_id: "version-1", project_id: "project-1", parent_version_id: null,
+      created_by_user_id: "user-private", created_at: "2026-01-02T10:00:00.000Z",
+      message: "Erster Stand", project_snapshot: project,
+      sources: [{ project_id: "project-1", path: "README.md", content: "alt\n", content_type: "text/plain" }],
+    }],
+  }).projects[0];
+  const result = await store.importHistory({ remote_url: fakeRemote, commits: payload.commits });
+  assert.equal(result.head_sha, payload.target_head_commit_oid);
+  assert.equal(run(["-C", remote, "rev-list", "--count", "HEAD"]).trim(), "2");
+  assert.equal(run(["-C", remote, "show", "HEAD~1:README.md"]), "alt\n");
+  assert.equal(run(["-C", remote, "show", "HEAD:README.md"]), "aktuell\n");
 });
 
 function run(args) {

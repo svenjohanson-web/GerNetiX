@@ -44,6 +44,38 @@ class ForgejoProjectRepositoryStore {
     return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, commit.head_sha);
   }
 
+  async migrateProjectHistory(input = {}) {
+    const projectId = required(input.project_id, "project_id");
+    const repositoryName = repositoryNameForProject(projectId);
+    await this.client.ensureOrganization(this.organization, {
+      full_name: "GerNetiX Projekte",
+      description: "Private Kundenprojekte von GerNetiX.",
+    });
+    const ensured = await this.client.ensureOrganizationRepository(this.organization, {
+      name: repositoryName,
+      description: `GerNetiX Projekt ${projectId}`,
+      default_branch: this.defaultBranch,
+    });
+    const repository = ensured.repository || {};
+    const remoteUrl = trustedCloneUrl(repository.clone_url, this.client.baseUrl);
+    if (!ensured.created && !repository.empty) {
+      const existingHead = await this.git.head({ remote_url: remoteUrl, branch: this.defaultBranch });
+      if (existingHead.head_sha !== input.expected_head_oid) {
+        throw new ProjectServerError("repository_migration_target_conflict", "Das vorhandene Repository entspricht nicht dem freigegebenen Migrationsstand.", 409);
+      }
+      return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, existingHead.head_sha);
+    }
+    const imported = await this.git.importHistory({
+      remote_url: remoteUrl,
+      branch: this.defaultBranch,
+      commits: input.commits,
+    });
+    if (imported.head_sha !== input.expected_head_oid) {
+      throw new ProjectServerError("repository_migration_head_mismatch", "Der importierte Repository-Kopf stimmt nicht mit dem Migrationsplan überein.", 409);
+    }
+    return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, imported.head_sha);
+  }
+
   async commitChanges(binding = {}, input = {}) {
     requireConfiguredBinding(binding, this.organization);
     return this.git.commit({

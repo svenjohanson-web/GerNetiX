@@ -12,6 +12,7 @@ const { renderPlatformioIni } = require("../../../shared/platformio-config");
 const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-software-ownership");
 const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
 const { validateSha } = require("../repository-store/git-project-repository-store");
+const { buildMigrationPayload } = require("../../../../tools/forgejo-migration-dry-run");
 const { loadProjectFileSet, mimeTypeForPath, validateProjectChanges } = require("../repository-store/project-file-schema");
 const {
   materializeBoardSupportFiles,
@@ -1299,35 +1300,93 @@ class ProjectService {
       const existing = await this.repository.findProject(requestedProjectId);
       if (!existing) throw new ProjectServerError("project_not_found", "Projekt wurde nicht gefunden.", 404);
     }
-    const plan = projects.map((project) => ({ project_id: project.project_id, title: project.title, user_id: project.user_id }));
-    if (input.apply !== true) return { mode: "plan", projects: plan, count: plan.length };
-    const migrated = [];
-    for (const current of projects) {
-      const softwareUnits = this.protectSoftwareUnits(normalizeSoftwareUnits(current.software_units, current.build_config));
-      const activeSoftwareUnitId = activeSoftwareUnitIdFor(current.active_software_unit_id, softwareUnits);
-      const project = await this.repository.saveProject({
-        ...current,
-        software_units: softwareUnits,
-        active_software_unit_id: activeSoftwareUnitId,
-        build_config: softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || null,
-        updated_at: new Date().toISOString(),
-      });
-      await this.syncPlatformioSources(project);
-      await this.syncProjectConfigurationSources(project);
-      const sources = await this.repository.listSources(project.project_id);
-      loadProjectFileSet(sources);
-      const binding = await this.projectRepositoryStore.provisionProject({
-        project_id: project.project_id,
-        message: `Projekt ${project.title} aus PostgreSQL migriert`,
-        changes: sources.map((source) => ({ path: source.path, content: source.content })),
-      });
-      await this.repository.saveProject({
-        ...project,
-        repository_binding: { ...binding, provisioned_at: new Date().toISOString(), migration_source: "postgresql" },
-      });
-      migrated.push({ project_id: project.project_id, repository_id: binding.repository_id, commit_sha: binding.head_sha });
+    const inventory = { source_kind: "postgresql", projects, sources: [], versions: [], read_errors: [] };
+    for (const project of projects) {
+      inventory.sources.push(...await this.repository.listSources(project.project_id));
+      inventory.versions.push(...await this.repository.listVersions({ project_id: project.project_id }));
     }
-    return { mode: "applied", migrated, count: migrated.length };
+    let payload;
+    try {
+      payload = buildMigrationPayload(inventory);
+    } catch (error) {
+      if (error.code !== "FORGEJO_MIGRATION_REPORT_BLOCKED") throw error;
+      throw new ProjectServerError("forgejo_migration_plan_blocked", "Der SQL-Altbestand ist nicht verlustfrei migrierbar.", 409, {
+        error_count: error.report?.summary?.error_count || 0,
+        report_sha256: sha256(JSON.stringify(error.report || {})),
+      });
+    }
+    const plan = payload.projects.map((entry) => ({
+      project_id: entry.project_id,
+      source_sha256: entry.source_sha256,
+      target_head_commit_oid: entry.target_head_commit_oid,
+      source_file_count: entry.source_file_count,
+      source_version_count: entry.source_version_count,
+      target_commit_count: entry.target_commit_count,
+    }));
+    if (input.apply !== true) return {
+      mode: "plan", projects: plan, count: plan.length,
+      source_fingerprint_sha256: payload.source_fingerprint_sha256,
+      report_sha256: payload.report_sha256,
+    };
+    const migrated = [];
+    for (const migration of payload.projects) {
+      const project = projects.find((entry) => entry.project_id === migration.project_id);
+      const existing = typeof this.repository.findRepositoryMigration === "function"
+        ? await this.repository.findRepositoryMigration(project.project_id) : null;
+      if (existing && existing.source_sha256 !== migration.source_sha256) {
+        throw new ProjectServerError("forgejo_migration_source_changed", "Der SQL-Altbestand hat sich seit dem ersten Migrationsversuch verändert.", 409);
+      }
+      const startedAt = existing?.started_at || new Date().toISOString();
+      const ledgerBase = {
+        project_id: project.project_id,
+        source_sha256: migration.source_sha256,
+        report_sha256: payload.report_sha256,
+        source_file_count: migration.source_file_count,
+        source_version_count: migration.source_version_count,
+        target_commit_count: migration.target_commit_count,
+        started_at: startedAt,
+      };
+      if (typeof this.repository.saveRepositoryMigration === "function") {
+        await this.repository.saveRepositoryMigration({ ...ledgerBase, status: "applying", updated_at: new Date().toISOString() });
+      }
+      try {
+        const binding = await this.projectRepositoryStore.migrateProjectHistory({
+          project_id: project.project_id,
+          expected_head_oid: migration.target_head_commit_oid,
+          commits: migration.commits,
+        });
+        const completedAt = new Date().toISOString();
+        await this.repository.saveProject({
+          ...project,
+          repository_binding: { ...binding, provisioned_at: completedAt, migration_source: "postgresql" },
+          updated_at: completedAt,
+        });
+        if (typeof this.repository.saveRepositoryMigration === "function") {
+          await this.repository.saveRepositoryMigration({
+            ...ledgerBase,
+            target_repository_id: binding.repository_id,
+            target_head_sha: binding.head_sha,
+            status: "completed",
+            completed_at: completedAt,
+            updated_at: completedAt,
+          });
+        }
+        migrated.push({ project_id: project.project_id, repository_id: binding.repository_id, commit_sha: binding.head_sha });
+      } catch (error) {
+        if (typeof this.repository.saveRepositoryMigration === "function") {
+          try {
+            await this.repository.saveRepositoryMigration({
+              ...ledgerBase,
+              status: "failed",
+              error_code: String(error.code || "migration_failed").slice(0, 100),
+              updated_at: new Date().toISOString(),
+            });
+          } catch { /* Der urspruengliche Fehler bleibt massgeblich. */ }
+        }
+        throw error;
+      }
+    }
+    return { mode: "applied", migrated, count: migrated.length, report_sha256: payload.report_sha256 };
   }
 
   async createBuildPackage(jobId) {
