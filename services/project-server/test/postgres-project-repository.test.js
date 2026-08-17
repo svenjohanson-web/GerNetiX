@@ -88,6 +88,7 @@ test("rejects project file snapshots in PostgreSQL metadata documents", async ()
 test("rejects legacy SQL imports that would recreate project content", async () => {
   const pool = new RecordingPool();
   const repository = new PostgresProjectRepository(pool);
+  repository.hasMigration = async () => false;
   await assert.rejects(repository.importLegacyState({
     projects: [], sources: [{ project_id: "project-1", path: "main.cpp", content: "x" }],
   }), /PROJECT_SQL_LEGACY_CONTENT_IMPORT_FORBIDDEN/);
@@ -95,6 +96,16 @@ test("rejects legacy SQL imports that would recreate project content", async () 
     projects: [], sources: [], buildJobs: [{ build_job_id: "build-1", source_snapshot: [] }],
   }), /PROJECT_SQL_LEGACY_CONTENT_IMPORT_FORBIDDEN/);
   assert.equal(pool.calls.length, 0);
+});
+
+test("skips an already applied legacy import before inspecting its old source payload", async () => {
+  const pool = new RecordingPool();
+  const repository = new PostgresProjectRepository(pool);
+  assert.deepEqual(await repository.importLegacyState({
+    projects: [], sources: [{ project_id: "project-1", path: "main.cpp", content: "legacy" }],
+  }), { imported: false, reason: "already_applied" });
+  assert.equal(pool.calls.length, 1);
+  assert.match(pool.calls[0].text, /SELECT 1 FROM project_migrations/);
 });
 
 test("stores Forgejo binding and expected head as queryable project metadata", async () => {

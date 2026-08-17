@@ -696,13 +696,13 @@ class PostgresProjectRepository {
   }
 
   async importLegacyState(state, migrationId = "project-sqlite-v1") {
+    if (await this.hasMigration(migrationId)) return { imported: false, reason: "already_applied" };
     if ((state.sources || []).length
       || (state.projects || []).some(hasProjectFilePayload)
       || (state.buildJobs || []).some(hasProjectFilePayload)
       || (state.versions || []).some(hasProjectFilePayload)) {
       throw new Error("PROJECT_SQL_LEGACY_CONTENT_IMPORT_FORBIDDEN");
     }
-    if (await this.hasMigration(migrationId)) return { imported: false, reason: "already_applied" };
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
