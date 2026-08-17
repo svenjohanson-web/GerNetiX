@@ -1,0 +1,176 @@
+# Elektroniklabor: nächste parallele SPICE-Arbeitspakete
+
+Status: geplant, noch nicht zur Umsetzung gestartet
+
+## Ziel
+
+Nach ELAB-SPICE-003 werden unabhängige Verträge, Tests und AC-Auswertungen
+parallel vorbereitet. Gekoppelte Solver-, Worker- und UI-Integration bleibt
+bei Root/GPT-5.6.
+
+Kapazitätsregel: höchstens zwei Spark-Aufträge gleichzeitig. Zusätzlich darf
+ein normaler Parallelagent arbeiten. Weitere Pakete werden nur gequeued.
+
+## Erste parallele Welle
+
+### ELAB-SPICE-004: Component-Capability-Vertrag
+
+**Bearbeitung:** Spark 1  
+**Abhängigkeit:** SPICE-001 bis SPICE-003  
+**Dateigrenze:** ausschließlich neue Contract- und Testdatei
+
+Neue Dateien:
+
+- `free-simulation/component-capability-contract.mjs`
+- `test/free-simulation/component-capability-contract.test.mjs`
+
+Umfang:
+
+- Fähigkeiten je Bauteil für DC, Transient, AC und Netlist,
+- aktueller GND-/Quellen-/RLC-Umfang,
+- LED und Taster bleiben mit expliziten Grenzen sichtbar,
+- deterministische, tief unveränderliche Ausgabe.
+
+Nicht enthalten: Solver, UI, Providerwahl oder Netlist-Erzeugung.
+
+Abnahme:
+
+- alle funktionalen Typen sind beschrieben,
+- keine nicht implementierte Fähigkeit wird behauptet,
+- unbekannte Typen werden stabil abgelehnt,
+- keine Bestandsdatei wird geändert.
+
+### ELAB-SPICE-005: Providerport und Solver-Ergebnisvertrag
+
+**Bearbeitung:** normaler Parallelagent  
+**Abhängigkeit:** SPICE-001 bis SPICE-003  
+**Dateigrenze:** ausschließlich neue Contract-, Fake-Provider- und Testdateien
+
+Neue Dateien:
+
+- `free-simulation/solver-result-contract.mjs`
+- `free-simulation/simulation-provider-port.mjs`
+- zugehörige Tests
+
+Umfang:
+
+- einheitliche DC-, Transienten- und AC-Ergebnisse,
+- stabile Knoten-/Zweig-IDs, Achsen, Diagnosen und Modellversionen,
+- monotone Zeit- und Frequenzachsen,
+- harte Ergebnis- und Textgrenzen,
+- Fake-Provider erhält nur normalisierte `SimulationRequest`-Objekte.
+
+Nicht enthalten: Worker, WASM, ngspice, UI oder Raw-Netlist-API.
+
+Abnahme:
+
+- Raw-Text und unbekannte Felder werden abgelehnt,
+- DC, Transient und AC lassen sich validieren,
+- Fake-Provider beweist Austauschbarkeit,
+- bestehender Lernsolver bleibt unverändert und Standard.
+
+### ELAB-AC-001: AC-Kennwertauswertung
+
+**Bearbeitung:** Spark 2  
+**Abhängigkeit:** SPICE-003  
+**Dateigrenze:** ausschließlich neue Auswerte- und Testdatei
+
+Neue Dateien:
+
+- `free-simulation/ac-result-evaluator.mjs`
+- `test/free-simulation/ac-result-evaluator.test.mjs`
+
+Umfang:
+
+- Start-/Stoppverstärkung,
+- maximale Verstärkung,
+- erste −3-dB-Eckfrequenz mit klarer Interpolationsregel,
+- Phase an der Eckfrequenz,
+- Warnung bei unzureichendem Sweep.
+
+Nicht enthalten: Solver, DOM, Netlist, Template oder Provider.
+
+Abnahme:
+
+- RC-Tiefpass liefert erwartete Eckfrequenz,
+- kein −3-dB-Durchgang ergibt eine Warnung statt eines erfundenen Werts,
+- leere/ungültige Traces werden fail-closed behandelt,
+- Ausgabe ist deterministisch und tief unveränderlich.
+
+## Danach unabhängig queuebar
+
+### ELAB-SPICE-006: Kanonischer Fixture-/Orakelkorpus
+
+**Bearbeitung:** Spark oder Parallelagent  
+**Abhängigkeit:** SPICE-001 bis SPICE-003
+
+Versionierte Fixtures für Spannungsteiler, RC-Transient, RC-AC, RL-AC,
+Quellenphase, Vorzeichen, singuläre Schaltung und Grenzfälle. Erwartungswerte
+verwenden explizite Toleranzen. Keine Providerdatei und keine neue Runtime.
+
+### ELAB-AC-002: Weitere AC-Templates
+
+**Bearbeitung:** Spark  
+**Abhängigkeit:** SPICE-003
+
+Zwei zusätzliche Presets im bestehenden Katalog:
+
+- RC-Hochpass,
+- serieller RLC-Resonanzkreis.
+
+Keine neue Laboransicht und keine Solveränderung. Template, Messpunkte,
+AC-Quelle und Reset müssen vollständig getestet sein.
+
+## Zweite Welle nach Review
+
+### ELAB-AC-003: AC-Ergebnis-View-Model
+
+**Bearbeitung:** Spark  
+**Abhängigkeit:** AC-001
+
+Reiner DOM-freier Adapter für Plotpunkte, Kennwertkarten, Tabelle sowie
+Success-, Empty-, Error- und Invalidated-Zustände.
+
+### ELAB-SPICE-007: Isolierter Worker mit Fake-Engine
+
+**Bearbeitung:** Spark, anschließend Root-Review  
+**Abhängigkeit:** SPICE-005 und SPICE-006
+
+Dedizierter beendbarer Worker, typisiertes Message-Protokoll, ein Auftrag pro
+Lebenszyklus und Timeouttest mit Fake-Engine. Noch kein WASM oder ngspice.
+
+### ELAB-SPICE-008: Ressourcen- und Missbrauchsgates
+
+**Bearbeitung:** Spark, anschließend Root-Review  
+**Abhängigkeit:** SPICE-007
+
+Durchsetzung der beschlossenen Grenzen: 32 Komponenten, 64 Knoten, 16 KiB
+Netlist, 64.000 Ergebniswerte, zwei Sekunden und 64 MiB. Keine Teilergebnisse
+oder Zustandsübernahme nach Timeout/Crash.
+
+### ELAB-AC-004: Kennwerte und Zustände sichtbar integrieren
+
+**Bearbeitung:** Root/GPT-5.6  
+**Abhängigkeit:** AC-001 und AC-003
+
+Integration in die bestehende Laborfläche, responsive Prüfung und
+Browserabnahme. Keine zweite AC-Oberfläche.
+
+## Noch nicht freigegeben
+
+Ein echter ngspice-Build folgt erst nach eigenem Paket für gepinnte Version,
+Quellhash, Emscripten-Toolchain, reproduzierbare Builds, SBOM, Lizenz und
+Attribution. Download, Fremdbinärdatei, Aktivierung, Push und Deployment sind
+durch diese Planung nicht autorisiert.
+
+Ein serverseitiger SPICE-Dienst ist kein stiller Ersatz für den beschlossenen
+Browser-Worker. Er würde vor Implementierung eine neue Architektur-, Security-,
+Betriebs- und Kostenentscheidung benötigen.
+
+## Empfohlener Start
+
+1. Spark 1: SPICE-004.
+2. Parallelagent: SPICE-005.
+3. Spark 2: AC-001.
+4. Nach dem ersten freien Slot: SPICE-006.
+5. Root prüft alle Ergebnisse gemeinsam; erst danach beginnt Welle zwei.
