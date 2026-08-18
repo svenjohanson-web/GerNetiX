@@ -225,9 +225,34 @@
           <p>Dein Passkey reicht für die Anmeldung. Die folgenden Wege sind freiwillige zusätzliche Sicherungen, falls du dein Passkey-Gerät nicht mehr verwenden kannst.</p>
         </section>
         <section class="dashboard-grid">
+          <button id="addPasskeyButton" class="entry-card account-setup-card" type="button"><span>Mehrere Geräte absichern</span><strong>Zusätzlichen Passkey hinzufügen</strong><p>Registriere zum Beispiel Mac, Windows-PC oder Smartphone getrennt. Jeder Passkey bleibt an die kanonische GerNetiX-Domain gebunden.</p><small id="passkeyManagementStatus" aria-live="polite"></small><em>Passkey hinzufügen →</em></button>
           <button id="createOfflineRecoverySetButton" class="entry-card account-setup-card" type="button"><span>Optional</span><strong>Offline-Recovery-Set</strong><p>Ein einmaliger Code zum Ausdrucken oder getrennten sicheren Ablegen. Er hilft, wenn Geräte oder Schlüsselbünde verloren gehen.</p><small id="offlineRecoverySetStatus" aria-live="polite"></small><em id="offlineRecoverySetAction">Recovery-Set erstellen →</em></button>
           <a class="entry-card account-setup-card" href="/app/device-management/provisioning/"><span>Erster ESP32 = Recovery-Token</span><strong>ESP32 anmelden und Konto erweitern</strong><p>Dein erster angemeldeter ESP32 wird automatisch als Recovery-Board verknüpft – das ist keine zusätzliche Auswahl. Das ESP32-Konto erhält das größere Ressourcenprofil: als Zielwert 10 MB statt 5 MB sowie zusätzliche Funktionen wie Background Worker und Dispatcher, sobald diese für dein Konto freigeschaltet sind.</p><em>Ersten ESP32 als Recovery-Token provisionieren →</em></a>
           <a class="entry-card account-setup-card" href="/hilfe/#registration-login-recovery"><span>Später verfügbar</span><strong>Social Recovery</strong><p>Zwei von drei offline verteilten Anteilen können gemeinsam bei der Wiederherstellung helfen, ohne Kontaktdaten zu GerNetiX hochzuladen.</p><em>Funktionsweise ansehen →</em></a>
+        </section>
+        <section class="panel"><p class="eyebrow">Aktive Anmeldeschlüssel</p><h2>Passkeys dieses Kontos</h2><div id="accountPasskeyList" class="summary-list"><p>Passkeys werden geladen …</p></div></section>
+        <section class="panel account-contact-notifications" aria-labelledby="accountContactTitle">
+          <p class="eyebrow">Optionaler Kontaktweg</p>
+          <h2 id="accountContactTitle">E-Mail und Community-Hinweise</h2>
+          <p>Dein Konto und die Community funktionieren ohne E-Mail. Wenn du eine Adresse bestätigst, kann GerNetiX dich über persönliche Vorgänge informieren. Werbung und allgemeine Rundmails sind nicht Teil dieser Einstellung.</p>
+          <form id="accountContactEmailForm" class="account-contact-email-form">
+            <label for="accountContactEmail">E-Mail-Adresse</label>
+            <div class="account-contact-email-row">
+              <input id="accountContactEmail" name="email" type="email" autocomplete="email" maxlength="254" placeholder="name@beispiel.de" required />
+              <button class="secondary" type="submit">Bestätigungslink senden</button>
+              <button id="removeAccountContactEmail" class="secondary" type="button">Adresse entfernen</button>
+            </div>
+            <p id="accountContactEmailStatus" class="helper-text" aria-live="polite">Kontaktdaten werden geladen …</p>
+          </form>
+          <fieldset id="accountCommunityNotificationPreferences" class="account-notification-preferences" disabled>
+            <legend>Persönliche Community-Hinweise</legend>
+            <label class="check-line"><input type="checkbox" name="direct_messages" /> Neue Direktnachrichten</label>
+            <label class="check-line"><input type="checkbox" name="thread_replies" /> Neue Antworten in meinen Unterhaltungen</label>
+            <label class="check-line"><input type="checkbox" name="support_replies" /> Antworten des Supports</label>
+            <label class="check-line"><input type="checkbox" name="project_invitations" /> Projekteinladungen</label>
+          </fieldset>
+          <p class="helper-text">Die E-Mail enthält keinen privaten Nachrichtentext. Sie verweist nur auf die geschützte GerNetiX-Inbox. Die Einstellungen können jederzeit geändert werden. <a href="/datenschutz/" target="_blank" rel="noopener">Datenschutzinformation zu Kontaktadresse und Versand</a></p>
+          <p id="accountNotificationPreferenceStatus" class="helper-text" aria-live="polite"></p>
         </section>
       </section>
 
@@ -1518,7 +1543,7 @@
       </dialog>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
-        <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
+        <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/datenschutz/">Datenschutz</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
       </footer>
     </main>
 
@@ -1537,7 +1562,7 @@
     <script defer src="/app/information-view.js?v=20260812-knowledge-library-3"></script>
     <script defer src="/app/app-shell-controller.js?v=20260812-knowledge-library-3"></script>
     <script defer src="/app/app-dashboard-controller.js?v=20260805-applications-1"></script>
-    <script defer src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
+    <script defer src="/app/app-account-controller.js?v=20260818-multi-passkey-1"></script>
     <script defer src="/app/app-project-controller.js?v=20260808-learning-access-sales-1"></script>
     <script defer src="/app/app-billing-controller.js?v=20260803-storage-policy-1"></script>
     <script defer src="/app/app-runtime-utils.js?v=20260807-flat-guided-learning-2"></script>

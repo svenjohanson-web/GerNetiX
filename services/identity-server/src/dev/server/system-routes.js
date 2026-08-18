@@ -8,6 +8,7 @@ function registerSystemRoutes({
   webPushService, securityAlertPushAccountIds, requireSessionProject, projectServerUserId,
   handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleUserActionIngest,
   handleProjectRuntimeStream, telemetryJson,
+  auth, recordSystemEvent,
 }) {
   registry.register({ method: "OPTIONS", path: "/api/dev/lesson-preview-migration", handler: ({ res }) => sendDevJson(res, 204, {}) });
   registry.register({ method: "POST", path: "/api/dev/lesson-preview-migration", handler: ({ req, res }) => handleDevLessonPreviewMigration(req, res) });
@@ -34,6 +35,25 @@ function registerSystemRoutes({
     },
   });
   registry.register({
+    method: "POST",
+    path: "/api/internal/support-recovery",
+    async handler({ req, res }) {
+      requireInternalAdmin(req);
+      const body = await readJsonBody(req);
+      try {
+        const result = await auth().start_support_recovery({
+          username: body.username, email: body.email, supportActorId: body.support_actor_id,
+          supportActorRole: body.support_actor_role, reason: body.verification_reason, actionId: body.action_id,
+        });
+        await recordSystemEvent({ severity: "warning", source_service: "identity_server", target_service: "identity_server", category: "authentication", event_type: "support_recovery_password_issued", message: "Ein vorläufiges Support-Passwort wurde zur Zustellung angenommen.", impact: "Das Konto besitzt für kurze Zeit einen ausschließlich zur Passkey-Wiederherstellung nutzbaren Zugang.", account_id: result.account_id, route: "/api/internal/support-recovery", correlation_id: result.action_id, details: { support_actor_id: String(body.support_actor_id || "").slice(0, 160), expires_at: result.expires_at, email_deleted: true } });
+        sendJson(res, 201, result);
+      } catch (error) {
+        await recordSystemEvent({ severity: "warning", source_service: "identity_server", target_service: "identity_server", category: "authentication", event_type: "support_recovery_issue_failed", message: "Ein Support-Recovery-Vorgang wurde abgewiesen oder konnte nicht zugestellt werden.", impact: "Es wurde kein nutzbarer Recovery-Zugang ausgestellt.", route: "/api/internal/support-recovery", correlation_id: /^[0-9a-f-]{36}$/i.test(String(body.action_id || "")) ? body.action_id : null, details: { support_actor_id: String(body.support_actor_id || "").slice(0, 160), error_code: error.code || "support_recovery_failed" } });
+        sendJson(res, error.status || 400, { error: error.code || "support_recovery_failed", message: error.message || "Support-Wiederherstellung konnte nicht vorbereitet werden." });
+      }
+    },
+  });
+  registry.register({
     method: "GET",
     path: "/api/internal/link-integrity/inventory",
     handler({ req, res }) {
@@ -48,6 +68,21 @@ function registerSystemRoutes({
       requireInternalAdmin(req);
       await smtpEmailService.testConnection();
       sendJson(res, 200, { ok: true, config: smtpConfigStore.publicConfig() });
+    },
+  });
+  registry.register({
+    method: "POST",
+    path: "/api/internal/email-delivery/suppress",
+    async handler({ req, res }) {
+      requireInternalAdmin(req);
+      const body = await readJsonBody(req);
+      const result = await auth().suppress_community_email_delivery({
+        event_id: body.event_id,
+        reason_code: body.reason_code,
+        source: body.source,
+        smtp_status: body.smtp_status,
+      });
+      sendJson(res, 200, result);
     },
   });
   registry.register({

@@ -856,6 +856,24 @@ footer {
 .site-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
 .site-footer-links a { color: #cbd5e1; font-weight: 750; }
 .site-footer-links a:hover { color: var(--accent); }
+
+.privacy-page { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 30px 0 64px; display: grid; gap: 18px; }
+.privacy-page .panel { padding: clamp(20px, 3vw, 32px); }
+.privacy-hero h1 { margin-bottom: 12px; }
+.privacy-publication-block { margin-top: 20px; padding: 16px 18px; border: 1px solid #c98220; border-radius: 14px; background: #fff6df; color: #5f3b08; }
+.privacy-publication-block p { margin: 7px 0 0; }
+.privacy-version { margin: 14px 0 0; color: var(--muted); font-size: .9rem; }
+.privacy-section h2 { margin-top: 0; }
+.privacy-section li + li { margin-top: 8px; }
+.privacy-definition-list { display: grid; gap: 10px; margin: 0; }
+.privacy-definition-list div { display: grid; grid-template-columns: minmax(150px, .35fr) 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+.privacy-definition-list dt { font-weight: 800; }
+.privacy-definition-list dd { margin: 0; }
+.privacy-table-wrap { overflow-x: auto; }
+.privacy-table-wrap table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.privacy-table-wrap th, .privacy-table-wrap td { padding: 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.privacy-table-wrap th { background: color-mix(in srgb, var(--panel) 85%, var(--accent)); }
+@media (max-width: 640px) { .privacy-definition-list div { grid-template-columns: 1fr; gap: 4px; } }
 @media (max-width: 720px) {
   body { padding-top: 70px; }
   .scope-list { grid-template-columns: 1fr; }

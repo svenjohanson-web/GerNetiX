@@ -104,6 +104,7 @@ document.querySelector("#communityQuestionRows")?.addEventListener("click", hand
 document.querySelector("#communitySupportDetail")?.addEventListener("submit", handleCommunitySupportAction);
 document.querySelector("#communityQuestionDetail")?.addEventListener("submit", handleCommunityQuestionAction);
 document.querySelector("#communityReportRows")?.addEventListener("click", handleCommunityReportAction);
+document.querySelector("#supportRecoveryForm")?.addEventListener("submit", issueSupportRecoveryPassword);
 document.querySelector("#adminLogoutButton")?.addEventListener("click", async () => {
   await fetch("/api/admin-access/logout", { method: "POST" });
   location.assign("/admin/");
@@ -528,6 +529,31 @@ async function handleCommunitySupportSelection(event) {
     state.selectedSupportThreadLoading = false;
     renderCommunitySupportDetail();
   }
+}
+
+async function issueSupportRecoveryPassword(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type='submit']");
+  const status = document.querySelector("#supportRecoveryStatus");
+  button.disabled = true;
+  status.className = "flash-status running";
+  status.textContent = "Einmalpasswort wird erstellt und an SMTP übergeben …";
+  try {
+    const result = await postJson("/api/admin/identity/support-recovery", {
+      username: form.elements.username.value,
+      email: form.elements.email.value,
+      verification_reason: form.elements.verification_reason.value,
+      admin_password: form.elements.admin_password.value,
+    });
+    form.reset();
+    status.className = "flash-status ok";
+    status.textContent = `Zustellung angenommen. Die temporäre Adresse ist in GerNetiX gelöscht; das Einmalpasswort gilt bis ${formatDateTime(result.expires_at)}. Vorgang ${result.action_id}.`;
+  } catch (error) {
+    form.elements.admin_password.value = "";
+    status.className = "flash-status error";
+    status.textContent = error.message;
+  } finally { button.disabled = false; }
 }
 
 function renderCommunitySupportDetail() {

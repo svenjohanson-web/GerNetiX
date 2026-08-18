@@ -428,6 +428,21 @@ button.danger:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(34, 211, 238, .16);
 }
+
+.account-contact-notifications { display: grid; gap: 12px; }
+.account-contact-notifications > * { margin-top: 0; margin-bottom: 0; }
+.account-contact-email-form { display: grid; gap: 7px; }
+.account-contact-email-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto auto; gap: 8px; align-items: center; }
+.account-contact-email-row input { min-width: 0; }
+.account-notification-preferences { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.account-notification-preferences legend { padding: 0 6px; font-weight: 800; }
+.account-notification-preferences:disabled { opacity: .58; }
+
+@media (max-width: 760px) {
+  .account-contact-email-row,
+  .account-notification-preferences { grid-template-columns: 1fr; }
+  .account-contact-email-row button { width: 100%; }
+}
 .back-to-dashboard {
   display: inline-flex;
   align-items: center;

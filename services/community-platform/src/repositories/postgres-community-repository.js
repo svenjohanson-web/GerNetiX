@@ -106,6 +106,22 @@ class PostgresCommunityRepository {
         raw_json jsonb NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_community_inbox_entries_recipient ON community_inbox_entries (recipient_user_id, state, created_at DESC);
+      CREATE TABLE IF NOT EXISTS community_notification_outbox (
+        event_id text PRIMARY KEY,
+        recipient_user_id text NOT NULL,
+        category text NOT NULL CHECK (category IN ('thread_replies', 'direct_messages', 'support_replies', 'project_invitations')),
+        status text NOT NULL CHECK (status IN ('pending', 'retry', 'leased', 'delivered', 'dead_letter')),
+        attempts integer NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+        next_attempt_at timestamptz NOT NULL,
+        lease_until timestamptz,
+        outcome text,
+        last_error_code text,
+        created_at timestamptz NOT NULL,
+        updated_at timestamptz NOT NULL,
+        delivered_at timestamptz
+      );
+      CREATE INDEX IF NOT EXISTS idx_community_notification_outbox_ready
+        ON community_notification_outbox (status, next_attempt_at, created_at);
       CREATE TABLE IF NOT EXISTS community_broadcasts (
         broadcast_id text PRIMARY KEY,
         created_by_user_id text NOT NULL,
@@ -315,6 +331,13 @@ class PostgresCommunityRepository {
       VALUES ($1,$2,$3,$4,$5) ON CONFLICT (inbox_item_id) DO UPDATE SET state=EXCLUDED.state, raw_json=EXCLUDED.raw_json`, [item.inbox_item_id, item.recipient_user_id, item.state, item.created_at, item]);
     return clone(item);
   }
+  async saveInboxItemWithNotification(item, notificationEvent) {
+    return this.inTransaction(async (repository) => {
+      await repository.saveInboxItem(item);
+      await repository.saveNotificationOutboxEvent(notificationEvent);
+      return clone(item);
+    });
+  }
   async findInboxItem(id) { return first(await this.pool.query("SELECT raw_json FROM community_inbox_items WHERE inbox_item_id=$1", [id])); }
   async listInboxItems(filter = {}) {
     const result = filter.user_id ? await this.pool.query("SELECT raw_json FROM community_inbox_items WHERE recipient_user_id=$1 ORDER BY created_at DESC", [filter.user_id]) : await this.pool.query("SELECT raw_json FROM community_inbox_items ORDER BY created_at DESC");
@@ -414,6 +437,13 @@ class PostgresCommunityRepository {
         state=EXCLUDED.state, read_at=EXCLUDED.read_at, raw_json=EXCLUDED.raw_json
     `, [entry.inbox_entry_id, entry.recipient_user_id, entry.entry_kind, entry.thread_id || null, entry.state, entry.created_at, entry.read_at || null, entry]);
     return clone(entry);
+  }
+  async saveInboxEntryWithNotification(entry, notificationEvent) {
+    return this.inTransaction(async (repository) => {
+      await repository.saveInboxEntry(entry);
+      await repository.saveNotificationOutboxEvent(notificationEvent);
+      return clone(entry);
+    });
   }
 
   async findInboxEntry(entryId) {
@@ -536,23 +566,114 @@ class PostgresCommunityRepository {
     return rows(await this.pool.query(`SELECT raw_json FROM community_project_showcases ${where} ORDER BY updated_at DESC`, values));
   }
 
-  async createMessageThreadBundle({ thread, members, message, inboxEntries }) {
+  async saveNotificationOutboxEvent(event) {
+    await this.pool.query(`
+      INSERT INTO community_notification_outbox
+        (event_id, recipient_user_id, category, status, attempts, next_attempt_at,
+         lease_until, outcome, last_error_code, created_at, updated_at, delivered_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      ON CONFLICT (event_id) DO NOTHING
+    `, [
+      event.event_id, event.recipient_user_id, event.category, event.status,
+      Number(event.attempts || 0), event.next_attempt_at, event.lease_until || null,
+      event.outcome || null, event.last_error_code || null, event.created_at,
+      event.updated_at, event.delivered_at || null,
+    ]);
+    return clone(event);
+  }
+
+  async claimNotificationOutbox({ now, leaseUntil, limit = 25 }) {
+    const result = await this.pool.query(`
+      WITH candidates AS (
+        SELECT event_id
+        FROM community_notification_outbox
+        WHERE ((status IN ('pending', 'retry') AND next_attempt_at <= $1)
+          OR (status = 'leased' AND lease_until <= $1))
+        ORDER BY created_at
+        FOR UPDATE SKIP LOCKED
+        LIMIT $2
+      )
+      UPDATE community_notification_outbox AS event
+      SET status='leased', attempts=event.attempts+1, lease_until=$3,
+          updated_at=$1, last_error_code=NULL
+      FROM candidates
+      WHERE event.event_id=candidates.event_id
+      RETURNING event.*
+    `, [now, limit, leaseUntil]);
+    return result.rows.map(notificationOutboxRow);
+  }
+
+  async completeNotificationOutboxEvent(eventId, { now, outcome }) {
+    const result = await this.pool.query(`
+      UPDATE community_notification_outbox
+      SET status='delivered', outcome=$2, lease_until=NULL, delivered_at=$3,
+          updated_at=$3, last_error_code=NULL
+      WHERE event_id=$1 AND status='leased'
+      RETURNING *
+    `, [eventId, outcome, now]);
+    return result.rows[0] ? notificationOutboxRow(result.rows[0]) : null;
+  }
+
+  async retryNotificationOutboxEvent(eventId, { now, nextAttemptAt, errorCode, maxAttempts = 8 }) {
+    const result = await this.pool.query(`
+      UPDATE community_notification_outbox
+      SET status=CASE WHEN attempts >= $5 THEN 'dead_letter' ELSE 'retry' END,
+          next_attempt_at=CASE WHEN attempts >= $5 THEN next_attempt_at ELSE $3 END,
+          lease_until=NULL, updated_at=$2, last_error_code=$4
+      WHERE event_id=$1 AND status='leased'
+      RETURNING *
+    `, [eventId, now, nextAttemptAt, errorCode, maxAttempts]);
+    return result.rows[0] ? notificationOutboxRow(result.rows[0]) : null;
+  }
+
+  async notificationOutboxSummary() {
+    const result = await this.pool.query("SELECT status, count(*)::int AS count FROM community_notification_outbox GROUP BY status");
+    const summary = { pending: 0, retry: 0, leased: 0, delivered: 0, dead_letter: 0 };
+    for (const row of result.rows) summary[row.status] = Number(row.count || 0);
+    return summary;
+  }
+
+  async purgeNotificationOutbox({ deliveredBefore, deadLetterBefore }) {
+    const result = await this.pool.query(`
+      WITH deleted AS (
+        DELETE FROM community_notification_outbox
+        WHERE (status='delivered' AND COALESCE(delivered_at, updated_at, created_at) < $1)
+           OR (status='dead_letter' AND COALESCE(updated_at, created_at) < $2)
+        RETURNING status
+      )
+      SELECT
+        count(*) FILTER (WHERE status='delivered')::int AS delivered,
+        count(*) FILTER (WHERE status='dead_letter')::int AS dead_letter,
+        count(*)::int AS total
+      FROM deleted
+    `, [deliveredBefore, deadLetterBefore]);
+    const row = result.rows[0] || {};
+    return {
+      delivered: Number(row.delivered || 0),
+      dead_letter: Number(row.dead_letter || 0),
+      total: Number(row.total || 0),
+    };
+  }
+
+  async createMessageThreadBundle({ thread, members, message, inboxEntries, outboxEvents = [] }) {
     return this.inTransaction(async (repository) => {
       await repository.saveMessageThread(thread);
       for (const member of members) await repository.saveThreadMember(member);
       await repository.saveMessage(message);
       for (const entry of inboxEntries) await repository.saveInboxEntry(entry);
-      return clone({ thread, members, message, inboxEntries });
+      for (const event of outboxEvents) await repository.saveNotificationOutboxEvent(event);
+      return clone({ thread, members, message, inboxEntries, outboxEvents });
     });
   }
 
-  async appendMessageBundle({ thread, authorMember, message, inboxEntries }) {
+  async appendMessageBundle({ thread, authorMember, message, inboxEntries, outboxEvents = [] }) {
     return this.inTransaction(async (repository) => {
       await repository.saveMessage(message);
       await repository.saveMessageThread(thread);
       if (authorMember) await repository.saveThreadMember(authorMember);
       for (const entry of inboxEntries) await repository.saveInboxEntry(entry);
-      return clone({ thread, authorMember, message, inboxEntries });
+      for (const event of outboxEvents) await repository.saveNotificationOutboxEvent(event);
+      return clone({ thread, authorMember, message, inboxEntries, outboxEvents });
     });
   }
 
@@ -624,6 +745,25 @@ function first(result) {
 function rows(result) {
   return result.rows.map((row) => clone(row.raw_json));
 }
+
+function notificationOutboxRow(row) {
+  return clone({
+    event_id: row.event_id,
+    recipient_user_id: row.recipient_user_id,
+    category: row.category,
+    status: row.status,
+    attempts: Number(row.attempts || 0),
+    next_attempt_at: timestamp(row.next_attempt_at),
+    lease_until: timestamp(row.lease_until),
+    outcome: row.outcome || null,
+    last_error_code: row.last_error_code || null,
+    created_at: timestamp(row.created_at),
+    updated_at: timestamp(row.updated_at),
+    delivered_at: timestamp(row.delivered_at),
+  });
+}
+
+function timestamp(value) { return value ? new Date(value).toISOString() : null; }
 function clone(value) {
   return value ? JSON.parse(JSON.stringify(value)) : null;
 }

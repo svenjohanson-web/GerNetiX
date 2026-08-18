@@ -13,7 +13,60 @@ test("postgres identity repository creates its normalized account and session sc
   assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_sessions/);
   assert.match(pool.calls[0].text, /token_hash text NOT NULL UNIQUE/);
   assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_knowledge_chapter_reads/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_passkey_credentials/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_support_recovery_transactions/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_notification_deliveries/);
   assert.match(pool.calls[0].text, /PRIMARY KEY \(account_id, chapter_id\)/);
+});
+
+test("postgres notification retention deletes only terminal and stale failed delivery records", async () => {
+  const pool = new RecordingPool([{ rows: [{ terminal: 2, failed: 1, total: 3 }] }]);
+  const result = await new PostgresIdentityRepository(pool).purgeNotificationDeliveries({
+    terminalBefore: "2026-07-19T00:00:00.000Z",
+    failedBefore: "2026-05-20T00:00:00.000Z",
+  });
+  assert.deepEqual(result, { terminal: 2, failed: 1, total: 3 });
+  assert.match(pool.calls[0].text, /DELETE FROM identity_notification_deliveries/);
+  assert.match(pool.calls[0].text, /status IN \('sent', 'skipped'\)/);
+  assert.deepEqual(pool.calls[0].values, ["2026-07-19T00:00:00.000Z", "2026-05-20T00:00:00.000Z"]);
+});
+
+test("postgres authentication retention uses token expiry and preserves a later support grant expiry", async () => {
+  const pool = new RecordingPool([{ rows: [{ verification_tokens: 2, password_reset_tokens: 1, support_recoveries: 1 }] }]);
+  const result = await new PostgresIdentityRepository(pool).purgeExpiredAuthenticationRecords({
+    tokenBefore: "2026-08-11T00:00:00.000Z",
+    supportRecoveryBefore: "2026-07-19T00:00:00.000Z",
+  });
+  assert.deepEqual(result, { verification_tokens: 2, password_reset_tokens: 1, support_recoveries: 1, total: 4 });
+  assert.match(pool.calls[0].text, /DELETE FROM identity_verification_tokens/);
+  assert.match(pool.calls[0].text, /DELETE FROM identity_password_reset_tokens/);
+  assert.match(pool.calls[0].text, /DELETE FROM identity_support_recovery_transactions/);
+  assert.match(pool.calls[0].text, /GREATEST[\s\S]*grant_expires_at/);
+  assert.deepEqual(pool.calls[0].values, ["2026-08-11T00:00:00.000Z", "2026-07-19T00:00:00.000Z"]);
+});
+
+test("postgres support recovery serializes parallel issuance per account", async () => {
+  const calls = [];
+  const client = {
+    async query(text, values = []) {
+      calls.push({ text, values });
+      if (/SELECT COUNT/.test(text)) return { rows: [{ count: 0 }], rowCount: 1 };
+      if (/SELECT 1 FROM identity_support_recovery_transactions/.test(text)) return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: 1 };
+    },
+    release() { calls.push({ text: "RELEASE", values: [] }); },
+  };
+  const repository = new PostgresIdentityRepository({ connect: async () => client }, () => new Date("2026-08-18T12:00:00.000Z"));
+  const transaction = await repository.replaceActiveSupportRecovery({
+    userId: "acct-1", passwordHash: "hash", expiresAt: "2026-08-18T12:15:00.000Z",
+    supportActorId: "support-1", supportActorRole: "support", reason: "verified", actionId: "action-1",
+  }, { sinceIso: "2026-08-17T12:00:00.000Z", maximum: 3 });
+
+  assert.equal(transaction.user_id, "acct-1");
+  assert.ok(calls.some((call) => /pg_advisory_xact_lock/.test(call.text)));
+  assert.ok(calls.some((call) => /SELECT 1 FROM identity_support_recovery_transactions/.test(call.text)));
+  assert.ok(calls.some((call) => /INSERT INTO identity_support_recovery_transactions/.test(call.text)));
+  assert.ok(calls.some((call) => call.text === "COMMIT"));
 });
 
 test("postgres identity repository writes normalized lookup values and JSON documents", async () => {
@@ -90,12 +143,13 @@ test("postgres identity repository upserts account-bound knowledge chapter read 
 });
 
 class RecordingPool {
-  constructor() {
+  constructor(results = []) {
     this.calls = [];
+    this.results = results;
   }
 
   async query(text, values = []) {
     this.calls.push({ text, values });
-    return { rows: [], rowCount: 1 };
+    return this.results.shift() || { rows: [], rowCount: 1 };
   }
 }

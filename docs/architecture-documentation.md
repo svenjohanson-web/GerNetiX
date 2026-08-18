@@ -41,6 +41,19 @@ Die persoenliche Ein-Sitzungs-Regel, der ausdrueckliche Geraetewechsel, die
 Kontosicherung bei unbekannter Anmeldung und die testbaren Arbeitspakete
 stehen in [Eine aktive Kontositzung pro Einzelkonto](single-active-account-session.md).
 
+Die optionale verifizierte Kontaktadresse, getrennte persoenliche
+Community-E-Mail-Praeferenzen und die Grenze ohne Werbung, Tracking,
+Cookie-Consent oder Datenschutz-Kenntnisnahme stehen in
+[Optionale Account-E-Mail und persoenliche Community-Hinweise](account-email-community-notifications.md).
+Die zugehoerige oeffentliche Transparenzseite liegt unter `/datenschutz/`;
+bis zur Ergaenzung der Betreiberangaben, finalen Rechtsgrundlagen und
+Loeschfristen bleibt sie ausdruecklich ein nicht freigegebener Entwurf.
+Die standardmaessig deaktivierten Notification- und Token-Retention-Worker
+sowie ihre geschuetzten Aktivzustaende sind im selben Fachdokument beschrieben.
+Dasselbe Dokument beschreibt die adressversionsgebundene Community-Mail-
+Suppression, den geschuetzten internen Delivery-Status-Vertrag und die
+Revalidierung ohne Verlust der persoenlichen Praeferenzen.
+
 Die beschlossene Ablösung der PostgreSQL-Projektquellen durch private
 Forgejo-Repositories, die Speichergrenze zu PostgreSQL und Artifact Store sowie
 die testbaren Migrationsschritte stehen in

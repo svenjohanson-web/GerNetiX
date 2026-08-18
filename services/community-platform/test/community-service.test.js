@@ -75,6 +75,106 @@ test("retains private message threads and read state after a SQLite restart", as
   }
 });
 
+test("persists only minimized personal notification events across a SQLite restart", async () => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-community-notification-outbox-"));
+  const sqlitePath = path.join(temporaryDirectory, "community.sqlite");
+  try {
+    const config = createConfig({ COMMUNITY_SQLITE_PATH: sqlitePath });
+    const firstService = await createDefaultCommunityPlatform(config);
+    await firstService.createDirectThread({
+      recipient_user_id: "user-2",
+      sender_label: "Ada",
+      subject: "Privater Betreff",
+      body: "Sehr privater Nachrichtentext",
+    }, member);
+    firstService.repository.store.close();
+
+    const restartedService = await createDefaultCommunityPlatform(config);
+    const claimed = await restartedService.claimNotificationOutbox({ limit: 10, lease_seconds: 60 });
+    assert.equal(claimed.events.length, 1);
+    assert.deepEqual(Object.keys(claimed.events[0]).sort(), ["attempts", "category", "event_id", "recipient_user_id"]);
+    assert.equal(claimed.events[0].recipient_user_id, "user-2");
+    assert.equal(claimed.events[0].category, "direct_messages");
+    assert.doesNotMatch(JSON.stringify(claimed), /Privater Betreff|Sehr privater Nachrichtentext|Ada/);
+
+    await restartedService.completeNotificationOutbox(claimed.events[0].event_id, { outcome: "sent" });
+    assert.equal((await restartedService.claimNotificationOutbox({ limit: 10 })).events.length, 0);
+    restartedService.repository.store.close();
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test("creates reply and invitation outbox events with bounded retry and dead-letter state", async () => {
+  const service = await createService();
+  const thread = await service.createDirectThread({ recipient_user_id: "user-2", body: "Hallo" }, member);
+  const initial = await service.claimNotificationOutbox({ limit: 10 });
+  await service.completeNotificationOutbox(initial.events[0].event_id, { outcome: "skipped" });
+  await service.appendThreadMessage(thread.thread_id, { body: "Antwort" }, { user_id: "user-2" });
+  await service.createProjectInvitation({ recipient_user_id: "user-3", project_id: "project-1" }, member);
+
+  const claimed = await service.claimNotificationOutbox({ limit: 10 });
+  assert.deepEqual(claimed.events.map((event) => event.category).sort(), ["project_invitations", "thread_replies"]);
+  const reply = claimed.events.find((event) => event.category === "thread_replies");
+  await service.retryNotificationOutbox(reply.event_id, { attempts: reply.attempts, error_code: "identity unavailable\nprivate detail" });
+  const stored = service.repository.notificationOutbox.get(reply.event_id);
+  assert.equal(stored.status, "retry");
+  assert.equal(stored.last_error_code, "identity_unavailable_private_detail");
+  assert.equal(stored.lease_until, null);
+  for (let attempt = 2; attempt <= 8; attempt += 1) {
+    service.repository.notificationOutbox.get(reply.event_id).next_attempt_at = "2000-01-01T00:00:00.000Z";
+    const retryClaim = (await service.claimNotificationOutbox({ limit: 1 })).events[0];
+    await service.retryNotificationOutbox(retryClaim.event_id, { attempts: retryClaim.attempts, error_code: "delivery_failed" });
+  }
+  assert.equal(service.repository.notificationOutbox.get(reply.event_id).status, "dead_letter");
+});
+
+test("notification retention is dormant by default and purges only expired terminal outbox rows when enabled", async () => {
+  const dormant = await createService();
+  dormant.repository.notificationOutbox.set("old-delivered", {
+    event_id: "old-delivered", status: "delivered", delivered_at: "2000-01-01T00:00:00.000Z", updated_at: "2000-01-01T00:00:00.000Z",
+  });
+  const dormantClaim = await dormant.claimNotificationOutbox();
+  assert.equal(dormantClaim.retention.enabled, false);
+  assert.equal(dormant.repository.notificationOutbox.has("old-delivered"), true);
+
+  const enabled = await createDefaultCommunityPlatform(createConfig({
+    COMMUNITY_PERSISTENCE_BACKEND: "memory",
+    COMMUNITY_NOTIFICATION_RETENTION_ENABLED: "1",
+    COMMUNITY_NOTIFICATION_DELIVERED_RETENTION_DAYS: "30",
+    COMMUNITY_NOTIFICATION_DEAD_LETTER_RETENTION_DAYS: "90",
+  }));
+  for (const event of [
+    { event_id: "old-delivered", status: "delivered", delivered_at: "2000-01-01T00:00:00.000Z", updated_at: "2000-01-01T00:00:00.000Z" },
+    { event_id: "old-dead", status: "dead_letter", updated_at: "2000-01-01T00:00:00.000Z" },
+    { event_id: "pending", status: "pending", next_attempt_at: "2999-01-01T00:00:00.000Z", created_at: "2000-01-01T00:00:00.000Z", updated_at: "2000-01-01T00:00:00.000Z" },
+  ]) enabled.repository.notificationOutbox.set(event.event_id, event);
+
+  const claim = await enabled.claimNotificationOutbox();
+  assert.deepEqual(claim.retention, { enabled: true, purged: { delivered: 1, dead_letter: 1, total: 2 } });
+  assert.equal(enabled.repository.notificationOutbox.has("pending"), true);
+});
+
+test("protects notification outbox leases from regular Community actors", async () => {
+  const service = await createDefaultCommunityPlatform(createConfig({
+    COMMUNITY_PERSISTENCE_BACKEND: "memory",
+    COMMUNITY_INTERNAL_TOKEN: "internal-secret",
+  }));
+  await service.createDirectThread({ recipient_user_id: "user-2", body: "Hallo" }, member);
+  const app = createHttpApp({ service });
+
+  const denied = await requestAppJson(app, "POST", "/api/community/notification-outbox/claim", {
+    headers: { "x-gernetix-community-token": "internal-secret", "x-gernetix-community-actor": "user-1" },
+    body: {},
+  });
+  assert.equal(denied.status, 403);
+  const claimed = await requestAppJson(app, "POST", "/api/community/notification-outbox/claim", {
+    headers: { "x-gernetix-community-token": "internal-secret" }, body: {},
+  });
+  assert.equal(claimed.status, 200);
+  assert.equal(claimed.body.events.length, 1);
+});
+
 test("retains community marketplace listings after a SQLite restart", async () => {
   const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-community-marketplace-"));
   const sqlitePath = path.join(temporaryDirectory, "community.sqlite");

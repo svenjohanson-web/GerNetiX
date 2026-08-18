@@ -9,6 +9,7 @@ function registerCommunityRoutes({
   auth,
   createCommunityProjectSnapshot,
   notifyPrivateCommunityRequest,
+  communityNotificationOutboxWorker,
 }) {
   const publicHeaders = { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" };
   registry.register({
@@ -41,6 +42,10 @@ function registerCommunityRoutes({
     method: "*",
     pattern: /^\/api\/community/,
     async handler({ req, res, url }) {
+      if (url.pathname.startsWith("/api/community/notification-outbox")) {
+        sendJson(res, 404, { error: "route_not_found" });
+        return;
+      }
       const session = await requireSession(req, res);
       if (!session) return;
       const body = ["POST", "PATCH"].includes(req.method) ? await readJsonBody(req) : undefined;
@@ -91,6 +96,9 @@ function registerCommunityRoutes({
       });
       if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.visibility === "private") {
         await notifyPrivateCommunityRequest({ questionId: payload.question_id });
+      }
+      if (req.method === "POST") {
+        communityNotificationOutboxWorker?.schedule();
       }
       sendJson(res, req.method === "POST" ? 201 : 200, payload);
     },

@@ -18,6 +18,25 @@ Datenspeicher; das SVG-Komponentendiagramm bleibt deshalb strukturell
 unveraendert. Der vollstaendige Fach-, Integritaets- und Nachweisvertrag steht
 unter [Eine aktive Kontositzung pro Einzelkonto](single-active-account-session.md).
 
+## Passkey- und supportgestuetzte Kontowiederherstellung
+
+WebAuthn verwendet eine aus der Deployment-Konfiguration fest abgeleitete
+kanonische Origin und RP-ID; Browser-Header duerfen diese Sicherheitsgrenze
+nicht veraendern. Ein Konto kann mehrere Passkeys derselben RP-ID besitzen.
+Der lokale Remote-Dev-Modus darf zentrale Passkeys weder anlegen noch ersetzen.
+
+Der Admin Access Server gewaehrt die Wiederherstellung nur Administratoren und
+Support mit `admin_identity_recovery` und prueft unmittelbar vor der Ausgabe
+erneut das Admin-Passwort. Das Admin Tool uebergibt Spitzname, dokumentierten
+Pruefgrund und die nur fuer diesen Versand genannte E-Mail-Adresse ueber den
+internen token-geschuetzten Identity-Endpunkt. Identity speichert nur den
+Scrypt-Hash des vorlaeufigen Passworts und minimierte Vorgangsmetadaten in
+PostgreSQL; die E-Mail-Adresse wird weder dem Konto noch dem Audit hinzugefuegt
+und nach synchroner Uebergabe an den Maildienst verworfen. Der zehnminuetige
+Recovery-Grant besitzt keinen Fachdatenzugriff, widerruft bestehende Sitzungen
+und kann nur durch Registrierung eines neuen kanonischen Passkeys abgeschlossen
+werden. Dabei werden alle bisherigen Passkeys widerrufen.
+
 ## Zugriffsentscheidung fuer Premium-Funktionen
 
 Der Identity Server ermittelt die Account-Entitlements fuer jede Plattform-Antwort. Die Entwicklungsplattform sperrt KI-Eingaben und nicht freigegebene Projekttemplates sichtbar. Unabhaengig davon prueft der Identity Server KI-Chat-Anfragen und die Anlage eines Templates erneut; die Client-Sperre ist damit keine alleinige Sicherheitsgrenze.
@@ -100,10 +119,10 @@ flowchart LR
   end
 
   subgraph edgeServices["User- und Admin-nahe Serverprozesse"]
-    identity["Identity Server<br/>Route Registry + Linkinventar<br/>:4300"]
+    identity["Identity Server<br/>Route Registry + Linkinventar<br/>Passkeys + begrenzte Recovery-Grants<br/>:4300"]
     usbSerialHelper["GerNetiX Serial Service<br/>nativer Swift-Hintergrunddienst<br/>TLS-Loopback :43123"]
     adminAccess["Admin Access Server + Admin Console PWA<br/>eigene Admin-Konten, Sitzungen, Rollen<br/>privat :4610"]
-    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Quellen & Builds + Account-Blatt + Community-Arbeitskorb + Link Integrity + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
+    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Quellen & Builds + Account-Blatt + Support-Recovery + Community-Arbeitskorb + Link Integrity + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
     contextManager["Context Manager<br/>:5050"]
   end
 
@@ -155,7 +174,7 @@ flowchart LR
   end
 
   subgraph storage["Persistenz / Wissensbasis"]
-    identityDb[("Identity PostgreSQL<br/>Accounts, Credentials, Sessions,<br/>Wissenskapitel-Lesestaende")]
+    identityDb[("Identity PostgreSQL<br/>Accounts, optionale Kontaktadresse + Praeferenzen,<br/>mehrere Passkeys, Sessions, Zustellnachweise")]
     identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     releaseDb[("Plattform-Release-Metadaten PostgreSQL<br/>public / authenticated / entitled / internal")]
     accountAssetDb[("Account-Asset-Metadaten PostgreSQL<br/>owner_only QR, Bilder, Bildstile")]
@@ -235,7 +254,8 @@ flowchart LR
   runtimePostgres --> aiContextDb
   identity -->|"kuratierte Help-Wissenssuche"| aiContext
   identity -->|"KI-Routen: gpt-5-nano<br/>AI-Usage-Preflight, store=false<br/>Help + Anforderungswerkstatt + Elektroniklabor"| externalLlm
-  identity -->|"SMTP/TLS"| ionosMail["IONOS Mail"]
+  identity -->|"Outbox-Poll mit Lease<br/>user_id, Kategorie, Ereignis-ID"| communityPlatform
+  identity -->|"SMTP/TLS<br/>Verifizierung, Reset, generischer Inbox-Hinweis"| ionosMail["IONOS Mail"]
   identity -->|"token-geschuetzte Auth-/Runtime-Ereignisse"| adminTool
   identity -->|"token-geschuetztes Linkinventar"| adminTool
   identity -->|"Hardware-Assistent: Structured Board Profile, store=false"| externalLlm
@@ -331,7 +351,7 @@ flowchart LR
 | Prozess | Port | Lokale URL / Zugriff | Rolle |
 | --- | ---: | --- | --- |
 | Privater DNS Resolver | 53 UDP/TCP | `10.77.0.1`, ausschliesslich ueber WireGuard; Clientprofil `DNS = 10.77.0.1` | Loest die privaten PWA-, Build- und MQTT-Namen auf den WireGuard-Edge auf und leitet andere DNS-Anfragen weiter; der oeffentliche DNS bleibt fuer ACME unveraendert |
-| Identity Server | VPS-intern 4300 / Remote-Dev lokal 4300 | `https://pwa.gernetix.com/app/dashboard/` oder `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices; Persistenz immer PostgreSQL |
+| Identity Server | VPS-intern 4300 / Remote-Dev lokal 4300 | `https://pwa.gernetix.com/app/dashboard/` oder `http://127.0.0.1:4300/app/dashboard/` | Login, mehrere kanonisch gebundene Passkeys, eingeschraenkte Offline-/Support-Recovery, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices; Persistenz immer PostgreSQL |
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Zentraler Build & Deploy Worker | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds sowie zentrale OTA-/FlashBox-Auslieferung mit Signierschluessel und MQTT; PostgreSQL koordiniert Jobregister, workeruebergreifende Abbrueche, Ziel-Locks, Statussicht, Cache-Generationen und Firmware-Artefakte |
 | Build Worker Pool Router | VPS-intern 4400; Remote-Dev-Tunnel 14400 | `http://127.0.0.1:14400/` nur ueber den SSH-/WireGuard-Tunnel | Verteilt ausschliesslich `build` und `prebuild` nach `least_conn` auf den zentralen Worker und konfigurierte Linux-Worker; Deploy-, FlashBox- und USB-Auftraege umgehen den Pool |
@@ -342,7 +362,7 @@ flowchart LR
 | Capacity Controller | API im Compute-Dienst, lokal teilweise umgesetzt | nur token-geschuetzte interne Control- und Operations-Schnittstellen | Aggregiert Queue und passende Slots in PostgreSQL und erzeugt Scale-, Drain- oder Backpressure-Empfehlungen sowie payload-freie Alarme; private und Cloud-Adapter mutieren noch keine externe Infrastruktur, Kubernetes ist bewusst nicht abgenommen |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
-| Admin Tool API | 4600 | nur intern durch Admin Access Server | Read-only Quellen-/Repository-/Build-/Artefaktsicht, Account-Blatt, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits, Consent/Audit, minimierte Nutzeraktions-Wirkketten, SQL-Aggregate, Incidents, Alarmkandidaten, persistierte read-only Synthetic-Vorprüfungen und LLM-Routing |
+| Admin Tool API | 4600 | nur intern durch Admin Access Server | Read-only Quellen-/Repository-/Build-/Artefaktsicht, Account-Blatt, re-authentisierte Support-Recovery ohne persistierte Zustelladresse, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits, Consent/Audit, minimierte Nutzeraktions-Wirkketten, SQL-Aggregate, Incidents, Alarmkandidaten, persistierte read-only Synthetic-Vorprüfungen und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, unveraenderliche Account-Boardversionen, Purchase Contexts, Support-Status |
 | Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse konto- und projektpartitioniert in `telemetry_*` mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
 | Project Server | 4800 | `http://127.0.0.1:4800/` | Projektidentitaet, Owner und Rechte; neue Kundenprojekte nur mit privater Forgejo-Bindung und Initialcommit; Katalogdefinitionen bleiben bis zum bewussten Start virtuell; commitgebundene Builds; aktive Projektrepositories werden vor der Projektloeschung archiviert |
@@ -401,10 +421,12 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | Telemetry Server | PWA liest, konfiguriert Aufbewahrung oder loescht ausschliesslich Telemetrie des sessiongebundenen Projekts |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige, AI-Preflight, Abschluss-/Fehlerbuchung echter Chat-Aufrufe |
 | Identity Server | Admin Tool | Allowlist-validierte browserseitige WebAuthn-Fehler, fehlgeschlagene serverseitige Passkey-Loginphasen und weitere auffaellige Runtime-Vorgaenge ueber einen eigenen token-geschuetzten Ingest als persistente Systemereignisse |
+| Admin Access Server / Admin Tool | Identity Server | Rollen- und re-authentisierungsgeschuetzte Support-Recovery: nur Spitzname, dokumentierter Pruefgrund und fluechtige Zustelladresse werden intern uebergeben; Identity gibt weder Passwort noch Adresse zurueck und persistiert nur gehashte beziehungsweise minimierte Vorgangsdaten. |
 | Identity Server / Link-Prüf-CLI | Admin Tool | Liefert token-geschützt deduplizierte Linkziele, vollständige Fundstellen und Prüfergebnisse; authentifizierte Ziele werden mit einem technischen Testkonto geprüft, dessen Credentials nicht persistiert werden |
 | GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und Architektur-Bausteine, sucht fuer GerNetiX Help ausschliesslich kuratiertes Help-Wissen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
 | GerNetiX Plattform UI / Identity Server | OpenAI Responses API | Standardpfad fuer Chat, Architektur, Artefakte, Code, Hardware-Labor, Help, Anforderungswerkstatt und optionale Elektroniklabor-Hilfe; `gpt-5-nano` ist der kostenoptimierte Standard und jeder kostenpflichtige Aufruf durchlaeuft AI Usage |
-| GerNetiX Plattform UI / Identity Server | IONOS Mail | Sendet Verifizierungs- und Passwort-Reset-E-Mails ueber SMTP/TLS; IONOS bleibt Mailserver und speichert keine GerNetiX-Anwendungsdaten |
+| Identity Server | Community Platform | Nachricht beziehungsweise Einladung und minimiertes Outbox-Ereignis werden atomar in Community-PostgreSQL gespeichert. Identity beansprucht faellige Ereignisse per Lease und `FOR UPDATE SKIP LOCKED`; uebertragen werden nur Ereignis-ID, Empfaenger-`user_id`, Kategorie und Versuchszahl. Identity prueft verifizierte Kontaktadresse und Praeferenz; Community erhaelt und speichert keine E-Mail-Adresse. Fehler werden begrenzt wiederholt und nach acht Versuchen als Dead Letter sichtbar gehalten. Ein standardmaessig deaktivierter, hoechstens stuendlicher Retention-Lauf kann nach Fristfreigabe alte terminale Community- und Identity-Nachweise loeschen, ohne `pending`, `retry` oder aktive Leases anzutasten. |
+| GerNetiX Plattform UI / Identity Server | IONOS Mail | Sendet Verifizierungs-, Passwort-Reset-, vorlaeufige Support-Recovery- und aktivierte persoenliche Community-Hinweise ueber SMTP/TLS. Community-Hinweise enthalten keinen privaten Nachrichtentext, keine Projektbezeichnung und keine Absenderidentitaet. Die einmalige Support-Recovery-Adresse wird nach Maildienstuebergabe in GerNetiX verworfen; Mailserver und Empfaengerpostfach koennen eigene Zustellmetadaten oder die Nachricht behalten. |
 | GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer die Entwicklungsplattform |
 | GerNetiX Plattform UI | GerNetiX Serial Service | TLS- und loopbackgebundene, kurzlebige Sitzung fuer Board-Erkennung, USB-Flash, seriellen Status, lokale WLAN-Provisionierung und die lokale Nexi-Stimmeinrichtung; die Plattform bleibt die einzige Bedienoberfläche |
 | Identity Server auf dem VPS | GerNetiX Plattform UI im Mac-Browser | Angemeldete HTTPS-Sitzung liefert Firmware, Flash-Manifest und den authentifizierten Download des Serial-Service-Pakets; der unveraenderliche, checksum-gesicherte Release liegt in einer eigenen Plattform-Download-SQLite im persistenten VPS-Volume |
@@ -530,7 +552,9 @@ flowchart LR
 - Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml` und bleibt auf Loopback ohne TLS. Der VPS-Broker behaelt `1883` und `9001` ausschliesslich im internen Docker-Netz und bindet den Device-Port `8883` nur an die WireGuard-Adresse. Server-TLS, verpflichtendes Device-Client-Zertifikat, Device-CA und `%u`-basierte ACL begrenzen jedes Device auf sein eigenes OTA-/Status-Topic. Ein ESP32 ohne eigenen WireGuard-Client erreicht die private Instanz nur ueber einen kontrollierten WireGuard-faehigen Gateway oder eine spaeter getrennt entworfene Device-Edge.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
 - Community und Projektbegleitung laufen ausschliesslich über die angemeldete Plattform. Der Nutzer wählt beim Erstellen zwischen `public` (für weitere angemeldete Mitglieder sichtbar) und `private` (nur anfragendes Konto plus konfigurierte GerNetiX-Operatoren). Der Community-Service ist nicht am Edge veröffentlicht, akzeptiert nur den token-geschützten Identity-Proxy und persistiert seine Inhalte getrennt in PostgreSQL. Private Threads werden weder in öffentlichen Listen noch in der Wissensbasis oder KI-Suche verwendet.
-- Die interne Nachrichtenplattform liegt ebenfalls in der Community Platform. Identity löst beim Beginn einer Direktunterhaltung nur einen exakt eingegebenen registrierten Nicknamen auf; eine öffentliche Kontosuche entsteht dadurch nicht. Community persistiert Unterhaltung, Teilnehmer, einzelne Nachrichten, empfängerbezogene Inbox-Einträge und Lesestände in `community_*`. Zugriff auf einen Thread setzt eine aktive Teilnahme voraus. Operator-Broadcasts bleiben operatorgebunden; Projekteinladungen sind strukturierte Inbox-Einträge und keine E-Mails.
+- Die interne Nachrichtenplattform liegt ebenfalls in der Community Platform. Identity löst beim Beginn einer Direktunterhaltung nur einen exakt eingegebenen registrierten Nicknamen auf; eine öffentliche Kontosuche entsteht dadurch nicht. Community persistiert Unterhaltung, Teilnehmer, einzelne Nachrichten, empfängerbezogene Inbox-Einträge und Lesestände in `community_*`. Zugriff auf einen Thread setzt eine aktive Teilnahme voraus. Optional aktivierte E-Mail-Hinweise werden erst nach erfolgreicher Inbox-Speicherung aus einer minimierten Ereignis-ID, Empfaenger-`user_id` und Kategorie abgeleitet; Adresse, Nachrichtentext und Projektbezeichnung verlassen Identity nicht. Operator-Broadcasts bleiben operatorgebunden und werden nicht per E-Mail versandt.
+- Identity fuehrt eine optionale verifizierte Kontaktadresse und getrennte Praeferenzen fuer Direktnachrichten, Threadantworten, Supportantworten und Projekteinladungen. Passkey-Konten bleiben ohne Adresse voll nutzbar. Eine neue Adresse wird erst durch den aktuell ausstehenden gehashten Verifizierungstoken wirksam; eine alte Bestaetigung kann keine spaeter angeforderte Adresse uebernehmen. Beim Entfernen einer optionalen Adresse werden alle Community-E-Mail-Praeferenzen deaktiviert. Klassische E-Mail-Konten behalten ihre fuer Login und Reset benoetigte Adresse. Die Registrierung enthaelt kein Datenschutz-Kenntnisnahme-Haekchen; nur Nutzungsbedingungen benoetigen Zustimmung. Ein eigenstaendiger, standardmaessig deaktivierter Identity-Retention-Worker kann nach Fristfreigabe abgelaufene Verifizierungs- und Reset-Token sowie alte Support-Recovery-Datensaetze entfernen; aktive Tokens und der spaetere Ablauf eines aktiven Recovery-Grants bleiben geschuetzt. Die oeffentliche Route `/datenschutz/` informiert getrennt ueber Zwecke, Datenarten, Empfaenger, Aufbewahrung, Rechte und Trackinggrenze und ist bei Registrierung und Kontoeinstellungen verlinkt. Solange Betreiberangaben, finale Rechtsgrundlagen und Fristen fehlen, kennzeichnet die Seite sich sichtbar als nicht rechtlich freigegebener Entwurf.
+- Permanente synchrone SMTP-Fehler pausieren nur Community-E-Mails fuer die aktuelle bestaetigte Adressversion. Asynchrone Delivery-Status-Meldungen erreichen einen admin-token-geschuetzten Identity-Vertrag nur mit bereits versandter Ereignis-ID, allowlist-validiertem Grund und Quelle sowie normalisiertem `5xx`-Status; Freitext und Providerantwort werden nicht gespeichert. Ein alter Bounce kann keine neu bestaetigte Adresse sperren. Adresse und Praeferenzen bleiben erhalten, und eine erneute Adressbestaetigung hebt die Sperre auf.
 - Der öffentliche Support-Einstieg führt nach der Anmeldung nicht mehr in eine beliebige öffentliche Community-Anfrage, sondern eröffnet einen privaten System-Thread im internen Support-Postfach. Empfänger sind die explizit konfigurierten Supportkonten oder ersatzweise die Community-Operator-Konten. Supportantworten bleiben im selben teilnehmergeschützten Thread; E-Mail-Adressen werden dafür nicht benötigt.
 - Die angemeldete Plattform stellt Nachrichten unter `/app/messages/` als dreigeteilte Inbox bereit: Ordnernavigation, serverseitige Threadliste und Lesebereich. Posteingang, Gesendet, Support und persönliches Archiv werden aus den Community-Verträgen abgeleitet. Der Postausgang bleibt leer, solange Nachrichten synchron zugestellt werden; Entwürfe werden erst mit eigener SQL-Persistenz angeboten.
 - Öffentliche Projektbeispiele werden als Herkunfts- und Vertrauensinformation getrennt von der persönlichen Projektkopie behandelt. Eine Übernahme erzeugt immer ein neues, konto- und projektgebundenes Projekt im Project Server. `verified` ist ausschließlich eine explizite GerNetiX-Freigabe; nicht verifizierte Community-Projekte dürfen sichtbar und kopierbar sein, aber niemals als vertrauenswürdige oder empfohlene Vorlage erscheinen. Build und Flash setzen weiterhin die bewusste Auswahl eines kompatiblen eigenen Boards und einen bestehenden autorisierten Build-/Flash-Ablauf voraus.

@@ -46,6 +46,12 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/admin/identity/support-recovery") {
+      const body = await readJsonBody(req);
+      sendJson(res, 201, await service.startSupportRecovery(body, readContext(url, body, req)));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/source-repositories") {
       sendJson(res, 200, await service.sourceRepositories());
       return;

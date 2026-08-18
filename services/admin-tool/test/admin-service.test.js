@@ -727,6 +727,36 @@ test("admin keeps SMTP password server-side while configuring Identity mail deli
   assert.equal(tested.ok, true);
 });
 
+test("support recovery forwards the one-time delivery address but persists only a minimized audit", async () => {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({ repository, accessPolicy: new AdminAccessPolicy({ repository }) });
+  let forwarded;
+  service.identityEmailConfigRequest = async (pathname, options) => {
+    forwarded = { pathname, options };
+    return {
+      recovery_id: "recovery-1",
+      account_id: "account-1",
+      expires_at: "2026-08-18T12:15:00.000Z",
+      delivery_status: "accepted",
+      email_deleted: true,
+    };
+  };
+  const result = await service.startSupportRecovery({
+    username: "sven02",
+    email: "temporary-reset@example.net",
+    verification_reason: "verified_existing_support_callback",
+  }, adminContext());
+
+  assert.equal(forwarded.pathname, "/api/internal/support-recovery");
+  assert.equal(forwarded.options.body.email, "temporary-reset@example.net");
+  assert.equal(result.email_deleted, true);
+  const audit = repository.adminActions.at(-1);
+  assert.equal(audit.action_type, "identity.support_recovery.issue");
+  assert.equal(audit.payload.email_deleted, true);
+  assert.doesNotMatch(JSON.stringify(audit), /temporary-reset@example\.net/);
+  assert.doesNotMatch(JSON.stringify(audit), /verified_existing_support_callback/);
+});
+
 test("llm config test uses OpenAI Responses API when configured", async () => {
   const service = createAdminServiceWithHttpJson({});
   let requestedUrl = "";

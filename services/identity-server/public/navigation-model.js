@@ -3,6 +3,7 @@
     anonymous: [
       { href: "/", label: "Startseite", i18n: "nav.home" },
       { href: "/ueber-uns/", label: "Über uns", i18n: "footer.about" },
+      { href: "/datenschutz/", label: "Datenschutz", i18n: "footer.privacy" },
       { href: "/nachbauprojekte/nexi-sprachassistent/", label: "Nexi" },
       { href: "/nachbauprojekte/", label: "Projekte zum Nachbauen", i18n: "nav.rebuild_projects" },
       { href: "/technik-labs/", label: "Virtuelles Elektroniklabor" },
@@ -52,6 +53,7 @@
           i18n: "platform.menu.service_shop",
           items: [
             { href: "/app/about/", label: "Über uns", i18n: "footer.about", route: "about", className: "utility" },
+            { href: "/datenschutz/", label: "Datenschutz", i18n: "footer.privacy", className: "utility public-information-link" },
             { href: "/support/", label: "Support", i18n: "nav.support", className: "utility public-information-link" },
             { href: "/leistungen/", label: "Leistungen", i18n: "nav.services", className: "utility public-information-link" },
             { href: "/shop/", label: "Webshop", i18n: "nav.shop", className: "utility public-information-link" },

@@ -7,6 +7,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     this.store = store;
     this.store.ensureSchema?.(identitySchema());
     ensureIdentityUserAccountColumns(this.store);
+    ensureIdentityNotificationDeliveryColumns(this.store);
     ensureIdentitySessionColumns(this.store);
     this.knowledgeChapterReads = new Map(this.store.db.prepare(
       "SELECT account_id, chapter_id, chapter_version, seen_at FROM identity_knowledge_chapter_reads",
@@ -23,6 +24,9 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
         verificationTokens: "verification_tokens",
         passwordResetTokens: "password_reset_tokens",
         offlineRecoveryTransactions: "offline_recovery_transactions",
+        passkeyCredentials: "passkey_credentials",
+        supportRecoveryTransactions: "support_recovery_transactions",
+        notificationDeliveries: "notification_deliveries",
         sessions: "sessions",
       },
     }), clock);
@@ -40,6 +44,18 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
   markPasswordResetTokenUsed(tokenId) { const result = super.markPasswordResetTokenUsed(tokenId); this.persist(); return result; }
   createOfflineRecoveryTransaction(token) { const result = super.createOfflineRecoveryTransaction(token); this.persist(); return result; }
   markOfflineRecoveryTransactionUsed(tokenId) { const result = super.markOfflineRecoveryTransactionUsed(tokenId); this.persist(); return result; }
+  createPasskeyCredential(input) { const result = super.createPasskeyCredential(input); this.persist(); return result; }
+  updatePasskeyCredentialCounter(credentialId, counter) { const result = super.updatePasskeyCredentialCounter(credentialId, counter); this.persist(); return result; }
+  revokePasskeyCredentialsByUserId(userId, reason, exceptCredentialId) { const result = super.revokePasskeyCredentialsByUserId(userId, reason, exceptCredentialId); this.persist(); return result; }
+  createSupportRecoveryTransaction(input) { const result = super.createSupportRecoveryTransaction(input); this.persist(); return result; }
+  replaceActiveSupportRecovery(input, options) { const result = super.replaceActiveSupportRecovery(input, options); this.persist(); return result; }
+  updateSupportRecoveryTransaction(id, patch) { const result = super.updateSupportRecoveryTransaction(id, patch); this.persist(); return result; }
+  consumeSupportRecoveryTransaction(id, patch) { const result = super.consumeSupportRecoveryTransaction(id, patch); this.persist(); return result; }
+  incrementSupportRecoveryAttempts(id) { const result = super.incrementSupportRecoveryAttempts(id); this.persist(); return result; }
+  revokeActiveSupportRecoveries(userId, reason) { const result = super.revokeActiveSupportRecoveries(userId, reason); this.persist(); return result; }
+  saveNotificationDelivery(delivery) { const result = super.saveNotificationDelivery(delivery); this.persist(); return result; }
+  purgeNotificationDeliveries(input) { const result = super.purgeNotificationDeliveries(input); this.persist(); return result; }
+  purgeExpiredAuthenticationRecords(input) { const result = super.purgeExpiredAuthenticationRecords(input); this.persist(); return result; }
   createSession(input) { const result = super.createSession(input); this.persist(); return result; }
   createLoginSession(input) { const result = super.createLoginSession(input); this.persist(); return result; }
   revokeSession(sessionId, reason, replacedBySessionId) { const result = super.revokeSession(sessionId, reason, replacedBySessionId); this.persist(); return result; }
@@ -79,6 +95,9 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
       verificationTokens: Array.from(this.verificationTokens.values()),
       passwordResetTokens: Array.from(this.passwordResetTokens.values()),
       offlineRecoveryTransactions: Array.from(this.offlineRecoveryTransactions.values()),
+      passkeyCredentials: Array.from(this.passkeyCredentials.values()),
+      supportRecoveryTransactions: Array.from(this.supportRecoveryTransactions.values()),
+      notificationDeliveries: Array.from(this.notificationDeliveries.values()),
       sessions: Array.from(this.sessions.values()),
     };
     this.store.save(state);
@@ -88,10 +107,13 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     this.store.replaceCollection?.("verification_tokens", state.verificationTokens, "id");
     this.store.replaceCollection?.("password_reset_tokens", state.passwordResetTokens, "id");
     this.store.replaceCollection?.("offline_recovery_transactions", state.offlineRecoveryTransactions, "id");
+    this.store.replaceCollection?.("passkey_credentials", state.passkeyCredentials, "id");
+    this.store.replaceCollection?.("support_recovery_transactions", state.supportRecoveryTransactions, "id");
+    this.store.replaceCollection?.("notification_deliveries", state.notificationDeliveries, "event_id");
     this.store.replaceCollection?.("sessions", state.sessions, "id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("identity_user_accounts", state.userAccounts, identityColumns([
-        "id", "username", "email", "status", "account_type", "guest_expires_at", "passkey_credential_id", "passkey_public_key", "passkey_counter", "passkey_transports", "offline_recovery_set_confirmed_at", "offline_recovery_set_hash", "recovery_board_ids", "preferred_locale", "subscription_plan", "plan_valid_until", "last_meaningful_activity_at", "lifecycle_state", "lifecycle_state_changed_at", "grace_until", "cold_archive_at", "delete_after", "created_at", "updated_at",
+        "id", "username", "email", "email_verified_at", "email_contact_version", "pending_email", "pending_email_token_id", "pending_email_requested_at", "notification_preferences", "community_email_suppression", "status", "account_type", "guest_expires_at", "passkey_credential_id", "passkey_public_key", "passkey_counter", "passkey_transports", "passkey_rp_id", "offline_recovery_set_confirmed_at", "offline_recovery_set_hash", "recovery_board_ids", "preferred_locale", "subscription_plan", "plan_valid_until", "last_meaningful_activity_at", "lifecycle_state", "lifecycle_state_changed_at", "grace_until", "cold_archive_at", "delete_after", "created_at", "updated_at",
       ]));
       this.store.replaceTable("identity_local_credentials", state.localCredentials, identityColumns([
         "id", "user_id", "password_hash", "created_at", "updated_at",
@@ -108,6 +130,15 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
       this.store.replaceTable("identity_offline_recovery_transactions", state.offlineRecoveryTransactions, identityColumns([
         "id", "user_id", "token_hash", "expires_at", "used_at", "created_at",
       ]));
+      this.store.replaceTable("identity_passkey_credentials", state.passkeyCredentials, identityColumns([
+        "id", "credential_id", "user_id", "public_key", "counter", "transports", "rp_id", "label", "created_at", "updated_at", "revoked_at", "revoked_reason",
+      ]));
+      this.store.replaceTable("identity_support_recovery_transactions", state.supportRecoveryTransactions, identityColumns([
+        "id", "user_id", "password_hash", "expires_at", "used_at", "revoked_at", "revoked_reason", "grant_token_hash", "grant_expires_at", "support_actor_id", "support_actor_role", "reason", "action_id", "delivery_status", "email_deleted_at", "attempts", "created_at", "updated_at",
+      ]));
+      this.store.replaceTable("identity_notification_deliveries", state.notificationDeliveries, identityColumns([
+        "event_id", "user_id", "category", "status", "reason", "provider_message_id", "recipient_version", "created_at", "updated_at",
+      ]));
       this.store.replaceTable("identity_sessions", state.sessions, identityColumns([
         "id", "user_id", "token_hash", "jwt_id", "expires_at", "status", "pending_expires_at", "revoked_at", "revoked_reason", "replaced_by_session_id", "created_at",
       ]));
@@ -117,12 +148,15 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
 
 function identitySchema() {
   return [
-    `CREATE TABLE IF NOT EXISTS identity_user_accounts (id TEXT PRIMARY KEY, username TEXT, email TEXT, status TEXT, account_type TEXT, guest_expires_at TEXT, passkey_credential_id TEXT, passkey_public_key TEXT, passkey_counter INTEGER, passkey_transports TEXT, offline_recovery_set_confirmed_at TEXT, offline_recovery_set_hash TEXT, recovery_board_ids TEXT, preferred_locale TEXT, subscription_plan TEXT, plan_valid_until TEXT, last_meaningful_activity_at TEXT, lifecycle_state TEXT, lifecycle_state_changed_at TEXT, grace_until TEXT, cold_archive_at TEXT, delete_after TEXT, created_at TEXT, updated_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_user_accounts (id TEXT PRIMARY KEY, username TEXT, email TEXT, email_verified_at TEXT, email_contact_version TEXT, pending_email TEXT, pending_email_token_id TEXT, pending_email_requested_at TEXT, notification_preferences TEXT, community_email_suppression TEXT, status TEXT, account_type TEXT, guest_expires_at TEXT, passkey_credential_id TEXT, passkey_public_key TEXT, passkey_counter INTEGER, passkey_transports TEXT, passkey_rp_id TEXT, offline_recovery_set_confirmed_at TEXT, offline_recovery_set_hash TEXT, recovery_board_ids TEXT, preferred_locale TEXT, subscription_plan TEXT, plan_valid_until TEXT, last_meaningful_activity_at TEXT, lifecycle_state TEXT, lifecycle_state_changed_at TEXT, grace_until TEXT, cold_archive_at TEXT, delete_after TEXT, created_at TEXT, updated_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_local_credentials (id TEXT PRIMARY KEY, user_id TEXT, password_hash TEXT, created_at TEXT, updated_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_external_identities (id TEXT PRIMARY KEY, user_id TEXT, provider TEXT, provider_user_id TEXT, provider_email TEXT, linked_at TEXT, last_login_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_verification_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_password_reset_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_offline_recovery_transactions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_passkey_credentials (id TEXT PRIMARY KEY, credential_id TEXT UNIQUE, user_id TEXT, public_key TEXT, counter INTEGER, transports TEXT, rp_id TEXT, label TEXT, created_at TEXT, updated_at TEXT, revoked_at TEXT, revoked_reason TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_support_recovery_transactions (id TEXT PRIMARY KEY, user_id TEXT, password_hash TEXT, expires_at TEXT, used_at TEXT, revoked_at TEXT, revoked_reason TEXT, grant_token_hash TEXT, grant_expires_at TEXT, support_actor_id TEXT, support_actor_role TEXT, reason TEXT, action_id TEXT, delivery_status TEXT, email_deleted_at TEXT, attempts INTEGER, created_at TEXT, updated_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_notification_deliveries (event_id TEXT PRIMARY KEY, user_id TEXT, category TEXT, status TEXT, reason TEXT, provider_message_id TEXT, recipient_version TEXT, created_at TEXT, updated_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_sessions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, jwt_id TEXT, expires_at TEXT, status TEXT, pending_expires_at TEXT, revoked_at TEXT, revoked_reason TEXT, replaced_by_session_id TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_knowledge_chapter_reads (account_id TEXT NOT NULL, chapter_id TEXT NOT NULL, chapter_version TEXT NOT NULL, seen_at TEXT NOT NULL, PRIMARY KEY (account_id, chapter_id));`,
   ];
@@ -131,7 +165,8 @@ function identitySchema() {
 function identityColumns(names) {
   return Object.fromEntries(names.map((name) => [
     name,
-    ["recovery_board_ids", "passkey_transports"].includes(name) ? (row) => JSON.stringify(row[name] || []) : name,
+    ["recovery_board_ids", "passkey_transports", "transports"].includes(name) ? (row) => JSON.stringify(row[name] || [])
+      : ["notification_preferences", "community_email_suppression"].includes(name) ? (row) => JSON.stringify(row[name] || null) : name,
   ]));
 }
 
@@ -140,15 +175,23 @@ function ensureIdentityUserAccountColumns(store) {
   const existing = new Set(store.db.prepare("PRAGMA table_info(identity_user_accounts)").all().map((column) => column.name));
   const columns = {
     account_type: "TEXT", guest_expires_at: "TEXT", passkey_credential_id: "TEXT",
-    passkey_public_key: "TEXT", passkey_counter: "INTEGER", passkey_transports: "TEXT",
+    passkey_public_key: "TEXT", passkey_counter: "INTEGER", passkey_transports: "TEXT", passkey_rp_id: "TEXT",
     offline_recovery_set_confirmed_at: "TEXT", offline_recovery_set_hash: "TEXT", recovery_board_ids: "TEXT",
     preferred_locale: "TEXT", subscription_plan: "TEXT", plan_valid_until: "TEXT",
+    email_verified_at: "TEXT", email_contact_version: "TEXT", pending_email: "TEXT", pending_email_token_id: "TEXT",
+    pending_email_requested_at: "TEXT", notification_preferences: "TEXT", community_email_suppression: "TEXT",
     last_meaningful_activity_at: "TEXT", lifecycle_state: "TEXT", lifecycle_state_changed_at: "TEXT",
     grace_until: "TEXT", cold_archive_at: "TEXT", delete_after: "TEXT",
   };
   for (const [name, type] of Object.entries(columns)) {
     if (!existing.has(name)) store.db.exec(`ALTER TABLE identity_user_accounts ADD COLUMN ${name} ${type}`);
   }
+}
+
+function ensureIdentityNotificationDeliveryColumns(store) {
+  if (!store?.db) return;
+  const existing = new Set(store.db.prepare("PRAGMA table_info(identity_notification_deliveries)").all().map((column) => column.name));
+  if (!existing.has("recipient_version")) store.db.exec("ALTER TABLE identity_notification_deliveries ADD COLUMN recipient_version TEXT");
 }
 
 function ensureIdentitySessionColumns(store) {
@@ -170,6 +213,9 @@ function emptyState() {
     verificationTokens: [],
     passwordResetTokens: [],
     offlineRecoveryTransactions: [],
+    passkeyCredentials: [],
+    supportRecoveryTransactions: [],
+    notificationDeliveries: [],
     sessions: [],
   };
 }

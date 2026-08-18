@@ -109,6 +109,9 @@ function registerWebRoutes({
   for (const routePath of ["/ueber-uns", "/ueber-uns/"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, path.join(publicDir, "ueber-uns"), "/index.html") });
   }
+  for (const routePath of ["/datenschutz", "/datenschutz/"]) {
+    registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, path.join(publicDir, "datenschutz"), "/index.html") });
+  }
   registry.register({
     method: "*",
     pattern: /^\/app\/dashboard(?:\/|$)/,
