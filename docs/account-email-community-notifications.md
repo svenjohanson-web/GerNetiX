@@ -110,6 +110,43 @@ Eine Community-E-Mail teilt nur die Ereignisart mit und verlinkt auf
 werden nicht in Betreff oder Text uebernommen. Die eigentlichen Inhalte bleiben
 hinter der GerNetiX-Sitzung.
 
+## Naechste Arbeitspakete
+
+Wiedereinstieg nach Abschluss des parallel laufenden Nexi-Identity-Blocks:
+
+1. **EMAIL-07 – IONOS-DSN-Postfach-Reader:** Eingehende Delivery-Status-
+   Nachrichten aus einem dedizierten Postfach lesen, streng begrenzt parsen,
+   ueber die versandte Ereignis-ID zuordnen und an den vorhandenen geschuetzten
+   Suppression-Vertrag uebergeben. Keine Rohmail und keinen Bounce-Freitext
+   dauerhaft speichern.
+2. **EMAIL-08 – echter SMTP-Nachweis:** Verifizierung, Passwort-Reset,
+   Community-Hinweis, temporaeren Fehler und dauerhaften Bounce mit dem
+   vorgesehenen IONOS-Postfach pruefen.
+3. **EMAIL-09 – PostgreSQL-Parallelitaetsnachweis:** Mehrere Worker, Lease,
+   Idempotenz, Retry und Suppression gegen echtes PostgreSQL pruefen.
+4. **EMAIL-10 – authentifizierter Browsernachweis:** Adresse hinterlegen,
+   bestaetigen, Praeferenzen aendern, Suppression anzeigen und Adresse erneut
+   bestaetigen; Desktop, iPad und schmale Mobilbreite abdecken.
+5. **EMAIL-11 – Datenschutz-Veroeffentlichungsdaten:** Verantwortlichen,
+   Anschrift, Datenschutzkontakt, DSB-Status, Aufsichtsbehoerde und finale
+   Rechtsgrundlagen mit rechtlicher Freigabe ergaenzen.
+6. **EMAIL-12 – Mailanbieter- und AV-Pruefung:** IONOS-Vertragsrolle,
+   Auftragsverarbeitung, Unterauftragnehmer, Standorte und Aufbewahrung der
+   Zustelldaten dokumentieren.
+7. **EMAIL-13 – Fristfreigabe und Retention-Aktivierung:** Konkrete Fristen
+   rechtlich freigeben und erst danach die vorbereiteten Notification- und
+   Token-Retention-Worker aktivieren.
+8. **EMAIL-14 – Backup-Loeschnachweis:** Auslaufen geloeschter Adressen, Tokens,
+   Zustellnachweise und Suppressionsdaten in Backups festlegen und testen.
+9. **EMAIL-15 – Staging-Abnahme:** Nach gesondertem Auftrag kontrolliert
+   deployen und SMTP, PostgreSQL, Browser, Retention und Neustartverhalten auf
+   Staging abnehmen.
+
+EMAIL-07 ist das naechste technische Paket. Es beginnt nicht parallel zu
+Nexi-Aenderungen an zentralen Identity-Routen, `dev-server.js`, Persistenz-
+adaptern oder dem SQLite-Graphen; diese Dateien werden entweder zeitlich
+nacheinander oder in getrennten Worktrees bearbeitet.
+
 ## Offene Nachweise
 
 - Automatisches Auslesen und Zuordnen der vom IONOS-Postfach eingehenden
