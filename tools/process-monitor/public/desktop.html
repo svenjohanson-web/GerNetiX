@@ -46,6 +46,12 @@
             </div>
           </div>
           <p class="vpn-description">Dauerhafte lokale Portweiterleitungen, unter anderem <code>14600</code> zur Admin Console. Die VPS-Statusabfrage verwendet eine getrennte kurze SSH-Verbindung.</p>
+          <div class="group-actions">
+            <button id="fixPostgresAccess" class="primary">PostgreSQL-Verbindung herstellen</button>
+          </div>
+          <p class="vpn-description"><span id="postgresStatus" class="status offline">Pruefe PostgreSQL-Verbindung ...</span></p>
+          <p id="postgresBanner" class="group-warning"></p>
+          <p id="postgresMessage" class="group-error"></p>
           <p id="tunnelMessage" class="group-error"></p>
         </section>
       </div>

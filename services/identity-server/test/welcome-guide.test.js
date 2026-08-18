@@ -38,6 +38,9 @@ test("opens the guide after login and keeps it available from help", () => {
   assert.match(events, /#welcomeGuideMenuButton/);
   assert.match(html, /id="welcomeGuideMenuButton"/);
   assert.match(guide, /url\.searchParams\.delete\("welcome"\)/);
+  assert.match(html, /app-shell-controller\.js\?v=20260814-portfolio-guide-1/);
+  assert.match(html, /app-event-bindings\.js\?v=20260814-portfolio-guide-1/);
+  assert.match(fs.readFileSync(path.join(root, "auth", "index.html"), "utf8"), /auth\.js\?v=20260814-portfolio-guide-1/);
 });
 
 test("stores the do-not-show choice as an account preference", () => {

@@ -41,20 +41,21 @@
   transition: background 160ms ease, box-shadow 160ms ease;
 }
 
-.wake-lab[data-wake-state="recording"] .wake-lab-indicator span {
+.wake-lab[data-setup-state="recording"] .wake-lab-indicator span {
   background: var(--wake-red);
   box-shadow: 0 0 0.9rem rgba(255, 123, 134, 0.75);
   animation: wake-recording-pulse 900ms ease-in-out infinite;
 }
 
-.wake-lab[data-wake-state="ready"] .wake-lab-indicator span,
-.wake-lab[data-wake-state="detected"] .wake-lab-indicator span {
+.wake-lab[data-setup-state="complete"] .wake-lab-indicator span,
+.wake-lab[data-setup-state="accepted"] .wake-lab-indicator span,
+.wake-lab[data-setup-state="already_saved"] .wake-lab-indicator span {
   background: var(--wake-green);
   box-shadow: 0 0 0.9rem rgba(88, 214, 141, 0.68);
 }
 
-.wake-lab[data-wake-state="rejected"] .wake-lab-indicator span,
-.wake-lab[data-wake-state="error"] .wake-lab-indicator span {
+.wake-lab[data-setup-state="retry"] .wake-lab-indicator span,
+.wake-lab[data-setup-state="error"] .wake-lab-indicator span {
   background: var(--wake-red);
 }
 
@@ -73,6 +74,53 @@
 
 .wake-lab-status {
   margin-top: 0.28rem;
+}
+
+.wake-lab-live-step {
+  min-width: 0;
+}
+
+.wake-lab-step-bar {
+  height: 0.35rem;
+  margin: 0.55rem 0 0.8rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(126, 151, 184, 0.2);
+}
+
+.wake-lab-step-bar span {
+  display: block;
+  width: var(--setup-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--wake-accent);
+  transition: width 220ms ease;
+}
+
+.wake-lab-phrase {
+  margin: 0.75rem 0;
+  padding: 0.8rem 0.95rem;
+  border-left: 3px solid var(--wake-accent);
+  background: rgba(92, 225, 230, 0.08);
+  color: #f5fbff;
+  font-size: clamp(1rem, 2.2vw, 1.25rem);
+  font-weight: 700;
+}
+
+.wake-lab-action {
+  display: inline-block;
+  margin: 0.75rem 0 0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(92, 225, 230, 0.12);
+  color: var(--wake-accent);
+  font-weight: 700;
+}
+
+.wake-lab-references {
+  margin: 0.45rem 0 0;
+  color: var(--muted-text, #b8c3d7);
+  font-size: 0.9rem;
 }
 
 .wake-lab-actions {
@@ -159,7 +207,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wake-lab[data-wake-state="recording"] .wake-lab-indicator span {
+  .wake-lab[data-setup-state="recording"] .wake-lab-indicator span {
     animation: none;
   }
 }

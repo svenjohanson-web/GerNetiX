@@ -122,3 +122,43 @@ test("identity keeps failed Operations deliveries in a persistent outbox and flu
   assert.deepEqual(flushed, { pending: 0, delivered: 1 });
   assert.equal(await report.pending(), 0);
 });
+
+test("identity exposes a minimized emergency trace and delivers the same action id after database recovery", async () => {
+  let databaseAvailable = false;
+  let operationsAvailable = false;
+  const delivered = [];
+  const store = {
+    load() { if (!databaseAvailable) throw new Error("ECONNREFUSED"); return { items: [] }; },
+    async save() { if (!databaseAvailable) throw new Error("ECONNREFUSED"); },
+  };
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: "ops-signing-key", outboxStore: store,
+    logger: { warn() {} },
+    fetchImpl: async (_url, options) => {
+      if (!operationsAvailable) return { ok: false, status: 503 };
+      delivered.push(JSON.parse(options.body));
+      return { ok: true, status: 201 };
+    },
+  });
+  const event = normalizeUserActionEvent({
+    ...validInput,
+    action_type: "identity.login.passkey",
+    span_type: "auth.verify",
+    route_id: "/app/auth/",
+    reason_code: "identity_unreachable",
+    message: "private database detail",
+  });
+
+  assert.equal(await report(event), false);
+  const diagnostics = report.diagnostics();
+  assert.equal(diagnostics.pending, 1);
+  assert.equal(diagnostics.items[0].action_id, event.action_id);
+  assert.equal(diagnostics.items[0].delivery_state, "pending");
+  assert.equal("message" in diagnostics.items[0], false);
+
+  databaseAvailable = true;
+  operationsAvailable = true;
+  assert.deepEqual(await report.flush(), { pending: 0, delivered: 1 });
+  assert.equal(delivered[0].action_id, event.action_id);
+  assert.equal(report.diagnostics().items[0].delivery_state, "delivered");
+});

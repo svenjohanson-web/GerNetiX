@@ -514,6 +514,8 @@ test("system health exposes runtime identity without requiring a session", async
     persistence_backend: "postgres",
     runtime_location: "server",
     remote_dev: false,
+    identity_db: { status: "unknown" },
+    dependencies: { status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [] },
   }]]);
 });
 
@@ -530,6 +532,24 @@ test("system routes forward same-origin user action events to the ingest boundar
     req, res, url: new URL("http://localhost/api/operations/user-actions"),
   }), true);
   assert.deepEqual(calls, [[req, res]]);
+});
+
+test("local action diagnostics are readable only in controlled remote-dev mode", async () => {
+  const expected = { pending: 1, items: [{ action_id: "action-1", reason_code: "identity_unreachable" }] };
+  for (const [identityRemoteDev, status, body] of [[true, 200, expected], [false, 404, { error: "not_found" }]]) {
+    const registry = createRouteRegistry();
+    const responses = [];
+    registerSystemRoutes({
+      registry,
+      identityRemoteDev,
+      userActionDiagnostics: () => expected,
+      sendJson: (_res, responseStatus, responseBody) => responses.push([responseStatus, responseBody]),
+    });
+    assert.equal(await registry.dispatch({
+      req: { method: "GET" }, res: {}, url: new URL("http://localhost/api/dev/local-action-diagnostics"),
+    }), true);
+    assert.deepEqual(responses, [[status, body]]);
+  }
 });
 
 test("the internal operator alert uses the configured operator mail and push channel", async () => {

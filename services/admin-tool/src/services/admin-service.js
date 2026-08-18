@@ -1384,6 +1384,27 @@ async function checkMonitoringTarget(target) {
     const details = await response.json().catch(() => ({}));
     let operations = null;
     let operationsError = "";
+    const isIdentityService = target.service_id === "identity_server";
+
+    if (isIdentityService && details.identity_db) {
+      const dbReachable = typeof details.identity_db.reachable === "boolean" ? details.identity_db.reachable : true;
+      operations = {
+        persistence_backend: details.persistence_backend || "postgres",
+        identity_db: {
+          reachable: dbReachable,
+          backend_host: details.identity_db.backend_host || "",
+          latency_ms: Number(details.identity_db.latency_ms || 0),
+          error: details.identity_db.error || "",
+          error_code: details.identity_db.error_code || "",
+          message: details.identity_db.message || "",
+          checked_at: details.identity_db.checked_at || "",
+        },
+      };
+      if (!dbReachable) {
+        operationsError = details.identity_db.message || details.identity_db.error || "PostgreSQL nicht erreichbar";
+      }
+    }
+
     if (response.ok && target.details_url) {
       try {
         const detailsResponse = await fetch(target.details_url, {
@@ -1397,13 +1418,14 @@ async function checkMonitoringTarget(target) {
         operationsError = `Betriebsdaten: ${monitoringErrorMessage(error)}`;
       }
     }
+    const serviceOk = response.ok && !(isIdentityService && details.identity_db && details.identity_db.reachable === false);
     return {
       ...visibleTarget,
-      ok: response.ok,
-      status: response.ok ? "online" : "error",
+      ok: serviceOk,
+      status: serviceOk ? "online" : "error",
       http_status: response.status,
       response_ms: Date.now() - startedAt,
-      message: response.ok ? "erreichbar" : `HTTP ${response.status}`,
+      message: serviceOk ? "erreichbar" : operationsError || `HTTP ${response.status}`,
       details,
       ...(operations ? { operations } : {}),
       ...(operationsError ? { operations_error: operationsError } : {}),

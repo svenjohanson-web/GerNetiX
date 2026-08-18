@@ -5,10 +5,12 @@ import { createRadioLab } from "./labs/radio-lab.js?v=20260814-radio-rc-range-1"
 import { createSpectrumAnalyzerLab } from "./labs/spectrum-analyzer.js";
 import { createNetworkAnalyzerLab } from "./labs/network-analyzer.js";
 import { createLogicAnalyzerLab } from "./labs/logic-analyzer.js";
+import { createPinMultiplexingLab } from "./labs/pin-multiplexing.js?v=20260814-pinmux-1";
 import { createPowerSupplyLab } from "./labs/power-supply.js";
 import { createLcrMeterLab } from "./labs/lcr-meter.js";
 
 const labs = [
+  createPinMultiplexingLab(),
   createOscilloscopeLab(),
   createFilterLab(),
   createRadioLab(),
@@ -24,6 +26,8 @@ const workspace = document.querySelector("#labWorkspace");
 const themeToggle = document.querySelector("#labThemeToggle");
 const themeStorageKey = "gernetix-public-theme";
 let activeLab = null;
+const pageParameters = new URLSearchParams(window.location.search);
+if (pageParameters.get("embedded") === "1") document.documentElement.classList.add("lab-embedded");
 
 function applyTheme(theme) {
   document.documentElement.dataset.publicTheme = theme;
@@ -61,6 +65,6 @@ for (const lab of labs) {
   navigation.append(button);
 }
 
-const requestedLab = new URLSearchParams(window.location.search).get("lab");
+const requestedLab = pageParameters.get("lab");
 showLab(labs.find((lab) => lab.id === requestedLab) || labs[0]);
 window.addEventListener("beforeunload", () => activeLab?.dispose?.());

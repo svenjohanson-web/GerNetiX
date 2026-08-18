@@ -19,6 +19,7 @@ test("publishes the modular virtual electronics labs", () => {
   const spectrum = readLab("labs", "spectrum-analyzer.js");
   const vna = readLab("labs", "network-analyzer.js");
   const logic = readLab("labs", "logic-analyzer.js");
+  const pinMultiplexing = readLab("labs", "pin-multiplexing.js");
   const power = readLab("labs", "power-supply.js");
   const lcr = readLab("labs", "lcr-meter.js");
   const dockerfile = fs.readFileSync(path.join(root, "..", "..", "docker", "identity-service.Dockerfile"), "utf8");
@@ -47,8 +48,8 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(oscilloscope, /ΔV/);
   assert.match(oscilloscope, /setPointerCapture/);
   assert.match(overview, /src="\.\/app\.js/);
-  assert.match(overview, /app\.js\?v=20260814-radio-rc-range-1/);
-  assert.match(overview, /styles\.css\?v=20260814-radio-rc-range-1/);
+  assert.match(overview, /app\.js\?v=20260814-pinmux-1/);
+  assert.match(overview, /styles\.css\?v=20260814-pinmux-1/);
   assert.match(overview, /id="labThemeToggle"/);
   assert.match(readLab("app.js"), /gernetix-public-theme/);
   assert.match(readLab("app.js"), /Helles Design einschalten/);
@@ -111,6 +112,18 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(spectrum, /Nutzbar · Lernmodell/);
   assert.match(vna, /Smith-Diagramm/);
   assert.match(logic, /UART, I²C und SPI/);
+  assert.match(pinMultiplexing, /Projekt Arduino Nano/);
+  assert.match(pinMultiplexing, /Projekt ESP32 Dev Board/);
+  assert.match(pinMultiplexing, /ATmega328P/);
+  assert.match(pinMultiplexing, /SPI SCLK · Board-LED/);
+  assert.match(pinMultiplexing, /GPIO-Matrix[\s\S]*Strapping-Pin/);
+  assert.match(pinMultiplexing, /Oszilloskop[\s\S]*Logikanalysator/);
+  assert.match(pinMultiplexing, /Flashen deaktiviert/);
+  assert.match(pinMultiplexing, /data-pinmux-action="conflict"/);
+  assert.match(pinMultiplexing, /ADC2 und kollidiert im Lernmodell mit aktivem WLAN/);
+  assert.match(readLab("app.js"), /createPinMultiplexingLab/);
+  assert.match(readLab("app.js"), /lab-embedded/);
+  assert.match(labStyles, /\.pinmux-instruments/);
   assert.match(power, /Konstantspannung \(CV\).*Konstantstrom \(CC\)/s);
   assert.match(lcr, /Impedanz und Phasenlage/);
   assert.match(dockerfile, /COPY --chown=node:node modules\/virtual-electronics-lab \.\/modules\/virtual-electronics-lab/);

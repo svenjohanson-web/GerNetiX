@@ -6,7 +6,9 @@ function registerSystemRoutes({
   smtpConfigStore, smtpEmailService, createIdentityLinkInventory, publicDir,
   webPushService, securityAlertPushAccountIds, requireSessionProject, projectServerUserId,
   handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleUserActionIngest,
-  handleProjectRuntimeStream, telemetryJson,
+  userActionDiagnostics, handleProjectRuntimeStream, telemetryJson,
+  checkIdentityDbHealth = async () => ({ status: "unknown" }),
+  checkIdentityDependencies = async () => ({ status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [] }),
 }) {
   registry.register({ method: "OPTIONS", path: "/api/dev/lesson-preview-migration", handler: ({ res }) => sendDevJson(res, 204, {}) });
   registry.register({
@@ -20,10 +22,29 @@ function registerSystemRoutes({
   registry.register({
     method: "*",
     path: "/health",
-    handler({ res }) {
+    async handler({ res }) {
+      const identityDb = await checkIdentityDbHealth().catch((error) => ({
+        backend: "postgres",
+        reachable: false,
+        checked_at: new Date().toISOString(),
+        error_code: error.code || "health_check_failed",
+        error: error.message || String(error),
+        message: "PostgreSQL-Healthcheck fehlgeschlagen.",
+      }));
+      const dependencies = await checkIdentityDependencies().catch((error) => ({
+        status: "degraded",
+        checked_at: new Date().toISOString(),
+        total: 0,
+        reachable: 0,
+        unreachable: 1,
+        items: [{ id: "dependency-health", name: "Dependency-Healthcheck", reachable: false, error_code: error.code || "health_check_failed", message: error.message || String(error) }],
+      }));
+      const status = identityDb.reachable === false ? "unhealthy" : dependencies.status === "degraded" ? "degraded" : "ok";
       sendJson(res, 200, {
-        status: "ok", service: "identity-server", persistence_backend: identityPersistenceBackend,
+        status, service: "identity-server", persistence_backend: identityPersistenceBackend,
         runtime_location: identityRuntimeLocation, remote_dev: identityRemoteDev,
+        identity_db: identityDb,
+        dependencies,
       });
     },
   });
@@ -116,6 +137,14 @@ function registerSystemRoutes({
   registry.register({ method: "POST", path: "/api/internal/push/device-event", handler: ({ req, res }) => handleInternalDevicePushEvent(req, res) });
   registry.register({ method: "POST", path: "/api/internal/runtime/device-event", handler: ({ req, res }) => handleInternalDeviceRuntimeEvent(req, res) });
   registry.register({ method: "POST", path: "/api/operations/user-actions", handler: ({ req, res }) => handleUserActionIngest(req, res) });
+  registry.register({
+    method: "GET",
+    path: "/api/dev/local-action-diagnostics",
+    handler({ res }) {
+      if (!identityRemoteDev) { sendJson(res, 404, { error: "not_found" }); return; }
+      sendJson(res, 200, userActionDiagnostics());
+    },
+  });
   registry.register({
     method: "GET",
     pattern: /^\/api\/platform\/projects\/([^/]+)\/runtime-stream$/,

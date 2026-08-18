@@ -14,3 +14,10 @@ Enthalten sind Oszilloskop mit Zweikanal-Signalgenerator, Trigger, XY, FFT und
 Frequenzzähler, Multimeter, Labornetzteil, LCR-Meter, Logikanalysator,
 Spektrumanalysator und VNA. Spektrum und VNA sind ausdrücklich vereinfachte
 Lernmodelle und keine Kalibrier- oder Geräteemulationen.
+
+Das Pin-Multiplexing-Projektlabor stellt zwei virtuelle Boardprofile bereit:
+Arduino Nano mit ATmega328P und weitgehend festen Peripheriepins sowie ein
+klassisches ESP32-Dev-Board mit flexibel routbarer GPIO-Matrix und bewusst
+modellierten Grenzen. Virtuelles Oszilloskop und Logikanalysator werden direkt
+mit den zugeordneten Signalen verbunden. Das Labor erkennt, beschreibt und
+flasht keine reale Hardware.

@@ -53,7 +53,7 @@ Eine vorbereitete Kleinspannungsschaltung enthält einen ungefährlichen Fehler.
 | Position | Course | Ausgangsstand | Rolle im Paket |
 | --- | --- | --- | --- |
 | 1 | Grundlagen der Programmierung | im Katalog umgesetzt, kostenlos | Werte, Variablen, Bedingungen, Funktionen, Schleifen, Fehler und Tests |
-| 2 | Grundlagen der Mikrocontrollertechnik | im Katalog umgesetzt, kostenlos | CPU, Speicher, Bits, Datentypen, GPIO, ADC, PWM, Zeit, Interrupts, Watchdog und Bussysteme |
+| 2 | Grundlagen der Mikrocontrollertechnik | im Katalog umgesetzt, kostenlos | CPU, Speicher, Bits, Datentypen, GPIO, ADC, PWM, Zeit, Interrupts und Bussysteme; der Abschluss enthält ein rein virtuelles Pin-Multiplexing-Labor mit Arduino-Nano- und ESP32-Projekt, Oszilloskop, Logikanalysator und Ressourcenplan |
 | 3 | Erste Firmware mit Arduino, AVR und ESP32 | aus „Arduino Blink“ und „Arduino Atmel/AVR ohne Arduino“ zusammenzuführen | Board, Toolchain, Build, Flash und Unterschied zwischen Framework und hardwarenaher Laufzeit |
 | 4 | Ein- und Ausgänge praktisch einsetzen | aus Mikrocontrollergrundlagen und Motoransteuerung auszubauen | Taster, LED, ADC, PWM, Transistor, Treiber und sichere Aktorgrenzen |
 | 5 | Kommunikation und vernetzte Geräte | aus Funktechnologien und passenden ESP32-Projekten auszubauen | UART, I²C, SPI sowie eine begründete erste Einordnung von WLAN und Bluetooth |

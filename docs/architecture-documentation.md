@@ -98,6 +98,9 @@ die Modulgrenzen von Nexi sind in der
 Die wiederholbare, jeweils auf einen vollstaendigen Funktionsdurchstich
 begrenzte Umsetzung wird in der
 [Nexi Bottom-up-Test-Roadmap](nexi-bottom-up-test-roadmap.md) fortgeschrieben.
+Der geraetegefuehrte Acht-Satz-Ablauf und sein versionierter Statusvertrag zur
+oeffentlichen Inbetriebnahmeseite stehen in der
+[gefuehrten Nexi-Spracheinrichtung ueber UART](nexi-guided-voice-setup-uart.md).
 
 Das öffentliche [Virtuelle Elektroniklabor](virtual-electronics-lab.md)
 grenzt anonyme, hardwarefreie Messsimulationen bewusst von Nachbauprojekten,

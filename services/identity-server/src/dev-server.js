@@ -24,6 +24,7 @@ const { passkeyClientError } = require("./services/passkey-client-errors");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
 const { createUserActionReporter } = require("./services/user-action-reporter");
 const { createUserActionIngestHandler, readUserActionContext } = require("./services/user-action-events");
+const { createDependencyHealthChecker } = require("./services/dependency-health");
 const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
 const { createIdentityLinkInventory } = require("./link-integrity/identity-link-inventory");
@@ -192,6 +193,62 @@ const identityHardwareLabStateStore = identityAuxiliaryPool
 const identityUserActionOutboxStore = identityAuxiliaryPool
   ? new PostgresStateStore(identityAuxiliaryPool, "identity-user-action-outbox", { items: [] })
   : null;
+const identityDbHealthTimeoutMs = (() => {
+  const requested = Number(process.env.IDENTITY_DB_HEALTH_TIMEOUT_MS || 500);
+  return Math.max(200, Number.isFinite(requested) ? requested : 500);
+})();
+const checkIdentityDbHealth = async () => {
+  if (identityPersistenceBackend === "sqlite") {
+    return {
+      backend: "sqlite",
+      reachable: true,
+      checked_at: new Date().toISOString(),
+      message: "Lokaler sqlite-Speichermodus aktiv.",
+    };
+  }
+  if (!identityAuxiliaryPool) {
+    return {
+      backend: "postgres",
+      reachable: false,
+      checked_at: new Date().toISOString(),
+      error_code: "identity_db_pool_missing",
+      error: "postgres_pool_uninitialized",
+      message: "PostgreSQL-Pool wurde nicht initialisiert.",
+    };
+  }
+  const startedAt = Date.now();
+  try {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("PostgreSQL-Healthcheck timed out.")), identityDbHealthTimeoutMs);
+      timer?.unref?.();
+    });
+    await Promise.race([identityAuxiliaryPool.query("SELECT 1"), timeout]);
+    if (timer) clearTimeout(timer);
+    return {
+      backend: "postgres",
+      reachable: true,
+      checked_at: new Date().toISOString(),
+      backend_host: `${identityPostgres.host}:${identityPostgres.port}`,
+      latency_ms: Date.now() - startedAt,
+    };
+  } catch (error) {
+    if (timer) clearTimeout(timer);
+    if (error instanceof Error) {
+      if (error.message === "PostgreSQL-Healthcheck timed out.") error.code = "timeout";
+    }
+    return {
+      backend: "postgres",
+      reachable: false,
+      checked_at: new Date().toISOString(),
+      backend_host: `${identityPostgres.host}:${identityPostgres.port}`,
+      latency_ms: Date.now() - startedAt,
+      error_code: error.code || "identity_db_unavailable",
+      error: error.message || "PostgreSQL nicht erreichbar.",
+      message: "Die zentrale Datenbank ist momentan nicht erreichbar.",
+    };
+  }
+};
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
 const webPushService = createWebPushService({ sqlitePath: identityAuxiliarySqlitePath, stateStore: identityPushStateStore, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
@@ -222,6 +279,24 @@ const hardwareLabAiUsageBaseUrl = /\/api\/ai-usage\/?$/.test(aiUsageBaseUrl)
   ? aiUsageBaseUrl.replace(/\/$/, "")
   : `${aiUsageBaseUrl.replace(/\/$/, "")}/api/ai-usage`;
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
+const checkIdentityDependencies = createDependencyHealthChecker({
+  timeoutMs: Math.max(200, Number(process.env.IDENTITY_DEPENDENCY_HEALTH_TIMEOUT_MS || 800)),
+  cacheTtlMs: Math.max(1000, Number(process.env.IDENTITY_DEPENDENCY_HEALTH_CACHE_MS || 5000)),
+  dependencies: [
+    { id: "project-server", name: "Project Server", baseUrl: projectServerBaseUrl },
+    { id: "telemetry-server", name: "Telemetry Server", baseUrl: telemetryServerBaseUrl },
+    { id: "build-deploy-server", name: "Build & Deploy", baseUrl: buildDeployBaseUrl },
+    { id: "public-demo-server", name: "Public Demo", baseUrl: publicDemoBaseUrl },
+    { id: "community-platform", name: "Community Platform", baseUrl: communityPlatformBaseUrl },
+    { id: "ota-build-deploy", name: "OTA Build & Deploy", baseUrl: otaBuildDeployBaseUrl },
+    { id: "hardware-shop", name: "Hardware Shop", baseUrl: hardwareShopBaseUrl },
+    { id: "hardware-catalog", name: "Hardware Catalog", baseUrl: hardwareCatalogBaseUrl },
+    { id: "device-management", name: "Device Management", baseUrl: deviceManagementBaseUrl },
+    { id: "ai-usage", name: "AI Usage", baseUrl: aiUsageBaseUrl },
+    { id: "ai-context", name: "AI Context", baseUrl: aiContextBaseUrl },
+    { id: "operations", name: "Operations / Admin Tool", baseUrl: process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600" },
+  ],
+});
 const internalApiSigningKey = readOptionalInternalApiAuthConfig(process.env, "identity-server");
 const internalApiReplayGuard = createInMemoryReplayGuard();
 const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
@@ -968,8 +1043,11 @@ registerSystemRoutes({
   handleInternalDevicePushEvent,
   handleInternalDeviceRuntimeEvent,
   handleUserActionIngest,
+  userActionDiagnostics: () => recordUserActionEvent.diagnostics(),
   handleProjectRuntimeStream,
   telemetryJson,
+  checkIdentityDbHealth,
+  checkIdentityDependencies,
 });
 registerDownloadRoutes({
   registry: routeRegistry,
@@ -1007,55 +1085,106 @@ registerWebRoutes({
 });
 
 async function bootstrap() {
-  if (identityPushStateStore) await identityPushStateStore.initialize();
-  if (identitySmtpStateStore) await identitySmtpStateStore.initialize();
-  if (identityLlmStateStore) await identityLlmStateStore.initialize();
-  if (identityUserActionOutboxStore) {
-    await identityUserActionOutboxStore.initialize();
-    const outboxResult = await recordUserActionEvent.flush();
-    if (outboxResult.pending) console.warn(`User action outbox: ${outboxResult.pending} Ereignisse warten auf Operations.`);
+  const bootstrapStartedAt = Date.now();
+  const startupMeasurements = [];
+  const measureBootstrapStep = async (label, action) => {
+    const startedAt = Date.now();
+    try {
+      const result = await action();
+      const durationMs = Date.now() - startedAt;
+      startupMeasurements.push({ label, status: "ok", duration_ms: durationMs });
+      console.log(`[identity-bootstrap] ${label} abgeschlossen in ${durationMs}ms`);
+      return result;
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      const message = String(error?.message || error);
+      startupMeasurements.push({ label, status: "error", duration_ms: durationMs, error: message });
+      console.error(`[identity-bootstrap] ${label} fehlgeschlagen nach ${durationMs}ms: ${message}`);
+      throw error;
+    }
+  };
+  const dbHealth = await measureBootstrapStep("identity-db-health", async () => checkIdentityDbHealth());
+  if (dbHealth.reachable) {
+    const dbEndpoint = `${identityPostgres.host}:${identityPostgres.port}`;
+    console.log(`Identity DB-Check: verbunden (${dbHealth.backend}, ${dbEndpoint}).`);
+  } else {
+    const details = [dbHealth.error_code, dbHealth.message, dbHealth.error].filter(Boolean).join(" · ");
+    console.error(`Identity DB-Check fehlgeschlagen.${details ? ` ${details}` : ""}`);
   }
+  const dependencyHealth = await measureBootstrapStep("identity-dependencies", async () => checkIdentityDependencies({ force: true }));
+  if (dependencyHealth.status === "ok") {
+    console.log(`Identity Dependency-Check: ${dependencyHealth.reachable}/${dependencyHealth.total} Dienste erreichbar.`);
+  } else {
+    console.error(`Identity Dependency-Check: ${dependencyHealth.unreachable}/${dependencyHealth.total} Dienste nicht erreichbar.`);
+    for (const item of dependencyHealth.items.filter((entry) => !entry.reachable)) {
+      console.error(`[identity-dependency] ${item.name}: ${item.error_code} · ${item.message} · ${item.health_url} · ${item.latency_ms}ms`);
+    }
+  }
+  if (identityPushStateStore) await measureBootstrapStep("identity-push-state-store-init", async () => identityPushStateStore.initialize());
+  if (identitySmtpStateStore) await measureBootstrapStep("identity-smtp-state-store-init", async () => identitySmtpStateStore.initialize());
+  if (identityLlmStateStore) await measureBootstrapStep("identity-llm-state-store-init", async () => identityLlmStateStore.initialize());
+  if (identityUserActionOutboxStore) {
+    await measureBootstrapStep("identity-user-action-outbox-init", async () => {
+      await identityUserActionOutboxStore.initialize();
+      const outboxResult = await recordUserActionEvent.flush();
+      if (outboxResult.pending) console.warn(`User action outbox: ${outboxResult.pending} Ereignisse warten auf Operations.`);
+    });
+  }
+  const userActionFlushTimer = setInterval(() => {
+    recordUserActionEvent.flush().catch((error) => console.warn(`User action outbox flush failed: ${error.message || error}`));
+  }, Math.max(1000, Number(process.env.USER_ACTION_OUTBOX_FLUSH_MS || 5000)));
+  userActionFlushTimer.unref?.();
   if (identityHardwareLabStateStore) {
-    await identityHardwareLabStateStore.initialize();
-    hardwareLabRepository.hydrate();
+    await measureBootstrapStep("identity-hardware-lab-store-init", async () => {
+      await identityHardwareLabStateStore.initialize();
+      hardwareLabRepository.hydrate();
+    });
   }
   if (identityPersistenceBackend === "postgres") {
-    const artifactStore = new ContentAddressedArtifactStore(process.env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts"));
-    platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres, artifactStore });
-    accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres, artifactStore });
+    await measureBootstrapStep("identity-postgres-repositories", async () => {
+      const artifactStore = new ContentAddressedArtifactStore(process.env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts"));
+      platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres, artifactStore });
+      accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres, artifactStore });
+    });
   }
-  auth = await createDefaultIdentityModule({
+  auth = await measureBootstrapStep("identity-default-module", async () => createDefaultIdentityModule({
     emailService,
     persistenceBackend: identityPersistenceBackend,
     postgres: identityPostgres,
     appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
-  });
-  await seedDemoAccount();
+  }));
+  await measureBootstrapStep("identity-seed-demo-account", async () => seedDemoAccount());
 
-  const requestHandler = createRequestHandler({
+  const requestHandler = await measureBootstrapStep("identity-request-handler", async () => createRequestHandler({
     routeRequest,
     sendJson,
     reportError: (error) => console.error(error),
     reportSlowRequest: (measurement) => console.warn(`[identity-http] slow request ${JSON.stringify(measurement)}`),
     slowRequestMs: Number(process.env.IDENTITY_SLOW_REQUEST_MS || 1500),
-  });
+  }));
   const server = http.createServer(requestHandler);
 
   server.listen(port, host, () => {
-  console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
-  console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
-  console.log(`Project Server adapter: ${projectServerBaseUrl}`);
-  console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
-  console.log(`Build Worker Pool adapter: ${buildWorkerPoolBaseUrl}`);
-  console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
-  console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
-  console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
-  console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
-  console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
-  console.log(`AI Context adapter: ${aiContextBaseUrl}`);
-  console.log(`Identity persistence: ${identityPersistenceBackend} (${identityRuntimeLocation})`);
-  const llmConfig = llmConfigStore.publicConfig();
-  console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
+    console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
+    console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
+    console.log(`Project Server adapter: ${projectServerBaseUrl}`);
+    console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
+    console.log(`Build Worker Pool adapter: ${buildWorkerPoolBaseUrl}`);
+    console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
+    console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
+    console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
+    console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
+    console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
+    console.log(`AI Context adapter: ${aiContextBaseUrl}`);
+    console.log(`Identity persistence: ${identityPersistenceBackend} (${identityRuntimeLocation})`);
+    const llmConfig = llmConfigStore.publicConfig();
+    console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
+    const totalDurationMs = Date.now() - bootstrapStartedAt;
+    const slowSteps = startupMeasurements.filter((entry) => entry.duration_ms >= 250).map((entry) => `${entry.label}=${entry.duration_ms}ms`);
+    console.log(`[identity-bootstrap] abgeschlossen in ${totalDurationMs}ms`);
+    if (slowSteps.length) console.log(`[identity-bootstrap] langsame Schritte: ${slowSteps.join(", ")}`);
+    const failed = startupMeasurements.filter((entry) => entry.status === "error");
+    if (failed.length) console.error(`[identity-bootstrap] fehlgeschlagene Schritte: ${failed.map((entry) => `${entry.label}=${entry.error}`).join(" | ")}`);
   });
 }
 

@@ -750,13 +750,22 @@ const GuidedProjectView = (() => {
     function renderGuidedCodeTask(project, view, artifact) {
       const response = guidedLessonResponse(project, view);
       const content = response?.code ?? artifact.content ?? "";
+      const embeddedLab = artifact.lab_url ? `
+        <section class="guided-embedded-lab" data-guided-embedded-lab>
+          <header><div><p class="eyebrow">Browser-Simulator</p><h3>${escapeHtml(artifact.lab_title || "Virtuelles Projektlabor")}</h3></div><a href="${escapeAttribute(artifact.lab_url)}" target="_blank" rel="noreferrer">In eigenem Tab öffnen</a></header>
+          <p>Die Simulation arbeitet ausschließlich mit Modellwerten. Sie erkennt und flasht keine reale Hardware.</p>
+          <iframe src="${escapeAttribute(artifact.lab_url)}" title="${escapeAttribute(artifact.lab_title || "Virtuelles Projektlabor")}" loading="lazy"></iframe>
+        </section>` : "";
       return `
-        <div class="guided-code-viewer guided-code-task">
-          <div class="guided-artifact-head">
-            <p class="eyebrow">Code-Aufgabe</p>
-            <h3>${escapeHtml(artifact.title || "Code ergänzen")}</h3>
+        <div class="guided-code-task-stack">
+          ${embeddedLab}
+          <div class="guided-code-viewer guided-code-task">
+            <div class="guided-artifact-head">
+              <p class="eyebrow">Abschlussprotokoll</p>
+              <h3>${escapeHtml(artifact.title || "Ressourcenplan ergänzen")}</h3>
+            </div>
+            <textarea data-guided-code-task spellcheck="false" aria-label="${escapeAttribute(artifact.title || "Ressourcenplan ergänzen")}">${escapeHtml(content)}</textarea>
           </div>
-          <textarea data-guided-code-task spellcheck="false" aria-label="${escapeAttribute(artifact.title || "Code ergänzen")}">${escapeHtml(content)}</textarea>
         </div>
       `;
     }

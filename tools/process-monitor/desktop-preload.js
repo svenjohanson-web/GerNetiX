@@ -15,5 +15,7 @@ contextBridge.exposeInMainWorld("gernetixProcesses", {
   vpnDisconnect: () => ipcRenderer.invoke("vpn:disconnect"),
   tunnelStatus: () => ipcRenderer.invoke("tunnel:status"),
   tunnelStart: () => ipcRenderer.invoke("tunnel:start"),
-  tunnelStop: () => ipcRenderer.invoke("tunnel:stop")
+  tunnelStop: () => ipcRenderer.invoke("tunnel:stop"),
+  postgresDbStatus: () => ipcRenderer.invoke("postgres-db:status"),
+  postgresDbRestore: () => ipcRenderer.invoke("postgres-db:restore")
 });

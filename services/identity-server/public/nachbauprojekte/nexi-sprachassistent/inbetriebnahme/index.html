@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/landing.css?v=20260808-session-menu-1" />
   <link rel="stylesheet" href="../nexi-onboarding.css?v=20260806-linear-flow-1" />
   <link rel="stylesheet" href="../nexi-board-guide.css?v=20260807-board-reference-1" />
-  <link rel="stylesheet" href="../nexi-wake-word-lab.css?v=20260807-active-setup-1" />
+  <link rel="stylesheet" href="../nexi-wake-word-lab.css?v=20260815-guided-uart-1" />
 </head>
 <body class="nexi-linear-page">
   <header class="site-header">
@@ -75,31 +75,36 @@
         </li>
 
         <li class="nexi-commissioning-step">
-          <div class="nexi-step-content wake-lab" data-nexi-wake-lab>
-            <h2>„Hey Nexi“ einrichten</h2>
-            <p>Nimm „Hey Nexi“ dreimal über die integrierten Mikrofone des Boards auf. Die Seite steuert nur den Ablauf und zeigt das Ergebnis an.</p>
+          <div class="nexi-step-content wake-lab" data-nexi-guided-setup>
+            <h2>Nexi Schritt für Schritt auf deine Stimme einrichten</h2>
+            <p>Nexi führt dich über die integrierten Mikrofone des Boards durch acht vollständige Sätze. Der aktuelle Schritt kommt immer direkt vom Board, wird hier angezeigt und auf Wunsch vorgelesen.</p>
             <p class="wake-lab-privacy"><strong>Bleibt auf dem Board:</strong> Roh-Audio wird nicht an den Computer oder ins Internet übertragen. Nexi speichert ausschließlich die daraus berechneten persönlichen Merkmale lokal auf dem Board.</p>
             <ol class="wake-lab-steps">
               <li>Verbinde das Board per USB und wähle es unten aus.</li>
-              <li>Starte die nächste Referenzaufnahme und sprich in Richtung des Boards einmal klar „Hey Nexi“.</li>
-              <li>Wiederhole die Aufnahme, bis drei Referenzen erkannt wurden.</li>
-              <li>Teste anschließend „Hey Nexi“ oder bewusst ein anderes Wort.</li>
+              <li>Starte die Nexi-Anleitung. Dein Browser spricht dann genau den Schritt, den das Board über UART meldet.</li>
+              <li>Halte für jede Aufnahme KEY2 gedrückt, sprich den angezeigten Satz und lass KEY2 danach los.</li>
+              <li>Jeder der acht Sätze wird zweimal aufgenommen und ausschließlich lokal gespeichert.</li>
             </ol>
             <label class="wake-lab-port-label" for="nexiVoicePort">Verbundenes Board</label>
             <div class="wake-lab-port-row">
-              <select id="nexiVoicePort" data-wake-port disabled><option>Board wird gesucht …</option></select>
-              <button class="secondary-action" type="button" data-wake-refresh>Neu suchen</button>
+              <select id="nexiVoicePort" data-setup-port disabled><option>Board wird gesucht …</option></select>
+              <button class="secondary-action" type="button" data-setup-refresh>Neu suchen</button>
             </div>
             <div class="wake-lab-console" aria-live="polite">
               <div class="wake-lab-indicator" aria-hidden="true"><span></span></div>
-              <div><p class="wake-lab-progress" data-wake-progress>Board wird verbunden</p><p class="wake-lab-status" data-wake-status>Prüfe den lokalen USB-Dienst und das angeschlossene Board …</p></div>
+              <div class="wake-lab-live-step">
+                <p class="wake-lab-progress" data-setup-progress>Board wird verbunden</p>
+                <div class="wake-lab-step-bar" data-setup-step-bar aria-hidden="true"><span></span></div>
+                <blockquote class="wake-lab-phrase" data-setup-phrase hidden></blockquote>
+                <p class="wake-lab-status" data-setup-status>Prüfe den lokalen USB-Dienst und das angeschlossene Board …</p>
+                <p class="wake-lab-action" data-setup-action>Einen Moment warten</p>
+                <p class="wake-lab-references" data-setup-references></p>
+              </div>
             </div>
             <div class="wake-lab-actions">
-              <button class="action-button" type="button" data-wake-enroll>Referenz 1 aufnehmen</button>
-              <button class="secondary-action" type="button" data-wake-test disabled>Erkennung testen</button>
-              <button class="text-action" type="button" data-wake-reset disabled>Neu beginnen</button>
+              <button class="action-button" type="button" data-setup-guide>Nexi-Anleitung starten</button>
+              <button class="secondary-action" type="button" data-setup-repeat disabled>Schritt noch einmal sagen</button>
             </div>
-            <div data-wake-result hidden></div>
           </div>
         </li>
 
@@ -110,6 +115,6 @@
   <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="../">Nexi neu flashen</a><a href="/nachbauprojekte/">Alle Nachbauprojekte</a><a href="/hilfe/">Hilfe</a></nav></footer>
   <script src="/landing.js?v=20260808-session-menu-1"></script>
   <script src="/app/serial-service-client.js?v=20260807-board-voice-setup-1"></script>
-  <script src="../nexi-wake-word-lab-ui.js?v=20260807-board-voice-setup-1"></script>
+  <script src="../nexi-wake-word-lab-ui.js?v=20260818-webserial-1"></script>
 </body>
 </html>

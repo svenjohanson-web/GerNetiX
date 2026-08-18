@@ -72,6 +72,7 @@ freigegeben.
 | Identity | `POST /api/login`, `/api/register`, `/api/login/external`, `/api/password-reset/request`, `/api/password-reset/complete`, `/api/passkeys/authentication/*`, `/api/recovery/offline/*` | Oeffentliche Login-/Recovery-Eingaben; kein interner Token. | `public`; Rate-Limit, Anti-Automation, keine Kontodetails preisgeben. |
 | Identity | `POST /api/logout`, `/api/session/takeover*`, `/api/session/secure`, `GET /api/session` | Session-Handler. | `user`; `session.manage`. |
 | Identity | `POST /api/passkeys/registration/*`, `/api/passkeys/client-error` | Session-/Passkey-Handler. | `user`; `passkey.manage`. |
+| Identity | `GET /api/dev/local-action-diagnostics` | Ausschliesslich im kontrollierten lokalen Remote-Dev-Modus; feste Loopback-Abfrage durch das Desktop-Prozess-Tool. | `health`; nur minimierte allowlist-validierte Fehlerereignisse ohne Konto-, Eingabe-, Host- oder Rohdaten, im Servermodus `404`. |
 | Identity | `/api/account/*` (guest, access-profile, preferences, assets, upgrade-guest, offline-recovery-set, transparency, transparency/refresh) | Identity leitet Session ab. | `user`; `account.read` bzw. `account.write`, nur eigenes Konto. |
 | Admin Access | `POST /api/admin-access/login`, `GET /api/admin-access/session`, `POST /api/admin-access/logout` | Eigenes HttpOnly/Strict-Session-Cookie. | `admin`; `admin.session.*`. |
 | Admin Access | `GET,POST /api/admin-access/admins` | Session wird an Service gereicht. | `admin`; `admin.accounts.read/write`. |

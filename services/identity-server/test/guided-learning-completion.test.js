@@ -271,6 +271,14 @@ test("guided learning requires simulation without hardware and a physical check 
   state.devices = [];
   view.renderProjectViewManifest(project, "#mount");
   assert.match(nextButton(target.innerHTML), /disabled/);
+
+  state.activeIdeStep = 44;
+  view.renderProjectViewManifest(project, "#mount");
+  assert.match(target.innerHTML, /data-guided-embedded-lab/);
+  assert.match(target.innerHTML, /Virtuelles Pin-Multiplexing-Projektlabor/);
+  assert.match(target.innerHTML, /src="\/technik-labs\/\?lab=pinmux&amp;embedded=1"/);
+  assert.match(target.innerHTML, /erkennt und flasht keine reale Hardware/);
+  assert.match(target.innerHTML, /Abschlussprotokoll/);
 });
 
 function createTarget() {

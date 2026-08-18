@@ -219,9 +219,9 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiProject, /href="inbetriebnahme\/index\.html"/);
   assert.match(nexiCommissioning, /Schritt 2 von 2[\s\S]*Nexi in Betrieb nehmen/);
   assert.match(nexiCommissioning, /RESET[\s\S]*BOOT[\s\S]*KEY3[\s\S]*KEY2[\s\S]*KEY1/);
-  assert.match(nexiCommissioning, /RGB-Ringfarben[\s\S]*Die drei Nexi-Tasten[\s\S]*class="nexi-actions-title">Inbetriebnahme[\s\S]*integrierten Lautsprecher prüfen[\s\S]*„Hey Nexi“ einrichten/);
+  assert.match(nexiCommissioning, /RGB-Ringfarben[\s\S]*Die drei Nexi-Tasten[\s\S]*class="nexi-actions-title">Inbetriebnahme[\s\S]*integrierten Lautsprecher prüfen[\s\S]*Nexi Schritt für Schritt auf deine Stimme einrichten/);
   assert.doesNotMatch(nexiCommissioning, /Die drei Nexi-Tasten testen/);
-  assert.match(nexiCommissioning, /data-nexi-wake-lab[\s\S]*data-wake-enroll[\s\S]*data-wake-test/);
+  assert.match(nexiCommissioning, /data-nexi-guided-setup[\s\S]*data-setup-guide[\s\S]*data-setup-repeat/);
   assert.doesNotMatch(nexiCommissioning, /nicht verfügbar|Nutzerablauf freigegeben|bisherige Liste/);
   assert.match(nexiProject, /Grundversion funktioniert ohne Konto/);
   assert.match(nexiProject, /kein eigener Build ist erforderlich/);

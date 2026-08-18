@@ -4689,6 +4689,12 @@ textarea:read-only {
 .guided-code-run-lab { display: grid; gap: 12px; }
 .guided-code-run-lab .guided-code-viewer { min-height: 0; }
 .guided-code-run-lab .guided-code-task textarea { min-height: 170px; }
+.guided-code-task-stack { display:grid; gap:14px; min-width:0; }
+.guided-embedded-lab { display:grid; gap:10px; min-width:0; padding:14px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(145deg,#f6fbff,#fff); }
+.guided-embedded-lab > header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.guided-embedded-lab h3,.guided-embedded-lab p { margin:0; }.guided-embedded-lab > p { color:var(--muted); font-size:12px; }
+.guided-embedded-lab a { display:inline-flex; align-items:center; min-height:34px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; color:var(--accent); font-weight:800; text-decoration:none; }
+.guided-embedded-lab iframe { display:block; width:100%; height:min(820px,75vh); min-height:620px; border:1px solid var(--line); border-radius:9px; background:#0b1019; }
 .guided-code-run-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .guided-code-run-toolbar span { color: var(--muted); font-size: 13px; }
 .guided-code-output {

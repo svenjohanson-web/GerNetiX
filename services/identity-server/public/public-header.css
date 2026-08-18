@@ -18,6 +18,23 @@
   backdrop-filter: blur(14px);
 }
 
+.public-theme-toggle {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #3c4a5d;
+  border-radius: 7px;
+  background: #1b2430;
+  color: #e5e7eb;
+  cursor: pointer;
+  font: 700 20px/1 system-ui, sans-serif;
+}
+.public-theme-toggle:hover,
+.public-theme-toggle:focus-visible { border-color: #22d3ee; background: #273244; outline: none; }
+
 .brand { display: inline-flex; align-items: center; min-width: 0; }
 .brand img { display: block; width: min(270px, 58vw); height: auto; border-radius: 7px; }
 .header-login-link {
@@ -133,6 +150,73 @@
 .site-menu a[data-public-logout] { border-color: #7f1d1d; background: #26171b; color: #fca5a5; }
 .site-menu a[data-public-logout]:hover,
 .site-menu a[data-public-logout]:focus-visible { border-color: #ef4444; background: #3f1d24; color: #fecaca; }
+
+html[data-public-theme="light"] .site-header {
+  border-color: #d8d2c6;
+  background: rgba(246, 243, 237, .96);
+  box-shadow: 0 12px 28px rgba(45, 39, 30, .12);
+}
+html[data-public-theme="light"] .brand img { filter: invert(1) hue-rotate(180deg); }
+html[data-public-theme="light"] .header-login-link,
+html[data-public-theme="light"] .menu-button,
+html[data-public-theme="light"] .public-language-switcher,
+html[data-public-theme="light"] .public-theme-toggle {
+  border-color: #c8beb0;
+  background: linear-gradient(180deg, #f0ece5 0%, #e6ded2 100%);
+  color: #20211d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 1px 2px rgba(45, 39, 30, .12);
+}
+html[data-public-theme="light"] .header-login-link:hover,
+html[data-public-theme="light"] .header-login-link:focus-visible,
+html[data-public-theme="light"] .menu-button:hover,
+html[data-public-theme="light"] .menu-button:focus-visible,
+html[data-public-theme="light"] .public-language-switcher:hover,
+html[data-public-theme="light"] .public-language-switcher:focus-within,
+html[data-public-theme="light"] .public-theme-toggle:hover,
+html[data-public-theme="light"] .public-theme-toggle:focus-visible {
+  border-color: #a99e90;
+  background: linear-gradient(180deg, #e8e1d7 0%, #ddd3c5 100%);
+  color: #20211d;
+  outline: none;
+}
+html[data-public-theme="light"] .public-language-switcher select,
+html[data-public-theme="light"] .public-language-copy { color: #20211d; }
+html[data-public-theme="light"] .public-language-copy small { color: #6f685f; }
+html[data-public-theme="light"] .menu-button span { background: #20211d; }
+html[data-public-theme="light"] .site-menu { border-color: #d8d2c6; background: #fffdf8; box-shadow: 0 12px 28px rgba(45, 39, 30, .12); }
+html[data-public-theme="light"] .site-menu a,
+html[data-public-theme="light"] .site-menu-group > summary { border-color: #bdb5a8; background: #f6f3ed; color: #20211d; }
+html[data-public-theme="light"] .site-menu a:hover,
+html[data-public-theme="light"] .site-menu-group > summary:hover { border-color: #7a3328; background: #eee8dd; color: #20211d; }
+html[data-public-theme="light"] .site-menu a[href="/app/auth/"] { border-color: #20211d; background: #20211d; color: #fffdf8; }
+
+html[data-public-theme="dark"] .site-header { border-color: #494640; background: rgba(23, 23, 21, .96); }
+html[data-public-theme="dark"] .header-login-link,
+html[data-public-theme="dark"] .menu-button,
+html[data-public-theme="dark"] .public-language-switcher,
+html[data-public-theme="dark"] .public-theme-toggle {
+  border-color: #4d4942;
+  background: linear-gradient(180deg, #292823 0%, #211f1c 100%);
+  color: #f3efe7;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 1px 2px rgba(0, 0, 0, .3);
+}
+html[data-public-theme="dark"] .header-login-link:hover,
+html[data-public-theme="dark"] .header-login-link:focus-visible,
+html[data-public-theme="dark"] .menu-button:hover,
+html[data-public-theme="dark"] .menu-button:focus-visible,
+html[data-public-theme="dark"] .public-language-switcher:hover,
+html[data-public-theme="dark"] .public-language-switcher:focus-within,
+html[data-public-theme="dark"] .public-theme-toggle:hover,
+html[data-public-theme="dark"] .public-theme-toggle:focus-visible {
+  border-color: #6b655c;
+  background: linear-gradient(180deg, #33312c 0%, #292722 100%);
+  color: #f3efe7;
+  outline: none;
+}
+html[data-public-theme="dark"] .public-language-copy,
+html[data-public-theme="dark"] .public-language-switcher select { color: #f3efe7; }
+html[data-public-theme="dark"] .public-language-copy small { color: #aaa297; }
+html[data-public-theme="dark"] .menu-button span { background: #f3efe7; }
 
 @media (max-width: 720px) {
   .site-header { left: 12px; right: 12px; gap: 8px; }

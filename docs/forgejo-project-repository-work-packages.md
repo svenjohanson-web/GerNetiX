@@ -696,6 +696,11 @@ Umgesetzter erster Umfang:
   `.gernetix-build/` ausserhalb der Git-Historie. Produktquellen und
   Basissoftware bleiben in getrennten Repositories und werden erst im
   technischen BuildWorkspace zusammengefuehrt.
+- Fuer tief liegende Windows-Arbeitskopien akzeptiert der lokale Adapter
+  `--cache-dir <pfad>` beziehungsweise
+  `GERNETIX_LOCAL_BUILD_CACHE_DIR`. Ein kurzer Cachepfad auf demselben
+  Laufwerk verhindert CMake-Objektpfad- und Windows-Befehlszeilenlimits; der
+  Standard bleibt der repositorylokale Ordner `.gernetix-build/`.
 - Jedes dieser Repositories besitzt ausserdem einen bewussten Windows-Einstieg
   `flash.bat` fuer Windows und `flash.sh` fuer macOS. Beide verlangen immer einen ausdruecklichen seriellen Anschluss und
   bei Repositories mit mehreren Boards zusaetzlich das Software-Ziel. Der

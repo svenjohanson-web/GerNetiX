@@ -48,6 +48,8 @@ ipcMain.handle("vpn:disconnect", () => control.setVpnConnected(false));
 ipcMain.handle("tunnel:status", () => control.stagingTunnelState());
 ipcMain.handle("tunnel:start", () => control.startStagingTunnel());
 ipcMain.handle("tunnel:stop", () => control.stopStagingTunnel());
+ipcMain.handle("postgres-db:status", () => control.identityDbTunnelState());
+ipcMain.handle("postgres-db:restore", () => control.restoreIdentityDbAccess());
 
 app.whenReady().then(() => {
   const workspace = resolveWorkspace();

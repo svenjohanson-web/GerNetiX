@@ -38,7 +38,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 ## Performance-Regel fuer Codex
 
 - Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
-- Lokale Firmware-Builds auf macOS darf Codex nach ausdruecklicher Nutzerfreigabe mit `platformio run` ausfuehren. Auf Windows startet Codex keine Firmware-Builds. USB-/OTA-Flashes und sonstige Upload-Befehle fuehrt weiterhin ausschliesslich der Nutzer aus.
+- Lokale Firmware-Builds darf Codex auf macOS und Windows ausschliesslich nach ausdruecklicher Nutzerfreigabe ausfuehren. USB-/OTA-Flashes und sonstige Upload-Befehle fuehrt weiterhin ausschliesslich der Nutzer aus.
 - Bei Code-/UI-Aenderungen zuerst lokal implementieren und gezielte Unit-/Contract-Tests ausfuehren.
 - Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
 - Keine vorsorglichen Neustarts.
