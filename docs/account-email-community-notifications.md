@@ -21,6 +21,159 @@ Nicht umfasst sind Werbung, Newsletter, Empfehlungen, globale
 Community-Broadcasts per E-Mail, Oeffnungs- oder Klicktracking und die
 Speicherung vollstaendiger versendeter E-Mails.
 
+## Feature-Status und erledigte Arbeitspakete
+
+Der lokal implementierte Feature-Stand wurde am 2026-08-18 mit Commit
+`fcde810` gesichert. Die weitere Planung wurde mit `22e94d5` festgehalten.
+
+| Paket | Ergebnis | Status |
+| --- | --- | --- |
+| **EMAIL-01 – Zweck-, Datenschutz- und Consent-Grenze** | Drei getrennte Zwecke, keine Werbung, kein Cookie-Consent und kein Datenschutz-Kenntnisnahmefeld. Oeffentliche Entwurfsseite `/datenschutz/` sowie Links aus Registrierung, Navigation und Kontoeinstellungen. | Lokal umgesetzt |
+| **EMAIL-02 – Kontaktadresse und persoenliche Praeferenzen** | Optionale Adresse fuer persistente Passkey-Konten, Verifizierungs- und Wechselablauf, Entfernen mit Ruecksetzen der Schalter, vier getrennte Community-Praeferenzen, Account-UI und Selbstauskunft. Klassische E-Mail-Konten behalten ihre Login-Adresse. | Lokal umgesetzt |
+| **EMAIL-03 – Transaktionale Community-Outbox** | Inbox-Aktion und minimiertes Outbox-Ereignis werden atomar gespeichert. Identity beansprucht Ereignisse per Lease; Retry, exponentieller Abstand, Dead Letter nach acht Versuchen und idempotente Zustellnachweise sind implementiert. | Lokal umgesetzt |
+| **EMAIL-04 – Datensparsamer SMTP-Versand** | Verifizierung, Passwort-Reset und persoenliche Community-Hinweise verwenden den konfigurierbaren SMTP-Dienst. Community-Mails sind in Deutsch, Englisch und Niederlaendisch generisch und enthalten keine privaten Inhalte, Projekt- oder Absenderdaten. | Lokal umgesetzt |
+| **EMAIL-05 – Statusgebundene Retention** | Getrennte, hoechstens stuendliche Bereinigung fuer Community-Outbox, Identity-Zustellnachweise, abgelaufene Verifizierungs-/Reset-Tokens und Support-Recovery. Aktive Zustaende sind geschuetzt; Aktivierung bleibt bis zur Fristfreigabe ausgeschaltet. | Lokal umgesetzt, inaktiv |
+| **EMAIL-06 – Bounce und Suppression** | Synchrone permanente SMTP-Fehler pausieren nur Community-Mails an die aktuelle Adressversion. Geschuetzter asynchroner Meldevertrag, feste Grundcodes, Schutz vor alten Bounces, Revalidierung und Anzeige im Konto sowie in der Selbstauskunft. | Lokal umgesetzt |
+
+## Technischer Feature-Vertrag
+
+### Persistierte Identity-Daten
+
+Das Account-JSON in `identity_user_accounts` fuehrt fuer dieses Feature:
+
+- `email` und `email_verified_at`,
+- die interne `email_contact_version` zur Bindung von Zustellnachweisen und
+  Suppression an genau eine bestaetigte Adressversion,
+- `pending_email`, `pending_email_token_id` und
+  `pending_email_requested_at`,
+- die vier booleschen Werte unter `notification_preferences`,
+- die minimierte `community_email_suppression` mit festem Grund, Quelle,
+  normalisiertem permanentem SMTP-Status, Adressversion und Zeitpunkt.
+
+`identity_notification_deliveries` speichert Ereignis-ID, `user_id`,
+Kategorie, Status, festen Grundcode, optionale Provider-Message-ID,
+Empfaengerversion und Zeitstempel. Es speichert weder E-Mail-Text noch
+Community-Nachricht, Projektname, Absenderdetails oder Bounce-Freitext.
+
+Verifizierungs- und Passwort-Reset-Tokens werden ausschliesslich gehasht und
+befristet gespeichert. SMTP-Zugangsdaten liegen verschluesselt in der
+bestehenden SMTP-Konfiguration und werden weder ueber Kunden-APIs noch Logs
+ausgegeben.
+
+### Persistierte Community-Daten
+
+`community_notification_outbox` fuehrt ausschliesslich:
+
+- Ereignis-ID, Empfaenger-`user_id` und eine der vier erlaubten Kategorien,
+- `pending`, `retry`, `leased`, `delivered` oder `dead_letter`,
+- Versuchszahl, naechsten Versuch, Lease-Ende, minimiertes Ergebnis und festen
+  letzten Fehlercode,
+- Erstellungs-, Aktualisierungs- und optionalen Zustellzeitpunkt.
+
+Die Community Platform kennt keine Kontaktadresse. Ein ausgeloestes
+Outbox-Ereignis wird in derselben PostgreSQL-Transaktion wie die zugehoerige
+Inbox-Aktion gespeichert.
+
+### HTTP- und Service-Grenzen
+
+Kontoseitig und sitzungsgebunden:
+
+```text
+GET    /api/account/contact-notifications
+PATCH  /api/account/contact-notifications
+POST   /api/account/contact-email
+DELETE /api/account/contact-email
+```
+
+Oeffentliche Token-Abschluesse geben keine Kontodaten preis:
+
+```text
+GET  /verify-email?token=...
+POST /api/password-reset/request
+POST /api/password-reset/complete
+```
+
+Nur zwischen Identity und Community mit `COMMUNITY_INTERNAL_TOKEN`:
+
+```text
+POST /api/community/notification-outbox/claim
+POST /api/community/notification-outbox/{event_id}/complete
+POST /api/community/notification-outbox/{event_id}/retry
+```
+
+Nur mit dem internen Identity-Admin-Token:
+
+```text
+POST /api/internal/email-delivery/suppress
+```
+
+Der Suppression-Endpunkt akzeptiert nur `event_id`, `reason_code`, `source`
+und einen normalisierten permanenten `smtp_status`. Die Ereignis-ID muss zu
+einer bereits als versandt erfassten Zustellung und weiterhin zur aktuellen
+Adressversion gehoeren.
+
+### Worker und Laufzeitkonfiguration
+
+Der `community-notification-outbox-worker` laeuft standardmaessig alle 15
+Sekunden, beansprucht bis zu 25 Ereignisse mit 60 Sekunden Lease und fuehrt je
+Ereignis Complete oder Retry aus. Parallele Flush-Aufrufe werden innerhalb
+einer Instanz zusammengefasst.
+
+Der `identity-retention-worker` laeuft hoechstens stuendlich und besitzt zwei
+unabhaengige, standardmaessig deaktivierte Bereiche:
+
+```text
+COMMUNITY_NOTIFICATION_RETENTION_ENABLED=0
+COMMUNITY_NOTIFICATION_DELIVERED_RETENTION_DAYS=30
+COMMUNITY_NOTIFICATION_DEAD_LETTER_RETENTION_DAYS=90
+
+IDENTITY_TOKEN_RETENTION_ENABLED=0
+IDENTITY_EXPIRED_TOKEN_RETENTION_DAYS=7
+IDENTITY_SUPPORT_RECOVERY_RETENTION_DAYS=30
+```
+
+Die Intervalle koennen intern ueber
+`COMMUNITY_NOTIFICATION_OUTBOX_INTERVAL_MS` und
+`IDENTITY_RETENTION_INTERVAL_MS` angepasst werden. Fristen ausserhalb von 1
+bis 365 Tagen fallen auf die sicheren Kandidatenwerte zurueck. Eine spaetere
+Aktivierung ist eine eigene fachliche und betriebliche Freigabe, keine reine
+Konfigurationspflege.
+
+### Fehler- und Sicherheitsverhalten
+
+- Community-Aktionen bleiben erfolgreich, wenn der nachgelagerte Mailversand
+  scheitert.
+- Temporaere SMTP-Fehler werden wiederholt; permanente `5xx`-Fehler beenden
+  den Retry fuer diese Adressversion durch Suppression.
+- Erfolgreiche und bewusst uebersprungene Ereignisse sind idempotent; frische
+  `processing`-Zustaende werden nicht parallel erneut versandt.
+- Freie Providerfehler, Rohmails, private Nachrichten und Empfaengeradressen
+  werden nicht in Operations- oder Suppression-Datensaetze kopiert.
+- Eine neue oder erneut bestaetigte Adresse erhaelt eine neue interne Version
+  und kann deshalb nicht durch einen verspaeteten Bounce der alten Version
+  gesperrt werden.
+- SMTP besitzt keine transaktionale Exactly-once-Garantie. Das kleine
+  Ausfallfenster nach Providerannahme und vor Speicherung der Quittung kann
+  einen doppelten generischen Hinweis erzeugen.
+
+### Lokaler Nachweisstand
+
+Beim Feature-Checkpoint bestanden:
+
+- 814 eindeutige Identity-Tests einschliesslich des separat mit Loopback-
+  Freigabe ausgefuehrten Linkintegritaetstests,
+- 44 Community-Tests,
+- SMTP-Normalisierung fuer temporaere und permanente Fehler,
+- Kontakt-, Praeferenz-, Outbox-, Lease-, Retry-, Dead-Letter-, Suppression-,
+  Revalidierungs-, SQLite-Neustart-, Selbstauskunft- und Datenschutzvertraege,
+- Offline-Architekturdokumentation mit 173 Dokumenten,
+- SQLite-Graphvalidierung ohne Fehler; eine bereits bestehende themenfremde
+  Metamodellwarnung zum Process Monitor blieb offen.
+
+Nicht als Nachweis behauptet werden echter IONOS-Versand, automatisches
+Einlesen von Delivery-Status-Mails, echter PostgreSQL-Parallelbetrieb,
+authentifizierter Browser, Backup-Auslauf oder Staging.
+
 ## Datenhoheit
 
 Identity-PostgreSQL fuehrt die normalisierte Adresse, den
