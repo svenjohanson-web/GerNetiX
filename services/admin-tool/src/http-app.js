@@ -96,6 +96,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/interface-statistics") {
+      sendJson(res, 200, await service.interfaceStatistics({ hours: url.searchParams.get("hours") || "" }));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/user-action-incidents") {
       sendJson(res, 200, await service.userActionIncidents({ status: url.searchParams.get("status") || "" }));
       return;

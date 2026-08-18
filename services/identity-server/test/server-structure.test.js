@@ -510,7 +510,21 @@ test("system health exposes runtime identity without requiring a session", async
     persistence_backend: "postgres",
     runtime_location: "server",
     remote_dev: false,
+    dependencies: { postgres:{ status:"healthy" } },
   }]]);
+});
+
+test("system health reports central PostgreSQL failure as degraded", async () => {
+  const registry=createRouteRegistry(),responses=[];
+  registerSystemRoutes({
+    registry,sendJson:(res,status,body)=>responses.push([status,body]),
+    identityPersistenceBackend:"postgres",identityRuntimeLocation:"local",identityRemoteDev:true,
+    identityPersistenceHealth:async()=>({ready:false,error_code:"identity_persistence_unavailable"}),
+  });
+  await registry.dispatch({req:{method:"GET"},res:{},url:new URL("http://localhost/health")});
+  assert.equal(responses[0][0],503);
+  assert.equal(responses[0][1].status,"degraded");
+  assert.equal(responses[0][1].dependencies.postgres.status,"unavailable");
 });
 
 test("system routes forward same-origin user action events to the ingest boundary", async () => {

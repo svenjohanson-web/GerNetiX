@@ -98,6 +98,15 @@ test("persists and reads action-correlated interface calls", async () => {
   assert.deepEqual(pool.calls[1].values, [actionId, 1000]);
 });
 
+test("aggregates interface statistics in Operations PostgreSQL", async () => {
+  const pool = new RecordingPool([{source_service:"identity-server",target_service:"project-server",calls:3,failed:1,average_ms:12,maximum_ms:24,last_call:"2026-08-17T10:00:00.000Z"}]);
+  const items = await new PostgresAdminRepository(pool).interfaceCallStatistics({hours:999});
+  assert.match(pool.calls[0].text,/FROM operations_interface_calls/);
+  assert.match(pool.calls[0].text,/GROUP BY source_service, target_service/);
+  assert.deepEqual(pool.calls[0].values,[168]);
+  assert.equal(items[0].calls,3);
+});
+
 test("bounds the recent user action event window in PostgreSQL", async () => {
   const pool = new RecordingPool();
   await new PostgresAdminRepository(pool).listUserActionEvents({ action_type: "nexi.flash.usb.start", limit: 5000 });

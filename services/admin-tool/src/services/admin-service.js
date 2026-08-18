@@ -222,6 +222,22 @@ class AdminService {
     };
   }
 
+  async interfaceStatistics(filter = {}) {
+    const hours = Math.max(1, Math.min(168, Number(filter.hours) || 24));
+    const items = this.repository.interfaceCallStatistics
+      ? await this.repository.interfaceCallStatistics({ hours })
+      : [];
+    return {
+      hours,
+      items,
+      summary: {
+        calls: items.reduce((sum, item) => sum + Number(item.calls || 0), 0),
+        failed: items.reduce((sum, item) => sum + Number(item.failed || 0), 0),
+        targets: items.length,
+      },
+    };
+  }
+
   async userActionIncidents(filter = {}) {
     return { items: await this.repository.listUserActionIncidents({ status: validIncidentStatus(filter.status, true) }) };
   }

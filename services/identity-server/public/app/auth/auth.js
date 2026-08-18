@@ -48,6 +48,7 @@ loginForm.addEventListener("submit", async (event) => {
   let browserPasskeyRequest = false;
   let actionStage = "options";
   try {
+    await ensureIdentityLoginReady();
     const options = await actionStep(action, "auth.options", () => postJson(
       "/api/passkeys/authentication/options",
       username ? { username } : {},
@@ -204,6 +205,20 @@ async function postJson(url, body, headers = {}) {
   return payload;
 }
 
+async function ensureIdentityLoginReady() {
+  const response = await fetch("/health", { headers:{ Accept:"application/json" }, cache:"no-store" });
+  if (response.ok) return;
+  let payload={};
+  try { payload=await response.json(); } catch {}
+  const persistenceUnavailable=payload?.dependencies?.postgres?.status==="unavailable";
+  const error=new Error(persistenceUnavailable
+    ? tr("auth.error.login.persistence_unavailable", "Anmeldung nicht möglich: Die zentrale Kontodatenbank ist momentan nicht erreichbar.")
+    : tr("auth.error.login.identity_unreachable", "Der Identity-Dienst ist momentan nicht erreichbar."));
+  error.code=persistenceUnavailable?"identity_persistence_unavailable":"identity_unreachable";
+  error.status=response.status;
+  throw error;
+}
+
 function showActiveSessionDialog(payload) {
   pendingLogin = {
     token: payload.pending_login_token,
@@ -248,7 +263,7 @@ function passkeyActionReason(error) {
   if (reason === "NotAllowedError") return "passkey_cancelled";
   if (reason === "NotSupportedError") return "passkey_not_supported";
   if (reason === "SecurityError") return "passkey_origin_invalid";
-  if (reason === "TypeError" || reason === "identity_persistence_unavailable") return "identity_unreachable";
+  if (["TypeError", "identity_unreachable", "identity_persistence_unavailable"].includes(reason)) return "identity_unreachable";
   if (["invalid_credentials", "account_not_found", "passkey_not_configured", "account_disabled", "account_not_verified", "guest_expired"].includes(reason)) return "account_unavailable";
   return "authentication_verification_failed";
 }
@@ -279,6 +294,7 @@ function passkeyLoginFailureMessage(error) {
     account_not_verified: "auth.error.login.account_not_verified",
     guest_expired: "auth.error.login.guest_expired",
     identity_persistence_unavailable: "auth.error.login.persistence_unavailable",
+    identity_unreachable: "auth.error.login.identity_unreachable",
     passkey_authentication_unavailable: "auth.error.login.authentication_unavailable",
     passkey_challenge_expired: "auth.error.login.challenge_expired",
     passkey_verification_failed: "auth.error.login.verification_failed",

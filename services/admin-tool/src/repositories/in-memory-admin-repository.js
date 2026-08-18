@@ -221,6 +221,30 @@ class InMemoryAdminRepository {
       .map(clone);
   }
 
+  interfaceCallStatistics(filter = {}) {
+    const hours = Math.max(1, Math.min(168, Number(filter.hours) || 24));
+    const since = Date.now() - hours * 60 * 60 * 1000;
+    const aggregates = new Map();
+    for (const item of this.interfaceCalls) {
+      if (new Date(item.occurred_at).getTime() < since) continue;
+      const key = `${item.source_service}\u0000${item.target_service}`;
+      const current = aggregates.get(key) || {
+        source_service: item.source_service, target_service: item.target_service,
+        calls: 0, failed: 0, total_ms: 0, maximum_ms: 0, last_call: null,
+      };
+      const duration = Number(item.duration_ms || 0);
+      current.calls += 1;
+      if (!item.succeeded) current.failed += 1;
+      current.total_ms += duration;
+      current.maximum_ms = Math.max(current.maximum_ms, duration);
+      if (!current.last_call || String(item.occurred_at) > String(current.last_call)) current.last_call = item.occurred_at;
+      aggregates.set(key, current);
+    }
+    return [...aggregates.values()].map(({ total_ms, ...item }) => ({
+      ...item, average_ms: Math.round(total_ms / item.calls),
+    })).sort((left, right) => right.calls - left.calls || String(left.target_service).localeCompare(String(right.target_service)));
+  }
+
   replaceLinkInventory(sourceService, inventory) {
     const generatedAt = inventory.generated_at || new Date().toISOString();
     const activeIds = new Set((inventory.targets || []).map((item) => item.reference_id));

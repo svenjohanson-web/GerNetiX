@@ -38,6 +38,8 @@ test("Passkey registration reports an explicit persisted success or a failure wi
 });
 
 test("Passkey login translates known account and browser failures into an actionable reason", () => {
+  assert.match(authSource,/await ensureIdentityLoginReady\(\)/);
+  assert.match(authSource,/dependencies\?\.postgres\?\.status==="unavailable"/);
   assert.match(authSource, /const message = passkeyLoginFailureMessage\(error\)/);
   assert.match(authSource, /statusElement\.textContent = action\?\.failureMessage\(message\) \|\| message/);
   assert.match(authSource, /invalid_credentials: "auth\.error\.login\.account_not_found"/);

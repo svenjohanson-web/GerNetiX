@@ -167,7 +167,7 @@
     <text class="titleText" x="464" y="608" text-anchor="middle">YAML Graph</text>
     <text class="smallText" x="464" y="627" text-anchor="middle">Importer</text>
     <rect class="node tool" x="265" y="648" width="260" height="24" rx="10"/>
-    <text class="smallText" x="395" y="665" text-anchor="middle">Prozess-Monitor · VPN · Linkstatus</text>
+    <text class="smallText" x="395" y="665" text-anchor="middle">Prozess-Monitor · VPN · DB-Status/Start</text>
     <rect class="node tool" x="265" y="704" width="260" height="18" rx="10"/>
     <text class="smallText" x="395" y="717" text-anchor="middle">Architektur-Dokumentation · offline</text>
   </g>

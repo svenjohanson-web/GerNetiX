@@ -3,6 +3,7 @@
 function registerSystemRoutes({
   registry, requireSession, readJsonBody, sendJson, sendDevJson, requireInternalAdmin,
   handleDevLessonPreviewMigration, identityPersistenceBackend, identityRuntimeLocation, identityRemoteDev,
+  identityPersistenceHealth,
   smtpConfigStore, smtpEmailService, createIdentityLinkInventory, publicDir,
   webPushService, securityAlertPushAccountIds, requireSessionProject, projectServerUserId,
   handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleUserActionIngest,
@@ -13,10 +14,12 @@ function registerSystemRoutes({
   registry.register({
     method: "*",
     path: "/health",
-    handler({ res }) {
-      sendJson(res, 200, {
-        status: "ok", service: "identity-server", persistence_backend: identityPersistenceBackend,
+    async handler({ res }) {
+      const persistence = identityPersistenceHealth ? await identityPersistenceHealth() : { ready:true };
+      sendJson(res, persistence.ready ? 200 : 503, {
+        status: persistence.ready ? "ok" : "degraded", service: "identity-server", persistence_backend: identityPersistenceBackend,
         runtime_location: identityRuntimeLocation, remote_dev: identityRemoteDev,
+        dependencies: identityPersistenceBackend === "postgres" ? { postgres:{ status:persistence.ready ? "healthy" : "unavailable" } } : {},
       });
     },
   });

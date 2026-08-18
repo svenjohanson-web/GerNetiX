@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("gernetixProcesses", {
   list: () => ipcRenderer.invoke("processes:list"),
   listVps: () => ipcRenderer.invoke("processes:list-vps"),
+  startVpsDatabase: () => ipcRenderer.invoke("database:start-vps"),
   interfaceStatistics: (hours) => ipcRenderer.invoke("interfaces:statistics", hours),
   runtimeAlerts: (hours) => ipcRenderer.invoke("runtime:alerts", hours),
   securityRules: (force) => ipcRenderer.invoke("security:rules", force),

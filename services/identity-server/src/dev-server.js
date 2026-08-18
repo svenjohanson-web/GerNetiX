@@ -971,6 +971,7 @@ registerSystemRoutes({
   identityPersistenceBackend,
   identityRuntimeLocation,
   identityRemoteDev,
+  identityPersistenceHealth: async () => auth?.repository?.checkHealth ? auth.repository.checkHealth() : { ready:true },
   smtpConfigStore,
   smtpEmailService,
   createIdentityLinkInventory,

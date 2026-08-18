@@ -191,6 +191,15 @@ class PostgresIdentityRepository {
     ));
   }
 
+  async checkHealth() {
+    try {
+      await this.pool.query("SELECT 1");
+      return { ready:true };
+    } catch {
+      return { ready:false, error_code:"identity_persistence_unavailable" };
+    }
+  }
+
   async usernameExists(username) {
     return (await this.pool.query(
       "SELECT 1 FROM identity_user_accounts WHERE username_normalized=$1",

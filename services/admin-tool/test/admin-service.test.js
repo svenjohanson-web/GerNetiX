@@ -21,6 +21,17 @@ function adminContext(overrides = {}) {
   };
 }
 
+test("interface statistics aggregate the central Operations records", async () => {
+  const repository = new InMemoryAdminRepository();
+  repository.addInterfaceCall({ occurred_at:new Date().toISOString(), source_service:"identity-server", target_service:"project-server", duration_ms:10, succeeded:true });
+  repository.addInterfaceCall({ occurred_at:new Date().toISOString(), source_service:"identity-server", target_service:"project-server", duration_ms:30, succeeded:false });
+  const service = new AdminService({ repository });
+  const result = await service.interfaceStatistics({ hours:24 });
+  assert.deepEqual(result.summary,{calls:2,failed:1,targets:1});
+  assert.equal(result.items[0].average_ms,20);
+  assert.equal(result.items[0].maximum_ms,30);
+});
+
 test("device detail is masked without consent or legal basis and audited", async () => {
   const service = createDefaultAdminTool();
   const result = await service.getDevice("device_verified_1", adminContext());
