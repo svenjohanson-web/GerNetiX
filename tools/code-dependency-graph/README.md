@@ -56,19 +56,46 @@ Ausgewertet wird der Syntaxbaum mit echter Sichtbarkeitsaufloesung:
 
 | | |
 |---|---|
-| Dateien | 54 |
-| globale Namen | 497 |
-| Kanten (Datei nutzt Bezeichner aus Datei) | 329 |
-| Dateipaare mit Abhaengigkeit | 120 |
+| Dateien | 63 |
+| globale Namen | 613 |
+| Kanten (Datei nutzt Bezeichner aus Datei) | 359 |
+| Dateipaare mit Abhaengigkeit | 146 |
 | gegenseitige Abhaengigkeiten | 14 |
 
-`order` teilt die Dateien in Stufen: Stufe 1 sind die 13 Dateien, von denen
-niemand abhaengt — sie lassen sich einzeln auf ES-Module umstellen, weil eine
-Moduldatei weiterhin Globale lesen darf, ihre eigenen Namen aber fuer
+`order` teilt die Dateien in Stufen. Stufe 1 sind die Dateien, von denen
+niemand abhaengt — nur sie lassen sich einzeln auf ES-Module umstellen, weil
+eine Moduldatei weiterhin Globale lesen darf, ihre eigenen Namen aber fuer
 klassische Skripte unsichtbar werden. Der Rest bildet einen wechselseitig
 abhaengigen Kern um `app.js`, `app-runtime-utils.js` und
 `app-shell-controller.js`. Dieser Kern laesst sich nicht Datei fuer Datei
 bewegen; dort muessen zuerst die Zyklen aufgeloest werden.
+
+## Zwei Korrekturen, die das Ergebnis umgedreht haben
+
+Eine fruehere Fassung meldete 13 abhaengigkeitsfreie Dateien. Acht davon waren
+es nicht:
+
+- **`window.X` wurde als Eigenschaftszugriff gewertet.** Damit blieb
+  unsichtbar, dass drei Dateien ueber `window.GerNetiXFlashDialog` am
+  Flash-Dialog haengen. Solche Zugriffe zaehlen jetzt als Verweis.
+- **Der Schutz durch `typeof` galt fuer die ganze Datei.** Ein
+  `typeof GerNetiXHardwareLab === "undefined"` in Zeile 238 liess vier
+  ungeschuetzte Aufrufe weiter unten verschwinden. Er gilt jetzt nur im
+  selben bedingten Ausdruck, also genau dort, wo er wirkt.
+
+Waeren die acht Dateien auf dieser Grundlage umgestellt worden, haetten
+Flash-Dialog, Hardware-Labor und Aktionsprotokoll aufgehoert zu arbeiten.
+
+Ausserdem muss vor jeder Umstellung die **Ladeart** geprueft werden: ein
+Modul wird immer verzoegert ausgefuehrt. `app/initial-view-router.js` wird
+bewusst synchron geladen, damit es vor dem ersten Zeichnen laeuft, und darf
+deshalb kein Modul werden.
+
+## Bereits umgestellt
+
+`session-state.js`, `ai-chat-pattern.js` und `app-event-bindings.js` werden
+mit `type="module"` geladen. Alle drei deklarieren nichts, was andere Skripte
+brauchen. `flashbox-einrichten/app.js` war schon vorher ein Modul.
 
 ## Verwandter Test
 

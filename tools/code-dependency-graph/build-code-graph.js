@@ -20,10 +20,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { analysiereDatei } = require("./src/analyse");
+const { OEFFENTLICH: QUELLE, browserDateien } = require("./src/quellen");
 
 const WURZEL = path.join(__dirname, "..", "..");
-const QUELLE = path.join(WURZEL, "services", "identity-server", "public", "app");
 const DB_PFAD = path.join(__dirname, "out", "code-graph.sqlite");
+
+/*
+ * Erfasst wird der gesamte oeffentliche Baum, nicht nur public/app.
+ *
+ * Eine erste Fassung sah nur public/app an. Das haette beim Umstellen auf
+ * ES-Module in die Irre gefuehrt: unified-flash-dialog.js gilt dort als
+ * abhaengigkeitsfrei, wird aber auch von /flashbox-einrichten/ und den
+ * Nachbauprojekt-Seiten geladen. Deren Skripte liegen ausserhalb von
+ * public/app und benutzen die Globalen dieser Datei sehr wohl.
+ */
 
 function ladeAcorn() {
   // acorn liegt als Abhaengigkeit von terser bereits im Baum. Es wird nur
@@ -41,11 +51,7 @@ function ladeAcorn() {
   );
 }
 
-function quellDateien() {
-  return fs.readdirSync(QUELLE)
-    .filter((n) => n.endsWith(".js") && n !== "push-sw.js")
-    .sort();
-}
+const quellDateien = browserDateien;
 
 function baue() {
   const acorn = ladeAcorn();

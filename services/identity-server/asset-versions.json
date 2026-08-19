@@ -6,7 +6,7 @@
       "pruefsumme": "28eaef1c9726e45b"
     },
     "/app/ai-chat-pattern.js": {
-      "version": "20260805-standard-ai-chat-4",
+      "version": "20260819-esm-schritt-1",
       "pruefsumme": "6856a8f311afad2f"
     },
     "/app/api-client.js": {
@@ -30,7 +30,7 @@
       "pruefsumme": "b4482ef690a0df25"
     },
     "/app/app-event-bindings.js": {
-      "version": "20260814-portfolio-guide-1",
+      "version": "20260819-esm-schritt-1",
       "pruefsumme": "7d02ac8e3a598f53"
     },
     "/app/app-project-controller.js": {
@@ -182,7 +182,7 @@
       "pruefsumme": "54639a912b22674a"
     },
     "/app/session-state.js": {
-      "version": "20260814-single-session-1",
+      "version": "20260819-esm-schritt-1",
       "pruefsumme": "3e6e5552ddb5bf64"
     },
     "/app/unified-flash-dialog.css": {

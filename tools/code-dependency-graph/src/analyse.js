@@ -104,14 +104,56 @@ function parameterDerAeusserenVerpackung(ast) {
 function analysiereDatei(ast) {
   const programmNamen = new Set();
   const frei = new Map(); // name -> Anzahl
-  // Namen, deren Fehlen der Quelltext selbst abfaengt: typeof X === "undefined".
-  // Sie sind keine harte Abhaengigkeit, denn ein blankes typeof wirft nicht.
-  const typeofGeprueft = new Set();
+  // Namen, deren Fehlen der Quelltext an Ort und Stelle abfaengt.
+  const weich = new Map();
 
-  function laufe(knoten, ebenen) {
+  /*
+   * Der Schutz durch typeof gilt nur dort, wo er auch steht:
+   *
+   *   typeof X === "undefined" ? {} : X      -> X ist abgesichert
+   *   typeof X !== "undefined" && X.tu()     -> X ist abgesichert
+   *
+   * Eine erste Fassung erklaerte einen Namen fuer die GANZE Datei zu weich,
+   * sobald er irgendwo mit typeof geprueft wurde. Damit verschwand eine echte
+   * Abhaengigkeit: app-shell-controller.js prueft GerNetiXHardwareLab einmal
+   * in Zeile 238 und ruft es danach an vier Stellen ungeschuetzt auf.
+   */
+  function geschuetzteNamen(bedingung) {
+    const namen = new Set();
+    (function suche(knoten) {
+      if (!knoten) return;
+      if (knoten.type === "UnaryExpression" && knoten.operator === "typeof" && knoten.argument.type === "Identifier") {
+        namen.add(knoten.argument.name);
+      }
+      for (const kind of kinder(knoten)) suche(kind);
+    })(bedingung);
+    return namen;
+  }
+
+  function laufe(knoten, ebenen, geschuetzt = new Set()) {
     if (!knoten) return;
 
     switch (knoten.type) {
+      case "ConditionalExpression": {
+        const erweitert = new Set([...geschuetzt, ...geschuetzteNamen(knoten.test)]);
+        laufe(knoten.test, ebenen, geschuetzt);
+        laufe(knoten.consequent, ebenen, erweitert);
+        laufe(knoten.alternate, ebenen, erweitert);
+        return;
+      }
+      case "LogicalExpression": {
+        const erweitert = new Set([...geschuetzt, ...geschuetzteNamen(knoten.left)]);
+        laufe(knoten.left, ebenen, geschuetzt);
+        laufe(knoten.right, ebenen, erweitert);
+        return;
+      }
+      case "IfStatement": {
+        const erweitert = new Set([...geschuetzt, ...geschuetzteNamen(knoten.test)]);
+        laufe(knoten.test, ebenen, geschuetzt);
+        laufe(knoten.consequent, ebenen, erweitert);
+        laufe(knoten.alternate, ebenen, erweitert);
+        return;
+      }
       case "FunctionDeclaration":
       case "FunctionExpression":
       case "ArrowFunctionExpression": {
@@ -124,8 +166,8 @@ function analysiereDatei(ast) {
         for (const p of knoten.params) { const n = []; namenAusMuster(p, n); for (const name of n) deklariere(innen, "funktion", name); }
         hebeHoch(knoten.body, innen);
         // Vorgabewerte der Parameter werden im inneren Bereich ausgewertet.
-        for (const p of knoten.params) if (p.type === "AssignmentPattern") laufe(p.right, innen);
-        laufe(knoten.body, innen);
+        for (const p of knoten.params) if (p.type === "AssignmentPattern") laufe(p.right, innen, geschuetzt);
+        laufe(knoten.body, innen, geschuetzt);
         return;
       }
       case "BlockStatement":
@@ -138,7 +180,7 @@ function analysiereDatei(ast) {
             for (const d of s.declarations) { const n = []; namenAusMuster(d.id, n); for (const name of n) deklariere(innen, "block", name); }
           }
         }
-        for (const s of knoten.body) laufe(s, innen);
+        for (const s of knoten.body) laufe(s, innen, geschuetzt);
         return;
       }
       case "ForStatement":
@@ -149,55 +191,82 @@ function analysiereDatei(ast) {
         if (kopf && kopf.type === "VariableDeclaration" && kopf.kind !== "var") {
           for (const d of kopf.declarations) { const n = []; namenAusMuster(d.id, n); for (const name of n) deklariere(innen, "block", name); }
         }
-        for (const kind of kinder(knoten)) laufe(kind, innen);
+        for (const kind of kinder(knoten)) laufe(kind, innen, geschuetzt);
         return;
       }
       case "CatchClause": {
         const innen = [...ebenen, neueEbene("block")];
         if (knoten.param) { const n = []; namenAusMuster(knoten.param, n); for (const name of n) deklariere(innen, "block", name); }
-        laufe(knoten.body, innen);
+        laufe(knoten.body, innen, geschuetzt);
         return;
       }
       case "MemberExpression": {
-        laufe(knoten.object, ebenen);
-        if (knoten.computed) laufe(knoten.property, ebenen);
+        /*
+         * window.X und globalThis.X sind vollwertige Verweise auf das Global X,
+         * auch wenn sie syntaktisch ein Eigenschaftszugriff sind. Ohne diese
+         * Behandlung blieb die Abhaengigkeit unsichtbar, mit der drei Dateien
+         * ueber window.GerNetiXFlashDialog am Flash-Dialog haengen.
+         */
+        if (!knoten.computed && knoten.object.type === "Identifier"
+          && ["window", "globalThis", "self"].includes(knoten.object.name)
+          && knoten.property.type === "Identifier") {
+          verweis(knoten.property.name, ebenen, geschuetzt, true);
+          return;
+        }
+        laufe(knoten.object, ebenen, geschuetzt);
+        if (knoten.computed) laufe(knoten.property, ebenen, geschuetzt);
         return;
       }
       case "Property": {
-        if (knoten.computed) laufe(knoten.key, ebenen);
-        laufe(knoten.value, ebenen);
+        if (knoten.computed) laufe(knoten.key, ebenen, geschuetzt);
+        laufe(knoten.value, ebenen, geschuetzt);
         return;
       }
       case "MethodDefinition":
       case "PropertyDefinition": {
-        if (knoten.computed) laufe(knoten.key, ebenen);
-        laufe(knoten.value, ebenen);
+        if (knoten.computed) laufe(knoten.key, ebenen, geschuetzt);
+        laufe(knoten.value, ebenen, geschuetzt);
+        return;
+      }
+      case "AssignmentExpression": {
+        // Die linke Seite von window.X = ... ist eine Deklaration, kein Verweis.
+        const istGlobalZuweisung = knoten.left.type === "MemberExpression" && !knoten.left.computed
+          && knoten.left.object.type === "Identifier"
+          && ["window", "globalThis", "self"].includes(knoten.left.object.name);
+        if (!istGlobalZuweisung) laufe(knoten.left, ebenen, geschuetzt);
+        laufe(knoten.right, ebenen, geschuetzt);
         return;
       }
       case "UnaryExpression": {
         if (knoten.operator === "typeof" && knoten.argument.type === "Identifier") {
-          const name = knoten.argument.name;
-          let gebunden = false;
-          for (let i = ebenen.length - 1; i >= 0; i -= 1) if (ebenen[i].namen.has(name)) { gebunden = true; break; }
-          if (!gebunden) { typeofGeprueft.add(name); return; }
+          // Ein blankes typeof wirft nie, auch nicht bei unbekanntem Namen.
+          verweis(knoten.argument.name, ebenen, geschuetzt, false, true);
+          return;
         }
-        laufe(knoten.argument, ebenen);
+        laufe(knoten.argument, ebenen, geschuetzt);
         return;
       }
-      case "LabeledStatement": { laufe(knoten.body, ebenen); return; }
+      case "LabeledStatement": { laufe(knoten.body, ebenen, geschuetzt); return; }
       case "BreakStatement":
       case "ContinueStatement": return;
       case "Identifier": {
-        const name = knoten.name;
-        if (EIGENE_BINDUNGEN.has(name)) return;
-        for (let i = ebenen.length - 1; i >= 0; i -= 1) if (ebenen[i].namen.has(name)) return;
-        frei.set(name, (frei.get(name) || 0) + 1);
+        verweis(knoten.name, ebenen, geschuetzt);
         return;
       }
       default: break;
     }
 
-    for (const kind of kinder(knoten)) laufe(kind, ebenen);
+    for (const kind of kinder(knoten)) laufe(kind, ebenen, geschuetzt);
+  }
+
+  function verweis(name, ebenen, geschuetzt, ueberGlobalObjekt = false, durchTypeof = false) {
+    if (EIGENE_BINDUNGEN.has(name)) return;
+    // Ein Zugriff ueber window.X umgeht die oertliche Sichtbarkeit bewusst.
+    if (!ueberGlobalObjekt) {
+      for (let i = ebenen.length - 1; i >= 0; i -= 1) if (ebenen[i].namen.has(name)) return;
+    }
+    if (durchTypeof || geschuetzt.has(name)) { weich.set(name, (weich.get(name) || 0) + 1); return; }
+    frei.set(name, (frei.get(name) || 0) + 1);
   }
 
   // Programmebene vorbereiten
@@ -229,16 +298,7 @@ function analysiereDatei(ast) {
   for (const s of ast.body) laufe(s, ebenen);
 
   // Namen, die die Datei selbst deklariert, sind nicht frei.
-  for (const name of programmNamen) frei.delete(name);
-
-  // Wurde ein Name irgendwo im selben Quelltext mit typeof abgesichert, hat
-  // der Autor sein moegliches Fehlen bedacht. Die uebrigen Verwendungen
-  // stehen dann hinter dieser Pruefung und sind keine harte Abhaengigkeit.
-  const weich = new Map();
-  for (const name of typeofGeprueft) {
-    if (frei.has(name)) { weich.set(name, frei.get(name)); frei.delete(name); }
-    else weich.set(name, 0);
-  }
+  for (const name of programmNamen) { frei.delete(name); weich.delete(name); }
 
   return { deklariert: programmNamen, frei, weich };
 }

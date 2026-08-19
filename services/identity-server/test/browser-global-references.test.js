@@ -4,8 +4,8 @@ const path = require("node:path");
 const test = require("node:test");
 
 const { analysiereDatei } = require("../../../tools/code-dependency-graph/src/analyse");
+const { OEFFENTLICH, browserDateien } = require("../../../tools/code-dependency-graph/src/quellen");
 
-const appRoot = path.join(__dirname, "..", "public", "app");
 const acorn = require(path.join(__dirname, "..", "node_modules", "acorn"));
 
 /*
@@ -43,18 +43,22 @@ const BROWSER_GLOBALE = new Set([
   "Image", "Audio", "AudioContext", "SpeechSynthesisUtterance", "speechSynthesis",
   "HTMLElement", "Node", "NodeFilter", "Range", "Worker", "BroadcastChannel", "WebSocket",
   "atob", "btoa", "EventSource", "SyntaxError", "ReferenceError", "EvalError", "URIError",
+  // ueber window.X angesprochen und deshalb wie ein Global aufgeloest
+  "addEventListener", "removeEventListener", "dispatchEvent", "isSecureContext",
+  "innerWidth", "innerHeight", "scrollTo", "scrollY", "open", "close", "print", "focus",
+  "PublicKeyCredential", "AuthenticatorAssertionResponse", "AuthenticatorAttestationResponse",
   // CommonJS-Bruecke: dieselben Dateien werden von Tests mit require geladen.
   "module", "require", "exports",
 ]);
 
-const dateien = fs.readdirSync(appRoot).filter((n) => n.endsWith(".js") && n !== "push-sw.js");
+const dateien = browserDateien();
 
 test("no browser script references an identifier that nothing provides", () => {
   const deklariert = new Set();
   const analysen = new Map();
 
   for (const name of dateien) {
-    const quelltext = fs.readFileSync(path.join(appRoot, name), "utf8");
+    const quelltext = fs.readFileSync(path.join(OEFFENTLICH, name), "utf8");
     const ast = acorn.parse(quelltext, { ecmaVersion: 2024, sourceType: "script" });
     const ergebnis = analysiereDatei(ast);
     analysen.set(name, ergebnis);

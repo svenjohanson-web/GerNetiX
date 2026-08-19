@@ -1725,10 +1725,16 @@
     <script defer src="/app/i18n/i18n.js?v=20260726-01"></script>
     <script defer src="/app/action-observability.js?v=20260807-four-action-chains-1"></script>
     <script defer src="/app/api-client.js?v=20260814-single-session-1"></script>
-    <script defer src="/app/session-state.js?v=20260814-single-session-1"></script>
+    <!--
+      Als Modul geladen: die Datei deklariert nichts, was andere Skripte
+      brauchen, und laeuft damit gefahrlos im eigenen Namensraum. Module
+      werden wie defer erst nach dem Aufbau des Dokuments und in
+      Dokumentreihenfolge ausgefuehrt, die Ladefolge bleibt also erhalten.
+    -->
+    <script type="module" src="/app/session-state.js?v=20260819-esm-schritt-1"></script>
     <script defer src="/app/welcome-guide.js?v=20260814-portfolio-guide-1"></script>
     <script defer src="/app/dom-utils.js?v=20260803-performance-1"></script>
-    <script defer src="/app/ai-chat-pattern.js?v=20260805-standard-ai-chat-4"></script>
+    <script type="module" src="/app/ai-chat-pattern.js?v=20260819-esm-schritt-1"></script>
     <script defer src="/app/serial-service-client.js?v=20260807-helper-progress-1"></script>
     <script defer src="/app/learning-project-view.js?v=20260808-learning-entry-choice"></script>
     <script defer src="/app/learning-project-controller.js?v=20260808-learning-entry-choice"></script>
@@ -1744,6 +1750,6 @@
     <script defer src="/app/app-runtime-utils.js?v=20260807-flat-guided-learning-2"></script>
     <script defer src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
     <script defer src="/app/app.js?v=20260807-flat-guided-learning-2"></script>
-    <script defer src="/app/app-event-bindings.js?v=20260814-portfolio-guide-1"></script>
+    <script type="module" src="/app/app-event-bindings.js?v=20260819-esm-schritt-1"></script>
   </body>
 </html>

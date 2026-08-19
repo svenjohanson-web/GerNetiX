@@ -29,7 +29,10 @@ const messagesFragment = fs.readFileSync(path.join(root, "public", "app", "fragm
 
 test("platform scripts download in parallel and route-only knowledge assets stay out of the common path", () => {
   const scripts = [...html.matchAll(/<script\b([^>]*)src="([^"]+)"[^>]*><\/script>/g)];
-  const synchronousScripts = scripts.filter((match) => !/\bdefer\b/.test(match[1]));
+  // type="module" ist von sich aus verzoegert und blockiert das Parsen ebenso
+  // wenig wie defer. Die Zusicherung meint blockierende Skripte, nicht die
+  // Schreibweise -- deshalb zaehlen beide Formen als nicht blockierend.
+  const synchronousScripts = scripts.filter((match) => !/\bdefer\b/.test(match[1]) && !/type="module"/.test(match[1]));
   assert.ok(scripts.length < 50);
   assert.equal(scripts.some((match) => match[2].includes("knowledge-articles-")), false);
   assert.equal(scripts.some((match) => match[2].includes("knowledge-content.js")), false);
