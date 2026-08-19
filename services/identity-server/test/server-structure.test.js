@@ -648,6 +648,10 @@ test("web routes never expose legacy knowledge article scripts", async () => {
 test("public app assets use an explicit allowlist and all other files require a session", async () => {
   assert.equal(isPublicAppAsset("/api-client.js"), true);
   assert.equal(isPublicAppAsset("/i18n/locales/de.json"), true);
+  // Die oeffentlichen Nachbau- und Demoseiten flashen ausdruecklich ohne Konto.
+  // Fehlt eines dieser Skripte, bleibt ihr Flash-Dialog dauerhaft deaktiviert.
+  assert.equal(isPublicAppAsset("/unified-flash-dialog.js"), true);
+  assert.equal(isPublicAppAsset("/unified-flash-executor.js"), true);
   assert.equal(isPublicAppAsset("/quiz-data.js"), false);
 
   const registry = createRouteRegistry();

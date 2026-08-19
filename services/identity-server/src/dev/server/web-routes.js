@@ -9,6 +9,10 @@ const publicAppAssets = new Set([
   "/app-shell-early.js",
   "/app.css",
   "/unified-flash-dialog.css",
+  // Die oeffentlichen Nachbau- und Demoseiten flashen ausdruecklich ohne Konto.
+  // Ohne diese beiden Skripte bleibt ihr Flash-Dialog dauerhaft deaktiviert.
+  "/unified-flash-dialog.js",
+  "/unified-flash-executor.js",
   "/i18n/i18n.js",
   "/action-observability.js",
   "/api-client.js",
