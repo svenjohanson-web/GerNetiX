@@ -13,9 +13,11 @@ function read(relativePath) {
 
 test("wires the generic Project-App into the authenticated platform shell", () => {
   const app = read("public/app/app.js");
+  // routeMap liegt seit der Entflechtung bei den Routing-Primitiven.
+  const routing = read("public/app/platform-routing.js");
   const shell = read("public/app/app-shell-controller.js");
   const html = read("public/app/index.html");
-  assert.match(app, /"project-app": "projectAppView"/);
+  assert.match(routing, /"project-app": "projectAppView"/);
   assert.match(shell, /projectApp\(\)\.render/);
   assert.match(html, /id="projectAppView"/);
   assert.doesNotMatch(html, /<script[^>]+project-app-renderer\.js/);
@@ -44,10 +46,12 @@ test("offers the Project-App only for personal projects that contain its manifes
 
 test("presents personal application instances as their own main area", () => {
   const app = read("public/app/app.js");
+  // routeMap liegt seit der Entflechtung bei den Routing-Primitiven.
+  const routing = read("public/app/platform-routing.js");
   const html = read("public/app/index.html");
   const controller = read("public/app/app-project-controller.js");
   const shell = read("public/app/app-shell-controller.js");
-  assert.match(app, /applications: "applicationsView"/);
+  assert.match(routing, /applications: "applicationsView"/);
   assert.match(html, /data-route="applications"[^>]*>Meine Anwendungen<\/a>/);
   assert.match(html, /id="applicationsView"[\s\S]*id="applicationList"/);
   assert.match(html, /data-open-route="\/app\/applications\/"[\s\S]*Meine Anwendungen/);

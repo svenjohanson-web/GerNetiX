@@ -46,8 +46,8 @@
       "pruefsumme": "a770d63c65bda641"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260819-start-error-2",
-      "pruefsumme": "3e5091633e65d3de"
+      "version": "20260820-routing-modul-1",
+      "pruefsumme": "0d68407090e7b322"
     },
     "/app/app-shell-early.js": {
       "version": "20260819-app-theme-toggle-3",
@@ -58,8 +58,8 @@
       "pruefsumme": "a4a97a7c79781945"
     },
     "/app/app.js": {
-      "version": "20260820-state-modul-1",
-      "pruefsumme": "26a3a73d17ad3643"
+      "version": "20260820-routing-modul-1",
+      "pruefsumme": "870040e084cad31d"
     },
     "/app/auth/auth.css": {
       "version": "20260815-public-theme-1",
@@ -144,6 +144,10 @@
     "/app/operator-shell.css": {
       "version": "20260819-app-theme-toggle-3",
       "pruefsumme": "d94ec124f0f328b3"
+    },
+    "/app/platform-routing.js": {
+      "version": "20260820-routing-modul-1",
+      "pruefsumme": "48391a1d3c68c612"
     },
     "/app/platform-state.js": {
       "version": "20260820-state-modul-1",

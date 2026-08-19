@@ -1,38 +1,7 @@
 
-const routeMap = {
-  dashboard: "dashboardView",
-  "hardware-lab": "hardwareLabView",
-  about: "aboutView",
-  "development-platform": "developmentPlatformView",
-  "development-hardware": "developmentHardwareView",
-  learn: "learnView",
-  applications: "applicationsView",
-  nexi: "nexiView",
-  "learning-project-overview": "learningProjectOverviewView",
-  "learning-project": "learningProjectView",
-  "project-app": "projectAppView",
-  quiz: "quizView",
-  ide: "ideView",
-  debug: "debugView",
-  "device-management": "deviceManagementView",
-  "device-provisioning": "deviceProvisioningView",
-  "device-recovery": "deviceRecoveryView",
-  "device-inventory": "devicesView",
-  downloads: "downloadsView",
-  shop: "shopView",
-  billing: "billingView",
-  community: "communityView",
-  messages: "messagesView",
-  nachschlagewerke: "referenceLibraryView",
-  help: "informationView",
-  knowledge: "informationView",
-  "account-setup": "accountSetupView",
-  auth: "dashboardView",
-};
 const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
 const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
 const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
-const isServerAuthenticatedAppShell = /^\/app\/(?!auth(?:\/|$))/.test(window.location.pathname);
 if (isPublicInformationPage) document.body.classList.add("public-help-page");
 
 let deviceOnboardingController = null;

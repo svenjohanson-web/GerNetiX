@@ -17,7 +17,8 @@ const css = read("reference-library-route.css");
 
 test("offers Nachschlagewerke as a dedicated authenticated menu route", () => {
   assert.match(html, /href="\/app\/nachschlagewerke\/" data-route="nachschlagewerke"/);
-  assert.match(app, /nachschlagewerke: "referenceLibraryView"/);
+  // routeMap liegt seit der Entflechtung bei den Routing-Primitiven.
+  assert.match(read("platform-routing.js"), /nachschlagewerke: "referenceLibraryView"/);
   assert.match(shell, /nachschlagewerke:[\s\S]*label: "Nachschlagewerke"/);
   assert.equal(normalizeAppPath("/app/nachschlagewerke/"), "/index.html");
 });

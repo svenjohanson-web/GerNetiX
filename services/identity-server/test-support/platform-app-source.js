@@ -9,6 +9,7 @@ const platformAppFiles = [
   // Datei und wird vor den Controllern geladen. Die Reihenfolge hier muss
   // der in index.html entsprechen, sie wird gegen sie geprueft.
   "platform-state.js",
+  "platform-routing.js",
   "app-shell-controller.js",
   "app-dashboard-controller.js",
   "app-community-controller.js",

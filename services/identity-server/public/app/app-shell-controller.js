@@ -914,26 +914,6 @@ function currentLocationTrail(route) {
   return locations[route] || locations.dashboard;
 }
 
-function routeName() {
-  if (/^\/hilfe\/?$/.test(window.location.pathname)) return "help";
-  if (/^\/wissen\/?$/.test(window.location.pathname)) return "knowledge";
-  if (/^\/app\/development-platform\/hardware\/?$/.test(window.location.pathname)) return "development-hardware";
-  if (/^\/app\/device-management\/?$/.test(window.location.pathname)) return "device-management";
-  const deviceManagementMatch = window.location.pathname.match(/^\/app\/device-management\/([^/]+)/);
-  if (deviceManagementMatch) {
-    return {
-      provisioning: "device-provisioning",
-      inventory: "device-inventory",
-      recovery: "device-recovery",
-    }[deviceManagementMatch[1]] || "device-provisioning";
-  }
-  const match = window.location.pathname.match(/^\/app\/([^/]+)/);
-  const route = match ? match[1] : "dashboard";
-  if (route === "projects") return "learn";
-  if (route === "devices") return "device-inventory";
-  if (route === "device-recovery") return "device-recovery";
-  return routeMap[route] ? route : "dashboard";
-}
 
 function topLevelRouteName(route) {
   if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
@@ -952,20 +932,10 @@ function deviceManagementRouteFor(route) {
   }[route] || "";
 }
 
-function navigate(route) {
-  const target = new URL(route, window.location.origin);
-  if (/^\/app\/auth(?:\/|$)/.test(target.pathname)) {
-    window.location.assign(target.pathname + target.search + target.hash);
-    return;
-  }
-  const protectedAppRoute = /^\/app\/(?!auth(?:\/|$))/.test(target.pathname);
-  if (protectedAppRoute && !isServerAuthenticatedAppShell && !state.account) {
-    window.location.assign(`/app/auth/?next=${encodeURIComponent(target.pathname + target.search)}`);
-    return;
-  }
-  history.pushState({}, "", route);
-  activateCurrentRoute();
-}
+
+// Gegenstueck zur Umkehrung in platform-routing.js: dort meldet navigate()
+// nur noch, hier wird darauf reagiert.
+window.addEventListener(ROUTE_CHANGED_EVENT, () => activateCurrentRoute());
 
 function activateCurrentRoute() {
   const activeRoute = routeName();
