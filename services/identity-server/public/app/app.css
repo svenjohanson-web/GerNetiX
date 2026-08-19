@@ -1,14 +1,75 @@
+/*
+ * Farbpalette der angemeldeten Plattform.
+ *
+ * Verwendet das gemeinsame Vokabular aus services/shared/public/theme-tokens.css
+ * mit eigenen, technisch-dunklen Werten. Dadurch beziehen gemeinsam genutzte
+ * Bausteine wie der Flash-Dialog hier automatisch die Plattformfarben und auf
+ * den oeffentlichen Seiten die dortigen.
+ *
+ * Die Klammerwerte nennen die Haeufigkeit, mit der die Farbe im Stylesheet
+ * vorkommt; sie belegen, dass es sich um tragende Rollen handelt und nicht um
+ * Einzelfaelle.
+ */
 :root {
-  color-scheme: light;
-  --bg: #f5f7fb;
-  --panel: #ffffff;
-  --text: #172033;
-  --muted: #64748b;
-  --line: #d7dee9;
-  --accent: #0f766e;
-  --accent-2: #2563eb;
-  --soft: #e8f3f1;
-  --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  color-scheme: dark;
+
+  /* Flaechen, vom tiefsten Untergrund zur hervorgehobenen Karte */
+  --surface-deep: #0b1018;       /* Editor-, Terminal- und Codeflaechen (42x) */
+  --surface: #070b12;            /* Seitenuntergrund */
+  --surface-panel: #111827;      /* Karten und Panels (62x) */
+  --surface-raised: #1b2430;     /* abgesetzte Flaeche innerhalb einer Karte (22x) */
+
+  /* Rahmen, von der leisen Trennlinie zur betonten Kante */
+  --border-subtle: #263241;      /* Trennlinien (32x) */
+  --border: #334155;             /* Standardrahmen (98x) */
+  --border-strong: #475569;      /* betonte Kante (20x) */
+
+  /* Text, von der hellsten Ueberschrift zum leisesten Hinweis */
+  --text-bright: #f8fafc;        /* (33x) */
+  --text: #e5e7eb;               /* (31x) */
+  --text-secondary: #cbd5e1;     /* (57x) */
+  --text-muted: #94a3b8;         /* (79x) */
+  --text-dim: #64748b;           /* (26x) */
+
+  /* Akzent */
+  --accent: #22d3ee;             /* (26x) */
+  --accent-bright: #67e8f9;      /* Verweise und Beschriftungen (32x) */
+  --accent-strong: #0e7490;      /* (15x) */
+  --accent-border: #155e75;      /* (20x) */
+  --accent-soft: #164e63;        /* aktive Flaeche (25x) */
+  --accent-text: #cffafe;        /* Schrift auf Akzentflaeche (21x) */
+
+  /* Status */
+  --status-warn: #f59e0b;
+  --status-warn-text: #fde68a;
+  --status-success: #22c55e;
+  --status-success-text: #86efac;
+  --status-error: #ef4444;
+  --status-error-text: #fecaca;
+  --status-info: #38bdf8;
+  --status-info-text: #bae6fd;
+
+  /* Ueberlagerung */
+  --scrim: rgba(2, 8, 23, .72);
+  --shadow: 0 16px 42px rgba(0, 0, 0, .26);
+
+  /*
+   * Bestandsnamen. Sie halten die vorhandenen var()-Aufrufe unveraendert am
+   * Leben. --line behaelt bewusst seinen bisherigen Wert #2b3748 und ist NICHT
+   * mit --border (#334155) identisch: der Standardrahmen wurde ueber Jahre
+   * direkt als Hex geschrieben, waehrend --line nur an 14 Stellen verwendet
+   * wird. Beide Werte bleiben deshalb getrennt erhalten.
+   */
+  --bg: var(--surface);
+  --panel: var(--surface-panel);
+  --panel-soft: var(--surface-raised);
+  --surface-2: var(--surface-raised);
+  --muted: var(--text-muted);
+  --line: #2b3748;
+  --soft: var(--accent-soft);
+  --accent-2: #38bdf8;
+  --danger: var(--status-error);
+
   font-family: Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -6053,19 +6114,11 @@ textarea:read-only {
   .tabs a.utility:first-of-type { margin-left: 0; }
 }
 
-/* Einheitliches GerNetiX Dark Theme fuer die gesamte Identity-Plattform. */
-:root {
-  color-scheme: dark;
-  --bg: #070b12;
-  --panel: #111827;
-  --text: #e5e7eb;
-  --muted: #94a3b8;
-  --line: #2b3748;
-  --accent: #22d3ee;
-  --accent-2: #38bdf8;
-  --soft: #164e63;
-  --shadow: 0 16px 42px rgba(0, 0, 0, .26);
-}
+/*
+ * Die Farbtoken der Plattform stehen gesammelt im :root-Block am Dateianfang.
+ * Frueher wurde hier ein zweiter :root-Block nachgeschoben, der den ersten
+ * ueberschrieb; beide sind jetzt zu einer Quelle zusammengefuehrt.
+ */
 body {
   background: radial-gradient(circle at 12% 0%, rgba(14, 116, 144, .16), transparent 28rem), radial-gradient(circle at 88% 18%, rgba(37, 99, 235, .1), transparent 32rem), var(--bg);
 }
@@ -7013,7 +7066,10 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 .project-app-device-choice.is-assigned { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--panel)); }
 .project-app-device-choice.is-incompatible { opacity: .72; cursor: not-allowed; }
 .project-app-device-choice.is-incompatible input { cursor: not-allowed; }
-.project-app-device-rejection { color: var(--danger, #ff9b9b) !important; }
+/* Der bisher wirksame Ersatzwert wird explizit gesetzt: --danger war nie
+   definiert, sodass hier immer #ff9b9b galt. Die Textfarbe bleibt damit
+   unveraendert, waehrend --danger nun fuer Rahmen zur Verfuegung steht. */
+.project-app-device-rejection { color: #ff9b9b !important; }
 .project-app-device-choice input { flex: 0 0 auto; }
 .project-app-device-choice span { display: grid; min-width: 0; gap: .2rem; }
 .project-app-device-choice strong,

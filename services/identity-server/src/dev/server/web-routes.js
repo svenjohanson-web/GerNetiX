@@ -49,6 +49,10 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/app/manifest.webmanifest", handler: ({ res }) => serveStatic(res, appDir, "/manifest.webmanifest") });
   registry.register({ method: "*", path: "/app/push-sw.js", handler: ({ res }) => serveStatic(res, appDir, "/push-sw.js") });
   registry.register({ method: "*", path: "/app/operator-shell.css", handler: ({ res, url }) => serveStatic(res, operatorShellDir, "/operator-shell.css", { versioned: url.searchParams.has("v") }) });
+  // Gemeinsames Farb-Vokabular, liegt im selben geteilten Verzeichnis. Bewusst
+  // auf oberster Ebene erreichbar, weil sowohl oeffentliche Seiten als auch die
+  // Plattform darauf zugreifen.
+  registry.register({ method: "*", path: "/theme-tokens.css", handler: ({ res, url }) => serveStatic(res, operatorShellDir, "/theme-tokens.css", { versioned: url.searchParams.has("v") }) });
   registry.register({ method: "GET", pattern: /^\/vendor\/esptool-js\//, handler: ({ res, url }) => serveVendorEsptool(res, url.pathname) });
   registry.register({ method: "*", path: "/s3-touch-spielesammlung", handler: ({ res }) => redirect(res, "/s3-touch-spielesammlung/") });
   registry.register({
