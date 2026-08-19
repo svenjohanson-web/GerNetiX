@@ -1,6 +1,6 @@
 "use strict";
 
-const { issueInternalToken } = require("../../../shared/internal-api-auth");
+const { issueInternalToken, readInternalApiAuthConfig } = require("../../../shared/internal-api-auth");
 
 const MAX_PAYLOAD_BYTES = 24 * 1024 * 1024;
 
@@ -10,10 +10,14 @@ function required(value, name) {
   return normalized;
 }
 
+// Die Schluesselkonfiguration wird ausschliesslich ueber den gemeinsamen Vertrag
+// gelesen. Er dekodiert PKCS8-DER korrekt in KeyObjects; ein selbst gebauter
+// Rohpuffer wird von der Signaturschicht dagegen als PEM interpretiert und
+// scheitert mit einer generischen "nicht konfiguriert"-Meldung.
 function identitySigningConfig(env = process.env) {
-  const keyId = required(env.INTERNAL_API_SIGNING_KEY_ID, "internal_api_signing_key_id");
-  const privateKey = Buffer.from(required(env.INTERNAL_API_SIGNING_PRIVATE_KEY_B64, "internal_api_signing_private_key"), "base64");
-  return { activeKid: keyId, signingKeys: { [keyId]: { key: privateKey, algorithm: "Ed25519" } } };
+  const configuration = readInternalApiAuthConfig(env, { serviceId: "identity-server" });
+  if (!configuration.activeKid) throw new Error("internal_api_signing_key_missing");
+  return configuration;
 }
 
 async function publishPublicDemo(payload, options = {}) {
