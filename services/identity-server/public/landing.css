@@ -1,18 +1,11 @@
+@import url("/theme-tokens.css?v=20260819-theme-tokens-1");
 @import url("/public-header.css?v=20260808-session-menu-1");
 
-:root {
-  color-scheme: dark;
-  --bg: #070b12;
-  --panel: #111827;
-  --panel-soft: #1b2430;
-  --text: #e5e7eb;
-  --muted: #94a3b8;
-  --line: #2b3748;
-  --accent: #22d3ee;
-  --accent-strong: #0e7490;
-  --accent-soft: #164e63;
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
+/*
+ * Frueher stand hier ein zweiter Farbsatz in Dunkeltoenen. Er war wirkungslos,
+ * weil ihn ein spaeterer :root-Block ueberschrieb, und ist deshalb entfallen.
+ * Die gueltigen Farben kommen jetzt ausschliesslich aus theme-tokens.css.
+ */
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -840,17 +833,12 @@ footer {
  * gleichgewichtiger Karten. Hervorhebungen bleiben fuer Entscheidungen,
  * Formulare und konkrete Handlungen reserviert.
  */
+/*
+ * Die Farben stehen in theme-tokens.css (oben eingebunden), damit gemeinsam
+ * genutzte Bausteine dieselben Namen vorfinden. Hier bleibt nur die
+ * Typografie, die den oeffentlichen Auftritt von der Plattform unterscheidet.
+ */
 :root {
-  color-scheme: light;
-  --bg: #f6f3ed;
-  --panel: transparent;
-  --panel-soft: transparent;
-  --text: #20211d;
-  --muted: #5d5b54;
-  --line: #d8d2c6;
-  --accent: #8b3a2b;
-  --accent-strong: #763025;
-  --accent-soft: #f0e4d7;
   font-family: Georgia, "Times New Roman", serif;
 }
 
@@ -1045,7 +1033,8 @@ footer { width: min(1120px, calc(100% - 32px)); border-top: 1px solid var(--line
 .public-language-switcher select, .public-language-copy { color: inherit; }
 .public-language-copy small { color: #6f685f; }
 
-html[data-public-theme="dark"] { color-scheme: dark; --bg: #171715; --panel: transparent; --panel-soft: transparent; --text: #f3efe7; --muted: #cac3b7; --line: #494640; --accent: #eaa28d; --accent-strong: #d37d68; --accent-soft: #302722; }
+/* Die dunklen Farbwerte stehen in theme-tokens.css; hier folgen nur noch die
+   Regeln, die im dunklen Modus zusaetzlich abweichen. */
 html[data-public-theme="dark"] body { background: var(--bg); color: var(--text); }
 html[data-public-theme="dark"] .lead { color: #ddd6ca; }
 html[data-public-theme="dark"] .eyebrow, html[data-public-theme="dark"] .text-action, html[data-public-theme="dark"] .services-text-link, html[data-public-theme="dark"] .nexi-home-options span, html[data-public-theme="dark"] .home-purpose-principles span, html[data-public-theme="dark"] .home-area-badge, html[data-public-theme="dark"] .shop-public-badge, html[data-public-theme="dark"] .plan-status { color: #f0a38d; }

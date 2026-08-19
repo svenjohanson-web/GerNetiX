@@ -7,6 +7,7 @@ const publicRoot = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(publicRoot, "landing.css"), "utf8");
 const headerCss = fs.readFileSync(path.join(publicRoot, "public-header.css"), "utf8");
+const themeTokens = fs.readFileSync(path.join(__dirname, "..", "..", "shared", "public", "theme-tokens.css"), "utf8");
 const client = fs.readFileSync(path.join(publicRoot, "landing.js"), "utf8");
 const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
   .map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8"))
@@ -72,7 +73,11 @@ test("keeps highlighted homepage copy readable in the light theme", () => {
 });
 
 test("uses the GerNetiX corporate design and responsive homepage grids", () => {
-  assert.match(css, /--accent: #22d3ee/);
+  // Die Farben kommen aus der gemeinsamen Token-Datei. Frueher stand hier die
+  // Zusicherung auf #22d3ee: ein Wert aus einem toten :root-Block, der nie
+  // sichtbar war, weil ein spaeterer Block ihn ueberschrieb.
+  assert.match(css, /@import url\("\/theme-tokens\.css/);
+  assert.match(themeTokens, /--accent: #8b3a2b/);
   assert.match(css, /body \{[\s\S]*padding-top: 78px;/);
   assert.match(headerCss, /\.site-header \{[\s\S]*position: fixed;[\s\S]*top: 0;[\s\S]*left: 16px;[\s\S]*right: 16px;/);
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);
