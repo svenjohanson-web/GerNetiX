@@ -122,7 +122,7 @@
       const eventName = control.matches("select,input[type=checkbox]") ? "change" : "click";
       control.addEventListener(eventName, async () => {
         const confirmation = control.dataset.projectAppConfirmation;
-        if (confirmation && typeof root.confirm === "function" && !root.confirm(confirmation)) return;
+        if (confirmation && typeof globalThis.confirm === "function" && !globalThis.confirm(confirmation)) return;
         const settingKey = control.dataset.projectAppSetting || "";
         const value = readControlValue(target, control, settingKey);
         await handlers.onAction?.({ actionId: control.dataset.projectAppAction, settingKey, value, control });

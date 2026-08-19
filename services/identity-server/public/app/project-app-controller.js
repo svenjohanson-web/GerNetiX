@@ -85,14 +85,14 @@
         draw(document.querySelector("#projectAppContent"));
       } catch (error) {
         control.disabled = false;
-        root.alert?.(error.message || "Die Gerätezuordnung konnte nicht gespeichert werden.");
+        globalThis.alert?.(error.message || "Die Gerätezuordnung konnte nicht gespeichert werden.");
       }
     }
 
     async function applyAction({ actionId, settingKey, value, control }) {
       const action = (snapshot.manifest.actions || []).find((item) => item.id === actionId);
       if (!action || action.type !== "update_setting" || !settingKey) return;
-      const operation = root.GerNetiXActionOps?.begin("project.settings.save", { timeoutMs: 30000 });
+      const operation = globalThis.GerNetiXActionOps?.begin("project.settings.save", { timeoutMs: 30000 });
       control.disabled = true;
       try {
         await actionStep(operation, "project.settings.validate", async () => true, "settings_validation_failed");
@@ -108,7 +108,7 @@
         operation?.fail(settingsFailureReason(error));
         control.disabled = false;
         const message = error.message || "Die Einstellung konnte nicht gespeichert werden.";
-        root.alert?.(operation?.failureMessage(message) || message);
+        globalThis.alert?.(operation?.failureMessage(message) || message);
       }
     }
 

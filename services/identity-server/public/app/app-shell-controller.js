@@ -153,8 +153,8 @@ async function loadQuizAssets() {
 
 async function loadProjectAppAssets() {
   await Promise.all([
-    loadPlatformScript("/app/project-app-renderer.js?v=20260807-action-observability-1"),
-    loadPlatformScript("/app/project-app-controller.js?v=20260807-action-observability-1"),
+    loadPlatformScript("/app/project-app-renderer.js?v=20260819-umd-root-fix-1"),
+    loadPlatformScript("/app/project-app-controller.js?v=20260819-umd-root-fix-1"),
   ]);
 }
 

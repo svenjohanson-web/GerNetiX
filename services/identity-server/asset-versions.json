@@ -46,8 +46,8 @@
       "pruefsumme": "a770d63c65bda641"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260814-portfolio-guide-1",
-      "pruefsumme": "1726508f2e232e41"
+      "version": "20260819-umd-root-fix-1",
+      "pruefsumme": "3423b4c87bfcab97"
     },
     "/app/app-shell-early.js": {
       "version": "20260819-app-theme-toggle-3",
@@ -146,12 +146,12 @@
       "pruefsumme": "d94ec124f0f328b3"
     },
     "/app/project-app-controller.js": {
-      "version": "20260807-action-observability-1",
-      "pruefsumme": "ee5d9cc9a47eb004"
+      "version": "20260819-umd-root-fix-1",
+      "pruefsumme": "a00c0baa027e95d9"
     },
     "/app/project-app-renderer.js": {
-      "version": "20260807-action-observability-1",
-      "pruefsumme": "8f3d132d79cc4411"
+      "version": "20260819-umd-root-fix-1",
+      "pruefsumme": "1d2b2371fd2157ea"
     },
     "/app/project-feedback-ui.js": {
       "version": "20260802-project-feedback",
