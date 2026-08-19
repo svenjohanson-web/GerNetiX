@@ -79,6 +79,68 @@ test("the platform offers a reachable switch", () => {
   assert.match(css, /\.platform-theme-toggle \{/);
 });
 
+test("every rule that mixes a fixed colour with a token answer has a light override", () => {
+  // Die urspruengliche Auswertung hielt jede Regel fuer stimmig, die Flaeche
+  // UND Schrift selbst setzt. Das war falsch: setzt eine Regel die eine Seite
+  // fest und bezieht die andere aus einem Token, dreht nur die zweite Seite
+  // mit. Genau so trug jedes Eingabe- und Auswahlfeld der Plattform im
+  // Hellmodus unlesbaren Text.
+  const marke = css.indexOf("/* ==== Hellmodus: Ausnahmen von der Token-Palette");
+  const basis = css.slice(0, marke).replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/:root\s*\{[^}]*\}/g, "")
+    .replace(/html\[data-public-theme="light"\]\s*\{[^}]*\}/g, "");
+  const ausnahmen = css.slice(marke);
+
+  const zerlege = (hex) => {
+    let h = hex.slice(1);
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    if (h.length === 8) h = h.slice(0, 6);
+    if (h.length !== 6) return null;
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  };
+  const helligkeit = (hex) => {
+    const c = zerlege(hex);
+    return c ? (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255 : null;
+  };
+  // Flaechen-Token, die auch im Hellmodus kraeftig bleiben: dort ist weisse
+  // Schrift weiterhin richtig.
+  const bleibtKraeftig = new Set(["--accent", "--accent-strong", "--accent-2", "--status-error", "--status-success", "--status-warn", "--status-info", "--danger"]);
+  // Diese beiden stehen auf einer gefuellten Flaeche des Elternelements, was
+  // im Selektor nicht sichtbar ist.
+  const geprueftUnkritisch = new Set([".entry-card.primary strong", ".dashboard-next-card small"]);
+
+  const fehlend = [];
+  for (const [, selektorRoh, koerper] of basis.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selektor = selektorRoh.trim().replace(/\s+/g, " ");
+    if (selektor.startsWith("@") || selektor.includes("%")) continue;
+    if (selektor.includes("admin-shell") || geprueftUnkritisch.has(selektor)) continue;
+
+    const farbe = koerper.match(/(?:^|[;{\s])color\s*:\s*([^;}]+)/)?.[1]?.trim() || null;
+    const flaeche = koerper.match(/(?:^|[;{\s])background(?:-color)?\s*:\s*([^;}]+)/)?.[1]?.trim() || null;
+    const farbeFest = farbe && /#[0-9a-fA-F]{3,8}/.test(farbe) && !farbe.includes("var(");
+    const flaecheFest = flaeche && /#[0-9a-fA-F]{3,8}/.test(flaeche) && !flaeche.includes("var(");
+    const flaecheFolgt = !flaeche || flaeche.includes("var(") || /transparent/.test(flaeche);
+    const farbeFolgt = !farbe || farbe.includes("var(");
+
+    let kritisch = false;
+    if (farbeFest && flaecheFolgt) {
+      const hex = farbe.match(/#[0-9a-fA-F]{3,8}/)[0].toLowerCase();
+      const token = flaeche && flaeche.match(/var\((--[a-z0-9-]+)/)?.[1];
+      if (helligkeit(hex) > 0.55 && !(token && bleibtKraeftig.has(token))) kritisch = true;
+    }
+    if (flaecheFest && farbeFolgt) {
+      const hex = flaeche.match(/#[0-9a-fA-F]{3,8}/)[0].toLowerCase();
+      if (helligkeit(hex) < 0.35 && hex !== "#dc2626" && hex !== "#b91c1c") kritisch = true;
+    }
+    if (!kritisch) continue;
+
+    const teile = selektor.split(",").map((t) => t.trim());
+    if (!teile.every((teil) => ausnahmen.includes(`html[data-public-theme="light"] ${teil}`))) fehlend.push(selektor);
+  }
+
+  assert.deepEqual(fehlend, [], `Ohne Hellmodus-Entsprechung: ${fehlend.slice(0, 6).join(" | ")}`);
+});
+
 test("the light overrides never leak into the dark mode", () => {
   // Der Abschnitt am Dateiende korrigiert Regeln, die ihre Farbe fest setzen.
   // Jede einzelne Zeile darf nur unter dem Attribut greifen; eine ohne

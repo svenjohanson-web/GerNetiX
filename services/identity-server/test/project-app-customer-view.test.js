@@ -65,7 +65,7 @@ test("keeps every project application widget readable in the shared dark theme",
   assert.match(css, /\.project-app-widget \{[^}]*background: var\(--panel\);[^}]*color: var\(--text\);/);
   assert.doesNotMatch(css, /\.project-app-widget \{[^}]*var\(--surface, #fff\)/);
   assert.match(css, /\.project-app-widget p,[\s\S]*\.project-app-page > header p \{ color: var\(--muted\); \}/);
-  assert.match(html, /app\.css\?v=20260819-app-theme-toggle-2/);
+  assert.match(html, /app\.css\?v=20260819-app-theme-toggle-3/);
 });
 
 test("lets one application manage several account devices without duplicating shared settings", () => {

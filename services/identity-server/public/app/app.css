@@ -183,7 +183,10 @@ html[data-public-theme="light"] {
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
 button, input, select, textarea { font: inherit; }
 button, a { cursor: pointer; }
-.app-shell { position: relative; width: 100%; max-width: none; margin: 0 auto; padding: 22px; }
+/* Oben ohne Polsterung, damit die Kopfzeile buendig am Fensterrand sitzt. Die
+   Arbeitsmodi (IDE, Entwicklung, Debug, Hardware) setzen ihre eigene
+   Polsterung vollstaendig und bleiben davon unberuehrt. */
+.app-shell { position: relative; width: 100%; max-width: none; margin: 0 auto; padding: 0 22px 22px; }
 .topbar, .section-head, .top-actions, .button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .nexi-product-empty { max-width: 760px; }
 .nexi-product-empty .button-link { display: inline-flex; width: fit-content; margin-top: 8px; border: 1px solid var(--accent); border-radius: 7px; padding: 10px 13px; background: var(--accent); color: #fff; font-weight: 750; text-decoration: none; }
@@ -194,9 +197,16 @@ button, a { cursor: pointer; }
 .nexi-related-paths nav a:hover strong { color: var(--accent); }
 .nexi-related-paths nav span { color: var(--muted); font-size: 13px; }
 @media (max-width: 720px) { .nexi-related-paths { grid-template-columns: 1fr; } }
+/*
+ * Die Kopfzeile klebt buendig am oberen Rand. Der frueher hier stehende
+ * Versatz von 10px liess beim Blaettern einen Streifen frei, durch den der
+ * Seiteninhalt sichtbar hindurchlief. Im dunklen Design fiel das kaum auf,
+ * weil Kopfzeile und Untergrund beide fast schwarz sind; im hellen Design ist
+ * es sofort zu sehen.
+ */
 .topbar {
   position: sticky;
-  top: 10px;
+  top: 0;
   z-index: 40;
   margin-bottom: 18px;
   backdrop-filter: blur(14px);
@@ -6244,6 +6254,17 @@ body.route-assets-loading .view:not(.hidden) {
   pointer-events: none;
 }
 .topbar { padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 10px; background: rgba(17, 24, 39, .86); box-shadow: var(--shadow); }
+/*
+ * Nur unten abgerundet und ohne obere Kante: die Leiste sitzt am Fensterrand,
+ * eine oben abgerundete Karte wuerde dort zwei Zwickel Seitenhintergrund
+ * stehen lassen.
+ *
+ * Zwei Klassen im Selektor sind noetig, weil operator-shell.css spaeter
+ * geladen wird und dort .operator-header denselben Rahmen und Radius setzt.
+ * Diese Datei bedient auch das eigenstaendige Admin Tool, dessen Kopfzeile
+ * nicht buendig sitzt -- deshalb wird sie hier nicht geaendert.
+ */
+.topbar.operator-header { border-top: 0; border-radius: 0 0 10px 10px; }
 .breadcrumb-tree a,
 .breadcrumb-tree span,
 button,
@@ -7302,7 +7323,7 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 
 /* ==== Hellmodus: Ausnahmen von der Token-Palette ====
  *
- * Die Palette oben deckt 1458 Farbverwendungen ab. Diese 132 Regeln setzen
+ * Die Palette oben deckt 1458 Farbverwendungen ab. Diese 191 Regeln setzen
  * ihre Farbe dagegen fest, beziehen aber die Gegenfarbe aus einem Token --
  * heller Text auf einer Flaeche, die im Hellmodus ebenfalls hell wird, oder
  * eine dunkle Flaeche unter Text, der dunkel wird. Beides waere unlesbar.
@@ -7311,18 +7332,47 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
  * bleibt der Dunkelmodus Zeichen fuer Zeichen unveraendert. Ein Fehler in
  * diesem Abschnitt kann sich nur im Hellmodus zeigen.
  *
- * Ermittelt wurden sie nicht von Hand, sondern durch Auswertung aller Regeln
- * des Stylesheets: feste Schriftfarbe ohne eigene Flaeche bzw. feste Flaeche
- * ohne eigene Schriftfarbe. Regeln, die beides selbst setzen, sind in sich
- * stimmig und fehlen hier zu Recht.
+ * Ermittelt wurden sie durch Auswertung aller Regeln des Stylesheets. Dabei
+ * zaehlt eine Regel als gemischt, sobald sie EINE Seite fest kodiert und die
+ * andere aus einem Token bezieht -- auch dann, wenn beide Seiten genannt
+ * sind. Genau dieser zweite Fall war zunaechst uebersehen worden, weshalb
+ * jedes Eingabe- und Auswahlfeld der Plattform im Hellmodus unlesbaren Text
+ * trug: "background: var(--surface-deep); color: #e2e8f0".
+ *
+ * Nicht enthalten sind 13 Regeln, deren Flaeche aus einem Token stammt, der
+ * auch im Hellmodus kraeftig bleibt (--accent, --status-error und
+ * Verwandte). Dort ist weisse Schrift weiterhin richtig.
+ *
+ * Ebenfalls nicht enthalten sind ".entry-card.primary strong" und
+ * ".dashboard-next-card small". Sie stehen auf einer gefuellten
+ * Akzentflaeche, die das ELTERNELEMENT setzt; statisch ist das nicht
+ * erkennbar, weil dessen Klassen nicht im Selektor der Kindregel auftauchen.
+ * Gefunden hat sie die Kontrastmessung im Browser.
  */
 /* Schriftfarben, die im Dunkelmodus fest hell gesetzt sind. */
+html[data-public-theme="light"] .breadcrumb-tree span[aria-current="page"],
+html[data-public-theme="light"] .tabs a.active,
+html[data-public-theme="light"] .subtabs button.active,
+html[data-public-theme="light"] .guided-uml-legend strong,
+html[data-public-theme="light"] .guided-code-output output,
+html[data-public-theme="light"] .usb-port-missing-dialog .runtime-dialog-header h2,
+html[data-public-theme="light"] .usb-port-choice-dialog .runtime-dialog-header h2,
+html[data-public-theme="light"] .usb-port-identification > div strong,
+html[data-public-theme="light"] .usb-port-identification-dialog h2,
+html[data-public-theme="light"] .usb-inventory-unknown-dialog h2,
+html[data-public-theme="light"] .cancel-build-confirm-dialog h2,
+html[data-public-theme="light"] .usb-port-macos-security-hint > strong,
+html[data-public-theme="light"] .usb-flash-assignment-table-head strong { color: var(--text-bright); }
 html[data-public-theme="light"] .about-view-lead,
+html[data-public-theme="light"] .help-article-section pre,
 html[data-public-theme="light"] .help-hardware-links a,
 html[data-public-theme="light"] .ide-board-configuration-plugin-actions span,
 html[data-public-theme="light"] .board-configuration-snapshot > header > span,
 html[data-public-theme="light"] .device-debug-message.running,
 html[data-public-theme="light"] .motor-driver-assignment footer span,
+html[data-public-theme="light"] .project-repository-preview pre,
+html[data-public-theme="light"] .repository-diff-file pre,
+html[data-public-theme="light"] .source-focus-box,
 html[data-public-theme="light"] .usb-inventory-warning-preference,
 html[data-public-theme="light"] .usb-port-missing-dialog ul,
 html[data-public-theme="light"] .usb-port-recovery-sequence ol,
@@ -7334,46 +7384,56 @@ html[data-public-theme="light"] .touchscreen-game-inventory-match strong { color
 html[data-public-theme="light"] .about-view-conclusion,
 html[data-public-theme="light"] .dashboard-community-card small,
 html[data-public-theme="light"] .dashboard-news-community-link:hover,
+html[data-public-theme="light"] .learning-category-badge,
+html[data-public-theme="light"] .basis-variant-badge,
+html[data-public-theme="light"] .board-property-card > header span,
 html[data-public-theme="light"] .debug-device-list button span,
 html[data-public-theme="light"] .ide-build-profile select[data-debug-active="true"],
+html[data-public-theme="light"] .connection-type-badge.sensor,
+html[data-public-theme="light"] .driver-library-panel > header > span,
+html[data-public-theme="light"] .project-repository-tree button:hover,
+html[data-public-theme="light"] .project-repository-tree button.active,
+html[data-public-theme="light"] .project-repository-history button:hover,
+html[data-public-theme="light"] .project-repository-history button.active,
 html[data-public-theme="light"] .guided-code-test strong,
 html[data-public-theme="light"] .usb-port-recovery-sequence > strong { color: var(--accent-text); }
-/*
- * .entry-card.primary strong und .dashboard-next-card small fehlen hier
- * absichtlich. Sie stehen auf einer GEFUELLTEN Akzentflaeche, die auch im
- * Hellmodus dunkel bleibt; ihr weisses #fff ist dort weiterhin richtig. Die
- * automatische Auswertung konnte das nicht sehen, weil die Flaeche vom
- * Elternelement kommt und nicht aus derselben Regel. Der Kontrastmesser im
- * Browser hat es gefunden: 2.58:1 statt der geforderten 4.5:1.
- */
-html[data-public-theme="light"] .guided-uml-legend strong,
-html[data-public-theme="light"] .guided-code-output output,
-html[data-public-theme="light"] .usb-port-missing-dialog .runtime-dialog-header h2,
-html[data-public-theme="light"] .usb-port-choice-dialog .runtime-dialog-header h2,
-html[data-public-theme="light"] .usb-port-identification > div strong,
-html[data-public-theme="light"] .usb-port-identification-dialog h2,
-html[data-public-theme="light"] .usb-inventory-unknown-dialog h2,
-html[data-public-theme="light"] .cancel-build-confirm-dialog h2,
-html[data-public-theme="light"] .usb-port-macos-security-hint > strong,
-html[data-public-theme="light"] .usb-flash-assignment-table-head strong { color: var(--text-bright); }
 html[data-public-theme="light"] .learning-step-rail li.done,
 html[data-public-theme="light"] .knowledge-quiz-feedback.correct { color: var(--status-success-text); }
 html[data-public-theme="light"] .learning-access-badge.purchased,
 html[data-public-theme="light"] .knowledge-expert-note strong { color: #6d28d9; }
+html[data-public-theme="light"] .engineering-phase-overview span,
 html[data-public-theme="light"] .embedding-pipeline-stages b,
+html[data-public-theme="light"] .embedding-logic-inputs span,
+html[data-public-theme="light"] .embedding-logic-flow span,
 html[data-public-theme="light"] .board-configuration-compiler-projection > header span,
 html[data-public-theme="light"] .board-configuration-compiler-projection dd,
 html[data-public-theme="light"] .board-properties-meta dd,
+html[data-public-theme="light"] .debug-device-list button,
+html[data-public-theme="light"] .device-debug-connection select,
+html[data-public-theme="light"] .device-debug-connection input,
+html[data-public-theme="light"] .device-debug-filters select,
 html[data-public-theme="light"] .device-debug-crash dd,
 html[data-public-theme="light"] .sensor-configuration-table tbody td,
 html[data-public-theme="light"] .device-connections-meta dd,
 html[data-public-theme="light"] .device-connections-table td,
 html[data-public-theme="light"] .build-summary-list dd,
 html[data-public-theme="light"] #ideView .meta-list dd,
+html[data-public-theme="light"] #ideView .ai-rating-card,
 html[data-public-theme="light"] .project-repository-meta dd,
+html[data-public-theme="light"] .hardware-guidance-terminal-head,
 html[data-public-theme="light"] .guided-uml-transfer,
 html[data-public-theme="light"] .guided-code-test pre,
-html[data-public-theme="light"] .development-project-choice strong { color: var(--text); }
+html[data-public-theme="light"] textarea,
+html[data-public-theme="light"] .development-project-form input,
+html[data-public-theme="light"] .development-project-form select,
+html[data-public-theme="light"] .development-project-form textarea,
+html[data-public-theme="light"] .form-grid input,
+html[data-public-theme="light"] .inventory-type-label input,
+html[data-public-theme="light"] .ide-device-allocation select,
+html[data-public-theme="light"] .development-project-choice strong,
+html[data-public-theme="light"] .hardware-inline-help-popover,
+html[data-public-theme="light"] .operator-surface input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+html[data-public-theme="light"] .operator-surface select { color: var(--text); }
 html[data-public-theme="light"] .board-configuration-plugin-save p,
 html[data-public-theme="light"] .device-debug-task-table tr.warning td:last-child span,
 html[data-public-theme="light"] .device-debug-event.warn .device-debug-severity,
@@ -7393,7 +7453,9 @@ html[data-public-theme="light"] .ide-build-actions-label,
 html[data-public-theme="light"] .ide-build-profile,
 html[data-public-theme="light"] .hardware-hint-item span,
 html[data-public-theme="light"] .guided-uml-artifact header p:not(.eyebrow),
-html[data-public-theme="light"] .guided-uml-legend span { color: var(--text-muted); }
+html[data-public-theme="light"] .guided-uml-legend span,
+html[data-public-theme="light"] .hardware-table-head { color: var(--text-muted); }
+html[data-public-theme="light"] .ide-terminal,
 html[data-public-theme="light"] .ide-project-information dd,
 html[data-public-theme="light"] #ideTerminalOutput { color: var(--text-secondary); }
 html[data-public-theme="light"] .code-diff-line.removed code::before { color: var(--status-error); }
@@ -7408,16 +7470,72 @@ html[data-public-theme="light"] .usb-flash-firmware-meta b { color: var(--accent
 
 /* Flaechen, die im Dunkelmodus fest dunkel gesetzt sind. */
 html[data-public-theme="light"] .dashboard-community-card:hover,
+html[data-public-theme="light"] .dashboard-community-personal,
+html[data-public-theme="light"] .dashboard-news-card,
 html[data-public-theme="light"] .dashboard-news-card:hover,
+html[data-public-theme="light"] .dashboard-news-empty,
+html[data-public-theme="light"] .quiz-category-icon,
 html[data-public-theme="light"] .quiz-progress,
+html[data-public-theme="light"] .quiz-option span,
 html[data-public-theme="light"] .quiz-option:hover:not(:disabled),
+html[data-public-theme="light"] .knowledge-part-toc > summary,
+html[data-public-theme="light"] .knowledge-chapter-toc > summary,
 html[data-public-theme="light"] .knowledge-loading-bar,
+html[data-public-theme="light"] .help-hardware-landscape span,
+html[data-public-theme="light"] .learning-project-resume-position,
+html[data-public-theme="light"] .learning-project-progress-map,
+html[data-public-theme="light"] .learning-project-progress-lessons,
+html[data-public-theme="light"] .tamagotchi-learning-illustration,
+html[data-public-theme="light"] .knowledge-section-illustration figcaption,
+html[data-public-theme="light"] .knowledge-illustration-series figure > div,
+html[data-public-theme="light"] .security-door-illustrations figure,
+html[data-public-theme="light"] .embedding-pipeline,
+html[data-public-theme="light"] .embedding-logic,
+html[data-public-theme="light"] .embedding-pipeline-stages code,
+html[data-public-theme="light"] .component-feature-card.locked,
+html[data-public-theme="light"] .basissoftware-security-note,
+html[data-public-theme="light"] .power-state-card.enabled,
+html[data-public-theme="light"] .ide-board-configuration-plugin-panel,
+html[data-public-theme="light"] .board-configuration-snapshot,
+html[data-public-theme="light"] .debug-device-list button.active,
+html[data-public-theme="light"] .device-debug-session.active,
+html[data-public-theme="light"] .device-debug-operator-alert.reported,
+html[data-public-theme="light"] .device-debug-crash > header > span,
+html[data-public-theme="light"] .device-debug-security-note,
+html[data-public-theme="light"] .ide-build-actions button,
+html[data-public-theme="light"] .ide-build-actions select,
+html[data-public-theme="light"] .ide-build-actions button:disabled,
+html[data-public-theme="light"] .sensor-connection-summary,
 html[data-public-theme="light"] .motor-driver-configuration,
+html[data-public-theme="light"] .ide-console-tabs button.active,
+html[data-public-theme="light"] .ide-build-results .build-row,
+html[data-public-theme="light"] .build-artifact-list a,
+html[data-public-theme="light"] #ideView #ideToolbar button,
+html[data-public-theme="light"] #ideView #ideToolbar select,
+html[data-public-theme="light"] #ideView .ide-inspector-panel button,
+html[data-public-theme="light"] #ideView .ide-inspector-panel select,
 html[data-public-theme="light"] #ideView .ide-project-browser button:hover,
+html[data-public-theme="light"] .repository-contract-note,
+html[data-public-theme="light"] .hardware-guidance-panel,
 html[data-public-theme="light"] .hardware-hint-item,
+html[data-public-theme="light"] .code-diff-content,
+html[data-public-theme="light"] .guided-eva-board,
 html[data-public-theme="light"] .guided-eva-card.output,
+html[data-public-theme="light"] .guided-uml-activity,
+html[data-public-theme="light"] .guided-uml-legend,
+html[data-public-theme="light"] .guided-code-help-tooltip,
+html[data-public-theme="light"] .guided-embedded-lab iframe,
+html[data-public-theme="light"] .guided-code-output,
+html[data-public-theme="light"] .guided-step-position,
+html[data-public-theme="light"] .usb-port-choice-dialog .usb-port-missing-actions .primary:disabled,
+html[data-public-theme="light"] .usb-flash-identify-port-button:disabled,
+html[data-public-theme="light"] .runtime-dialog.guided-webserver-dialog,
+html[data-public-theme="light"] .device-status-pill.is-unknown,
+html[data-public-theme="light"] .breadcrumb-tree a:hover,
+html[data-public-theme="light"] button:hover:not(:disabled),
 html[data-public-theme="light"] .app-menu-group > summary:hover,
 html[data-public-theme="light"] .app-menu-group > summary:focus-visible,
+html[data-public-theme="light"] .app-menu .menu-logout:hover,
 html[data-public-theme="light"] .device-wifi-setup-step,
 html[data-public-theme="light"] .guided-state-row,
 html[data-public-theme="light"] .guided-device-selection,
@@ -7425,37 +7543,12 @@ html[data-public-theme="light"] .learning-software-target-panel,
 html[data-public-theme="light"] .guided-ota-explanation,
 html[data-public-theme="light"] .development-project-choice:hover,
 html[data-public-theme="light"] .hardware-table-row:nth-child(odd):not(.hardware-table-head),
+html[data-public-theme="light"] .hardware-table-row select:disabled,
+html[data-public-theme="light"] .hardware-table-row input:disabled,
+html[data-public-theme="light"] .template-component-configuration,
 html[data-public-theme="light"] .home-automation-node,
-html[data-public-theme="light"] .touchscreen-game-inventory-match { background: var(--surface-raised); }
-html[data-public-theme="light"] .dashboard-community-personal,
-html[data-public-theme="light"] .dashboard-news-card,
-html[data-public-theme="light"] .learning-project-resume-position,
-html[data-public-theme="light"] .learning-project-progress-map,
-html[data-public-theme="light"] .learning-project-progress-lessons,
-html[data-public-theme="light"] .tamagotchi-learning-illustration,
-html[data-public-theme="light"] .knowledge-illustration-series figure > div,
-html[data-public-theme="light"] .security-door-illustrations figure,
-html[data-public-theme="light"] .embedding-pipeline,
-html[data-public-theme="light"] .embedding-logic,
-html[data-public-theme="light"] .ide-board-configuration-plugin-panel,
-html[data-public-theme="light"] .board-configuration-snapshot,
-html[data-public-theme="light"] .project-workspace-modes,
-html[data-public-theme="light"] .device-debug-stack li,
-html[data-public-theme="light"] .device-debug-log-panel,
-html[data-public-theme="light"] .ide-build-results .build-row,
-html[data-public-theme="light"] .hardware-guidance-panel,
-html[data-public-theme="light"] .code-diff-content,
-html[data-public-theme="light"] .guided-eva-board,
-html[data-public-theme="light"] .guided-uml-activity,
-html[data-public-theme="light"] .guided-uml-legend,
-html[data-public-theme="light"] .guided-embedded-lab iframe,
-html[data-public-theme="light"] .guided-code-output { background: var(--surface-deep); }
-html[data-public-theme="light"] .component-feature-card.locked,
-html[data-public-theme="light"] .power-state-card.enabled,
-html[data-public-theme="light"] .debug-device-list button.active,
-html[data-public-theme="light"] .device-debug-session.active,
-html[data-public-theme="light"] .sensor-connection-summary { background: var(--accent-soft); }
-html[data-public-theme="light"] .board-configuration-plugin-save,
+html[data-public-theme="light"] .touchscreen-game-inventory-match { background: var(--accent-soft); }
+html[data-public-theme="light"] .basissoftware-compatibility-warning,
 html[data-public-theme="light"] .development-board-feature-table .is-modified,
 html[data-public-theme="light"] .hardware-validation-summary,
 html[data-public-theme="light"] .hardware-required-field select,
@@ -7463,5 +7556,19 @@ html[data-public-theme="light"] .hardware-required-field input,
 html[data-public-theme="light"] select.hardware-required-field,
 html[data-public-theme="light"] input.hardware-required-field,
 html[data-public-theme="light"] .hardware-required-field[data-development-board-configuration],
-html[data-public-theme="light"] .development-template-help-card.unavailable { background: #fdf3e2; }
+html[data-public-theme="light"] .development-template-help-card.unavailable,
+html[data-public-theme="light"] .help-access-badge.premium { background: #fdf3e2; }
+html[data-public-theme="light"] .board-configuration-plugin-state.is-modified,
+html[data-public-theme="light"] .board-configuration-plugin-save,
+html[data-public-theme="light"] .connection-type-badge.actuator,
+html[data-public-theme="light"] .repository-state.failed,
+html[data-public-theme="light"] .repository-error,
+html[data-public-theme="light"] .repository-error.conflict,
+html[data-public-theme="light"] .development-board-configuration-state.is-modified,
+html[data-public-theme="light"] .device-status-pill.is-offline { background: #fdeaea; }
+html[data-public-theme="light"] .project-workspace-modes,
+html[data-public-theme="light"] .device-debug-stack li,
+html[data-public-theme="light"] .device-debug-log-panel { background: var(--surface-raised); }
+html[data-public-theme="light"] .ide-project-hints li.ok,
+html[data-public-theme="light"] .development-board-configuration-state.is-catalog,
 html[data-public-theme="light"] .hardware-validation-summary.is-complete { background: #e8f5ec; }
