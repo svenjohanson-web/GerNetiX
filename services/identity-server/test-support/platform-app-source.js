@@ -5,6 +5,10 @@ const path = require("node:path");
 
 const platformAppFiles = [
   "app-shell-early.js",
+  // Der gemeinsame Zustand liegt seit der Entflechtung in einer eigenen
+  // Datei und wird vor den Controllern geladen. Die Reihenfolge hier muss
+  // der in index.html entsprechen, sie wird gegen sie geprueft.
+  "platform-state.js",
   "app-shell-controller.js",
   "app-dashboard-controller.js",
   "app-community-controller.js",

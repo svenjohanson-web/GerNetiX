@@ -13,8 +13,14 @@ test("platform app keeps state composition separate from domain behavior and sta
   const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
   const source = readPlatformAppSource();
 
+  // Der Zustand steht seit der Entflechtung in einer eigenen Datei ohne
+  // eigene Abhaengigkeiten. Die Kompositionswurzel verdrahtet nur noch --
+  // das ist genau die Trennung, die dieser Test im Namen fuehrt.
+  const zustand = fs.readFileSync(path.join(appRoot, "platform-state.js"), "utf8");
+  assert.match(zustand, /const state = \{/);
+  assert.doesNotMatch(compositionRoot, /const state = \{/);
+
   assert.ok(compositionRoot.split("\n").length < 250);
-  assert.match(compositionRoot, /const state = \{/);
   assert.match(compositionRoot, /function deviceOnboarding\(\)/);
   assert.doesNotMatch(compositionRoot, /bootstrap\(\);/);
   assert.match(source, /async function bootstrap\(\)/);
