@@ -39,8 +39,9 @@ function applyTheme(theme) {
 }
 
 const savedTheme = window.localStorage.getItem(themeStorageKey);
-const preferredTheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-applyTheme(savedTheme === "dark" || savedTheme === "light" ? savedTheme : preferredTheme);
+// Wie auf den uebrigen oeffentlichen Seiten ist hell der Auslieferungszustand.
+// Nur eine eigene Wahl des Nutzers weicht davon ab.
+applyTheme(savedTheme === "dark" || savedTheme === "light" ? savedTheme : "light");
 themeToggle.addEventListener("click", () => {
   const nextTheme = document.documentElement.dataset.publicTheme === "dark" ? "light" : "dark";
   window.localStorage.setItem(themeStorageKey, nextTheme);

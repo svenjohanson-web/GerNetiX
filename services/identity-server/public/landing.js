@@ -182,8 +182,10 @@ function initializePublicTheme() {
   const storageKey = "gernetix-public-theme";
   const root = document.documentElement;
   const savedTheme = window.localStorage.getItem(storageKey);
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  let theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : (prefersDark ? "dark" : "light");
+  // Hell ist der bewusste Auslieferungszustand. Erst eine eigene Wahl des
+  // Nutzers weicht davon ab; die Systemeinstellung entscheidet absichtlich
+  // nicht mit, damit alle Besucher denselben ersten Eindruck erhalten.
+  let theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : "light";
 
   const applyTheme = (nextTheme) => {
     theme = nextTheme;

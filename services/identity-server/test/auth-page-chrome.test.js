@@ -29,6 +29,10 @@ test("uses the one public GerNetiX header and burger menu on the authentication 
   assert.match(publicHeaderScript, /gernetix-public-theme/);
   assert.match(publicHeaderScript, /root\.dataset\.publicTheme = theme/);
   assert.match(publicHeaderScript, /button\.id = "publicThemeToggle"/);
+  // Hell ist der Auslieferungszustand: nur eine gespeicherte eigene Wahl weicht
+  // davon ab. Die Systemeinstellung darf den ersten Eindruck nicht bestimmen.
+  assert.match(publicHeaderScript, /savedTheme === "dark" \|\| savedTheme === "light" \? savedTheme : "light"/);
+  assert.doesNotMatch(publicHeaderScript, /prefers-color-scheme/);
   assert.match(css, /html\[data-public-theme="light"\] body/);
   assert.match(css, /html\[data-public-theme="light"\] \.login-panel/);
   assert.match(css, /html\[data-public-theme="light"\] input/);
