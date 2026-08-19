@@ -37,10 +37,17 @@
   color-scheme: light;
 
   /* Flaechen */
+  --surface-deep: #ebe6dc;
   --surface: #f6f3ed;
   --surface-panel: transparent;
   --surface-raised: transparent;
+  /*
+   * Dialoge und Popover brauchen im Gegensatz zur flachen Seitengestaltung
+   * eine deckende Flaeche, sonst waere ihr Inhalt nicht lesbar. Deshalb sind
+   * diese beiden Werte auch dort deckend, wo --surface-panel transparent ist.
+   */
   --surface-overlay: #fffdf8;
+  --surface-overlay-inset: #f0ece5;
 
   /* Rahmen */
   --border-subtle: #e2ddd2;
@@ -55,15 +62,21 @@
 
   /* Akzent */
   --accent: #8b3a2b;
+  --accent-bright: #a8503c;
   --accent-strong: #763025;
   --accent-soft: #f0e4d7;
   --accent-text: #7a3328;
 
-  /* Status */
+  /* Status: die *-text-Werte sind fuer Schrift gedacht, die uebrigen fuer
+     Flaechen, Rahmen und Linien. */
   --status-warn: #a15c12;
+  --status-warn-text: #7a4408;
   --status-success: #2f6b3a;
+  --status-success-text: #1f5029;
   --status-error: #a83232;
+  --status-error-text: #862424;
   --status-info: #2f5d8a;
+  --status-info-text: #234969;
 
   /* Ueberlagerung */
   --scrim: rgba(45, 39, 30, .42);
@@ -84,10 +97,12 @@
 html[data-public-theme="dark"] {
   color-scheme: dark;
 
+  --surface-deep: #0f0f0e;
   --surface: #171715;
   --surface-panel: transparent;
   --surface-raised: transparent;
   --surface-overlay: #201f1c;
+  --surface-overlay-inset: #2b2926;
 
   --border-subtle: #3a3833;
   --border: #494640;
@@ -99,14 +114,19 @@ html[data-public-theme="dark"] {
   --text-dim: #a49d92;
 
   --accent: #eaa28d;
+  --accent-bright: #f0a38d;
   --accent-strong: #d37d68;
   --accent-soft: #302722;
   --accent-text: #f0a38d;
 
   --status-warn: #e0a44a;
+  --status-warn-text: #f2c98a;
   --status-success: #8fc79a;
+  --status-success-text: #b8dcc0;
   --status-error: #e79a9a;
+  --status-error-text: #f2bcbc;
   --status-info: #9dbfe0;
+  --status-info-text: #c3d9ee;
 
   --scrim: rgba(10, 9, 8, .58);
   --shadow: 0 12px 28px rgba(0, 0, 0, .38);

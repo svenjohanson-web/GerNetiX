@@ -61,7 +61,7 @@ test("switches homepage images and their background surfaces with the public rea
 });
 
 test("adapts the header wordmark to the light reading theme", () => {
-  assert.match(html, /landing\.css\?v=20260813-light-contrast-1/);
+  assert.match(html, /landing\.css\?v=20260819-theme-tokens-2/);
   assert.match(css, /html\[data-public-theme="light"\] \.brand img \{[\s\S]*filter: invert\(1\) hue-rotate\(180deg\);[\s\S]*\}/);
 });
 

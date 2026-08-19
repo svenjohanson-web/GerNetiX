@@ -18,6 +18,8 @@
   --surface: #070b12;            /* Seitenuntergrund */
   --surface-panel: #111827;      /* Karten und Panels (62x) */
   --surface-raised: #1b2430;     /* abgesetzte Flaeche innerhalb einer Karte (22x) */
+  --surface-overlay: #111827;    /* deckende Flaeche fuer Dialoge und Popover */
+  --surface-overlay-inset: #1b2430; /* Schaltflaechen und Einschuebe darin */
 
   /* Rahmen, von der leisen Trennlinie zur betonten Kante */
   --border-subtle: #263241;      /* Trennlinien (32x) */
