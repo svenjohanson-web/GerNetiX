@@ -46,16 +46,16 @@
       "pruefsumme": "a770d63c65bda641"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260819-umd-root-fix-1",
-      "pruefsumme": "3423b4c87bfcab97"
+      "version": "20260819-start-error-2",
+      "pruefsumme": "3e5091633e65d3de"
     },
     "/app/app-shell-early.js": {
       "version": "20260819-app-theme-toggle-3",
       "pruefsumme": "f79a75c62717a760"
     },
     "/app/app.css": {
-      "version": "20260819-app-theme-toggle-3",
-      "pruefsumme": "5a2ce07c76cfc5b2"
+      "version": "20260819-start-error-1",
+      "pruefsumme": "a4a97a7c79781945"
     },
     "/app/app.js": {
       "version": "20260807-flat-guided-learning-2",

@@ -340,6 +340,23 @@ button.danger:hover {
   height: 42px;
   padding: 0;
 }
+/* Hinweis, wenn die Plattformdaten beim Start nicht geladen werden konnten.
+   Farben aus Token, damit er in beiden Designs lesbar bleibt. */
+.platform-start-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--status-error);
+  border-radius: 10px;
+  background: var(--surface-panel);
+  color: var(--text);
+}
+.platform-start-error span { color: var(--text-muted); }
+.platform-start-error button { margin-left: auto; }
+
 /* Umschalter zwischen hellem und dunklem Design, gleiche Groesse wie der
    Menueknopf daneben. Die Farben kommen aus Token, damit die Schaltflaeche in
    beiden Modi zum Rest der Kopfzeile passt. */

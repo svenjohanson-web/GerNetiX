@@ -80,7 +80,9 @@ test("selects the hardware lab before account data and translations finish loadi
   assert.match(css, /\.hardware-lab-view\.hidden \{ display: none; \}/);
   assert.match(css, /html\.initial-hardware-lab-route #dashboardView \{ display: none; \}/);
   assert.match(css, /html\.initial-hardware-lab-route #hardwareLabView\.hidden \{ display: grid; \}/);
-  assert.ok(shellController.indexOf("renderInitialRoute();") < shellController.indexOf("await Promise.all([refreshBootstrap(initialRoute), loadRouteAssets(initialRoute)]);"));
+  // Die Route wird gezeichnet, bevor Daten geladen werden. Verglichen werden
+  // die Positionen der beiden Aufrufe, nicht der genaue Wortlaut der Zeile.
+  assert.ok(shellController.indexOf("renderInitialRoute();") < shellController.indexOf("refreshBootstrap(initialRoute)"));
   assert.doesNotMatch(shellController.match(/function renderInitialRoute\(\)[\s\S]*?\n}/)?.[0] || "", /GerNetiXHardwareLab\.render\(\)/);
 });
 

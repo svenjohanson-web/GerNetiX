@@ -38,7 +38,21 @@ test("loads projects in the critical bootstrap only for routes that need them", 
   assert.match(platformBootstrap, /if \(sections\.has\("projects"\)\) payload\.projects = projects\.map\(toPlatformProjectSummary\)/);
   assert.match(platformBootstrap, /bootstrap_duration_ms/);
   assert.doesNotMatch(platformBootstrap, /loadUserIdeDevices|loadProjectBuilds|loadAiUsageSummary|loadCommunityDashboardSummary/);
-  assert.match(app, /const initialRoute = routeName\(\);[\s\S]*Promise\.all\(\[refreshBootstrap\(initialRoute\), loadRouteAssets\(initialRoute\)\]\);[\s\S]*loadRouteProjectDetail\(initialRoute\);[\s\S]*renderAll\(\);[\s\S]*renderRoute\(\{ contentRendered: true \}\);[\s\S]*hydratePlatformState\(initialRoute\)/);
+  // Reihenfolge des kritischen Pfads, geprueft ueber Positionen statt ueber
+  // einen durchgehenden Ausdruck. So bricht ein zusaetzlicher Fehlerzweig
+  // zwischen den Schritten die Zusicherung nicht.
+  const reihenfolge = [
+    "const initialRoute = routeName();",
+    "refreshBootstrap(initialRoute)",
+    "loadRouteProjectDetail(initialRoute)",
+    "renderAll();",
+    "renderRoute({ contentRendered: true })",
+    "hydratePlatformState(initialRoute)",
+  ].map((teil) => ({ teil, stelle: app.indexOf(teil) }));
+  for (const { teil, stelle } of reihenfolge) assert.notEqual(stelle, -1, `${teil} fehlt`);
+  for (let i = 1; i < reihenfolge.length; i += 1) {
+    assert.ok(reihenfolge[i - 1].stelle < reihenfolge[i].stelle, `${reihenfolge[i - 1].teil} muss vor ${reihenfolge[i].teil} stehen`);
+  }
   assert.match(app, /function platformBootstrapSectionsForRoute\(route\)/);
   assert.match(app, /async function hydratePlatformState\(route = routeName\(\)\)[\s\S]*if \(!sections\.length\) return false;[\s\S]*await refresh\(sections\)/);
   assert.doesNotMatch(app.match(/async function hydratePlatformState[\s\S]*?\n}/)?.[0] || "", /loadPlatformDownloads/);

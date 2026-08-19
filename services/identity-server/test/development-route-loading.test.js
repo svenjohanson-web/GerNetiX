@@ -36,7 +36,9 @@ test("loads and initializes the development package only for its two routes", ()
 });
 
 test("preserves direct links and SPA navigation while binding development events once", () => {
-  assert.match(app, /Promise\.all\(\[refreshBootstrap\(initialRoute\), loadRouteAssets\(initialRoute\)\]\)/);
+  // Geprueft wird, dass beide Ladevorgaenge in EINEM Promise.all stehen, also
+  // parallel laufen -- nicht, wie die Zeile geschrieben ist.
+  assert.match(app, /Promise\.all\(\[[\s\S]{0,300}refreshBootstrap\(initialRoute\)[\s\S]{0,300}loadRouteAssets\(initialRoute\)[\s\S]{0,300}\]\)/);
   assert.match(app, /function activateCurrentRoute\(\)[\s\S]*routeAssetsMissing\(activeRoute\)[\s\S]*hydrateRouteAfterNavigation/);
   assert.match(app, /async function hydrateRouteAfterNavigation[\s\S]*loadRouteAssets\(activeRoute\)/);
   assert.match(development, /let initialized = false/);

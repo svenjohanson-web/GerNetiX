@@ -26,7 +26,30 @@ async function bootstrap() {
   }
   renderInitialRoute();
   const initialRoute = routeName();
-  await Promise.all([refreshBootstrap(initialRoute), loadRouteAssets(initialRoute)]);
+
+  /*
+   * Der oeffentliche Zweig oben faengt einen Fehlschlag seit jeher ab. Hier
+   * fehlte das: schlug /api/platform/bootstrap fehl, brach bootstrap() an
+   * dieser Stelle ab. Uebersetzungen, Rendern und Willkommensdialog liefen
+   * dann nie, die Ablehnung blieb unbehandelt, und der Nutzer sah eine
+   * statische Huelle ohne jeden Hinweis darauf, dass etwas fehlt.
+   */
+  let startFehler = null;
+  await Promise.all([
+    refreshBootstrap(initialRoute).catch((fehler) => { startFehler = fehler; }),
+    loadRouteAssets(initialRoute),
+  ]);
+
+  if (startFehler) {
+    // state traegt seine Vorgaben (account: null, projects: []), deshalb ist
+    // renderRoute gefahrlos. renderAll bleibt aussen vor: es rechnet mit
+    // geladenen Daten.
+    await initializePlatformI18n();
+    renderRoute();
+    meldeStartFehler(startFehler);
+    return;
+  }
+
   await loadRouteProjectDetail(initialRoute);
   await loadRouteAssets(initialRoute);
   await initializePlatformI18n();
@@ -36,6 +59,28 @@ async function bootstrap() {
   void hydratePlatformState(initialRoute).then((changed) => {
     if (changed && routeName() === initialRoute) renderAll();
   });
+}
+
+// Sichtbar melden statt still schlucken: ein verschwiegener Fehlschlag sieht
+// aus wie eine leere Plattform und verschleiert echte Ausfaelle.
+function meldeStartFehler(fehler) {
+  const shell = document.querySelector(".app-shell");
+  if (!shell || document.querySelector("#platformStartError")) return;
+  const meldung = document.createElement("div");
+  meldung.id = "platformStartError";
+  meldung.className = "platform-start-error";
+  meldung.setAttribute("role", "alert");
+  // payload.error traegt nur den allgemeinen Sammelcode ("internal_server_error"),
+  // die sprechende Ursache steht in payload.message.
+  const grund = fehler?.payload?.message || fehler?.message || fehler?.payload?.error || fehler?.code || "unbekannt";
+  meldung.innerHTML = `<strong>Die Plattformdaten konnten nicht geladen werden.</strong>
+    <span>Angemeldet bist du weiterhin. Grund: ${escapeHtml(String(grund))}</span>`;
+  const neuLaden = document.createElement("button");
+  neuLaden.type = "button";
+  neuLaden.textContent = "Erneut versuchen";
+  neuLaden.addEventListener("click", () => window.location.reload());
+  meldung.append(neuLaden);
+  shell.querySelector(".topbar")?.after(meldung) || shell.prepend(meldung);
 }
 
 function loadPlatformScript(src) {
