@@ -10,6 +10,7 @@ const platformAppFiles = [
   // der in index.html entsprechen, sie wird gegen sie geprueft.
   "platform-state.js",
   "platform-routing.js",
+  "platform-components.js",
   "app-shell-controller.js",
   "app-dashboard-controller.js",
   "app-community-controller.js",

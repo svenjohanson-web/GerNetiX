@@ -21,7 +21,14 @@ test("platform app keeps state composition separate from domain behavior and sta
   assert.doesNotMatch(compositionRoot, /const state = \{/);
 
   assert.ok(compositionRoot.split("\n").length < 250);
-  assert.match(compositionRoot, /function deviceOnboarding\(\)/);
+
+  // Die Verdrahtung meldet ihre Bausteine bei der Registratur an, statt sie
+  // selbst herauszureichen. Die Namen liegen dadurch eine Schicht tiefer und
+  // die Controller greifen nicht mehr nach oben.
+  const registratur = fs.readFileSync(path.join(appRoot, "platform-components.js"), "utf8");
+  assert.match(compositionRoot, /registerPlatformComponent\("deviceOnboarding"/);
+  assert.match(registratur, /function deviceOnboarding\(\)/);
+  assert.doesNotMatch(compositionRoot, /function deviceOnboarding\(\)/);
   assert.doesNotMatch(compositionRoot, /bootstrap\(\);/);
   assert.match(source, /async function bootstrap\(\)/);
   assert.match(source, /function renderIdeShell\(\)/);

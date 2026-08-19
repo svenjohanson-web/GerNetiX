@@ -87,6 +87,17 @@ const state = {
   developmentPlatform: null,
   esptoolModule: null,
   activeSerialTransport: null,
-  serialService: GerNetiXSerialService.create(),
+  serialService: null, // wird in app.js gesetzt, siehe dort
   ideLayoutPersistenceReady: false,
 };
+
+/*
+ * Geteilte veraenderliche Werte. Sie standen in app.js, der Verdrahtung, und
+ * wurden von Controllern und Router von unten gelesen und geschrieben --
+ * 14 Zugriffe, alle verkehrt herum. Es ist Zustand, also gehoert er hierher.
+ * Die Namen bleiben, damit keine Aufrufstelle sich aendert.
+ */
+let lastRenderedRoute = "";
+let processorBoardCatalogLoadPromise = null;
+let boardFeatureCatalogLoadPromise = null;
+let platformI18n = null;
