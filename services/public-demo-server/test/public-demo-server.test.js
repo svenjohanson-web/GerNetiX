@@ -202,3 +202,16 @@ test("unsupported browsers use the Serial Helper adapter from the same dialog", 
   assert.doesNotMatch(browserApp, /serialService\.flash\(/);
   assert.match(browserApp, /if \(ports\.length > 1\)/);
 });
+
+test("the page follows the shared light/dark toggle instead of forcing dark mode", () => {
+  // landing.css treats light as the :root baseline and only overrides colours
+  // inside html[data-public-theme="dark"]. A bare, unconditional :root block
+  // here would redeclare the same custom properties and load after
+  // landing.css, permanently locking this page to dark regardless of the
+  // toggle the page itself renders (see #publicMenuButton / landing.js).
+  assert.doesNotMatch(browserStyles, /:root\s*\{[^}]*--(?:bg|panel|text|muted|line|accent)\s*:/);
+  assert.match(browserStyles, /html\[data-public-theme="dark"\]\s*\{[^}]*--bg\s*:\s*#07111e/);
+  assert.match(browserPage, /\/landing\.js/);
+  const landingJs = fs.readFileSync(path.join(__dirname, "..", "..", "identity-server", "public", "landing.js"), "utf8");
+  assert.match(landingJs, /initializePublicTheme/);
+});
