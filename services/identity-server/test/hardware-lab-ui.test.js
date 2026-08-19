@@ -108,6 +108,8 @@ test("aligns the hardware-lab shell with the top edge", () => {
 });
 
 test("uses explicit high-contrast dark colors for both chat participants", () => {
+  // Diese Regeln stehen in hardware-lab-route.css, das weiterhin feste Werte
+  // verwendet und nicht auf Token umgestellt wurde.
   assert.match(css, /\.hardware-lab-message p[^}]*background: #172131;[^}]*color: #e5e7eb/);
   assert.match(css, /\.hardware-lab-message\.is-user p[^}]*background: #164e63;[^}]*color: #ecfeff/);
   assert.doesNotMatch(css, /\.hardware-lab-message p[^}]*var\(--surface, #fff\)/);

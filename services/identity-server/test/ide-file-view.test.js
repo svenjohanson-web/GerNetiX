@@ -73,10 +73,11 @@ test("build terminal appends the Flash and RAM summary only for successful build
   assert.match(app, /Flash-Wert = App-Slot, nicht gesamter Gerätespeicher/);
   assert.match(app, /if \(!usage\) return "nicht ermittelt"/);
   const memorySummaryStyle = css.match(/\.terminal-summary \{[\s\S]*?\n\}/)?.[0] || "";
-  assert.match(memorySummaryStyle, /border-left: 3px solid #22d3ee/);
+  assert.match(memorySummaryStyle, /border-left: 3px solid var\(--accent\)/);
   assert.match(memorySummaryStyle, /background: rgba\(8, 145, 178, \.16\)/);
-  assert.match(memorySummaryStyle, /color: #67e8f9/);
-  assert.doesNotMatch(memorySummaryStyle, /#22c55e|#86efac|#fbbf24|#fde68a/);
+  assert.match(memorySummaryStyle, /color: var\(--accent-bright\)/);
+  // Die Erfolgs- und Warnfarben bleiben ausgeschlossen, jetzt unter ihren Token-Namen.
+  assert.doesNotMatch(memorySummaryStyle, /--status-success|--status-warn|#fbbf24/);
 });
 
 test("IDE can cancel every active software-unit build", () => {

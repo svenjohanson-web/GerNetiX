@@ -12,9 +12,9 @@ const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
   .join("\n");
 
 test("main menu uses the shared dark typography and states", () => {
-  assert.match(css, /\.app-menu\s*\{[\s\S]*?background: #111827/);
+  assert.match(css, /\.app-menu\s*\{[\s\S]*?background: var\(--surface-panel\)/);
   assert.match(css, /\.app-menu a,[\s\S]*?font-family: inherit;[\s\S]*?font-size: 15px/);
-  assert.match(css, /\.app-menu a\.active[\s\S]*?background: #164e63/);
+  assert.match(css, /\.app-menu a\.active[\s\S]*?background: var\(--accent-soft\)/);
   assert.match(css, /\.app-menu \.menu-logout[\s\S]*?color: #fca5a5/);
 });
 

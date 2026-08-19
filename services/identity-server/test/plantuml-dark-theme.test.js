@@ -26,8 +26,8 @@ test("all PlantUML renderers use the shared dark theme", () => {
   assert.match(runtime, /skinparam defaultFontColor #F8FAFC/);
   assert.match(runtime, /skinparam (?:rectangle|component|node|class)BorderColor #67E8F9/);
   assert.match(runtime, /skinparam ArrowThickness 2/);
-  assert.match(css, /\.plantuml-viewer \{[\s\S]*?background: #111827/);
-  assert.match(css, /\.plantuml-diagram \{[\s\S]*?background: #111827/);
+  assert.match(css, /\.plantuml-viewer \{[\s\S]*?background: var\(--surface-panel\)/);
+  assert.match(css, /\.plantuml-diagram \{[\s\S]*?background: var\(--surface-panel\)/);
   assert.doesNotMatch(css, /\.plantuml-(?:viewer|diagram)[^}]*background: #fff/);
   assert.doesNotMatch(html, /guided-project-view\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
@@ -52,6 +52,8 @@ test("standalone guided lessons render PlantUML on the same dark background", ()
   assert.match(renderer, /skinparam backgroundColor transparent/);
   assert.match(renderer, /skinparam rectangleBackgroundColor #1E3A5F/);
   assert.match(renderer, /skinparam rectangleBorderColor #67E8F9/);
+  // Das eigenstaendige Lektionswerkzeug hat ein eigenes Stylesheet ohne
+  // Farbtoken; hier bleiben die festen Werte richtig.
   assert.match(css, /\.plantuml-viewer \{[\s\S]*?background: #111827/);
   assert.match(css, /\.plantuml-diagram \{[\s\S]*?background: #111827/);
   assert.match(fs.readFileSync(path.join(guidedToolRoot, "index.html"), "utf8"), /lesson-renderer\.js\?v=20260809-app-modules/);

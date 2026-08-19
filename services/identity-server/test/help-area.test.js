@@ -498,7 +498,7 @@ test("keeps sensors and actuators as a cross-cutting system topic and connects m
   assert.match(informationView, /function renderExpertKnowledge[\s\S]*knowledge-expert-note[\s\S]*Expertenwissen[\s\S]*Technischer Hintergrund/);
   assert.match(css, /\.knowledge-expert-note[\s\S]*#8b5cf6/);
   assert.match(informationView, /section\.illustration[\s\S]*knowledge-section-illustration[\s\S]*loading="lazy" decoding="async"/);
-  assert.match(css, /\.knowledge-section-illustration \{[\s\S]*background: #0b1018[\s\S]*\.knowledge-section-illustration figcaption \{[\s\S]*background: #0f172a; color: #cbd5e1/);
+  assert.match(css, /\.knowledge-section-illustration \{[\s\S]*background: var\(--surface-deep\)[\s\S]*\.knowledge-section-illustration figcaption \{[\s\S]*background: #0f172a; color: var\(--text-secondary\)/);
   assert.match(helpContent, /id: "actuator-motors-and-drives", heading: "Motoren und Antriebe auswählen"[\s\S]*id: "actuator-motor-control", heading: "Motoransteuerung: Leistungsteil und Firmware"[\s\S]*id: "actuator-safe-motion", heading: "Sicher bewegen: Rückmeldung und Fehlerfälle"/);
   assert.match(helpContent, /id: "actuator-motor-theory", heading: "Zwei Motorfamilien: Wechselstrom und Gleichstrom"[\s\S]*id: "actuator-synchronous-machines", heading: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen"[\s\S]*id: "actuator-asynchronous-machines"[\s\S]*id: "actuator-dc-motors", heading: "Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt"[\s\S]*id: "actuator-bldc-basics"[\s\S]*B6-Brücke[\s\S]*sinusförmige Phasenströme/);
   assert.match(helpContent, /\/app\/learn\/\?catalog=motor-control-basics/);
