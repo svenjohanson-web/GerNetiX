@@ -75,6 +75,98 @@
   font-family: Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/*
+ * Helle Plattform-Palette.
+ *
+ * Bewusst als Zusatz zum dunklen :root-Block formuliert, nicht als Ersatz:
+ * Ohne das Attribut bleibt die Oberflaeche exakt so dunkel wie bisher. Faellt
+ * das JavaScript aus, das die Wahl anwendet, sieht der Nutzer den seit Jahren
+ * erprobten Zustand statt einer halb angewendeten Palette.
+ *
+ * Jeder Token behaelt seine ROLLE und dreht nur die Richtung um: --surface-deep
+ * ist im Dunkeln die tiefste, im Hellen die am staerksten abgesetzte Flaeche.
+ * Deshalb funktionieren die 1458 var()-Aufrufe im Stylesheet unveraendert.
+ *
+ * Der Akzent wandert von Cyan-400 (#22d3ee) auf Cyan-700 (#0e7490). Ein helles
+ * Cyan waere auf weisser Flaeche nicht lesbar; die Markenfarbe bleibt erkennbar,
+ * die Kontrastwerte erfuellen aber WCAG AA.
+ */
+html[data-public-theme="light"] {
+  color-scheme: light;
+
+  /* Flaechen: "deep" ist hier die am staerksten abgesetzte, nicht die dunkelste */
+  --surface-deep: #e9edf3;       /* Editor-, Terminal- und Codeflaechen */
+  --surface: #f5f7fa;            /* Seitenuntergrund */
+  --surface-panel: #ffffff;      /* Karten und Panels */
+  --surface-raised: #eef1f6;     /* abgesetzte Flaeche innerhalb einer Karte */
+  --surface-overlay: #ffffff;    /* deckende Flaeche fuer Dialoge und Popover */
+  --surface-overlay-inset: #eef1f6;
+
+  /* Rahmen */
+  --border-subtle: #e4e8ee;
+  --border: #cbd3de;
+  --border-strong: #9aa5b5;
+
+  /* Text: die Reihenfolge kehrt sich um, "bright" ist jetzt der dunkelste Wert */
+  --text-bright: #0b1220;
+  --text: #1c2536;
+  --text-secondary: #33405a;
+  --text-muted: #5a6678;
+  --text-dim: #6b7688;
+
+  /* Akzent */
+  --accent: #0e7490;
+  /* --accent-bright traegt Verweise und Beschriftungen (32 Verwendungen). Auf
+     weisser Flaeche erreichte Cyan-600 nur 3.7:1; dieser Wert kommt auf 6.1:1
+     und erfuellt damit WCAG AA auch bei kleiner Schrift. */
+  --accent-bright: #0b5f78;
+  --accent-strong: #155e75;
+  --accent-border: #7cc9dd;
+  --accent-soft: #e0f4fa;        /* aktive Flaeche */
+  --accent-text: #12556b;        /* Schrift auf Akzentflaeche */
+
+  /* Status */
+  --status-warn: #b45309;
+  --status-warn-text: #8a4b06;
+  --status-success: #15803d;
+  --status-success-text: #14632f;
+  --status-error: #dc2626;
+  --status-error-text: #98211f;
+  --status-info: #0369a1;
+  --status-info-text: #075985;
+
+  /* Ueberlagerung */
+  --scrim: rgba(15, 23, 42, .35);
+  --shadow: 0 16px 42px rgba(15, 23, 42, .14);
+
+  /*
+   * Bestandsnamen: nur die literalen Werte muessen hier wiederholt werden. Die
+   * uebrigen Aliase sind als var(--token) formuliert und folgen automatisch,
+   * weil sie auf demselben Element neu aufgeloest werden.
+   */
+  --line: #d6dce5;
+  /* --accent-2 traegt Verweistexte. Sky-600 erreichte nur 4.1:1; dieser Wert
+     kommt auf 5.5:1. */
+  --accent-2: #0369a1;
+
+  /*
+   * operator-shell.css bringt eine eigene, vorangestellte Token-Familie mit,
+   * weil sie auch das eigenstaendige Admin Tool bedient. Dort bleibt sie
+   * dunkel; hier wird sie an die Plattform-Palette gekoppelt, damit
+   * Kopfzeile und Seitenuntergrund mitziehen.
+   */
+  --operator-bg: var(--surface);
+  --operator-panel: var(--surface-panel);
+  --operator-panel-soft: var(--surface-raised);
+  --operator-text: var(--text);
+  --operator-muted: var(--text-muted);
+  --operator-line: var(--border);
+  --operator-accent: var(--accent);
+  --operator-accent-strong: var(--accent-strong);
+  --operator-accent-soft: var(--accent-soft);
+  --operator-shadow: var(--shadow);
+}
+
 * { box-sizing: border-box; }
 .project-version-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px; border: 1px solid rgba(34, 211, 238, .28); border-radius: 10px; background: rgba(34, 211, 238, .06); }
 .project-version-actions h3, .project-version-actions p { margin: 0; }
@@ -237,6 +329,29 @@ button.danger:hover {
   width: 42px;
   height: 42px;
   padding: 0;
+}
+/* Umschalter zwischen hellem und dunklem Design, gleiche Groesse wie der
+   Menueknopf daneben. Die Farben kommen aus Token, damit die Schaltflaeche in
+   beiden Modi zum Rest der Kopfzeile passt. */
+.platform-theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: 700 20px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.platform-theme-toggle:hover,
+.platform-theme-toggle:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  outline: none;
 }
 .menu-button span {
   display: block;
@@ -7184,3 +7299,169 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 .guided-requirements-result.is-assumptions, .guided-requirements-result.is-unclear { border-left-color: var(--status-warn); }
 .guided-requirements-result.is-knowledge, .guided-requirements-result.is-quality { border-left-color: #7c3aed; }
 .guided-requirements-result.is-criteria { border-left-color: #0891b2; }
+
+/* ==== Hellmodus: Ausnahmen von der Token-Palette ====
+ *
+ * Die Palette oben deckt 1458 Farbverwendungen ab. Diese 132 Regeln setzen
+ * ihre Farbe dagegen fest, beziehen aber die Gegenfarbe aus einem Token --
+ * heller Text auf einer Flaeche, die im Hellmodus ebenfalls hell wird, oder
+ * eine dunkle Flaeche unter Text, der dunkel wird. Beides waere unlesbar.
+ *
+ * Sie stehen bewusst hier und nicht in den urspruenglichen Regeln: Damit
+ * bleibt der Dunkelmodus Zeichen fuer Zeichen unveraendert. Ein Fehler in
+ * diesem Abschnitt kann sich nur im Hellmodus zeigen.
+ *
+ * Ermittelt wurden sie nicht von Hand, sondern durch Auswertung aller Regeln
+ * des Stylesheets: feste Schriftfarbe ohne eigene Flaeche bzw. feste Flaeche
+ * ohne eigene Schriftfarbe. Regeln, die beides selbst setzen, sind in sich
+ * stimmig und fehlen hier zu Recht.
+ */
+/* Schriftfarben, die im Dunkelmodus fest hell gesetzt sind. */
+html[data-public-theme="light"] .about-view-lead,
+html[data-public-theme="light"] .help-hardware-links a,
+html[data-public-theme="light"] .ide-board-configuration-plugin-actions span,
+html[data-public-theme="light"] .board-configuration-snapshot > header > span,
+html[data-public-theme="light"] .device-debug-message.running,
+html[data-public-theme="light"] .motor-driver-assignment footer span,
+html[data-public-theme="light"] .usb-inventory-warning-preference,
+html[data-public-theme="light"] .usb-port-missing-dialog ul,
+html[data-public-theme="light"] .usb-port-recovery-sequence ol,
+html[data-public-theme="light"] .template-component-configuration header small,
+html[data-public-theme="light"] .template-component-list small,
+html[data-public-theme="light"] .template-component-connections > small,
+html[data-public-theme="light"] .home-automation-board-recommendation strong,
+html[data-public-theme="light"] .touchscreen-game-inventory-match strong { color: var(--status-info-text); }
+html[data-public-theme="light"] .about-view-conclusion,
+html[data-public-theme="light"] .dashboard-community-card small,
+html[data-public-theme="light"] .dashboard-news-community-link:hover,
+html[data-public-theme="light"] .debug-device-list button span,
+html[data-public-theme="light"] .ide-build-profile select[data-debug-active="true"],
+html[data-public-theme="light"] .guided-code-test strong,
+html[data-public-theme="light"] .usb-port-recovery-sequence > strong { color: var(--accent-text); }
+/*
+ * .entry-card.primary strong und .dashboard-next-card small fehlen hier
+ * absichtlich. Sie stehen auf einer GEFUELLTEN Akzentflaeche, die auch im
+ * Hellmodus dunkel bleibt; ihr weisses #fff ist dort weiterhin richtig. Die
+ * automatische Auswertung konnte das nicht sehen, weil die Flaeche vom
+ * Elternelement kommt und nicht aus derselben Regel. Der Kontrastmesser im
+ * Browser hat es gefunden: 2.58:1 statt der geforderten 4.5:1.
+ */
+html[data-public-theme="light"] .guided-uml-legend strong,
+html[data-public-theme="light"] .guided-code-output output,
+html[data-public-theme="light"] .usb-port-missing-dialog .runtime-dialog-header h2,
+html[data-public-theme="light"] .usb-port-choice-dialog .runtime-dialog-header h2,
+html[data-public-theme="light"] .usb-port-identification > div strong,
+html[data-public-theme="light"] .usb-port-identification-dialog h2,
+html[data-public-theme="light"] .usb-inventory-unknown-dialog h2,
+html[data-public-theme="light"] .cancel-build-confirm-dialog h2,
+html[data-public-theme="light"] .usb-port-macos-security-hint > strong,
+html[data-public-theme="light"] .usb-flash-assignment-table-head strong { color: var(--text-bright); }
+html[data-public-theme="light"] .learning-step-rail li.done,
+html[data-public-theme="light"] .knowledge-quiz-feedback.correct { color: var(--status-success-text); }
+html[data-public-theme="light"] .learning-access-badge.purchased,
+html[data-public-theme="light"] .knowledge-expert-note strong { color: #6d28d9; }
+html[data-public-theme="light"] .embedding-pipeline-stages b,
+html[data-public-theme="light"] .board-configuration-compiler-projection > header span,
+html[data-public-theme="light"] .board-configuration-compiler-projection dd,
+html[data-public-theme="light"] .board-properties-meta dd,
+html[data-public-theme="light"] .device-debug-crash dd,
+html[data-public-theme="light"] .sensor-configuration-table tbody td,
+html[data-public-theme="light"] .device-connections-meta dd,
+html[data-public-theme="light"] .device-connections-table td,
+html[data-public-theme="light"] .build-summary-list dd,
+html[data-public-theme="light"] #ideView .meta-list dd,
+html[data-public-theme="light"] .project-repository-meta dd,
+html[data-public-theme="light"] .guided-uml-transfer,
+html[data-public-theme="light"] .guided-code-test pre,
+html[data-public-theme="light"] .development-project-choice strong { color: var(--text); }
+html[data-public-theme="light"] .board-configuration-plugin-save p,
+html[data-public-theme="light"] .device-debug-task-table tr.warning td:last-child span,
+html[data-public-theme="light"] .device-debug-event.warn .device-debug-severity,
+html[data-public-theme="light"] .hardware-table-row .hardware-catalog-hint,
+html[data-public-theme="light"] .development-template-help-card.unavailable header span,
+html[data-public-theme="light"] .guided-ota-requirement strong { color: var(--status-warn-text); }
+html[data-public-theme="light"] .device-debug-task-table tr.critical td:last-child span,
+html[data-public-theme="light"] .device-debug-event.error .device-debug-severity,
+html[data-public-theme="light"] .device-debug-event.fatal .device-debug-severity,
+html[data-public-theme="light"] .terminal-error,
+html[data-public-theme="light"] .hardware-table-row .hardware-catalog-hint.is-error,
+html[data-public-theme="light"] .guided-code-output.is-error output,
+html[data-public-theme="light"] .usb-flash-build-state.failed,
+html[data-public-theme="light"] .usb-flash-build-state.cancelled,
+html[data-public-theme="light"] .project-app-device-rejection { color: var(--status-error-text); }
+html[data-public-theme="light"] .ide-build-actions-label,
+html[data-public-theme="light"] .ide-build-profile,
+html[data-public-theme="light"] .hardware-hint-item span,
+html[data-public-theme="light"] .guided-uml-artifact header p:not(.eyebrow),
+html[data-public-theme="light"] .guided-uml-legend span { color: var(--text-muted); }
+html[data-public-theme="light"] .ide-project-information dd,
+html[data-public-theme="light"] #ideTerminalOutput { color: var(--text-secondary); }
+html[data-public-theme="light"] .code-diff-line.removed code::before { color: var(--status-error); }
+html[data-public-theme="light"] .code-diff-line.added code::before { color: var(--status-success); }
+html[data-public-theme="light"] .guided-eva-card > span,
+html[data-public-theme="light"] .guided-eva-flow,
+html[data-public-theme="light"] .guided-uml-legend h5,
+html[data-public-theme="light"] .guided-code-output strong,
+html[data-public-theme="light"] .usb-port-missing-dialog .eyebrow,
+html[data-public-theme="light"] .usb-inventory-unknown-dialog .eyebrow,
+html[data-public-theme="light"] .usb-flash-firmware-meta b { color: var(--accent-bright); }
+
+/* Flaechen, die im Dunkelmodus fest dunkel gesetzt sind. */
+html[data-public-theme="light"] .dashboard-community-card:hover,
+html[data-public-theme="light"] .dashboard-news-card:hover,
+html[data-public-theme="light"] .quiz-progress,
+html[data-public-theme="light"] .quiz-option:hover:not(:disabled),
+html[data-public-theme="light"] .knowledge-loading-bar,
+html[data-public-theme="light"] .motor-driver-configuration,
+html[data-public-theme="light"] #ideView .ide-project-browser button:hover,
+html[data-public-theme="light"] .hardware-hint-item,
+html[data-public-theme="light"] .guided-eva-card.output,
+html[data-public-theme="light"] .app-menu-group > summary:hover,
+html[data-public-theme="light"] .app-menu-group > summary:focus-visible,
+html[data-public-theme="light"] .device-wifi-setup-step,
+html[data-public-theme="light"] .guided-state-row,
+html[data-public-theme="light"] .guided-device-selection,
+html[data-public-theme="light"] .learning-software-target-panel,
+html[data-public-theme="light"] .guided-ota-explanation,
+html[data-public-theme="light"] .development-project-choice:hover,
+html[data-public-theme="light"] .hardware-table-row:nth-child(odd):not(.hardware-table-head),
+html[data-public-theme="light"] .home-automation-node,
+html[data-public-theme="light"] .touchscreen-game-inventory-match { background: var(--surface-raised); }
+html[data-public-theme="light"] .dashboard-community-personal,
+html[data-public-theme="light"] .dashboard-news-card,
+html[data-public-theme="light"] .learning-project-resume-position,
+html[data-public-theme="light"] .learning-project-progress-map,
+html[data-public-theme="light"] .learning-project-progress-lessons,
+html[data-public-theme="light"] .tamagotchi-learning-illustration,
+html[data-public-theme="light"] .knowledge-illustration-series figure > div,
+html[data-public-theme="light"] .security-door-illustrations figure,
+html[data-public-theme="light"] .embedding-pipeline,
+html[data-public-theme="light"] .embedding-logic,
+html[data-public-theme="light"] .ide-board-configuration-plugin-panel,
+html[data-public-theme="light"] .board-configuration-snapshot,
+html[data-public-theme="light"] .project-workspace-modes,
+html[data-public-theme="light"] .device-debug-stack li,
+html[data-public-theme="light"] .device-debug-log-panel,
+html[data-public-theme="light"] .ide-build-results .build-row,
+html[data-public-theme="light"] .hardware-guidance-panel,
+html[data-public-theme="light"] .code-diff-content,
+html[data-public-theme="light"] .guided-eva-board,
+html[data-public-theme="light"] .guided-uml-activity,
+html[data-public-theme="light"] .guided-uml-legend,
+html[data-public-theme="light"] .guided-embedded-lab iframe,
+html[data-public-theme="light"] .guided-code-output { background: var(--surface-deep); }
+html[data-public-theme="light"] .component-feature-card.locked,
+html[data-public-theme="light"] .power-state-card.enabled,
+html[data-public-theme="light"] .debug-device-list button.active,
+html[data-public-theme="light"] .device-debug-session.active,
+html[data-public-theme="light"] .sensor-connection-summary { background: var(--accent-soft); }
+html[data-public-theme="light"] .board-configuration-plugin-save,
+html[data-public-theme="light"] .development-board-feature-table .is-modified,
+html[data-public-theme="light"] .hardware-validation-summary,
+html[data-public-theme="light"] .hardware-required-field select,
+html[data-public-theme="light"] .hardware-required-field input,
+html[data-public-theme="light"] select.hardware-required-field,
+html[data-public-theme="light"] input.hardware-required-field,
+html[data-public-theme="light"] .hardware-required-field[data-development-board-configuration],
+html[data-public-theme="light"] .development-template-help-card.unavailable { background: #fdf3e2; }
+html[data-public-theme="light"] .hardware-validation-summary.is-complete { background: #e8f5ec; }

@@ -9,11 +9,32 @@
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
     <script src="/app/initial-view-router.js?v=20260805-hardware-lab-route-1"></script>
-    <script defer src="/app/app-shell-early.js?v=20260805-shell-menu-1"></script>
-    <link rel="stylesheet" href="/app/app.css?v=20260812-knowledge-library-3" />
-    <link rel="stylesheet" href="/app/welcome-guide.css?v=20260814-portfolio-guide-1" />
-    <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260819-theme-tokens-1" />
-    <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
+    <script>
+      /*
+       * Die Farbwahl muss vor dem ersten Zeichnen feststehen. Eine Datei mit
+       * defer liefe erst nach dem Aufbau des Dokuments, sodass die dunkle
+       * Auslieferungsfarbe kurz aufblitzen wuerde. Deshalb steht das hier
+       * eingebettet und vor den Stylesheets.
+       *
+       * Der Schluessel ist derselbe wie auf den oeffentlichen Seiten: Wer dort
+       * dunkel gewaehlt hat, findet die Plattform ebenso vor und umgekehrt.
+       */
+      (function () {
+        var gewaehlt = null;
+        try {
+          gewaehlt = window.localStorage.getItem("gernetix-public-theme");
+        } catch (fehler) {
+          /* Speicher gesperrt, etwa im privaten Fenster: dann gilt der Standard. */
+        }
+        document.documentElement.dataset.publicTheme =
+          gewaehlt === "dark" || gewaehlt === "light" ? gewaehlt : "light";
+      })();
+    </script>
+    <script defer src="/app/app-shell-early.js?v=20260819-app-theme-toggle-2"></script>
+    <link rel="stylesheet" href="/app/app.css?v=20260819-app-theme-toggle-2" />
+    <link rel="stylesheet" href="/app/welcome-guide.css?v=20260819-app-theme-toggle-2" />
+    <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260819-theme-tokens-2" />
+    <link rel="stylesheet" href="/app/operator-shell.css?v=20260819-app-theme-toggle-2" />
   </head>
   <body class="operator-surface">
     <main class="app-shell">
@@ -43,6 +64,7 @@
             </select>
           </label>
           <span id="accountBadge" class="account-badge"></span>
+          <button id="platformThemeToggle" class="platform-theme-toggle" type="button" aria-pressed="false" aria-label="Dunkles Design einschalten" title="Dunkles Design einschalten">◐</button>
           <button id="mainMenuButton" class="menu-button" type="button" aria-label="Menue oeffnen" aria-expanded="false" aria-controls="mainMenu">
             <span></span>
             <span></span>

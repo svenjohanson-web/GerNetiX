@@ -259,7 +259,7 @@ function routeAssetsMissing(route) {
 }
 
 async function loadRouteAssets(route) {
-  const version = "20260805-route-lazy-3";
+  const version = "20260819-app-theme-toggle-2";
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
       loadPlatformScript("/app/development-hardware-model.js?v=20260731-profile-inheritance-1"),

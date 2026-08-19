@@ -67,10 +67,10 @@ test("connects chat, source analysis and safe discovery actions to the board pro
 });
 
 test("invalidates cached hardware-lab UI assets", () => {
-  assert.match(html, /app\.css\?v=20260812-knowledge-library-3/);
+  assert.match(html, /app\.css\?v=20260819-app-theme-toggle-2/);
   assert.match(html, /api-client\.js\?v=20260814-single-session-1/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
-  assert.match(shellController, /const version = "20260805-route-lazy-3"/);
+  assert.match(shellController, /const version = "20260819-app-theme-toggle-2"/);
   assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadPlatformStyle\(`\/app\/hardware-lab-route\.css\?v=\$\{version\}`\)/);
