@@ -10,5 +10,6 @@ managed_components/
 services/*/.runtime/
 .env.vps
 .env.staging.local
+/gernetix-build/
 .env.remote-dev.local
 .env.build-worker.local
