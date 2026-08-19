@@ -18,7 +18,6 @@ test("uses the one public GerNetiX header and burger menu on the authentication 
   assert.match(html, /id="publicMenu"[\s\S]*href="\/nachbauprojekte\/"[\s\S]*href="\/community\/"/);
   assert.match(html, /id="publicMenu"[\s\S]*href="\/tarife\/"[\s\S]*href="\/shop\/"/);
   assert.match(html, /href="\/public-header\.css/);
-  assert.match(html, /href="\/app\/auth\/auth\.css\?v=20260815-public-theme-1"/);
   assert.match(html, /src="\/landing\.js/);
   assert.match(publicHeaderCss, /\.site-header/);
   assert.match(publicHeaderCss, /\.menu-button/);

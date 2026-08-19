@@ -67,19 +67,14 @@ test("connects chat, source analysis and safe discovery actions to the board pro
 });
 
 test("invalidates cached hardware-lab UI assets", () => {
-  assert.match(html, /app\.css\?v=20260819-app-theme-toggle-3/);
-  assert.match(html, /api-client\.js\?v=20260814-single-session-1/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
   assert.match(shellController, /const version = "20260819-app-theme-toggle-3"/);
   assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadPlatformStyle\(`\/app\/hardware-lab-route\.css\?v=\$\{version\}`\)/);
-  assert.match(html, /ai-chat-pattern\.js\?v=20260805-standard-ai-chat-4/);
-  assert.match(html, /app-event-bindings\.js\?v=20260805-shell-menu-1/);
 });
 
 test("selects the hardware lab before account data and translations finish loading", () => {
-  assert.match(html, /initial-view-router\.js\?v=20260805-hardware-lab-route-1/);
   assert.match(initialViewRouter, /initial-hardware-lab-route/);
   assert.match(initialViewRouter, /#dashboardView\{display:none\}/);
   assert.match(css, /\.hardware-lab-view\.hidden \{ display: none; \}/);

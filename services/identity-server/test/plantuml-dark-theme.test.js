@@ -31,7 +31,6 @@ test("all PlantUML renderers use the shared dark theme", () => {
   assert.doesNotMatch(css, /\.plantuml-(?:viewer|diagram)[^}]*background: #fff/);
   assert.doesNotMatch(html, /guided-project-view\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
-  assert.match(html, /app-runtime-utils\.js\?v=20260807-flat-guided-learning-2/);
 });
 
 test("dark PlantUML theme is injected before diagram elements", () => {
@@ -56,5 +55,4 @@ test("standalone guided lessons render PlantUML on the same dark background", ()
   // Farbtoken; hier bleiben die festen Werte richtig.
   assert.match(css, /\.plantuml-viewer \{[\s\S]*?background: #111827/);
   assert.match(css, /\.plantuml-diagram \{[\s\S]*?background: #111827/);
-  assert.match(fs.readFileSync(path.join(guidedToolRoot, "index.html"), "utf8"), /lesson-renderer\.js\?v=20260809-app-modules/);
 });

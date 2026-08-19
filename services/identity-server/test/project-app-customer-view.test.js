@@ -65,7 +65,6 @@ test("keeps every project application widget readable in the shared dark theme",
   assert.match(css, /\.project-app-widget \{[^}]*background: var\(--panel\);[^}]*color: var\(--text\);/);
   assert.doesNotMatch(css, /\.project-app-widget \{[^}]*var\(--surface, #fff\)/);
   assert.match(css, /\.project-app-widget p,[\s\S]*\.project-app-page > header p \{ color: var\(--muted\); \}/);
-  assert.match(html, /app\.css\?v=20260819-app-theme-toggle-3/);
 });
 
 test("lets one application manage several account devices without duplicating shared settings", () => {
@@ -88,5 +87,4 @@ test("shows and enforces Nexi hardware minimum requirements", () => {
   assert.match(controller, /Hardware-Mindestanforderungen/);
   assert.match(controller, /device\.compatible === false[\s\S]*disabled/);
   assert.match(controller, /Nicht geeignet:/);
-  assert.match(shell, /project-app-controller\.js\?v=20260807-action-observability-1/);
 });

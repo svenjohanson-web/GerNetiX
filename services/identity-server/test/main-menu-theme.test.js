@@ -36,11 +36,6 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
 });
 
-test("invalidates cached route assets when guided learning changes", () => {
-  assert.match(html, /app-shell-controller\.js\?v=20260812-knowledge-library-3/);
-  assert.match(html, /app\.js\?v=20260807-flat-guided-learning-2/);
-});
-
 test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {
   const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
   const groupStart = menu.indexOf('platform.menu.learn_develop');

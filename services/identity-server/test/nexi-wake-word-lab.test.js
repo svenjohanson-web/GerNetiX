@@ -101,8 +101,13 @@ test("guided setup mirrors the device state and never captures browser audio", (
   assert.match(source, /payload\.phrase/);
   assert.match(source, /payload\.expected_action/);
   assert.match(source, /setInterval[\s\S]*750/);
-  assert.match(source, /SpeechSynthesisUtterance/);
-  assert.match(source, /Bitte sprich mir nach/);
+  // Die Ansage kommt vom Board, nicht vom Browser: nexi_setup_repeat laesst
+  // das Geraet den Satz ueber seinen eigenen Lautsprecher wiederholen. Hier
+  // standen vorher Zusicherungen auf SpeechSynthesisUtterance und den Satz
+  // "Bitte sprich mir nach" -- beides kam in keiner Quelldatei des Projekts
+  // je vor, sodass dieser Test seit seiner Entstehung rot war.
+  assert.match(source, /triggerSpeakPrompt[\s\S]*?nexi_setup_repeat/);
+  assert.doesNotMatch(source, /speechSynthesis|SpeechSynthesisUtterance/);
   assert.doesNotMatch(source, /nexi_voice_enroll|nexi_voice_test|nexi_voice_reset/);
   assert.doesNotMatch(source, /getUserMedia|MediaRecorder|AudioContext|webkitAudioContext|SpeechRecognition|localStorage|indexedDB/);
   assert.match(commissioningPage, /integrierten Mikrofone des Boards/);

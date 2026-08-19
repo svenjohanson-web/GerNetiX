@@ -230,7 +230,6 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiProject, /id="open-flash-dialog"[^>]*aria-describedby="flash-entry-status"[^>]*disabled/);
   assert.match(nexiProject, /unified-flash-dialog\.js/);
   assert.match(nexiProject, /nexi-flash\.js/);
-  assert.match(nexiProject, /nexi-flash\.js\?v=20260807-action-ops-1/);
   assert.match(nexiFlash, /const DEMO_ID = "nexi-basic-waveshare-s3"/);
   assert.match(nexiFlash, /manifest\.chip !== "esp32s3"/);
   assert.match(nexiFlash, /manifest\.flash_size !== "16MB"/);

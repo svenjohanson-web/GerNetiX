@@ -11,7 +11,8 @@
     "check": "node --check src/index.js",
     "check:links": "node scripts/check-link-integrity.js",
     "verify:runtime-deps": "node scripts/verify-runtime-dependencies.js",
-    "verify:browser-disclosure": "node scripts/verify-browser-disclosure.js public"
+    "verify:browser-disclosure": "node scripts/verify-browser-disclosure.js public",
+    "assets:sync": "node scripts/update-asset-versions.js"
   },
   "engines": {
     "node": ">=18"

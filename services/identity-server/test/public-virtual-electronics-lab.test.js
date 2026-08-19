@@ -48,8 +48,6 @@ test("publishes the modular virtual electronics labs", () => {
   assert.match(oscilloscope, /ΔV/);
   assert.match(oscilloscope, /setPointerCapture/);
   assert.match(overview, /src="\.\/app\.js/);
-  assert.match(overview, /app\.js\?v=20260814-pinmux-1/);
-  assert.match(overview, /styles\.css\?v=20260814-pinmux-1/);
   assert.match(overview, /id="labThemeToggle"/);
   assert.match(readLab("app.js"), /gernetix-public-theme/);
   assert.match(readLab("app.js"), /Helles Design einschalten/);

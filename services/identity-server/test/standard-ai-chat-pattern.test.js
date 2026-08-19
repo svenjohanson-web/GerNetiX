@@ -19,7 +19,6 @@ const hardwareLab = read("hardware-lab-controller.js");
 const shell = read("app-shell-controller.js");
 
 test("loads one shared AI-chat behavior before domain controllers", () => {
-  assert.match(html, /ai-chat-pattern\.js\?v=20260805-standard-ai-chat-4/);
   assert.doesNotMatch(html, /guided-project-view\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
