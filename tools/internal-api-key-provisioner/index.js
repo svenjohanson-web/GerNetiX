@@ -16,19 +16,34 @@ const SIGNERS = Object.freeze([
   "provisioning-tool",
 ]);
 
+// Zuordnung der Aussteller zu ihren Praefixen in der VPS-Konfiguration. Nur
+// diese Aussteller werden im Staging-Deployment tatsaechlich verteilt.
+const DEPLOYMENT_SIGNERS = Object.freeze([
+  Object.freeze({ prefix: "IDENTITY", issuer: "identity-server" }),
+  Object.freeze({ prefix: "ADMIN_TOOL", issuer: "admin-tool" }),
+  Object.freeze({ prefix: "ADMIN_ACCESS", issuer: "admin-access-server" }),
+  Object.freeze({ prefix: "BUILD_DEPLOY", issuer: "build-deploy-server" }),
+  Object.freeze({ prefix: "TELEMETRY", issuer: "telemetry-server" }),
+  Object.freeze({ prefix: "DEVICE_VOICE", issuer: "device-voice-orchestrator" }),
+]);
+
 function parseArguments(argv) {
   const options = {};
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--output" || argument === "--version" || argument === "--previous-trust-ring") {
+    if (argument === "--output" || argument === "--version" || argument === "--previous-trust-ring" || argument === "--verify-env") {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error(`${argument} benoetigt einen Wert.`);
       if (argument === "--output") options.output = value;
       else if (argument === "--version") options.version = value;
+      else if (argument === "--verify-env") options.verifyEnv = value;
       else options.previousTrustRing = value;
     }
     else if (argument === "--help" || argument === "-h") options.help = true;
     else throw new Error(`Unbekannte Option: ${argument}`);
+  }
+  if (options.verifyEnv && (options.output || options.version || options.previousTrustRing)) {
+    throw new Error("--verify-env prueft nur eine vorhandene Konfiguration und erzeugt keine Schluessel.");
   }
   return options;
 }
@@ -37,9 +52,15 @@ function usage() {
   return [
     "Verwendung:",
     "  node index.js --output <leeres-verzeichnis-ausserhalb-des-repos> --version <version-oder-datum> [--previous-trust-ring <public-trust-ring.json>]",
+    "  node index.js --verify-env <env-datei>",
     "",
-    "Beispiel:",
+    "Beispiele:",
     "  node index.js --output /secure/gernetix/internal-api-keys-2026-09 --version 2026-09",
+    "  node index.js --verify-env /opt/gernetix/.env.vps",
+    "",
+    "--verify-env prueft eine vorhandene Konfiguration kryptografisch und erzeugt",
+    "oder veraendert dabei nichts. Eine Rotation erfolgt ausschliesslich ueber einen",
+    "ausdruecklichen Lauf mit --output und --version.",
   ].join("\n");
 }
 
@@ -195,11 +216,105 @@ provisionieren und den Vorfall auditieren.
 `;
 }
 
+function parseEnvironmentFile(content) {
+  const values = {};
+  for (const rawLine of String(content).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const separator = line.indexOf("=");
+    if (separator < 1) continue;
+    const key = line.slice(0, separator).trim();
+    let value = line.slice(separator + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    values[key] = value;
+  }
+  return values;
+}
+
+// Akzeptiert sowohl den Ring des Provisioners ({version, keys: [...]}) als auch
+// die flache Zuordnung kid -> {issuer, publicKeyB64}, die die Dienste ebenfalls lesen.
+function readTrustRingKeys(rawTrustRing) {
+  if (!String(rawTrustRing || "")) throw new Error("Der oeffentliche Trust-Ring fehlt in der Konfiguration.");
+  let parsed;
+  try { parsed = JSON.parse(rawTrustRing); } catch { throw new Error("Der oeffentliche Trust-Ring ist kein gueltiges JSON."); }
+  const entries = Array.isArray(parsed?.keys)
+    ? parsed.keys.map((entry) => [entry?.kid, entry])
+    : Object.entries(parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {});
+  if (entries.length === 0) throw new Error("Der oeffentliche Trust-Ring enthaelt keine Schluessel.");
+  const keys = new Map();
+  for (const [kid, descriptor] of entries) {
+    if (typeof kid !== "string" || !kid || !descriptor || typeof descriptor !== "object") {
+      throw new Error("Der oeffentliche Trust-Ring enthaelt einen unvollstaendigen Eintrag.");
+    }
+    if (keys.has(kid)) throw new Error("Der oeffentliche Trust-Ring enthaelt eine doppelte KID.");
+    let publicKey;
+    try {
+      publicKey = crypto.createPublicKey({ key: Buffer.from(String(descriptor.publicKeyB64 || ""), "base64"), format: "der", type: "spki" });
+    } catch { throw new Error(`Der Trust-Ring-Eintrag fuer den Aussteller ${describeIssuer(descriptor.issuer)} ist kein lesbarer Schluessel.`); }
+    if (publicKey.asymmetricKeyType !== "ed25519") {
+      throw new Error(`Der Trust-Ring-Eintrag fuer den Aussteller ${describeIssuer(descriptor.issuer)} ist kein Ed25519-Schluessel.`);
+    }
+    keys.set(kid, { issuer: String(descriptor.issuer || ""), publicKey });
+  }
+  return keys;
+}
+
+function describeIssuer(issuer) {
+  const value = String(issuer || "");
+  return SIGNERS.includes(value) ? value : "unbekannt";
+}
+
+// Prueft eine bereits verteilte Konfiguration kryptografisch. Ein vorhandener,
+// aber ungueltiger Platzhalter gilt ausdruecklich als Fehler. Es werden
+// ausschliesslich Statusangaben zurueckgegeben, niemals Schluesselwerte.
+function verifyEnvironmentKeyset({ envFile, signers = DEPLOYMENT_SIGNERS } = {}) {
+  if (!envFile) throw new Error("--verify-env benoetigt den Pfad einer Konfigurationsdatei.");
+  const values = parseEnvironmentFile(fs.readFileSync(path.resolve(envFile), "utf8"));
+  const trustRing = readTrustRingKeys(values.INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON);
+  const probe = Buffer.from("gernetix-internal-api-keyset-verification");
+  const problems = [];
+  const checked = [];
+
+  for (const { prefix, issuer } of signers) {
+    const kid = String(values[`${prefix}_INTERNAL_API_SIGNING_KEY_ID`] || "");
+    const privateKeyB64 = String(values[`${prefix}_INTERNAL_API_SIGNING_PRIVATE_KEY_B64`] || "");
+    if (!kid || !privateKeyB64) { problems.push(`${issuer}: Key-ID oder privater Schluessel fehlt.`); continue; }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(kid)) { problems.push(`${issuer}: Die Key-ID hat kein gueltiges Format.`); continue; }
+    const trusted = trustRing.get(kid);
+    if (!trusted) { problems.push(`${issuer}: Die aktive Key-ID fehlt im oeffentlichen Trust-Ring.`); continue; }
+    if (trusted.issuer && trusted.issuer !== issuer) { problems.push(`${issuer}: Die aktive Key-ID gehoert im Trust-Ring zu einem anderen Aussteller.`); continue; }
+
+    let privateKey;
+    try {
+      privateKey = crypto.createPrivateKey({ key: Buffer.from(privateKeyB64, "base64"), format: "der", type: "pkcs8" });
+    } catch { problems.push(`${issuer}: Der private Schluessel ist kein lesbares PKCS8-DER.`); continue; }
+    if (privateKey.asymmetricKeyType !== "ed25519") { problems.push(`${issuer}: Der private Schluessel ist kein Ed25519-Schluessel.`); continue; }
+
+    let matches = false;
+    try { matches = crypto.verify(null, probe, trusted.publicKey, crypto.sign(null, probe, privateKey)); } catch { matches = false; }
+    if (!matches) { problems.push(`${issuer}: Privater Schluessel und Trust-Ring-Eintrag gehoeren nicht zusammen.`); continue; }
+    checked.push(issuer);
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`Die vorhandene interne API-Schluesselkonfiguration ist ungueltig:\n  - ${problems.join("\n  - ")}`);
+  }
+  return { trustRingKeyCount: trustRing.size, verifiedSigners: checked };
+}
+
 function main(argv = process.argv.slice(2), logger = console) {
   const options = parseArguments(argv);
   if (options.help) {
     logger.log(usage());
     return { help: true };
+  }
+  if (options.verifyEnv) {
+    const verification = verifyEnvironmentKeyset({ envFile: options.verifyEnv });
+    logger.log(`Interne API-Schluessel geprueft: ${verification.verifiedSigners.length} Aussteller, ${verification.trustRingKeyCount} Trust-Ring-Schluessel.`);
+    logger.log("Jeder private Schluessel ist ein gueltiger Ed25519-Schluessel und passt zu seinem Trust-Ring-Eintrag.");
+    return { verified: true, ...verification };
   }
   const result = generateProvisioningBundle(options);
   logger.log(`${result.signerCount} Ed25519-Schluesselpaare wurden sicher unter ${result.target} erzeugt.`);
@@ -217,12 +332,16 @@ if (require.main === module) {
 }
 
 module.exports = {
+  DEPLOYMENT_SIGNERS,
   SIGNERS,
   generateProvisioningBundle,
   main,
   parseArguments,
+  parseEnvironmentFile,
   prepareOutputDirectory,
   readPreviousTrustKeys,
+  readTrustRingKeys,
   rotationInstructions,
   validateVersion,
+  verifyEnvironmentKeyset,
 };

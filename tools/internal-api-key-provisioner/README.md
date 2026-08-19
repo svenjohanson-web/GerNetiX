@@ -33,3 +33,22 @@ Die erzeugten Dateien sind Deployment-Secrets und duerfen nicht in Git
 aufgenommen werden. Nur `public-trust-ring.json` ist zur Verteilung an
 pruefende Dienste bestimmt. Jedem ausstellenden Dienst wird ausschliesslich
 seine eigene Datei aus `private/` bereitgestellt.
+
+## Vorhandene Konfiguration pruefen
+
+```shell
+node index.js --verify-env /opt/gernetix/.env.vps
+```
+
+Der Pruefmodus liest eine bereits verteilte Konfiguration und bestaetigt fuer
+jeden Aussteller, dass die Key-ID im oeffentlichen Trust-Ring enthalten ist, der
+private Schluessel ein lesbares Ed25519-PKCS8-DER ist und beide ueber eine
+Signaturprobe tatsaechlich zusammengehoeren. Ein vorhandener, aber ungueltiger
+Platzhalter gilt ausdruecklich als Fehler. Ausgegeben werden nur Anzahl und
+Ausstellername; Schluesselwerte erscheinen nie in der Ausgabe.
+
+Das Staging-Deployment ruft diesen Modus bei vollstaendig konfiguriertem
+Bestand automatisch auf und bricht bei einem ungueltigen Satz ab. Es erzeugt
+dabei niemals Ersatzschluessel: Eine Rotation bleibt ein ausdruecklicher,
+getrennter Lauf mit `--output` und `--version` samt kontrollierter Verteilung.
+Pruef- und Erzeugungsmodus schliessen sich gegenseitig aus.

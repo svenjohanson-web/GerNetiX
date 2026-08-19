@@ -35,6 +35,30 @@ append_staging_value() {
   printf '%s=%s\n' "$value_name" "$value" >> "$env_file"
 }
 
+# Prueft eine bereits verteilte Schluesselkonfiguration kryptografisch. Ein
+# Deployment darf einen ungueltigen Bestand weder akzeptieren noch selbst
+# ersetzen: eine Rotation bleibt ein ausdruecklicher, getrennter Vorgang.
+verify_internal_api_keyset() {
+  env_path=$(cd "$(dirname "$env_file")" && pwd)/$(basename "$env_file")
+  if docker run --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    -v "$repo_dir:/app:ro" \
+    -v "$env_path:/verify/env:ro" \
+    -w /app \
+    node:24-bookworm-slim \
+    node tools/internal-api-key-provisioner/index.js --verify-env /verify/env; then
+    return
+  fi
+  echo "Die vorhandene interne API-Schluesselkonfiguration ist ungueltig." >&2
+  echo "Ein Deployment rotiert grundsaetzlich keine Schluessel. Erzeuge einen neuen," >&2
+  echo "zusammengehoerigen Satz ausdruecklich mit tools/internal-api-key-provisioner" >&2
+  echo "und verteile ihn kontrolliert, bevor erneut deployed wird." >&2
+  exit 1
+}
+
 ensure_internal_api_keyset() {
   key_version=${INTERNAL_API_KEY_VERSION:-2026-08}
   key_dir=${GERNETIX_INTERNAL_API_KEY_DIR:-/var/lib/gernetix/internal-api-keys/$key_version}
@@ -45,7 +69,10 @@ ensure_internal_api_keyset() {
     required_count=$((required_count + 1))
     if grep -q "^${value_name}=." "$env_file"; then configured_count=$((configured_count + 1)); fi
   done
-  if [ "$configured_count" -eq "$required_count" ]; then return; fi
+  if [ "$configured_count" -eq "$required_count" ]; then
+    verify_internal_api_keyset
+    return
+  fi
   if [ "$configured_count" -ne 0 ]; then
     echo "Interne API-Schluessel sind nur teilweise konfiguriert; automatische Vermischung wird abgebrochen." >&2
     exit 1
