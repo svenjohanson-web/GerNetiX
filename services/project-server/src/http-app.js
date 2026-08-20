@@ -10,7 +10,10 @@ const prefix = "/api/projects";
 
 function createHttpApp(options) {
   const service = options.service;
-  const internalAuthSecret = String(options.internalAuthSecret || "");
+  // Die aktuelle interne Authentifizierung verwendet einen Ed25519-Keyring.
+  // Er darf nicht in einen String umgewandelt werden, sonst faellt die
+  // Verifikation stillschweigend in den alten HMAC-Vertrag zurueck.
+  const internalAuthSecret = options.internalAuthSecret || "";
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);

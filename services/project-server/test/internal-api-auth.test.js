@@ -1,10 +1,11 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const http = require("node:http");
 const test = require("node:test");
 const { createHttpApp, sendJson } = require("../src/http-app");
-const { issueInternalToken } = require("../../shared/internal-api-auth");
+const { issueInternalToken, readInternalApiAuthConfig } = require("../../shared/internal-api-auth");
 
 const secret = "project-server-internal-contract-secret";
 
@@ -67,6 +68,43 @@ test("project ownership lookup exposes only a narrow projection to its dedicated
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token({ scopes: ["project.ownership.resolve"] })}` } });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { project_id: "project-a", account_id: "account-a", allocated_device_ids: ["device-a", "device-b"] });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("accepts signed Ed25519 service and account delegation tokens", async () => {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync("ed25519");
+  const trustRing = JSON.stringify({
+    "identity-current": {
+      issuer: "identity-server",
+      publicKeyB64: publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+    },
+  });
+  const identityAuth = readInternalApiAuthConfig({
+    INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON: trustRing,
+    INTERNAL_API_SIGNING_KEY_ID: "identity-current",
+    INTERNAL_API_SIGNING_PRIVATE_KEY_B64: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64"),
+  }, { serviceId: "identity-server" });
+  const projectAuth = readInternalApiAuthConfig({ INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON: trustRing }, { serviceId: "project-server" });
+  const app = createHttpApp({
+    internalAuthSecret: projectAuth,
+    service: { listProjects: async () => [] },
+  });
+  const server = http.createServer((req, res) => app(req, res).catch((error) => sendJson(res, error.status || 500, { error: error.code || "internal" })));
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const claims = { iss: "identity-server", sub: "identity-server", aud: "project-server", scopes: ["project.read"] };
+  const service = issueInternalToken(claims, identityAuth);
+  const delegation = issueInternalToken({
+    ...claims,
+    kind: "delegated_user_action",
+    context: { account_id: "account-a" },
+  }, identityAuth);
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/projects?user_id=account-a`, {
+      headers: { Authorization: `Bearer ${service}`, "X-GerNetiX-Project-Delegation": delegation },
+    });
+    assert.equal(response.status, 200);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
