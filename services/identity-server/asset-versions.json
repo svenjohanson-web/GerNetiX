@@ -26,16 +26,16 @@
       "pruefsumme": "df98394518b5dd27"
     },
     "/app/app-dashboard-controller.js": {
-      "version": "20260820-peers-2",
-      "pruefsumme": "2eaf9adfd4031b38"
+      "version": "20260820-esm-state-1",
+      "pruefsumme": "b181b741c13fba4e"
     },
     "/app/app-event-bindings.js": {
       "version": "20260819-esm-schritt-1",
       "pruefsumme": "7d02ac8e3a598f53"
     },
     "/app/app-project-controller.js": {
-      "version": "20260808-learning-progress-map-2",
-      "pruefsumme": "6201c93124877bf0"
+      "version": "20260820-esm-state-1",
+      "pruefsumme": "813f6b60a36f46a9"
     },
     "/app/app-push-controller.js": {
       "version": "20260801-app-modules-1",
@@ -46,8 +46,8 @@
       "pruefsumme": "d525da0a6d415c9c"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-esm-app-1",
-      "pruefsumme": "ac9cc44217382316"
+      "version": "20260820-esm-state-1",
+      "pruefsumme": "5763c89c9e9d0eda"
     },
     "/app/app-shell-early.js": {
       "version": "20260819-app-theme-toggle-3",
@@ -154,8 +154,8 @@
       "pruefsumme": "d4486ea22c6f9f35"
     },
     "/app/platform-state.js": {
-      "version": "20260820-peers-1",
-      "pruefsumme": "1523b5e34d3abf15"
+      "version": "20260820-esm-state-1",
+      "pruefsumme": "df9fdd63342daf63"
     },
     "/app/project-app-controller.js": {
       "version": "20260819-umd-root-fix-1",

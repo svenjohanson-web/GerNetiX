@@ -1,4 +1,12 @@
 // GerNetiX platform module extracted from app.js.
+
+/*
+ * Die zuletzt gezeichnete Route. Nur diese Datei setzt und liest sie; sie
+ * dient dem Vergleich beim Routenwechsel und ist damit Zustand der Schale,
+ * nicht der Plattform.
+ */
+let lastRenderedRoute = "";
+
 async function bootstrap() {
   if (isPublicInformationPage) {
     const informationAssetsPromise = isPublicKnowledgePage ? loadKnowledgeContentAssets() : Promise.resolve();
@@ -421,11 +429,11 @@ function applyDevelopmentSummary(summary = null) {
 
 async function initializePlatformI18n() {
   try {
-    platformI18n = await window.GerNetiXI18n.create({
+    state.i18n = await window.GerNetiXI18n.create({
       accountLocale: state.account?.preferred_locale || "",
     });
-    platformI18n.translateDocument();
-    syncLanguageControls(platformI18n.locale);
+    state.i18n.translateDocument();
+    syncLanguageControls(state.i18n.locale);
   } catch (error) {
     console.warn("Platform translations could not be initialized.", error);
   }
@@ -437,11 +445,11 @@ function syncLanguageControls(locale) {
 }
 
 async function changePlatformLocale(event) {
-  if (!platformI18n) return;
-  const previousLocale = platformI18n.locale;
+  if (!state.i18n) return;
+  const previousLocale = state.i18n.locale;
   const nextLocale = event.target.value;
   try {
-    await platformI18n.setLocale(nextLocale);
+    await state.i18n.setLocale(nextLocale);
     syncLanguageControls(nextLocale);
     platformComponentIfBuilt("quiz")?.render();
     renderRoute();
@@ -450,7 +458,7 @@ async function changePlatformLocale(event) {
       state.account = { ...state.account, ...result.account };
     }
   } catch (error) {
-    await platformI18n.setLocale(previousLocale);
+    await state.i18n.setLocale(previousLocale);
     syncLanguageControls(previousLocale);
     platformComponentIfBuilt("quiz")?.render();
     renderRoute();
@@ -744,7 +752,7 @@ registerPlatformComponent("learningProject", () => LearningProjectController.cre
 
 registerPlatformComponent("quiz", () => GerNetiXQuiz.create({
     mount: document.querySelector("#quizMount"),
-    getLocale: () => platformI18n?.locale || document.documentElement.lang || "de",
+    getLocale: () => state.i18n?.locale || document.documentElement.lang || "de",
   }));
 
 function renderInformationTopic() {

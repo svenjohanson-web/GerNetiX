@@ -44,7 +44,7 @@ test("learning interface labels follow the selected locale", () => {
 
 test("language changes rerender catalog, personal projects and active learning views", () => {
   assert.match(app, /if \(route === "learn"\) \{[\s\S]*renderProjects\(\);[\s\S]*renderLearn\(\);/);
-  assert.match(app, /await platformI18n\.setLocale\(nextLocale\)[\s\S]*renderRoute\(\)/);
+  assert.match(app, /await state\.i18n\.setLocale\(nextLocale\)[\s\S]*renderRoute\(\)/);
   assert.match(app, /personalLearningProjects\(\)[\s\S]*LearningProjectLocales\.project\(project, currentLearningLocale\(\)\)/);
   assert.match(controller, /localizeProject\(project\)[\s\S]*LearningProjectView\.render/);
   assert.match(view, /learningText\("allProjects", "Alle Lernprojekte"\)/);

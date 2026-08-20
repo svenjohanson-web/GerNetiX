@@ -430,7 +430,7 @@ function learningCatalogProjects() {
 }
 
 function currentLearningLocale() {
-  return platformI18n?.locale || document.documentElement.lang || "de";
+  return state.i18n?.locale || document.documentElement.lang || "de";
 }
 
 function learningText(key, fallback) {

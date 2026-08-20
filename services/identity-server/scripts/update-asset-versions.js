@@ -10,11 +10,35 @@
  *
  * Aufruf: npm run assets:sync --prefix services/identity-server
  *         npm run assets:sync -- --pruefen   (nur melden, nichts schreiben)
+ *         npm run assets:sync -- --anheben 20260820-esm-state-1
+ *
+ * --anheben setzt zuvor alle Dateien, deren Inhalt sich ohne Versionswechsel
+ * geaendert hat, auf die angegebene Version. Das ist der Normalfall nach einer
+ * Aenderung; ohne den Schalter meldet das Werkzeug nur und bricht ab.
  */
 const fs = require("node:fs");
-const { ermittleStand, liesManifest, MANIFEST, schreibeImportMap } = require("./asset-versions");
+const { ermittleStand, liesManifest, MANIFEST, schreibeImportMap, hebeVersionenAn } = require("./asset-versions");
 
 const nurPruefen = process.argv.includes("--pruefen");
+const anhebenIndex = process.argv.indexOf("--anheben");
+const neueVersion = anhebenIndex >= 0 ? process.argv[anhebenIndex + 1] : null;
+
+if (anhebenIndex >= 0 && !/^[0-9a-z-]+$/.test(neueVersion || "")) {
+  console.error("--anheben braucht eine Version, etwa: --anheben 20260820-esm-state-1");
+  process.exit(1);
+}
+
+// Anheben muss vor der Import Map laufen: die Map leitet sich aus den
+// Versionen im Dokument ab und wuerde sonst die alten uebernehmen.
+if (neueVersion) {
+  const { angehoben, konstanten } = hebeVersionenAn(neueVersion);
+  if (angehoben.length === 0) console.log("Keine Datei brauchte eine neue Version.");
+  else {
+    console.log(`Auf ${neueVersion} angehoben: ${angehoben.length} Dateien.`);
+    for (const p of angehoben) console.log(`  - ${p}`);
+    for (const k of konstanten) console.log(`  (Ladegruppe ${k} mit angehoben)`);
+  }
+}
 
 // Zuerst die Import Map nachziehen: sie leitet sich aus denselben Versionen ab.
 if (!nurPruefen && schreibeImportMap()) console.log("Import Map nachgezogen.");

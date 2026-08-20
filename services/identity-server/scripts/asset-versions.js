@@ -163,6 +163,71 @@ function liesManifest() {
 }
 
 /*
+ * Cache-Versionen geaenderter Dateien anheben.
+ *
+ * Der Waechter oben meldet zuverlaessig, wenn sich der Inhalt einer Datei
+ * geaendert hat, ohne dass ihre Version stieg. Das Anheben selbst war
+ * Handarbeit: den Verweis in index.html suchen, die Zeichenkette tauschen,
+ * fuer jede betroffene Datei erneut. Bei einem Umbau, der Dutzende Dateien
+ * nacheinander anfasst, ist das die Stelle, an der ein Verweis vergessen wird.
+ *
+ * Zwei Verweisformen sind zu bedienen. Die haeufige nennt die Version direkt.
+ * Die nachgeladenen Route-Dateien beziehen sie ueber eine gemeinsame Konstante;
+ * dort wird die Konstante angehoben. Das nimmt die Nachbarn derselben Gruppe
+ * mit -- folgenlos, es kostet einen einmaligen Neuabruf.
+ */
+function hebeVersionenAn(neueVersion) {
+  const { eintraege } = ermittleStand();
+  const vorher = liesManifest();
+  if (!vorher) return { angehoben: [], konstanten: [] };
+
+  const betroffen = new Set();
+  for (const [pfad, jetzt] of Object.entries(eintraege)) {
+    const alt = vorher.dateien?.[pfad];
+    if (alt && alt.pruefsumme !== jetzt.pruefsumme && alt.version === jetzt.version) betroffen.add(pfad);
+  }
+  if (betroffen.size === 0) return { angehoben: [], konstanten: [] };
+
+  const angehoben = new Set();
+  const konstanten = new Set();
+
+  const bearbeite = (datei, istLadeSteuerung) => {
+    const roh = fs.readFileSync(datei, "utf8");
+    let quelle = roh;
+    for (const pfad of betroffen) {
+      const maskiert = pfad.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const direkt = new RegExp(`(["'\`])${maskiert}\\?v=([^"'\`]+)\\1`, "g");
+      quelle = quelle.replace(direkt, (treffer, anfuehrung, version) => {
+        if (version === neueVersion) return treffer;
+        angehoben.add(pfad);
+        return `${anfuehrung}${pfad}?v=${neueVersion}${anfuehrung}`;
+      });
+      if (!istLadeSteuerung) continue;
+      // Vorlagenform: die zustaendige Konstante anheben.
+      const vorlage = new RegExp(`${maskiert}\\?v=\\$\\{version\\}`);
+      const treffer = quelle.match(vorlage);
+      if (!treffer) continue;
+      const alteKonstante = versionVorPosition(quelle, treffer.index);
+      if (!alteKonstante || alteKonstante === neueVersion) continue;
+      quelle = quelle.replace(`const version = "${alteKonstante}"`, `const version = "${neueVersion}"`);
+      angehoben.add(pfad);
+      konstanten.add(alteKonstante);
+    }
+    if (quelle !== roh) fs.writeFileSync(datei, quelle, "utf8");
+  };
+
+  for (const datei of htmlDateien(OEFFENTLICH)) bearbeite(datei, false);
+  const ladeSteuerung = path.join(OEFFENTLICH, "app", "app-shell-controller.js");
+  if (fs.existsSync(ladeSteuerung)) bearbeite(ladeSteuerung, true);
+
+  const vergessen = [...betroffen].filter((p) => !angehoben.has(p));
+  if (vergessen.length > 0) {
+    throw new Error(`Kein Verweis gefunden fuer: ${vergessen.join(", ")}`);
+  }
+  return { angehoben: [...angehoben].sort(), konstanten: [...konstanten].sort() };
+}
+
+/*
  * Import Map fuer die ES-Module der Plattform.
  *
  * Module loesen ihre Bezuege ueber URLs auf. Weil hier jede Datei mit ?v=
@@ -226,4 +291,4 @@ function pruefeImportMap() {
   return fehler;
 }
 
-module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL, schreibeImportMap, pruefeImportMap };
+module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL, schreibeImportMap, pruefeImportMap, hebeVersionenAn };
