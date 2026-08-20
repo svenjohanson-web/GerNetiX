@@ -469,6 +469,9 @@ function configureSerialServiceInstallLink(link) {
   return link;
 }
 
+// Gegenstueck zur Meldung aus dem Build-Controller.
+window.addEventListener(SERIAL_SERVICE_CHOICE_EVENT, () => { void showSerialServiceChoiceDialog(); });
+
 async function showSerialServiceChoiceDialog() {
   if (!state.platformDownloads.length) await loadPlatformDownloads();
   const dialog = document.querySelector("#serialServiceChoiceDialog");
@@ -711,25 +714,20 @@ function renderInitialRoute() {
   }
 }
 
-function learningProject() {
-  if (!learningProjectController) {
-    learningProjectController = LearningProjectController.create({
-      state,
-      postJson,
-      navigate,
-      renderLearn,
-      renderDashboard,
-      renderGuidedProject,
-      projectById,
-      loadProjectDetail,
-      progressFor,
-      escapeHtml,
-      localizeProject: (project) => LearningProjectLocales.project(project, currentLearningLocale()),
-      learningText,
-    });
-  }
-  return learningProjectController;
-}
+registerPlatformComponent("learningProject", () => LearningProjectController.create({
+    state,
+    postJson,
+    navigate,
+    renderLearn,
+    renderDashboard,
+    renderGuidedProject,
+    projectById,
+    loadProjectDetail,
+    progressFor,
+    escapeHtml,
+    localizeProject: (project) => LearningProjectLocales.project(project, currentLearningLocale()),
+    learningText,
+  }));
 
 function quiz() {
   if (!quizController) {

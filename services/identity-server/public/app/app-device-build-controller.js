@@ -322,7 +322,8 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
   const serialServiceAvailable = await state.serialService.available();
   if (!serialServiceAvailable && !navigator.serial) {
     setFlashStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
-    showSerialServiceChoiceDialog();
+    // Bitte an die Huelle, den Dialog zu zeigen -- statt sie von unten zu rufen.
+    window.dispatchEvent(new CustomEvent(SERIAL_SERVICE_CHOICE_EVENT));
     return;
   }
   if (!serialServiceAvailable && firmwareUnits.length > 1 && !targetConfirmed) {

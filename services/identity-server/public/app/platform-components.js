@@ -29,3 +29,11 @@ function platformComponent(name) {
 function deviceOnboarding() { return platformComponent("deviceOnboarding"); }
 function guidedProjectView() { return platformComponent("guidedProjectView"); }
 function developmentPlatform() { return platformComponent("developmentPlatform"); }
+function learningProject() { return platformComponent("learningProject"); }
+
+/*
+ * Meldungen von unten nach oben. Ein Controller, der die Huelle etwas tun
+ * lassen will, ruft sie nicht mehr, sondern meldet es. Der Name steht hier,
+ * weil beide Seiten ihn brauchen und diese Datei an nichts haengt.
+ */
+const SERIAL_SERVICE_CHOICE_EVENT = "gernetix:serial-service-choice";

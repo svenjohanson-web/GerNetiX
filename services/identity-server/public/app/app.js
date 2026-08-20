@@ -8,7 +8,6 @@ const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
 if (isPublicInformationPage) document.body.classList.add("public-help-page");
 
 let projectRepositoryCardController = null;
-let learningProjectController = null;
 let projectAppController = null;
 let quizController = null;
 
