@@ -221,14 +221,28 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, migrateArtifacts = false, forcedPreviousCommit = "" }) {
-  if (forcedPreviousCommit && !/^[0-9a-f]{40}$/.test(forcedPreviousCommit)) {
-    throw new Error("Der erzwungene vorherige Commit ist ungueltig.");
-  }
+/*
+ * forceFullDeployment: dem Server keinen vorherigen Commit nennen.
+ *
+ * Der Server entscheidet den Modus selbst, aus der Differenz zum genannten
+ * Commit. Ohne Angabe hat er nichts zu vergleichen und nimmt den
+ * vollstaendigen Zweig -- das ist der einzige Weg, ihn wirklich dazu zu
+ * bringen.
+ *
+ * Frueher wurde hier HEAD^ geschickt. Der Server leitete daraus wieder einen
+ * Modus ab, und wenn diese eine Aenderung nur einen Dienst betraf, wurde es
+ * eine inkrementelle Auslieferung -- waehrend hier "full" auf dem Schirm
+ * stand. Bei der Wiederaufnahme eines abgebrochenen Laufs lief die Reparatur
+ * so am kaputten Dienst vorbei.
+ *
+ * Der Server begruendet das mit "Vorheriger Commit fehlt". Das stimmt, ist
+ * hier aber Absicht und kein Mangel.
+ */
+function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false, migrateArtifacts = false, forceFullDeployment = false }) {
   const commands = [
     `cd ${shellQuote(remoteDir)}`,
     "if [ -n \"$(git status --porcelain --untracked-files=no)\" ]; then echo 'Die VPS-Arbeitskopie enthaelt lokale Aenderungen.' >&2; exit 1; fi",
-    forcedPreviousCommit ? `previous_commit=${shellQuote(forcedPreviousCommit)}` : "previous_commit=$(git rev-parse HEAD)",
+    forceFullDeployment ? "previous_commit=''" : "previous_commit=$(git rev-parse HEAD)",
     `git fetch origin ${shellQuote(branch)}`,
     `git switch --detach ${shellQuote(commit)}`,
     publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : 'GERNETIX_STAGING_LOCK_HELD=1 ./scripts/staging/remote-deploy.sh "$previous_commit"',
@@ -299,8 +313,7 @@ function main() {
   const upstream = run("git", ["rev-parse", "@{upstream}"], { capture: true, quiet: true });
   if (commit !== upstream) throw new Error("Der aktuelle Commit ist noch nicht zum Upstream-Branch gepusht.");
 
-  const forcedPreviousCommit = args.forceFull ? run("git", ["rev-parse", "HEAD^"], { capture: true, quiet: true }) : "";
-  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, migrateArtifacts: args.migrateArtifacts, forcedPreviousCommit });
+  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo, migrateArtifacts: args.migrateArtifacts, forceFullDeployment: args.forceFull });
   process.stdout.write(`Staging-Deploy: ${branch} @ ${commit.slice(0, 12)} -> ${host}:${remoteDir}\n`);
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${host} ${command}\n`);
@@ -314,8 +327,13 @@ function main() {
   const changedFiles = historyIsLinear
     ? run("git", ["diff", "--name-only", previousCommit, commit], { capture: true, quiet: true }).split(/\r?\n/).filter(Boolean)
     : [];
+  /*
+   * Bei --force-full bekommt der Server keinen Vergleichspunkt und nimmt
+   * darum den vollstaendigen Zweig. Die Anzeige darf das behaupten, weil sie
+   * es diesmal auch bewirkt.
+   */
   const plan = args.forceFull
-    ? { mode: "full", services: [], edge: false, firewall: false, reasons: ["Ausdrueckliche Wiederaufnahme eines abgebrochenen vollstaendigen Deployments."], changedFiles }
+    ? { mode: "full", services: [], edge: false, firewall: false, reasons: ["Ausdrueckliche Wiederaufnahme: der Server bekommt keinen Vergleichspunkt und erstellt alles neu."], changedFiles }
     : createDeploymentPlan(changedFiles, { historyIsLinear });
   process.stdout.write(formatDeploymentPlan(plan, previousCommit, commit));
   if (args.plan) return;

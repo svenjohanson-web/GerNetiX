@@ -164,22 +164,36 @@ test("quotes remote values and deploys an exact commit", () => {
   assert.match(command, /flock -E 75 -n \/var\/lock\/gernetix-staging-deploy\.lock/);
 });
 
-test("uses a validated earlier commit to repeat a full deployment", () => {
-  const previousCommit = "f".repeat(40);
-  const command = remoteDeployCommand({
+/*
+ * Ein erzwungener Vollauf muss auch einer sein.
+ *
+ * Der Server leitet den Modus aus der Differenz zum genannten Commit ab.
+ * Frueher schickte --force-full HEAD^; betraf dieser eine Commit nur einen
+ * Dienst, wurde daraus eine inkrementelle Auslieferung -- waehrend lokal
+ * "full" gemeldet wurde. Bei der Wiederaufnahme eines abgebrochenen Laufs
+ * lief die Reparatur so am kaputten Dienst vorbei.
+ *
+ * Ohne Vergleichspunkt hat der Server nichts abzuleiten.
+ */
+test("an explicit full deployment leaves the server nothing to derive from", () => {
+  // Der Befehl ist fuer die Shell maskiert; geprueft wird die Aussage.
+  const ohneMaskierung = (befehl) => befehl.split(`'"'"'`).join("'");
+
+  const erzwungen = ohneMaskierung(remoteDeployCommand({
     branch: "main",
     commit: "0".repeat(40),
     remoteDir: "/opt/gernetix",
-    forcedPreviousCommit: previousCommit,
-  });
-  assert.match(command, /previous_commit=/);
-  assert.match(command, new RegExp(previousCommit));
-  assert.throws(() => remoteDeployCommand({
+    forceFullDeployment: true,
+  }));
+  assert.match(erzwungen, /previous_commit=''/);
+  assert.doesNotMatch(erzwungen, /previous_commit=\$\(git rev-parse HEAD\)/);
+
+  const normal = ohneMaskierung(remoteDeployCommand({
     branch: "main",
     commit: "0".repeat(40),
     remoteDir: "/opt/gernetix",
-    forcedPreviousCommit: "main; reboot",
-  }), /ungueltig/);
+  }));
+  assert.match(normal, /previous_commit=\$\(git rev-parse HEAD\)/);
 });
 
 /*
