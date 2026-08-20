@@ -128,6 +128,8 @@ Der lokale PostgreSQL-Port wird durch den SSH-Tunnel auf die WireGuard-gebundene
 
 Die kanonischen Identity-Daten liegen ausschliesslich in `gernetix_runtime` auf PostgreSQL. Fuer schnelle Entwicklungszyklen darf Identity lokal auf `127.0.0.1:4300` laufen. `tools/start-identity-remote-dev.js` erzwingt dabei PostgreSQL und verbindet die Datenbank sowie die Domaenendienste ueber den beschriebenen SSH-/WireGuard-Tunnel. Eine lokale Identity-SQLite oder lokale Account-/Session-Persistenz ist nicht zulaessig.
 
+Die lokale Datei `.env.remote-dev.local` benoetigt ausser Datenbankpasswort und `RUNTIME_STATE_ENCRYPTION_KEY` auch die freigegebene Identity-Dienstidentitaet aus der geschuetzten Staging-Konfiguration: `INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON` sowie `INTERNAL_API_SIGNING_KEY_ID` und `INTERNAL_API_SIGNING_PRIVATE_KEY_B64`. Die beiden Schluesselwerte duerfen alternativ mit dem Deployment-Praefix `IDENTITY_INTERNAL_API_SIGNING_*` hinterlegt werden. Sie werden nicht aus dem VPS ausgelesen und nicht in Logs ausgegeben.
+
 Verbindlicher lokaler Identity-Ablauf:
 
 1. Gezielte Identity-Tests ausfuehren, ohne einen Server vorsorglich neu zu starten:

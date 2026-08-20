@@ -217,8 +217,8 @@ const checkIdentityDbHealth = async () => {
     };
   }
   const startedAt = Date.now();
+  let timer;
   try {
-    let timer;
     const timeout = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error("PostgreSQL-Healthcheck timed out.")), identityDbHealthTimeoutMs);
       timer?.unref?.();
