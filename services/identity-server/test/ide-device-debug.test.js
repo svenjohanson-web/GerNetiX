@@ -11,6 +11,13 @@ const app = readPlatformAppSource();
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const controllerSource = fs.readFileSync(path.resolve(__dirname, "../public/app/device-debug-controller.js"), "utf8");
+/*
+ * Die Registratur wird im Browser vor diesem Controller geladen; er meldet
+ * sich beim Laden bei ihr an und verwendet ihre Ereignisnamen. Die Sandbox
+ * bildet dieselbe Reihenfolge ab, statt die Namen hier zu wiederholen.
+ */
+const registrySource = fs.readFileSync(path.resolve(__dirname, "../public/app/platform-components.js"), "utf8");
+const debugSandboxSource = `${registrySource}\n${controllerSource}\nGerNetiXDeviceDebug;`;
 const shell = fs.readFileSync(path.resolve(__dirname, "../public/app/app-shell-controller.js"), "utf8");
 
 test("Debug & Diagnose is a separate project workspace and not a component-tree entry", () => {
@@ -68,9 +75,9 @@ test("crash reports require an exact build id while internal basissoftware symbo
 test("capability-based runtime diagnostics classify only protected basissoftware failures for operator escalation", () => {
   const context = {
     document: { querySelector: () => null },
-    window: {},
+    window: { addEventListener() {} },
   };
-  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const debug = vm.runInNewContext(debugSandboxSource, context);
   const incidents = debug.basissoftwareCriticalIncidents({
     diagnostics: {
       schema_version: 2,
@@ -100,8 +107,8 @@ test("capability-based runtime diagnostics classify only protected basissoftware
 });
 
 test("AVR diagnostics expose only their supported no-RTOS capabilities", () => {
-  const context = { document: { querySelector: () => null }, window: {} };
-  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const context = { document: { querySelector: () => null }, window: { addEventListener() {} } };
+  const debug = vm.runInNewContext(debugSandboxSource, context);
   const status = {
     diagnostics: {
       schema_version: 2,
@@ -124,9 +131,9 @@ test("AVR diagnostics expose only their supported no-RTOS capabilities", () => {
 test("feedback text is normalized into severity, subsystem and monotonic uptime", () => {
   const context = {
     document: { querySelector: () => null },
-    window: {},
+    window: { addEventListener() {} },
   };
-  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const debug = vm.runInNewContext(debugSandboxSource, context);
   const events = debug.normalizeLog([
     "GerNetiX event log: capacity=2047 bytes used=90 droppedBytes=0",
     "[1250 ms] INFO initWifi: Station connected",
@@ -146,8 +153,8 @@ test("feedback text is normalized into severity, subsystem and monotonic uptime"
 });
 
 test("diagnostic log capacity and dropped bytes remain visible instead of being discarded with the header", () => {
-  const context = { document: { querySelector: () => null }, window: {} };
-  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const context = { document: { querySelector: () => null }, window: { addEventListener() {} } };
+  const debug = vm.runInNewContext(debugSandboxSource, context);
   assert.deepEqual(JSON.parse(JSON.stringify(debug.diagnosticLogStats(
     "GerNetiX event log: capacity=2047 bytes used=1900 droppedBytes=388\n[10 ms] INFO boot: ready",
   ))), { capacity_bytes: 2047, used_bytes: 1900, dropped_bytes: 388 });
@@ -160,9 +167,9 @@ test("diagnostic log capacity and dropped bytes remain visible instead of being 
 test("the in-memory event list de-duplicates ring-buffer re-reads and stays bounded", () => {
   const context = {
     document: { querySelector: () => null },
-    window: {},
+    window: { addEventListener() {} },
   };
-  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const debug = vm.runInNewContext(debugSandboxSource, context);
   const session = { events: [] };
   const repeated = { uptime_ms: 50, severity: "info", subsystem: "boot", message: "ready" };
   debug.appendEvents(session, [repeated, repeated]);

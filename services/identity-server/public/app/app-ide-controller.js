@@ -35,7 +35,7 @@ async function loadIdeProject() {
     renderIdeEmptyState();
     return;
   }
-  await GerNetiXDeviceDebug.loadServerSession(project);
+  await deviceDebug().loadServerSession(project);
   state.activeSoftwareUnitIds[project.id] ||= project.activeSoftwareUnitId || project.softwareUnits?.[0]?.software_unit_id || "";
   state.activeDeviceId = state.devices.some((device) => device.device_id === project.linkedDeviceId)
     ? project.linkedDeviceId
@@ -1388,7 +1388,8 @@ function renderIdeViewMode(project) {
   document.querySelector("#ideDeviceConnectionsView").classList.toggle("hidden", !deviceConnections);
   document.querySelector("#ideDriverManagementView").classList.toggle("hidden", !driverManagement);
   document.querySelector("#idePwaDashboardView").classList.toggle("hidden", !pwaDashboard);
-  stopIdeDeviceDebugPolling();
+  // Meldung an die Fehlersuche statt eines Aufrufs quer zum Nachbarn.
+  window.dispatchEvent(new CustomEvent(IDE_DEBUG_STOP_EVENT));
   if (!virtualView && (plantUml || image)) renderIdeImageView(sourcePath, source);
 }
 

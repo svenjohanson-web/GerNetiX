@@ -797,3 +797,8 @@ function loadDeviceDebugWorkspace() {
 
 GerNetiXDeviceDebug.bind();
 window.GerNetiXDeviceDebug = GerNetiXDeviceDebug;
+
+// Die Fehlersuche meldet sich selbst an und hoert auf die Bitte, das
+// Abfragen zu beenden. Beides ersetzt Aufrufe quer zwischen Nachbarn.
+registerPlatformComponent("deviceDebug", () => GerNetiXDeviceDebug);
+window.addEventListener(IDE_DEBUG_STOP_EVENT, () => stopIdeDeviceDebugPolling());

@@ -84,3 +84,12 @@ function navigate(route) {
   history.pushState({}, "", route);
   window.dispatchEvent(new CustomEvent(ROUTE_CHANGED_EVENT));
 }
+
+/*
+ * Aus welchem Seitentyp die Adresse stammt, ist eine Frage des Routings --
+ * nicht der Verdrahtung. Die Huelle las diese drei Merkmale zuvor von oben
+ * aus app.js.
+ */
+const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
+const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
+const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;

@@ -2,14 +2,9 @@
 // Der Zustand selbst bleibt abhaengigkeitsfrei; die Verbindung wird hier erzeugt.
 state.serialService = GerNetiXSerialService.create();
 
-const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
-const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
-const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
 if (isPublicInformationPage) document.body.classList.add("public-help-page");
 
 let projectRepositoryCardController = null;
-let projectAppController = null;
-let quizController = null;
 
 registerPlatformComponent("deviceOnboarding", () => DeviceOnboardingController.create({
   state,
@@ -65,21 +60,16 @@ function projectRepositoryCard() {
   return projectRepositoryCardController;
 }
 
-function projectApp() {
-  if (!projectAppController) {
-    projectAppController = ProjectAppController.create({
-      getJson,
-      putJson,
-      renderer: ProjectAppRenderer,
-      escapeHtml,
-      escapeAttribute,
-      onDevicesChanged(projectId, deviceIds) {
-        const project = state.projects.find((item) => item.id === projectId);
-        if (!project) return;
-        project.linkedDeviceIds = [...deviceIds];
-        project.linkedDeviceId = deviceIds[0] || "";
-      },
-    });
-  }
-  return projectAppController;
-}
+registerPlatformComponent("projectApp", () => ProjectAppController.create({
+    getJson,
+    putJson,
+    renderer: ProjectAppRenderer,
+    escapeHtml,
+    escapeAttribute,
+    onDevicesChanged(projectId, deviceIds) {
+      const project = state.projects.find((item) => item.id === projectId);
+      if (!project) return;
+      project.linkedDeviceIds = [...deviceIds];
+      project.linkedDeviceId = deviceIds[0] || "";
+    },
+  }));

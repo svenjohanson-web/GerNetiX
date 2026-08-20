@@ -430,7 +430,7 @@ async function changePlatformLocale(event) {
   try {
     await platformI18n.setLocale(nextLocale);
     syncLanguageControls(nextLocale);
-    quizController?.render();
+    platformComponentIfBuilt("quiz")?.render();
     renderRoute();
     if (state.account) {
       const result = await patchJson("/api/account/preferences", { preferred_locale: nextLocale });
@@ -439,7 +439,7 @@ async function changePlatformLocale(event) {
   } catch (error) {
     await platformI18n.setLocale(previousLocale);
     syncLanguageControls(previousLocale);
-    quizController?.render();
+    platformComponentIfBuilt("quiz")?.render();
     renderRoute();
   }
 }
@@ -729,15 +729,10 @@ registerPlatformComponent("learningProject", () => LearningProjectController.cre
     learningText,
   }));
 
-function quiz() {
-  if (!quizController) {
-    quizController = GerNetiXQuiz.create({
-      mount: document.querySelector("#quizMount"),
-      getLocale: () => platformI18n?.locale || document.documentElement.lang || "de",
-    });
-  }
-  return quizController;
-}
+registerPlatformComponent("quiz", () => GerNetiXQuiz.create({
+    mount: document.querySelector("#quizMount"),
+    getLocale: () => platformI18n?.locale || document.documentElement.lang || "de",
+  }));
 
 function renderInformationTopic() {
   InformationView.render({

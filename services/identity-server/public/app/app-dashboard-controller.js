@@ -243,3 +243,6 @@ function renderDashboardMessageOverview(summary) {
       <button type="button" data-dashboard-community-route="/app/messages/">Nachrichten öffnen →</button>
     </section>`;
 }
+
+// Gegenstueck zur Meldung aus dem Build-Controller.
+window.addEventListener(DASHBOARD_STALE_EVENT, () => renderDashboard());

@@ -26,8 +26,8 @@
       "pruefsumme": "df98394518b5dd27"
     },
     "/app/app-dashboard-controller.js": {
-      "version": "20260805-applications-1",
-      "pruefsumme": "b4482ef690a0df25"
+      "version": "20260820-peers-1",
+      "pruefsumme": "fc8f72d62a1ac717"
     },
     "/app/app-event-bindings.js": {
       "version": "20260819-esm-schritt-1",
@@ -46,8 +46,8 @@
       "pruefsumme": "a770d63c65bda641"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-registratur-2",
-      "pruefsumme": "e53a63e18875f47e"
+      "version": "20260820-peers-1",
+      "pruefsumme": "ad632e6f123b361c"
     },
     "/app/app-shell-early.js": {
       "version": "20260819-app-theme-toggle-3",
@@ -58,8 +58,8 @@
       "pruefsumme": "a4a97a7c79781945"
     },
     "/app/app.js": {
-      "version": "20260820-registratur-2",
-      "pruefsumme": "07a2c3e9200f665b"
+      "version": "20260820-peers-1",
+      "pruefsumme": "919cc3db625d542e"
     },
     "/app/auth/auth.css": {
       "version": "20260815-public-theme-1",
@@ -146,15 +146,15 @@
       "pruefsumme": "d94ec124f0f328b3"
     },
     "/app/platform-components.js": {
-      "version": "20260820-registratur-2",
-      "pruefsumme": "f7411fc9218e31e8"
+      "version": "20260820-peers-1",
+      "pruefsumme": "f960262d62fd6f0f"
     },
     "/app/platform-routing.js": {
-      "version": "20260820-routing-modul-1",
-      "pruefsumme": "48391a1d3c68c612"
+      "version": "20260820-peers-1",
+      "pruefsumme": "d4486ea22c6f9f35"
     },
     "/app/platform-state.js": {
-      "version": "20260820-registratur-2",
+      "version": "20260820-peers-1",
       "pruefsumme": "1523b5e34d3abf15"
     },
     "/app/project-app-controller.js": {

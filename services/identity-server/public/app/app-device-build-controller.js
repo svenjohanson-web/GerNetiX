@@ -1164,7 +1164,8 @@ async function unpairInventoryDevice(accountDeviceId) {
     }
     renderLoadedIdeShell();
     renderDevices();
-    renderDashboard();
+    // Meldung an die Uebersicht statt eines Aufrufs quer zum Nachbarn.
+    window.dispatchEvent(new CustomEvent(DASHBOARD_STALE_EVENT));
     setInventoryStatus("ok", `${device.display_name} ist nicht mehr mit diesem Account gekoppelt.`);
   } catch (error) {
     setInventoryStatus("error", error.message);
