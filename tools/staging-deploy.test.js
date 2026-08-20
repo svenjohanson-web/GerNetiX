@@ -2,7 +2,10 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
+  additionalServicesByFile,
   assertSafeGitRef,
   assertSafeSshTarget,
   createDeploymentPlan,
@@ -152,4 +155,50 @@ test("uses a validated earlier commit to repeat a full deployment", () => {
     remoteDir: "/opt/gernetix",
     forcedPreviousCommit: "main; reboot",
   }), /ungueltig/);
+});
+
+/*
+ * Eine Datei, die ein zweiter Dienst liest, muss auch bei ihm ankommen.
+ *
+ * admin-tool bindet das Komponentenmetamodell aus dem Browserverzeichnis von
+ * identity-server mit require ein. Ohne einen Eintrag in
+ * additionalServicesByFile erreicht eine Aenderung daran nur identity-server;
+ * admin-tool laeuft mit dem alten Stand weiter. Genau so ist ein Deployment
+ * abgebrochen, und der Fix erreichte den kaputten Dienst danach nicht.
+ *
+ * Die Liste wird deshalb nicht geglaubt, sondern gegen die Quellen geprueft.
+ */
+test("every browser file a second service requires is routed to that service too", () => {
+  const wurzel = path.resolve(__dirname, "..");
+  const dienste = fs.readdirSync(path.join(wurzel, "services"), { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+
+  const jsDateien = (verzeichnis, gesammelt = []) => {
+    for (const eintrag of fs.readdirSync(verzeichnis, { withFileTypes: true })) {
+      if (eintrag.name === "node_modules" || eintrag.name === "dist" || eintrag.name === "public") continue;
+      const voll = path.join(verzeichnis, eintrag.name);
+      if (eintrag.isDirectory()) jsDateien(voll, gesammelt);
+      else if (eintrag.name.endsWith(".js") && !eintrag.name.endsWith(".test.js")) gesammelt.push(voll);
+    }
+    return gesammelt;
+  };
+
+  const fehlend = [];
+  for (const dienst of dienste) {
+    const dienstWurzel = path.join(wurzel, "services", dienst);
+    for (const datei of jsDateien(dienstWurzel)) {
+      for (const treffer of fs.readFileSync(datei, "utf8").matchAll(/require\("([^"]*public\/app\/[^"]+)"\)/g)) {
+        const basis = path.resolve(path.dirname(datei), treffer[1]);
+        const ziel = [basis, `${basis}.js`].find((k) => fs.existsSync(k));
+        if (!ziel) continue;
+        const relativ = path.relative(wurzel, ziel).replace(/\\/g, "/");
+        // Liegt die Datei im eigenen Dienst, greift die Verzeichniszuordnung.
+        if (relativ.startsWith(`services/${dienst}/`)) continue;
+        const zugeordnet = additionalServicesByFile.get(relativ) || [];
+        if (!zugeordnet.includes(dienst)) fehlend.push(`${relativ} -> ${dienst}`);
+      }
+    }
+  }
+  assert.deepEqual(fehlend, []);
 });

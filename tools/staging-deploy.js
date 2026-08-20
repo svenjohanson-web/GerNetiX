@@ -67,6 +67,26 @@ const incrementalServiceByDirectory = new Map([
   ["recovery-tool", "identity-server"],
 ]);
 
+/*
+ * Einzelne Dateien werden von einem zweiten Dienst gelesen.
+ *
+ * admin-tool bindet das Komponentenmetamodell aus dem Browserverzeichnis von
+ * identity-server mit require ein. Nach dem Verzeichnis zugeordnet gilt eine
+ * Aenderung daran nur identity-server -- admin-tool behaelt dann seinen alten
+ * Stand, obwohl er dieselbe Datei liest.
+ *
+ * Genau das ist passiert: die Datei wurde zum ES-Modul, admin-tool startete
+ * nicht mehr, und der Fix erreichte ihn beim naechsten Lauf nicht, weil er
+ * nur unter services/identity-server lag. Der Ausfall zog admin-access-server
+ * und damit die Nginx-Konfiguration mit.
+ *
+ * staging-deploy.test.js prueft, dass diese Liste vollstaendig ist: sie sucht
+ * jedes require eines Dienstes auf public/app und verlangt einen Eintrag.
+ */
+const additionalServicesByFile = new Map([
+  ["services/identity-server/public/app/development-component-metamodel.js", ["admin-tool"]],
+]);
+
 function isIgnoredDeploymentFile(file) {
   /*
    * .claude/ ist Werkzeugkonfiguration dieses Repositoriums, so wie .github/:
@@ -131,6 +151,9 @@ function createDeploymentPlan(changedFiles, options = {}) {
     const service = serviceMatch && incrementalServiceByDirectory.get(serviceMatch[1]);
     if (service) {
       if (!services.includes(service)) services.push(service);
+      for (const zusaetzlich of additionalServicesByFile.get(file) || []) {
+        if (!services.includes(zusaetzlich)) services.push(zusaetzlich);
+      }
       continue;
     }
     return {
@@ -290,6 +313,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  additionalServicesByFile,
   assertSafeGitRef,
   assertSafeSshTarget,
   createDeploymentPlan,
@@ -301,3 +325,4 @@ module.exports = {
   remoteHeadCommand,
   shellQuote,
 };
+
