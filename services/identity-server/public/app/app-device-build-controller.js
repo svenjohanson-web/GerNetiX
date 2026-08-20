@@ -4,6 +4,7 @@ import { delay, deleteJson, escapeAttribute, escapeHtml, getJson, meta, postJson
 import { DASHBOARD_STALE_EVENT, SERIAL_SERVICE_CHOICE_EVENT, deviceOnboarding } from "@app/platform-components.js";
 import { navigate } from "@app/platform-routing.js";
 import { state } from "@app/platform-state.js";
+import { appendTerminalLine, clearStatus, connectFlashDialog, resetTerminal, showStatus } from "@app/workbench-output-view.js";
 
 const activeBuildJobIds = new Set();
 let buildSubmissionPending = false;
@@ -38,13 +39,14 @@ function latestIdeFlashArtifact(project, softwareUnit) {
 
 function openIdeFlashDialog() {
   const project = projectById(state.activeProjectId);
-  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  if (!project) return showStatus("error", "Bitte zuerst ein Projekt öffnen.");
   const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   const flashboxes = inventoryFlashboxes();
   const flashable = usbFirmwareUnits(project).length > 0 || !projectSoftwareUnits(project).length;
   const otaReady = Boolean(device && device.connectivity_status === "online" && device.ota_status === "ready");
   ideFlashDialog ||= window.GerNetiXFlashDialog.create();
+  connectFlashDialog(ideFlashDialog);
   ideFlashDialog.open({
     title: `${project.title || project.name || "Projekt"} flashen`,
     description: "Flash-Datei und Übertragungsweg werden hier verbindlich zusammengeführt. Status und Fehler erscheinen im Terminal.",
@@ -69,7 +71,7 @@ function prepareFlashTarget(project, action, targetConfirmed = false) {
   const flashableUnits = allUnits.filter((unit) => unit.build_system === "platformio");
   if (!allUnits.length) return true;
   if (!flashableUnits.length) {
-    setFlashStatus("error", "Dieses Projekt besitzt keine Software-Einheit mit angeschlossenem Firmware-Runner.");
+    showStatus("error", "Dieses Projekt besitzt keine Software-Einheit mit angeschlossenem Firmware-Runner.");
     return false;
   }
   if (flashableUnits.length === 1) {
@@ -111,7 +113,7 @@ async function startBuild() {
   const device = allocatedIdeDevice(project);
   if (!project) {
     action?.fail("project_not_found");
-    return setFlashStatus("error", buildActionFailureMessage(action, "Bitte zuerst ein Projekt öffnen."));
+    return showStatus("error", buildActionFailureMessage(action, "Bitte zuerst ein Projekt öffnen."));
   }
   const softwareUnits = projectSoftwareUnits(project);
   const buildTargets = softwareUnits.length ? softwareUnits : [null];
@@ -121,7 +123,7 @@ async function startBuild() {
       .map((unit) => `${unit.title || unit.software_unit_id} (${unit.build_system || "kein Buildsystem"})`)
       .join(", ");
     action?.fail("build_prerequisite_failed");
-    return setFlashStatus("error", buildActionFailureMessage(action, `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`));
+    return showStatus("error", buildActionFailureMessage(action, `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`));
   }
   if (buildSubmissionPending || activeBuildJobIds.size > 0) {
     action?.fail("build_prerequisite_failed");
@@ -130,7 +132,7 @@ async function startBuild() {
   buildSubmissionPending = true;
   let actionStage = "source";
   updateBuildActionButton();
-  setFlashStatus("running", `Gesamtbuild läuft: ${buildTargets.length} Software-Einheit${buildTargets.length === 1 ? "" : "en"}...`);
+  showStatus("running", `Gesamtbuild läuft: ${buildTargets.length} Software-Einheit${buildTargets.length === 1 ? "" : "en"}...`);
   try {
     await buildActionStep(action, "project.source.persist", () => persistCurrentSource(project, { action }), "source_persistence_failed");
     actionStage = "submit";
@@ -169,18 +171,18 @@ async function startBuild() {
     completionResults.forEach((result, index) => {
       const label = acceptedBuilds[index].softwareUnit?.title || acceptedBuilds[index].softwareUnit?.software_unit_id || "Firmware";
       if (result.status === "rejected") {
-        appendIdeTerminal("running", `Build-Ziel „${label}“: Status konnte vorläufig nicht abgerufen werden – ${result.reason?.message || "unbekannter Fehler"}. Der Build gilt dadurch nicht als fehlgeschlagen.`);
+        appendTerminalLine("running", `Build-Ziel „${label}“: Status konnte vorläufig nicht abgerufen werden – ${result.reason?.message || "unbekannter Fehler"}. Der Build gilt dadurch nicht als fehlgeschlagen.`);
       } else if (result.value.status === "succeeded") {
-        appendIdeTerminal("ok", `Build-Ziel „${label}“: erfolgreich.`);
+        appendTerminalLine("ok", `Build-Ziel „${label}“: erfolgreich.`);
       } else if (result.value.status === "cancelled") {
-        appendIdeTerminal("running", `Build-Ziel „${label}“: abgebrochen.`);
+        appendTerminalLine("running", `Build-Ziel „${label}“: abgebrochen.`);
       } else {
-        appendIdeTerminal("error", `Build-Ziel „${label}“: fehlgeschlagen.`);
+        appendTerminalLine("error", `Build-Ziel „${label}“: fehlgeschlagen.`);
       }
     });
     rejectedSubmissions.forEach(({ reason, softwareUnit }) => {
       const label = softwareUnit?.title || softwareUnit?.software_unit_id || "Firmware";
-      appendIdeTerminal("error", `Build-Ziel „${label}“: Auftrag konnte nicht angelegt werden – ${reason?.message || "unbekannter Fehler"}.`);
+      appendTerminalLine("error", `Build-Ziel „${label}“: Auftrag konnte nicht angelegt werden – ${reason?.message || "unbekannter Fehler"}.`);
     });
     const succeeded = completed.filter((build) => build.status === "succeeded").length;
     const cancelled = completed.filter((build) => build.status === "cancelled").length;
@@ -193,9 +195,9 @@ async function startBuild() {
     else verifySpan?.succeed();
     if (!failed && !cancelled && !unavailable) completed.forEach(appendBuildMemorySummary);
     const summary = `${succeeded} von ${buildTargets.length} Software-Einheiten erfolgreich`;
-    if (unavailable) setFlashStatus("running", `Gesamtbuild-Auswertung unterbrochen: ${unavailable} Statusabfrage${unavailable === 1 ? "" : "n"} nicht abgeschlossen. Diese Build-Ziele gelten nicht als fehlgeschlagen.`);
-    else if (cancelled && !failed) setFlashStatus("running", `Gesamtbuild abgebrochen: ${cancelled} Software-Einheit${cancelled === 1 ? "" : "en"} abgebrochen.`);
-    else setFlashStatus(
+    if (unavailable) showStatus("running", `Gesamtbuild-Auswertung unterbrochen: ${unavailable} Statusabfrage${unavailable === 1 ? "" : "n"} nicht abgeschlossen. Diese Build-Ziele gelten nicht als fehlgeschlagen.`);
+    else if (cancelled && !failed) showStatus("running", `Gesamtbuild abgebrochen: ${cancelled} Software-Einheit${cancelled === 1 ? "" : "en"} abgebrochen.`);
+    else showStatus(
       failed ? "error" : "ok",
       failed ? buildActionFailureMessage(action, `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen${cancelled ? `, ${cancelled} abgebrochen` : ""}.`) : `Gesamtbuild erfolgreich: ${summary}.`,
     );
@@ -208,7 +210,7 @@ async function startBuild() {
     action?.fail(actionStage === "source"
       ? "source_persistence_failed"
       : actionStage === "wait" ? "build_status_unavailable" : buildFailureReason(error));
-    setFlashStatus("error", buildActionFailureMessage(action, error.message));
+    showStatus("error", buildActionFailureMessage(action, error.message));
   } finally {
     buildSubmissionPending = false;
     updateBuildActionButton();
@@ -231,17 +233,17 @@ function buildFailureReason(error) {
 
 async function cleanProjectBuildCache() {
   const project = projectById(state.activeProjectId);
-  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  if (!project) return showStatus("error", "Bitte zuerst ein Projekt öffnen.");
   const button = document.querySelector("#cleanBuildButton");
   button.disabled = true;
-  setFlashStatus("running", "Build-Cache des gesamten Projekts wird bereinigt...");
+  showStatus("running", "Build-Cache des gesamten Projekts wird bereinigt...");
   try {
     const result = await postJson("/api/user-ide/build-cache/clean", { project_slug: project.slug });
     const count = Number(result.removed_cache_count || 0);
-    appendIdeTerminal("ok", `Clean abgeschlossen: ${count} Build-Workspace${count === 1 ? "" : "s"} bereinigt.`);
-    setFlashStatus("ok", "Clean erfolgreich. Der nächste Gesamtbuild wird vollständig neu aufgebaut.");
+    appendTerminalLine("ok", `Clean abgeschlossen: ${count} Build-Workspace${count === 1 ? "" : "s"} bereinigt.`);
+    showStatus("ok", "Clean erfolgreich. Der nächste Gesamtbuild wird vollständig neu aufgebaut.");
   } catch (error) {
-    setFlashStatus("error", `Clean fehlgeschlagen: ${error.message}`);
+    showStatus("error", `Clean fehlgeschlagen: ${error.message}`);
   } finally {
     button.disabled = false;
   }
@@ -258,9 +260,9 @@ async function cancelActiveBuilds() {
   const rejected = results.filter((result) => result.status === "rejected");
   if (rejected.length) {
     buildCancellationRequested = false;
-    setFlashStatus("error", `Build-Abbruch konnte für ${rejected.length} Auftrag${rejected.length === 1 ? "" : "e"} nicht angefordert werden.`);
+    showStatus("error", `Build-Abbruch konnte für ${rejected.length} Auftrag${rejected.length === 1 ? "" : "e"} nicht angefordert werden.`);
   } else {
-    setFlashStatus("running", `Build-Abbruch angefordert: ${jobIds.length} laufende${jobIds.length === 1 ? "r Auftrag" : " Aufträge"}.`);
+    showStatus("running", `Build-Abbruch angefordert: ${jobIds.length} laufende${jobIds.length === 1 ? "r Auftrag" : " Aufträge"}.`);
   }
   updateBuildActionButton();
 }
@@ -322,12 +324,12 @@ function updateBuildActionButton() {
 
 async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = false, usbMappingConfirmed = false) {
   const project = projectById(state.activeProjectId);
-  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  if (!project) return showStatus("error", "Bitte zuerst ein Projekt öffnen.");
   if (!prepareFlashTarget(project, "usb", targetConfirmed)) return;
   const firmwareUnits = usbFirmwareUnits(project);
   const serialServiceAvailable = await state.serialService.available();
   if (!serialServiceAvailable && !navigator.serial) {
-    setFlashStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
+    showStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
     // Bitte an die Huelle, den Dialog zu zeigen -- statt sie von unten zu rufen.
     window.dispatchEvent(new CustomEvent(SERIAL_SERVICE_CHOICE_EVENT));
     return;
@@ -385,15 +387,15 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
     showUsbInventoryUnknownDialog(resolvedPort);
     return;
   }
-  setFlashStatus("running", "Passender erfolgreicher Build wird geprüft...");
+  showStatus("running", "Passender erfolgreicher Build wird geprüft...");
   let activeBuild = null;
   try {
     await persistCurrentSource(project);
     activeBuild = await reusableBuildForUsbFlash(project, softwareUnit);
     if (activeBuild) {
-      appendIdeTerminal("ok", `Vorhandener Build für „${softwareUnit?.title || softwareUnit?.software_unit_id || "Firmware"}“ ist unverändert und wird direkt geflasht.`);
+      appendTerminalLine("ok", `Vorhandener Build für „${softwareUnit?.title || softwareUnit?.software_unit_id || "Firmware"}“ ist unverändert und wird direkt geflasht.`);
     } else {
-      setFlashStatus("running", "Kein unveränderter vollständiger Build vorhanden. Inkrementeller PlatformIO-Build wird gestartet...");
+      showStatus("running", "Kein unveränderter vollständiger Build vorhanden. Inkrementeller PlatformIO-Build wird gestartet...");
       const build = await postJson("/api/user-ide/build-jobs", {
         project_slug: project.slug,
         software_unit_id: softwareUnit?.software_unit_id || "",
@@ -409,7 +411,7 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
       appendBuildFailureLog(activeBuild.build_log, activeBuild.error);
       throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
     }
-    setFlashStatus("running", serialServiceAvailable
+    showStatus("running", serialServiceAvailable
       ? "Build erfolgreich. GerNetiX verbindet das USB-Gerät..."
       : "Build erfolgreich. USB-Gerät im Browser auswählen...");
     const flashResult = serialServiceAvailable
@@ -421,7 +423,7 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
       logs: flashResult.logs,
     });
     activeBuild.flash_status = "succeeded";
-    setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
+    clearStatus(`USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
     await finishUsbFlashAssignmentBatch(project.id, softwareUnit?.software_unit_id || "");
   } catch (error) {
@@ -439,7 +441,7 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
       }).catch(() => {});
     }
     usbFlashAssignmentBatch = null;
-    setFlashStatus("error", error.message);
+    showStatus("error", error.message);
   }
 }
 
@@ -494,7 +496,7 @@ async function flashBuildViaSerialService(build, device) {
       for (const line of job.logs || []) {
         if (seenLogs.has(line)) continue;
         seenLogs.add(line);
-        appendIdeTerminal("running", line);
+        appendTerminalLine("running", line);
       }
     },
   });
@@ -530,20 +532,20 @@ async function waitForCompletedBuild(build, options = {}) {
           : waitingForBoard
             ? `Build fertig. OTA-Auftrag ist ${current.flash_status || "veröffentlicht"}; warte auf das Board... ${attempt}s`
             : `PlatformIO-Build läuft... ${attempt}s`;
-        setFlashStatus("running", message);
+        showStatus("running", message);
       }
       await delay(1000);
       try {
         current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/status`, { action: options.action });
         if (consecutiveStatusFailures > 0) {
-          appendIdeTerminal("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ wiederhergestellt.`);
+          appendTerminalLine("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ wiederhergestellt.`);
         }
         consecutiveStatusFailures = 0;
       } catch (error) {
         if (!isTransientBuildStatusError(error)) throw error;
         consecutiveStatusFailures += 1;
         if (consecutiveStatusFailures === 1) {
-          appendIdeTerminal("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ unterbrochen. Der Build-Auftrag läuft serverseitig weiter; GerNetiX verbindet sich automatisch erneut.`);
+          appendTerminalLine("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ unterbrochen. Der Build-Auftrag läuft serverseitig weiter; GerNetiX verbindet sich automatisch erneut.`);
         }
         if (consecutiveStatusFailures >= 60) {
           throw new Error("Die Build-Auswertung war länger als eine Minute nicht erreichbar. Der Build-Auftrag kann serverseitig weiterhin laufen.");
@@ -568,7 +570,7 @@ function appendBuildMemorySummary(build) {
   ].join("\n");
   const flash = parsePlatformioMemoryUsage(output, "Flash");
   const ram = parsePlatformioMemoryUsage(output, "RAM");
-  appendIdeTerminal("summary", `Speicherbelegung · Firmware-Partition (Flash): ${formatPlatformioMemoryUsage(flash)} · RAM: ${formatPlatformioMemoryUsage(ram)} · Flash-Wert = App-Slot, nicht gesamter Gerätespeicher`);
+  appendTerminalLine("summary", `Speicherbelegung · Firmware-Partition (Flash): ${formatPlatformioMemoryUsage(flash)} · RAM: ${formatPlatformioMemoryUsage(ram)} · Flash-Wert = App-Slot, nicht gesamter Gerätespeicher`);
 }
 
 function parsePlatformioMemoryUsage(output, label) {
@@ -605,7 +607,7 @@ function appendBuildProgress(progress, seenProgress, options = {}) {
     const message = String(entry?.message || "");
     if (options.suppressTerminalBuildResult && /^(?:Build erfolgreich abgeschlossen\.?|PlatformIO-Build fehlgeschlagen\.?)$/i.test(message.trim())) continue;
     const kind = entry?.phase === "failed" ? "error" : "running";
-    appendIdeTerminal(kind, message);
+    appendTerminalLine(kind, message);
   }
 }
 
@@ -614,14 +616,14 @@ function appendBuildFailureLog(buildLog, fallbackMessage = "") {
   const relevant = lines.filter((line) => /fatal error:|error:|undefined reference|multiple definition|cannot find|region [`'"].*overflowed|\*\*\*|\[FAILED\]/i.test(line));
   const diagnosticLines = (relevant.length ? relevant : lines.slice(-6)).slice(-8);
   if (diagnosticLines.length > 0) {
-    diagnosticLines.forEach((line) => appendIdeTerminal("error", line));
+    diagnosticLines.forEach((line) => appendTerminalLine("error", line));
     return;
   }
   if (String(fallbackMessage || "").trim()) {
-    appendIdeTerminal("error", `Fehlerursache: ${String(fallbackMessage).trim()}`);
+    appendTerminalLine("error", `Fehlerursache: ${String(fallbackMessage).trim()}`);
     return;
   }
-  appendIdeTerminal("error", "Der Build-Server hat keine technische Fehlerdiagnose geliefert.");
+  appendTerminalLine("error", "Der Build-Server hat keine technische Fehlerdiagnose geliefert.");
 }
 
 async function flashBuildViaWebSerial(build) {
@@ -646,7 +648,7 @@ async function flashBuildViaWebSerial(build) {
     const line = String(value || "").trim();
     if (!line) return;
     logs.push(line);
-    appendIdeTerminal("running", line);
+    appendTerminalLine("running", line);
   };
   try {
     const loader = new ESPLoader({
@@ -688,12 +690,12 @@ async function loadIdeEsptoolModule() {
 async function startOtaFlash(targetConfirmed = false) {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
+  if (!project || !device) return showStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   if (!prepareFlashTarget(project, "ota", targetConfirmed)) return;
   const softwareUnit = activeIdeSoftwareUnit(project);
-  if (device.connectivity_status !== "online") return setFlashStatus("error", `Das zugeordnete Device ist nicht online (${device.connectivity_status || "unknown"}).`);
-  if (device.ota_status !== "ready") return setFlashStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
-  setFlashStatus("running", "Build und OTA-Flash laufen...");
+  if (device.connectivity_status !== "online") return showStatus("error", `Das zugeordnete Device ist nicht online (${device.connectivity_status || "unknown"}).`);
+  if (device.ota_status !== "ready") return showStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
+  showStatus("running", "Build und OTA-Flash laufen...");
   try {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
@@ -711,13 +713,13 @@ async function startOtaFlash(targetConfirmed = false) {
       throw new Error(completed.error || "Build für das OTA-Update ist fehlgeschlagen.");
     }
     if (["rebooting", "confirmed", "delivered", "succeeded"].includes(completed.flash_status)) {
-      setFlashStatus("ok", `OTA-Auftrag erfolgreich übergeben: ${completed.flash_status}`);
+      showStatus("ok", `OTA-Auftrag erfolgreich übergeben: ${completed.flash_status}`);
     } else {
-      setFlashStatus("error", `Firmware gebaut, OTA-Übertragung nicht bestätigt: ${completed.flash_status || "unbekannter Status"}`);
+      showStatus("error", `Firmware gebaut, OTA-Übertragung nicht bestätigt: ${completed.flash_status || "unbekannter Status"}`);
     }
     renderBuilds();
   } catch (error) {
-    setFlashStatus("error", error.message);
+    showStatus("error", error.message);
   }
 }
 
@@ -731,18 +733,18 @@ function inventoryFlashboxes() {
 async function startFlashBoxFlash(targetConfirmed = false) {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
+  if (!project || !device) return showStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   if (!prepareFlashTarget(project, "flashbox", targetConfirmed)) return;
   const softwareUnit = activeIdeSoftwareUnit(project);
   const flashboxes = inventoryFlashboxes();
   if (!flashboxes.length) {
-    return setFlashStatus("error", "Keine GerNetiX FlashBox im Inventar. Kaufe oder uebernimm zuerst eine FlashBox im Webshop/Inventar.");
+    return showStatus("error", "Keine GerNetiX FlashBox im Inventar. Kaufe oder uebernimm zuerst eine FlashBox im Webshop/Inventar.");
   }
   const flashbox = flashboxes.find((item) => item.device_id === state.activeFlashboxDeviceId) || null;
   if (!flashbox) {
-    return setFlashStatus("error", "Waehle zuerst eine verfuegbare FlashBox aus deinem Inventar.");
+    return showStatus("error", "Waehle zuerst eine verfuegbare FlashBox aus deinem Inventar.");
   }
-  setFlashStatus("running", `Build fuer FlashBox-Flash wird vorbereitet (${flashbox.display_name || flashbox.device_id}).`);
+  showStatus("running", `Build fuer FlashBox-Flash wird vorbereitet (${flashbox.display_name || flashbox.device_id}).`);
   try {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
@@ -763,32 +765,32 @@ async function startFlashBoxFlash(targetConfirmed = false) {
     }
     const delivery = completed.result?.flashbox || completed.flashbox || {};
     const deliveryStatus = completed.flash_status || delivery.status || "veröffentlicht";
-    setFlashStatus("ok", `Build fertig. FlashBox-Auftrag an ${flashbox.display_name || flashbox.device_id}: ${deliveryStatus}.`);
+    showStatus("ok", `Build fertig. FlashBox-Auftrag an ${flashbox.display_name || flashbox.device_id}: ${deliveryStatus}.`);
     renderBuilds();
   } catch (error) {
-    setFlashStatus("error", error.message);
+    showStatus("error", error.message);
   }
 }
 
 async function checkAllocatedDeviceConnectivity() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
+  if (!project || !device) return showStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   const button = document.querySelector("#checkOtaConnectivityButton");
   button.disabled = true;
-  setFlashStatus("running", `Erreichbarkeit von ${device.display_name || device.device_id} wird geprüft...`);
+  showStatus("running", `Erreichbarkeit von ${device.display_name || device.device_id} wird geprüft...`);
   try {
     const result = await postJson(`/api/user-ide/devices/${encodeURIComponent(device.device_id)}/connectivity-check`, {});
     if (!result.reachable) {
-      setFlashStatus("error", result.message || "Das Board wurde im lokalen Netzwerk nicht gefunden.");
+      showStatus("error", result.message || "Das Board wurde im lokalen Netzwerk nicht gefunden.");
       return;
     }
     Object.assign(device, result.device || {}, { connectivity_status: "online" });
     updateIdeProjectTools(project);
     renderIdeDeviceAllocation(project);
-    setFlashStatus("ok", `Board online: ${result.hostname || device.display_name || device.device_id}`);
+    showStatus("ok", `Board online: ${result.hostname || device.display_name || device.device_id}`);
   } catch (error) {
-    setFlashStatus("error", `Online-Prüfung fehlgeschlagen: ${error.message}`);
+    showStatus("error", `Online-Prüfung fehlgeschlagen: ${error.message}`);
   } finally {
     button.disabled = false;
   }
@@ -1270,7 +1272,7 @@ async function submitProjectVersion(event) {
     });
     event.target.reset();
     document.querySelector("#projectVersionDialog").close();
-    setFlashStatus("ok", includeBinary ? "Git-Light-Version mit Binary gespeichert." : "Git-Light-Version gespeichert.");
+    showStatus("ok", includeBinary ? "Git-Light-Version mit Binary gespeichert." : "Git-Light-Version gespeichert.");
     renderBuilds();
   } catch (error) {
     status.textContent = error.message || "Projektversion konnte nicht gespeichert werden.";
@@ -1374,13 +1376,13 @@ async function refreshUsbPorts(showStatus = true) {
     renderUsbPortOptions();
     syncSelectedDevicePort();
     renderDevices();
-    if (showStatus) setFlashStatus("ok", state.usbPorts.length
+    if (showStatus) showStatus("ok", state.usbPorts.length
       ? `${state.usbPorts.length} USB-Serial-Port${state.usbPorts.length === 1 ? "" : "s"} gefunden.`
       : "Kein USB-Serial-Port gefunden.");
   } catch (error) {
     state.usbPorts = [];
     renderUsbPortOptions();
-    if (showStatus) setFlashStatus("error", error.message);
+    if (showStatus) showStatus("error", error.message);
   }
 }
 
@@ -1439,7 +1441,7 @@ function showUsbPortMissingGuidance() {
   }
   if (checkedAt) checkedAt.textContent = `Automatische Suche um ${new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}: kein Port erkannt.`;
   if (!dialog.open) dialog.showModal();
-  appendIdeTerminal("error", "Kein USB-Port gefunden. Prüfe Kabel, USB-Hub, laufende Firmware, Download-Modus, andere serielle Programme und den GerNetiX Serial Service.");
+  appendTerminalLine("error", "Kein USB-Port gefunden. Prüfe Kabel, USB-Hub, laufende Firmware, Download-Modus, andere serielle Programme und den GerNetiX Serial Service.");
 }
 
 function showUsbPortChoiceDialog(project, mode = "firmware-port-mapping") {
@@ -1786,7 +1788,7 @@ async function finishUsbFlashAssignmentBatch(projectId, softwareUnitId) {
   usbFlashAssignmentBatch.remaining.shift();
   if (!usbFlashAssignmentBatch.remaining.length) {
     usbFlashAssignmentBatch = null;
-    appendIdeTerminal("ok", "Alle zugeordneten Firmware-Einheiten wurden per USB geflasht.");
+    appendTerminalLine("ok", "Alle zugeordneten Firmware-Einheiten wurden per USB geflasht.");
     return;
   }
   await continueUsbFlashAssignmentBatch();
@@ -1858,7 +1860,7 @@ async function retryUsbPortSearch() {
       const portSelect = document.querySelector("#usbPortSelect");
       if (portSelect) portSelect.value = pending.port;
     }
-    setFlashStatus("running", `${state.usbPorts.length} USB-Serial-Port${state.usbPorts.length === 1 ? "" : "s"} gefunden. Flash-Vorgang wird fortgesetzt...`);
+    showStatus("running", `${state.usbPorts.length} USB-Serial-Port${state.usbPorts.length === 1 ? "" : "s"} gefunden. Flash-Vorgang wird fortgesetzt...`);
     if (pending?.mode === "flash" && pending.build) {
       await resumeUsbFlashWithCompletedBuild(pending);
     } else {
@@ -1881,7 +1883,7 @@ async function resumeUsbFlashWithCompletedBuild(pending) {
       logs: flashResult.logs,
     });
     build.flash_status = "succeeded";
-    setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
+    clearStatus(`USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
     await finishUsbFlashAssignmentBatch(pending.projectId, pending.softwareUnitId || "");
   } catch (error) {
@@ -1895,7 +1897,7 @@ async function resumeUsbFlashWithCompletedBuild(pending) {
       error: error.message,
     }).catch(() => {});
     usbFlashAssignmentBatch = null;
-    setFlashStatus("error", error.message);
+    showStatus("error", error.message);
   }
 }
 
@@ -1944,52 +1946,11 @@ function usbFlashLabel(device) {
   return "bereit (Port vor Flash erkennen)";
 }
 
-function setFlashStatus(kind, text, percent = null) {
-  const status = document.querySelector("#flashStatus");
-  GerNetiXFlashProgress.render(status, kind, text, percent);
-  appendIdeTerminal(kind, text);
-}
-
-function setUsbFlashSuccess(text) {
-  const status = document.querySelector("#flashStatus");
-  status.className = "flash-status hidden";
-  status.textContent = "";
-  appendIdeTerminal("ok", text);
-}
-
-function appendIdeTerminal(kind, text) {
-  const terminal = document.querySelector("#ideTerminalOutput");
-  if (!terminal || !text) return;
-  const normalizedText = String(text).replace(/\x1b\[[0-9;]*m/g, "").trim();
-  ideFlashDialog?.write(kind, normalizedText);
-  const previous = terminal.querySelector(".terminal-line:last-of-type");
-  if (previous?.dataset.message === `${kind}:${normalizedText}`) return;
-  if (kind === "running" && previous?.classList.contains("terminal-running")) {
-    previous.textContent = `[${new Date().toLocaleTimeString()}] ${normalizedText}`;
-    previous.dataset.message = `${kind}:${normalizedText}`;
-    terminal.scrollTop = terminal.scrollHeight;
-    return;
-  }
-  const line = document.createElement("span");
-  line.className = `terminal-line terminal-${kind}`;
-  line.dataset.message = `${kind}:${normalizedText}`;
-  line.textContent = `[${new Date().toLocaleTimeString()}] ${normalizedText}`;
-  terminal.append(document.createTextNode("\n"), line);
-  terminal.scrollTop = terminal.scrollHeight;
-}
-
-function clearIdeTerminal() {
-  const terminal = document.querySelector("#ideTerminalOutput");
-  if (!terminal) return;
-  terminal.innerHTML = '<span class="terminal-muted">GerNetiX Build-Terminal bereit.</span>';
-}
-
 export {
   checkAllocatedDeviceConnectivity,
   checkRecoveryFirmware,
   claimSelectedDiscoveredDevices,
   cleanProjectBuildCache,
-  clearIdeTerminal,
   closeUsbPortIdentificationDialog,
   confirmCancelActiveBuilds,
   confirmFlashTargetChoice,
@@ -2019,7 +1980,6 @@ export {
   selectDeviceDiscoveryMethod,
   selectProvisioningSerialPort,
   selectedUsbPort,
-  setFlashStatus,
   setInventoryStatus,
   startBuild,
   startUsbFlash,
@@ -2044,7 +2004,6 @@ Object.assign(globalThis, {
   checkRecoveryFirmware,
   claimSelectedDiscoveredDevices,
   cleanProjectBuildCache,
-  clearIdeTerminal,
   closeUsbPortIdentificationDialog,
   confirmCancelActiveBuilds,
   confirmFlashTargetChoice,
@@ -2074,7 +2033,6 @@ Object.assign(globalThis, {
   selectDeviceDiscoveryMethod,
   selectProvisioningSerialPort,
   selectedUsbPort,
-  setFlashStatus,
   setInventoryStatus,
   startBuild,
   startUsbFlash,

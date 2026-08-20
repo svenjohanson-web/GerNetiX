@@ -146,9 +146,9 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /Freigegebene Architektur-Baseline/);
   assert.match(app, /!ideSourceIsEditable\(project, state\.sourcePath\)/);
   assert.match(app, /component_device_allocations/);
-  assert.match(app, /function appendIdeTerminal/);
-  assert.match(app, /setUsbFlashSuccess\(`USB-Flash erfolgreich: \$\{flashResult\.chipName\}`\)/);
-  assert.match(app, /function setUsbFlashSuccess\(text\)[\s\S]*status\.className = "flash-status hidden";[\s\S]*appendIdeTerminal\("ok", text\)/);
+  assert.match(app, /function appendTerminalLine/);
+  assert.match(app, /clearStatus\(`USB-Flash erfolgreich: \$\{flashResult\.chipName\}`\)/);
+  assert.match(app, /function clearStatus\(text\)[\s\S]*status\.className = "flash-status hidden";[\s\S]*appendTerminalLine\("ok", text\)/);
   assert.match(html, /id="flashboxDeviceSelect"/);
   assert.match(app, /activeFlashboxDeviceId/);
   assert.match(app, /Waehle zuerst eine verfuegbare FlashBox/);
@@ -163,7 +163,7 @@ test("plain project build and direct USB flash do not require an inventory devic
   assert.match(server, /if \(!device && !\["build", "build_and_usb_flash"\]\.includes\(mode\)\)/);
   assert.match(server, /const resolvedBuildConfig = softwareUnit\?\.build_config \|\| resolveBuildConfig\(project, device \|\| \{\}\)/);
   assert.match(server, /build_config: resolvedBuildConfig/);
-  assert.match(app, /async function startUsbFlash\(targetConfirmed = false, inventoryCheckConfirmed = false, usbMappingConfirmed = false\)[\s\S]*if \(!project\) return setFlashStatus\("error", "Bitte zuerst ein Projekt öffnen\."\)/);
+  assert.match(app, /async function startUsbFlash\(targetConfirmed = false, inventoryCheckConfirmed = false, usbMappingConfirmed = false\)[\s\S]*if \(!project\) return showStatus\("error", "Bitte zuerst ein Projekt öffnen\."\)/);
   assert.match(server, /body\.upload_port \|\| device\?\.upload_port/);
   assert.doesNotMatch(server, /mode === "build_and_usb_flash" && !device\.usb_flash_supported/);
 });

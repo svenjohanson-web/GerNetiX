@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles, scriptPosition } = require("../test-support/platform-app-source");
+const { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles, scriptAbschnitt, scriptPosition } = require("../test-support/platform-app-source");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 
@@ -34,10 +34,14 @@ test("platform app keeps state composition separate from domain behavior and sta
   assert.match(source, /function renderIdeShell\(\)/);
   assert.match(source, /async function startBuild\(\)/);
 
+  // Ohne die Import Map: sie fuehrt jede eingefuehrte Modul-Adresse als JSON
+  // auf, und eine nachgeladene Datei stuende dann im Dokument, ohne dort
+  // geladen zu werden.
+  const dokument = scriptAbschnitt(html);
   let previousIndex = -1;
   for (const file of platformAppFiles) {
     if (routeLazyPlatformAppFiles.has(file)) {
-      assert.doesNotMatch(html, new RegExp(`/app/${file.replaceAll(".", "\\.")}\\?v=`));
+      assert.doesNotMatch(dokument, new RegExp(`/app/${file.replaceAll(".", "\\.")}\\?v=`));
       continue;
     }
     const currentIndex = scriptPosition(html, file);

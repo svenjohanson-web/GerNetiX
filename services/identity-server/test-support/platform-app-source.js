@@ -18,6 +18,9 @@ const platformAppFiles = [
   "app-account-controller.js",
   "app-project-controller.js",
   "app-ide-controller.js",
+  // Statuszeile und Terminal der Werkbank. Wird mit dem Bau-Paket nachgeladen
+  // und vom Bau-Controller eingefuehrt, steht also vor ihm.
+  "workbench-output-view.js",
   "app-device-build-controller.js",
   "app-billing-controller.js",
   "app-runtime-utils.js",
@@ -29,6 +32,7 @@ const platformAppFiles = [
 const routeLazyPlatformAppFiles = new Set([
   "app-community-controller.js",
   "app-ide-controller.js",
+  "workbench-output-view.js",
   "app-device-build-controller.js",
   "device-debug-controller.js",
 ]);

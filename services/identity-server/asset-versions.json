@@ -30,16 +30,16 @@
       "pruefsumme": "0fdf8168288b3ae9"
     },
     "/app/app-device-build-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "741160f30fd37a9a"
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "0fb9c2c236b4b512"
     },
     "/app/app-event-bindings.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "51ca36c80195bf9d"
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "38d07d5afe55de8e"
     },
     "/app/app-ide-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "9b5bfb46a7946dee"
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "7edf33029f357dd3"
     },
     "/app/app-project-controller.js": {
       "version": "20260820-esm-kopf-1",
@@ -54,8 +54,8 @@
       "pruefsumme": "2ede5983a853edf2"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-metamodell-1",
-      "pruefsumme": "1cf439c1d28ab0e6"
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "ad73aa1f1d846b5a"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-kopf-1",
@@ -110,7 +110,7 @@
       "pruefsumme": "28bd8c95874ebec3"
     },
     "/app/device-debug-controller.js": {
-      "version": "20260820-esm-kopf-1",
+      "version": "20260820-statuskanal-1",
       "pruefsumme": "b57141e905210044"
     },
     "/app/device-onboarding-controller.js": {
@@ -268,6 +268,10 @@
     "/app/welcome-guide.js": {
       "version": "20260820-esm-kopf-1",
       "pruefsumme": "9f92d0367a5e40fe"
+    },
+    "/app/workbench-output-view.js": {
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "3cefe6bb9435307f"
     },
     "/community/app.js": {
       "version": "20260819-asset-manifest-1",

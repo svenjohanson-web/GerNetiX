@@ -136,10 +136,10 @@ document.querySelector("#ideBuildProfileSelect")?.addEventListener("change", asy
   try {
     await persistCurrentSource(project);
     await GerNetiXDeviceDebug.startSession(project);
-    setFlashStatus("running", "Debug-Session gestartet. Baue jetzt alle Software-Einheiten und flashe anschließend die betroffenen IoT-Devices.");
+    showStatus("running", "Debug-Session gestartet. Baue jetzt alle Software-Einheiten und flashe anschließend die betroffenen IoT-Devices.");
   } catch (error) {
     event.currentTarget.value = "standard";
-    setFlashStatus("error", error.message);
+    showStatus("error", error.message);
   }
 });
 document.querySelector("#dashboardCommunitySummary")?.addEventListener("click", (event) => {
@@ -235,7 +235,7 @@ document.querySelector("#ideSoftwareUnitSelect").addEventListener("change", (eve
 });
 document.querySelector("#flashButton").addEventListener("click", (event) => openIdeFlashDialog(event));
 document.querySelector("#checkOtaConnectivityButton").addEventListener("click", (event) => checkAllocatedDeviceConnectivity(event));
-document.querySelector("#clearIdeTerminalButton").addEventListener("click", (event) => clearIdeTerminal(event));
+document.querySelector("#clearIdeTerminalButton").addEventListener("click", (event) => resetTerminal(event));
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
 document.querySelector("#showIdeProjectInformationButton").addEventListener("click", () => setIdeConsoleView("project-information"));
 document.querySelector("#showIdeBuildResultsButton").addEventListener("click", () => setIdeConsoleView("build-results"));

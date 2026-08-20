@@ -5,6 +5,7 @@ import { createPlantUmlSvgUrl, escapeAttribute, escapeHtml, focusIdeStepSource, 
 import { IDE_DEBUG_STOP_EVENT, deviceDebug, guidedProjectView } from "@app/platform-components.js";
 import { navigate } from "@app/platform-routing.js";
 import { state } from "@app/platform-state.js";
+import { showStatus } from "@app/workbench-output-view.js";
 
 const projectSourceListLoads = new Map();
 const projectSourceContentLoads = new Map();
@@ -2128,9 +2129,9 @@ async function saveSource() {
   if (!project || !state.sourcePath || !ideSourceIsEditable(project, state.sourcePath)) return;
   try {
     await persistCurrentSource(project);
-    setFlashStatus("ok", `${state.sourcePath} gespeichert.`);
+    showStatus("ok", `${state.sourcePath} gespeichert.`);
   } catch (error) {
-    setFlashStatus("error", `Speichern fehlgeschlagen: ${error.message}`);
+    showStatus("error", `Speichern fehlgeschlagen: ${error.message}`);
   }
 }
 

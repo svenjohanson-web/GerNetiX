@@ -14,7 +14,7 @@ test("forwards live build progress into the IDE terminal", () => {
 
   assert.match(buildWait, /const seenProgress = new Set\(\)/);
   assert.match(buildWait, /appendBuildProgress\(current\.progress, seenProgress, options\)/);
-  assert.match(buildWait, /appendIdeTerminal\(kind, message\)/);
+  assert.match(buildWait, /appendTerminalLine\(kind, message\)/);
   assert.match(server, /progress: customerBuildProgress\(job\.progress, Boolean\(projectJob\?\.build_config\?\.firmware_basis_id\)\)/);
   assert.match(server, /projectJob\?\.error\?\.details\?\.build_log/);
 });

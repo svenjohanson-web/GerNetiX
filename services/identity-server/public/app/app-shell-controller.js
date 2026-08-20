@@ -246,7 +246,7 @@ async function loadProjectAppAssets() {
 
 const lazyAssetVersions = {
   boardConfiguration: "20260820-esm-blatt-6",
-  build: "20260820-esm-kopf-1",
+  build: "20260820-statuskanal-1",
   flashDialog: "20260820-esm-blatt-3",
   flashExecutor: "20260820-esm-blatt-6",
   flashProgress: "20260820-esm-blatt-6",
@@ -256,10 +256,15 @@ const lazyAssetVersions = {
   usbDisconnect: "20260820-esm-blatt-6",
   usbTarget: "20260820-esm-blatt-6",
   wifiSetup: "20260820-esm-mitte-2",
+  workbenchOutput: "20260820-statuskanal-1",
 };
 
 async function loadBuildWorkbenchAssets() {
   await Promise.all([
+    // Statuszeile und Terminal. Der Gerätebau-Controller fuehrt sie ein, holt
+    // sie damit ohnehin -- der Eintrag hier gibt ihr eine Cache-Version und
+    // haelt sie unter derselben Aufsicht wie ihre Geschwister.
+    loadPlatformScript(`/app/workbench-output-view.js?v=${lazyAssetVersions.workbenchOutput}`, { module: true }),
     loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`, { module: true }),
     loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`, { module: true }),
     loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
