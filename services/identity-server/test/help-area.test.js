@@ -1,4 +1,4 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -11,7 +11,7 @@ const generatedKnowledgeRoot = path.join(__dirname, "..", "src", "knowledge", "g
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
 const app = readPlatformAppSource();
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
-const helpLoaderContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
+const helpLoaderContent = readForSandbox("help-content.js");
 const helpOnlyContent = fs.readFileSync(path.join(__dirname, "..", "src", "help", "help-content.js"), "utf8");
 const knowledgeArticleFiles = [
   "knowledge-articles-engineering.js",
@@ -25,8 +25,8 @@ const knowledgeArticleFiles = [
   "knowledge-articles-cross-cutting.js",
   "knowledge-articles-glossary.js",
 ];
-const knowledgeCatalogContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
-const knowledgeChapterIndex = fs.readFileSync(path.join(appRoot, "knowledge-chapter-index.js"), "utf8");
+const knowledgeCatalogContent = readForSandbox("knowledge-content.js");
+const knowledgeChapterIndex = readForSandbox("knowledge-chapter-index.js");
 const generatedKnowledgeChapterFiles = fs.readdirSync(generatedKnowledgeRoot).filter((file) => file.endsWith(".js"));
 const generatedKnowledgeContent = generatedKnowledgeChapterFiles
   .map((file) => fs.readFileSync(path.join(generatedKnowledgeRoot, file), "utf8"))
@@ -55,8 +55,8 @@ const chapterTitles = Object.fromEntries(Object.entries(chapterIndexData).map(([
 const normalizedHelpContent = restoreNavigationTitles(helpOnlyContent.replace(/,\r?\n\s*/g, ", "), helpTitles);
 const normalizedKnowledgeContent = restoreNavigationTitles(knowledgeContent.replace(/,\r?\n\s*/g, ", "), chapterTitles);
 const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}\n${knowledgeChapterIndex}\n${generatedKnowledgeContent}`;
-const informationView = fs.readFileSync(path.join(appRoot, "information-view.js"), "utf8");
-const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
+const informationView = readForSandbox("information-view.js");
+const helpChatService = readForSandbox("help-chat-service.js");
 const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "..", "..", "docs", "webshop-account-separation.md"), "utf8");
 const synchronousMotorPhaseB = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-2-phase-b.svg"), "utf8");
 const synchronousMotorPhaseC = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-3-phase-c.svg"), "utf8");
@@ -194,7 +194,7 @@ test("explains browser apps, PWA mode and native mobile apps at the component ch
   assert.match(helpContent, /nur im lokalen Netzwerk beziehungsweise Intranet oder über das Internet erreichbar/);
   assert.match(helpContent, /Die Internet-Auswahl veröffentlicht noch keinen Dienst/);
   assert.match(helpContent, /Mobile App \(iOS & Android\)[\s\S]*Eigene Builds, Signierung, Store-Prozesse/);
-  const developmentPlatform = fs.readFileSync(path.join(appRoot, "development-platform.js"), "utf8");
+  const developmentPlatform = readForSandbox("development-platform.js");
   assert.match(developmentPlatform, /data-component-type-help/);
   assert.match(developmentPlatform, /openHelpTopic\?\.\("browser-pwa-mobile-app"\)/);
 });

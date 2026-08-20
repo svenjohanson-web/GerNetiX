@@ -55,3 +55,17 @@ document.querySelector("#mainMenu")?.addEventListener("click", (event) => {
   event.stopPropagation();
 });
 document.addEventListener("click", closeMainMenu);
+
+export {
+  closeMainMenu,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-event-bindings.js, device-wifi-setup-dialog.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  closeMainMenu,
+});
+/* ---- /Uebergangsbruecke ---- */

@@ -324,3 +324,17 @@ const GerNetiXSerialService = (() => {
 })();
 
 window.GerNetiXSerialService = GerNetiXSerialService;
+
+export {
+  GerNetiXSerialService,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXSerialService,
+});
+/* ---- /Uebergangsbruecke ---- */

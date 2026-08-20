@@ -52,3 +52,39 @@ const SERIAL_SERVICE_CHOICE_EVENT = "gernetix:serial-service-choice";
 
 const DASHBOARD_STALE_EVENT = "gernetix:dashboard-stale";
 const IDE_DEBUG_STOP_EVENT = "gernetix:ide-debug-stop";
+
+export {
+  DASHBOARD_STALE_EVENT,
+  IDE_DEBUG_STOP_EVENT,
+  SERIAL_SERVICE_CHOICE_EVENT,
+  developmentPlatform,
+  deviceDebug,
+  deviceOnboarding,
+  guidedProjectView,
+  learningProject,
+  platformComponentIfBuilt,
+  projectApp,
+  quiz,
+  registerPlatformComponent,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: 8 Dateien.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  DASHBOARD_STALE_EVENT,
+  IDE_DEBUG_STOP_EVENT,
+  SERIAL_SERVICE_CHOICE_EVENT,
+  developmentPlatform,
+  deviceDebug,
+  deviceOnboarding,
+  guidedProjectView,
+  learningProject,
+  platformComponentIfBuilt,
+  projectApp,
+  quiz,
+  registerPlatformComponent,
+});
+/* ---- /Uebergangsbruecke ---- */

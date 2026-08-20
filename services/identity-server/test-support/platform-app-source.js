@@ -33,10 +33,7 @@ const routeLazyPlatformAppFiles = new Set([
 ]);
 
 function readPlatformAppSource() {
-  const appRoot = path.resolve(__dirname, "../public/app");
-  return platformAppFiles
-    .map((file) => fs.readFileSync(path.join(appRoot, file), "utf8"))
-    .join("\n");
+  return platformAppFiles.map((file) => readForSandbox(file)).join("\n");
 }
 
 /*
@@ -56,15 +53,21 @@ function scriptPosition(html, file) {
 /*
  * Quelltext einer Browser-Datei zum Ausfuehren in einer Sandbox.
  *
- * Umgestellte Dateien sind ES-Module und enthalten eine export-Anweisung, die
- * in einem klassischen vm-Kontext ein Syntaxfehler waere. Sie wird entfernt --
- * gefahrlos, weil dieselben Namen direkt daneben ueber die Uebergangsbruecke
- * an globalThis gehen und im Sandkasten damit ohnehin sichtbar sind.
+ * Umgestellte Dateien sind ES-Module. Ihre import- und export-Anweisungen sind
+ * in einem klassischen vm-Kontext Syntaxfehler; node --test kann diese Tests
+ * nicht als Module ausfuehren, ohne dass jede von ihnen umgeschrieben wird.
+ *
+ * Beides wird darum entfernt. Das ist kein Verlust an Aussagekraft: die Tests
+ * legen die Namen, die sie brauchen, ohnehin selbst in den Kontext oder fuegen
+ * die liefernde Datei daneben ein -- genau das taten sie schon, als noch alles
+ * ueber den globalen Namensraum lief. Geprueft wird hier das Verhalten der
+ * Funktionen, nicht die Modulverdrahtung; fuer die gibt es eigene Tests.
  */
 function readForSandbox(file) {
   const quelle = fs.readFileSync(path.resolve(__dirname, "../public/app", file), "utf8");
   return quelle
-    .replace(/^export \{[\s\S]*?\};$/m, "")
+    .replace(/^import [\s\S]*?;$/gm, "")
+    .replace(/^export \{[\s\S]*?\};$/gm, "")
     .replace(/^export (?=(const|let|var|function|async function|class)\b)/gm, "");
 }
 

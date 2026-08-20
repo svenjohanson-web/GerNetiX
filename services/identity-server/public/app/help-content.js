@@ -35,3 +35,17 @@ const HelpContent = (() => {
 
   return content;
 })();
+
+export {
+  HelpContent,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: help-chat-service.js, information-view.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  HelpContent,
+});
+/* ---- /Uebergangsbruecke ---- */

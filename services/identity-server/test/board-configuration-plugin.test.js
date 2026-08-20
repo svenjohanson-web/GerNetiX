@@ -1,10 +1,11 @@
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.resolve(__dirname, "../public/app/board-configuration-plugin.js"), "utf8");
+const source = readForSandbox("board-configuration-plugin.js");
 const plugin = vm.runInNewContext(`${source}\nBoardConfigurationPlugin;`);
 
 const features = [{

@@ -4,9 +4,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.resolve(__dirname, "../public/app/action-observability.js"), "utf8");
+const source = readForSandbox("action-observability.js");
 
 test("carries one action id through trigger, spans and completion", async () => {
   const requests = [];

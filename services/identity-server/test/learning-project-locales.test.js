@@ -1,14 +1,14 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const test = require("node:test");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "public", "app", "learning-project-locales.js"), "utf8");
+const source = readForSandbox("learning-project-locales.js");
 const app = readPlatformAppSource();
-const view = fs.readFileSync(path.join(__dirname, "..", "public", "app", "learning-project-view.js"), "utf8");
-const controller = fs.readFileSync(path.join(__dirname, "..", "public", "app", "learning-project-controller.js"), "utf8");
+const view = readForSandbox("learning-project-view.js");
+const controller = readForSandbox("learning-project-controller.js");
 const context = {};
 vm.runInNewContext(`${source}\nthis.locales = LearningProjectLocales;`, context);
 

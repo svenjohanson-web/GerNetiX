@@ -2,8 +2,8 @@
   "hinweis": "Erzeugt von scripts/update-asset-versions.js. Nicht von Hand bearbeiten.",
   "dateien": {
     "/app/action-observability.js": {
-      "version": "20260807-four-action-chains-1",
-      "pruefsumme": "28eaef1c9726e45b"
+      "version": "20260820-esm-blatt-2",
+      "pruefsumme": "d0f45d15d6b6304f"
     },
     "/app/ai-chat-pattern.js": {
       "version": "20260819-esm-schritt-1",
@@ -50,8 +50,8 @@
       "pruefsumme": "5763c89c9e9d0eda"
     },
     "/app/app-shell-early.js": {
-      "version": "20260819-app-theme-toggle-3",
-      "pruefsumme": "f79a75c62717a760"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "1462ace4525d05cf"
     },
     "/app/app.css": {
       "version": "20260819-start-error-1",
@@ -114,8 +114,8 @@
       "pruefsumme": "351fbf756a7d6dfa"
     },
     "/app/help-content.js": {
-      "version": "20260730-content-separation-1",
-      "pruefsumme": "1a144cdfdb49fd1e"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "bba0d5512b72df05"
     },
     "/app/i18n/i18n.js": {
       "version": "20260726-01",
@@ -134,28 +134,28 @@
       "pruefsumme": "fd4276cb17e3a95f"
     },
     "/app/learning-project-locales.js": {
-      "version": "20260808-learning-entry-choice",
-      "pruefsumme": "fe16ee95b91f4b24"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "f0ef240d80c0cce1"
     },
     "/app/learning-project-view.js": {
-      "version": "20260808-learning-entry-choice",
-      "pruefsumme": "ba73c8bcf02492ca"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "cc781a4da3d75bfa"
     },
     "/app/operator-shell.css": {
       "version": "20260819-app-theme-toggle-3",
       "pruefsumme": "d94ec124f0f328b3"
     },
     "/app/platform-components.js": {
-      "version": "20260820-peers-1",
-      "pruefsumme": "f960262d62fd6f0f"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "a5c804a9960a8f05"
     },
     "/app/platform-routing.js": {
       "version": "20260820-peers-1",
       "pruefsumme": "d4486ea22c6f9f35"
     },
     "/app/platform-state.js": {
-      "version": "20260820-esm-state-1",
-      "pruefsumme": "df9fdd63342daf63"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "301e4669d75b81b5"
     },
     "/app/project-app-controller.js": {
       "version": "20260819-umd-root-fix-1",
@@ -190,8 +190,8 @@
       "pruefsumme": "da212a86414b3f94"
     },
     "/app/serial-service-client.js": {
-      "version": "20260807-helper-progress-1",
-      "pruefsumme": "54639a912b22674a"
+      "version": "20260820-esm-blatt-1",
+      "pruefsumme": "0dbbfeb319c5bed0"
     },
     "/app/session-state.js": {
       "version": "20260819-esm-schritt-1",

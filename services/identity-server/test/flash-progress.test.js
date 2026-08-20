@@ -4,9 +4,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "public", "app", "flash-progress.js"), "utf8");
+const source = readForSandbox("flash-progress.js");
 
 function flashProgressForTest() {
   const context = { window: {} };

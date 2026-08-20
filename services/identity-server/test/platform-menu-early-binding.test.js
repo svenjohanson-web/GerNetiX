@@ -6,15 +6,15 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-const appRoot = path.join(__dirname, "..", "public", "app");
-const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
-const earlyShell = fs.readFileSync(path.join(appRoot, "app-shell-early.js"), "utf8");
-const eventBindings = fs.readFileSync(path.join(appRoot, "app-event-bindings.js"), "utf8");
-
 // Die Position wird ueber den Dateinamen gesucht, nicht ueber eine bestimmte
 // Cache-Version. Geprueft wird die Ladereihenfolge; welche Version dabei
 // ausgeliefert wird, sichert asset-cache-versions.test.js.
-const { scriptPosition } = require("../test-support/platform-app-source");
+const { scriptPosition, readForSandbox } = require("../test-support/platform-app-source");
+
+const appRoot = path.join(__dirname, "..", "public", "app");
+const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
+const earlyShell = readForSandbox("app-shell-early.js");
+const eventBindings = readForSandbox("app-event-bindings.js");
 const ladePosition = (datei) => scriptPosition(html, datei);
 
 test("loads the hamburger binding before route and feature controllers", () => {

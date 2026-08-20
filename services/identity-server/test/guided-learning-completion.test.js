@@ -2,9 +2,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+const source = readForSandbox("guided-project-view.js");
 const styles = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const courseModel = require("../src/dev/project-models/programming-fundamentals-course")
   .createProgrammingFundamentalsCourseModel();

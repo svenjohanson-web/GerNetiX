@@ -5,20 +5,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
 
 const app = readPlatformAppSource();
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
-const controllerSource = fs.readFileSync(path.resolve(__dirname, "../public/app/device-debug-controller.js"), "utf8");
+const controllerSource = readForSandbox("device-debug-controller.js");
 /*
  * Die Registratur wird im Browser vor diesem Controller geladen; er meldet
  * sich beim Laden bei ihr an und verwendet ihre Ereignisnamen. Die Sandbox
  * bildet dieselbe Reihenfolge ab, statt die Namen hier zu wiederholen.
  */
-const registrySource = fs.readFileSync(path.resolve(__dirname, "../public/app/platform-components.js"), "utf8");
+const registrySource = readForSandbox("platform-components.js");
 const debugSandboxSource = `${registrySource}\n${controllerSource}\nGerNetiXDeviceDebug;`;
-const shell = fs.readFileSync(path.resolve(__dirname, "../public/app/app-shell-controller.js"), "utf8");
+const shell = readForSandbox("app-shell-controller.js");
 
 test("Debug & Diagnose is a separate project workspace and not a component-tree entry", () => {
   assert.doesNotMatch(app, /`Komponenten\/\$\{label\}\/In Debug öffnen`/);
