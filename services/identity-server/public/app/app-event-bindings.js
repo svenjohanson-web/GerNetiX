@@ -1,4 +1,13 @@
 // GerNetiX platform module extracted from app.js.
+import { createOfflineRecoverySet } from "@app/app-account-controller.js";
+import { enablePushNotifications, sendPushTestNotification } from "@app/app-push-controller.js";
+import { projectById } from "@app/app-runtime-utils.js";
+import { activateCurrentRoute, bootstrap, changePlatformLocale, claimFlashboxFromCode, createFlashboxMockOrder, loadDeviceWifiSetupAssets, preferredSerialServiceDownload, renderShopConfiguration } from "@app/app-shell-controller.js";
+import { closeMainMenu } from "@app/app-shell-early.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+import { GerNetiXWelcomeGuide } from "@app/welcome-guide.js";
+
 bootstrap();
 
 document.querySelector("#logoutButton").addEventListener("click", async () => {

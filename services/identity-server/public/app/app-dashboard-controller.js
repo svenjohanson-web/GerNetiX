@@ -1,4 +1,10 @@
 // GerNetiX platform module extracted from app.js.
+import { renderAiRating } from "@app/app-billing-controller.js";
+import { accountDevelopmentProjects, personalApplications, renderLearn } from "@app/app-project-controller.js";
+import { escapeAttribute, escapeHtml, getJson, summaryItem } from "@app/app-runtime-utils.js";
+import { DASHBOARD_STALE_EVENT, developmentPlatform, learningProject } from "@app/platform-components.js";
+import { routeName } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
 
 /*
  * Die beiden laufenden Katalogabrufe. Sie lagen kurzzeitig im gemeinsamen
@@ -258,3 +264,13 @@ function renderDashboardMessageOverview(summary) {
 
 // Gegenstueck zur Meldung aus dem Build-Controller.
 window.addEventListener(DASHBOARD_STALE_EVENT, () => renderDashboard());
+
+export {
+  loadBoardFeatureCatalog,
+  loadDevicePageTools,
+  loadProcessorBoardCatalog,
+  loadSensorCatalog,
+  renderDashboard,
+  renderKnowledgeUpdates,
+};
+

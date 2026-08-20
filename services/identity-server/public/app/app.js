@@ -1,3 +1,13 @@
+import { loadBoardFeatureCatalog, loadProcessorBoardCatalog, renderDashboard } from "@app/app-dashboard-controller.js";
+import { openProjectInIde } from "@app/app-project-controller.js";
+import { delay, deleteJson, escapeAttribute, escapeHtml, getJson, meta, postJson, progressFor, putJson } from "@app/app-runtime-utils.js";
+import { loadProjectDetail, showSerialServiceChoiceDialog } from "@app/app-shell-controller.js";
+import { InformationView } from "@app/information-view.js";
+import { registerPlatformComponent } from "@app/platform-components.js";
+import { isPublicInformationPage, navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+import { GerNetiXSerialService } from "@app/serial-service-client.js";
+
 
 // Der Zustand selbst bleibt abhaengigkeitsfrei; die Verbindung wird hier erzeugt.
 state.serialService = GerNetiXSerialService.create();

@@ -619,7 +619,7 @@ const InformationView = (() => {
         return;
       }
       const route = event.target.closest("[data-help-route]");
-      if (route) window.navigate(route.dataset.helpRoute);
+      if (route) navigate(route.dataset.helpRoute);
     });
     mount.addEventListener("submit", async (event) => {
       if (event.target.id !== "helpChatForm") return;
@@ -662,7 +662,7 @@ const InformationView = (() => {
     if (!topic?.articleId) return;
     const targetSurface = targetContent === KnowledgeContent ? "knowledge" : "help";
     if (targetSurface !== surface) {
-      window.navigate(`${targetSurface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
+      navigate(`${targetSurface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
       return;
     }
     selectedTopicId = topicId;
@@ -674,7 +674,7 @@ const InformationView = (() => {
     const content = findContentForTopic(topicId);
     const topic = content?.findTopic(topicId);
     if (content === KnowledgeContent && topic?.articleId) {
-      window.navigate(`/wissen/#${topicId}`);
+      navigate(`/wissen/#${topicId}`);
       return;
     }
     const article = topic?.articleId ? content.articles[topic.articleId] : null;
@@ -700,7 +700,7 @@ const InformationView = (() => {
     dialog.querySelectorAll("[data-help-route]").forEach((button) => {
       button.addEventListener("click", () => {
         dialog.close();
-        window.navigate(button.dataset.helpRoute);
+        navigate(button.dataset.helpRoute);
       });
     });
     if (!dialog.open) dialog.showModal();
@@ -731,12 +731,3 @@ export {
   InformationView,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: app-shell-controller.js, app.js.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  InformationView,
-});
-/* ---- /Uebergangsbruecke ---- */

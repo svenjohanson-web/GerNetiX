@@ -1,3 +1,7 @@
+import { renderAiRating } from "@app/app-billing-controller.js";
+import { escapeHtml, getJson, postJson } from "@app/app-runtime-utils.js";
+import { state } from "@app/platform-state.js";
+
 const GerNetiXHardwareLab = (() => {
   const labState = { session: null, loaded: false, loading: false, usageLoaded: false, usageLoading: false, usageError: "", bound: false, busy: false, pendingMessages: [], recordedUsageEvents: new Set() };
 
@@ -319,3 +323,17 @@ const GerNetiXHardwareLab = (() => {
 
   return { bind, enter, render };
 })();
+
+export {
+  GerNetiXHardwareLab,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXHardwareLab,
+});
+/* ---- /Uebergangsbruecke ---- */

@@ -22,7 +22,7 @@ test("loads one shared AI-chat behavior before domain controllers", () => {
   assert.doesNotMatch(html, /guided-project-view\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
-  assert.match(shell, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
+  assert.match(shell, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`(?:, \{ module: true \})?\)/);
   assert.doesNotMatch(shell, /requirements-workshop-controller\.js/);
   /*
    * Ueber die Skript-Tags gepruefte Reihenfolge und Anzahl. Die Import Map im

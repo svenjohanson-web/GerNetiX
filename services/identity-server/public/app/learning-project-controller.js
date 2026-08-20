@@ -1,3 +1,5 @@
+import { LearningProjectView } from "@app/learning-project-view.js";
+
 const LearningProjectController = (() => {
   function create(deps) {
     const {
@@ -229,3 +231,8 @@ const LearningProjectController = (() => {
   }
   return { create, hasSavedProgress };
 })();
+
+export {
+  LearningProjectController,
+};
+

@@ -1,4 +1,9 @@
 // GerNetiX platform module extracted from app.js.
+import { escapeAttribute, escapeHtml, putJson, summaryItem } from "@app/app-runtime-utils.js";
+import { refresh, renderAll } from "@app/app-shell-controller.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+
 function renderBilling() {
   const target = document.querySelector("#billingSummary");
   const packages = state.billing.ai_credit_packages || [];
@@ -172,3 +177,10 @@ function formatNumber(value) {
 function formatMetric(value) {
   return Number(value || 0).toLocaleString("de-DE", { maximumFractionDigits: 1 });
 }
+
+export {
+  formatNumber,
+  renderAiRating,
+  renderBilling,
+};
+

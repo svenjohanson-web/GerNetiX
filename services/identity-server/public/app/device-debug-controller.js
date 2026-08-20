@@ -1,3 +1,8 @@
+import { deleteJson, escapeAttribute, escapeHtml, getJson, postJson, projectById } from "@app/app-runtime-utils.js";
+import { IDE_DEBUG_STOP_EVENT, registerPlatformComponent } from "@app/platform-components.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+
 const GerNetiXDeviceDebug = (() => {
   const pollingTimers = new Map();
   const severityOrder = { marker: 0, info: 1, warn: 2, error: 3, fatal: 4 };
@@ -802,3 +807,21 @@ window.GerNetiXDeviceDebug = GerNetiXDeviceDebug;
 // Abfragen zu beenden. Beides ersetzt Aufrufe quer zwischen Nachbarn.
 registerPlatformComponent("deviceDebug", () => GerNetiXDeviceDebug);
 window.addEventListener(IDE_DEBUG_STOP_EVENT, () => stopIdeDeviceDebugPolling());
+
+export {
+  GerNetiXDeviceDebug,
+  loadDeviceDebugWorkspace,
+  stopIdeDeviceDebugPolling,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-device-build-controller.js, app-event-bindings.js, app-shell-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXDeviceDebug,
+  loadDeviceDebugWorkspace,
+  stopIdeDeviceDebugPolling,
+});
+/* ---- /Uebergangsbruecke ---- */

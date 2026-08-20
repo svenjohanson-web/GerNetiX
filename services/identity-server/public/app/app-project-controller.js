@@ -479,21 +479,3 @@ export {
   renderProjects,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: 5 Dateien.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  accountDevelopmentProjects,
-  currentLearningLocale,
-  hasProjectApp,
-  learningText,
-  openProjectInIde,
-  personalApplications,
-  renderApplications,
-  renderLearn,
-  renderLearningProjectOverview,
-  renderProjects,
-});
-/* ---- /Uebergangsbruecke ---- */

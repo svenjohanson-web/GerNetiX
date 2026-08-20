@@ -1,4 +1,17 @@
 // GerNetiX platform module extracted from app.js.
+import { renderAccountSetup } from "@app/app-account-controller.js";
+import { renderBilling } from "@app/app-billing-controller.js";
+import { loadBoardFeatureCatalog, loadDevicePageTools, loadProcessorBoardCatalog, loadSensorCatalog, renderDashboard, renderKnowledgeUpdates } from "@app/app-dashboard-controller.js";
+import { currentLearningLocale, learningText, renderApplications, renderLearn, renderLearningProjectOverview, renderProjects } from "@app/app-project-controller.js";
+import { escapeAttribute, escapeHtml, getJson, meta, patchJson, postJson, progressFor, projectById, renderGuidedProject } from "@app/app-runtime-utils.js";
+import { GerNetiXI18n } from "@app/i18n/i18n.js";
+import { InformationView } from "@app/information-view.js";
+import { LearningProjectController } from "@app/learning-project-controller.js";
+import { LearningProjectLocales } from "@app/learning-project-locales.js";
+import { SERIAL_SERVICE_CHOICE_EVENT, developmentPlatform, learningProject, platformComponentIfBuilt, projectApp, quiz, registerPlatformComponent } from "@app/platform-components.js";
+import { ROUTE_CHANGED_EVENT, isPublicInformationPage, isPublicKnowledgePage, navigate, routeMap, routeName } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+import { GerNetiXWelcomeGuide } from "@app/welcome-guide.js";
 
 /*
  * Die zuletzt gezeichnete Route. Nur diese Datei setzt und liest sie; sie
@@ -233,11 +246,11 @@ async function loadProjectAppAssets() {
 
 const lazyAssetVersions = {
   boardConfiguration: "20260820-esm-blatt-6",
-  build: "20260807-action-observability-1",
+  build: "20260820-esm-kopf-1",
   flashDialog: "20260820-esm-blatt-3",
   flashExecutor: "20260820-esm-blatt-6",
   flashProgress: "20260820-esm-blatt-6",
-  guidedProject: "20260808-guided-sequence-17",
+  guidedProject: "20260820-esm-kopf-2",
   onboarding: "20260820-esm-mitte-2",
   onboardingModel: "20260820-esm-blatt-6",
   usbDisconnect: "20260820-esm-blatt-6",
@@ -252,7 +265,7 @@ async function loadBuildWorkbenchAssets() {
     loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
     loadPlatformScript(`/app/usb-flash-target-model.js?v=${lazyAssetVersions.usbTarget}`, { module: true }),
   ]);
-  await loadPlatformScript(`/app/app-device-build-controller.js?v=${lazyAssetVersions.build}`);
+  await loadPlatformScript(`/app/app-device-build-controller.js?v=${lazyAssetVersions.build}`, { module: true });
 }
 
 async function loadGuidedProjectAssets() {
@@ -264,7 +277,7 @@ async function loadGuidedProjectAssets() {
 }
 
 async function loadGuidedProjectCoreAssets() {
-  await loadPlatformScript(`/app/guided-project-view.js?v=${lazyAssetVersions.guidedProject}`);
+  await loadPlatformScript(`/app/guided-project-view.js?v=${lazyAssetVersions.guidedProject}`, { module: true });
 }
 
 function activeLearningProjectNeedsHardwareWorkbench() {
@@ -275,9 +288,9 @@ function activeLearningProjectNeedsHardwareWorkbench() {
 
 async function loadIdeWorkbenchAssets() {
   await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
-  await loadPlatformScript(`/app/app-ide-controller.js?v=${lazyAssetVersions.build}`);
+  await loadPlatformScript(`/app/app-ide-controller.js?v=${lazyAssetVersions.build}`, { module: true });
   initializeIdeWorkspaceResize();
-  await loadPlatformScript(`/app/device-debug-controller.js?v=${lazyAssetVersions.build}`);
+  await loadPlatformScript(`/app/device-debug-controller.js?v=${lazyAssetVersions.build}`, { module: true });
 }
 
 async function loadDeviceOnboardingAssets() {
@@ -332,7 +345,7 @@ function routeAssetsMissing(route) {
 }
 
 async function loadRouteAssets(route) {
-  const version = "20260820-esm-mitte-2";
+  const version = "20260820-esm-kopf-1";
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
       loadPlatformScript("/app/development-hardware-model.js?v=20260820-esm-blatt-6", { module: true }),
@@ -369,7 +382,7 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadRouteFragment("hardwareLabView", `/app/fragments/hardware-lab.html?v=${version}`),
       loadPlatformStyle(`/app/hardware-lab-route.css?v=${version}`),
-      loadPlatformScript(`/app/hardware-lab-controller.js?v=${version}`),
+      loadPlatformScript(`/app/hardware-lab-controller.js?v=${version}`, { module: true }),
     ]);
     GerNetiXHardwareLab.bind();
     return;
@@ -387,8 +400,8 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
       loadPlatformScript(`/app/app-community-controller.js?v=${version}`, { module: true }),
-      loadPlatformScript(`/app/community-ideas-controller.js?v=${version}`),
-      loadPlatformScript(`/app/community-portal-controller.js?v=${version}`),
+      loadPlatformScript(`/app/community-ideas-controller.js?v=${version}`, { module: true }),
+      loadPlatformScript(`/app/community-portal-controller.js?v=${version}`, { module: true }),
     ]);
     bindCommunityCoreEvents();
     bindCommunityIdeaEvents();
@@ -1093,3 +1106,19 @@ async function createFlashboxMockOrder() {
     target.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Mock-Kauf konnte nicht angelegt werden.")}</p>`;
   }
 }
+
+export {
+  activateCurrentRoute,
+  bootstrap,
+  changePlatformLocale,
+  claimFlashboxFromCode,
+  createFlashboxMockOrder,
+  loadDeviceWifiSetupAssets,
+  loadProjectDetail,
+  preferredSerialServiceDownload,
+  refresh,
+  renderAll,
+  renderShopConfiguration,
+  showSerialServiceChoiceDialog,
+};
+

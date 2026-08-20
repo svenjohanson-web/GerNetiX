@@ -1,4 +1,10 @@
 // GerNetiX platform module extracted from app.js.
+import { GerNetiXActionOps } from "@app/action-observability.js";
+import { delay, deleteJson, escapeAttribute, escapeHtml, getJson, meta, postJson, projectById, putJson } from "@app/app-runtime-utils.js";
+import { DASHBOARD_STALE_EVENT, SERIAL_SERVICE_CHOICE_EVENT, deviceOnboarding } from "@app/platform-components.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+
 const activeBuildJobIds = new Set();
 let buildSubmissionPending = false;
 let buildCancellationRequested = false;
@@ -1977,3 +1983,109 @@ function clearIdeTerminal() {
   if (!terminal) return;
   terminal.innerHTML = '<span class="terminal-muted">GerNetiX Build-Terminal bereit.</span>';
 }
+
+export {
+  checkAllocatedDeviceConnectivity,
+  checkRecoveryFirmware,
+  claimSelectedDiscoveredDevices,
+  cleanProjectBuildCache,
+  clearIdeTerminal,
+  closeUsbPortIdentificationDialog,
+  confirmCancelActiveBuilds,
+  confirmFlashTargetChoice,
+  connectProvisioningWifi,
+  handleBuildButtonAction,
+  handleProjectVersionAction,
+  identifyAvrBootloaderExperimental,
+  identifyEsp32Bootloader,
+  identifyUsbFlashPortForFirmware,
+  inventoryFlashboxes,
+  loadIdeEsptoolModule,
+  openIdeFlashDialog,
+  openProvisioningFlashDialog,
+  persistUsbInventoryWarningPreference,
+  refreshRecoveryDevices,
+  refreshUsbPorts,
+  renderBuilds,
+  renderDeviceRecovery,
+  renderDevices,
+  renderNetworkDiscovery,
+  renderUsbPortMappingConfirmationState,
+  renderUsbPortOptions,
+  retryUsbPortSearch,
+  scanProvisioningSerialPorts,
+  scanProvisioningWifiNetworks,
+  searchDevicesForInventory,
+  selectDeviceDiscoveryMethod,
+  selectProvisioningSerialPort,
+  selectedUsbPort,
+  setFlashStatus,
+  setInventoryStatus,
+  startBuild,
+  startUsbFlash,
+  startUsbFlashAssignmentBatch,
+  stopUsbFlashPortIdentification,
+  submitProjectVersion,
+  syncInventoryNodeNamePreview,
+  syncSelectedDevicePort,
+  updateBuildActionButton,
+  updateUsbFirmwarePortAssignment,
+  usbFlashAssignmentBatch,
+  waitForCompletedBuild,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: 5 Dateien.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  checkAllocatedDeviceConnectivity,
+  checkRecoveryFirmware,
+  claimSelectedDiscoveredDevices,
+  cleanProjectBuildCache,
+  clearIdeTerminal,
+  closeUsbPortIdentificationDialog,
+  confirmCancelActiveBuilds,
+  confirmFlashTargetChoice,
+  connectProvisioningWifi,
+  handleBuildButtonAction,
+  handleProjectVersionAction,
+  identifyAvrBootloaderExperimental,
+  identifyEsp32Bootloader,
+  identifyUsbFlashPortForFirmware,
+  inventoryFlashboxes,
+  loadIdeEsptoolModule,
+  openIdeFlashDialog,
+  openProvisioningFlashDialog,
+  persistUsbInventoryWarningPreference,
+  refreshRecoveryDevices,
+  refreshUsbPorts,
+  renderBuilds,
+  renderDeviceRecovery,
+  renderDevices,
+  renderNetworkDiscovery,
+  renderUsbPortMappingConfirmationState,
+  renderUsbPortOptions,
+  retryUsbPortSearch,
+  scanProvisioningSerialPorts,
+  scanProvisioningWifiNetworks,
+  searchDevicesForInventory,
+  selectDeviceDiscoveryMethod,
+  selectProvisioningSerialPort,
+  selectedUsbPort,
+  setFlashStatus,
+  setInventoryStatus,
+  startBuild,
+  startUsbFlash,
+  startUsbFlashAssignmentBatch,
+  stopUsbFlashPortIdentification,
+  submitProjectVersion,
+  syncInventoryNodeNamePreview,
+  syncSelectedDevicePort,
+  updateBuildActionButton,
+  updateUsbFirmwarePortAssignment,
+  usbFlashAssignmentBatch,
+  waitForCompletedBuild,
+});
+/* ---- /Uebergangsbruecke ---- */

@@ -1,3 +1,7 @@
+import { formatNumber } from "@app/app-billing-controller.js";
+import { escapeAttribute, escapeHtml, getJson, postJson } from "@app/app-runtime-utils.js";
+import { state } from "@app/platform-state.js";
+
 async function loadProjectIdeas(force = false) {
   if (state.projectIdeas.loading || (state.projectIdeas.loaded && !force)) return;
   state.projectIdeas.loading = true;
@@ -97,3 +101,21 @@ function bindCommunityIdeaEvents() {
     if (button) openProjectIdea(button.dataset.projectIdea);
   });
 }
+
+export {
+  bindCommunityIdeaEvents,
+  openProjectIdea,
+  renderProjectIdeas,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, community-portal-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  bindCommunityIdeaEvents,
+  openProjectIdea,
+  renderProjectIdeas,
+});
+/* ---- /Uebergangsbruecke ---- */

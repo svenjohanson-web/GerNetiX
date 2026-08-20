@@ -124,12 +124,3 @@ export {
   GerNetiXWelcomeGuide,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: app-event-bindings.js, app-shell-controller.js.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  GerNetiXWelcomeGuide,
-});
-/* ---- /Uebergangsbruecke ---- */

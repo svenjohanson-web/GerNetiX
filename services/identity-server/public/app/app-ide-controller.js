@@ -1,4 +1,11 @@
 // GerNetiX platform module extracted from app.js.
+import { renderAiRating } from "@app/app-billing-controller.js";
+import { loadBoardFeatureCatalog, loadProcessorBoardCatalog, loadSensorCatalog } from "@app/app-dashboard-controller.js";
+import { createPlantUmlSvgUrl, escapeAttribute, escapeHtml, focusIdeStepSource, getJson, guidedViews, meta, postJson, primarySourcePath, progressFor, projectById, putJson, renderProjectViewManifest } from "@app/app-runtime-utils.js";
+import { IDE_DEBUG_STOP_EVENT, deviceDebug, guidedProjectView } from "@app/platform-components.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+
 const projectSourceListLoads = new Map();
 const projectSourceContentLoads = new Map();
 let loadedIdeSourceKey = "";
@@ -2135,3 +2142,99 @@ async function persistCurrentSource(project = projectById(state.activeProjectId)
   clearIdeSourceDirty(project.id, state.sourcePath);
   renderIdeProjectInformation(project);
 }
+
+export {
+  activeIdeSoftwareUnit,
+  allocatedIdeDevice,
+  handleDriverManagementClick,
+  ideDeviceConfigurationComponents,
+  initializeIdeWorkspaceResize,
+  loadDeviceWebPreview,
+  loadIdeProject,
+  loadProjectSources,
+  markIdeSourceDirty,
+  openBoardProperties,
+  openCommunicationSetup,
+  openComponentFeatures,
+  openDeviceConnections,
+  openDriverManagement,
+  openIdeSource,
+  openPwaDashboardEditor,
+  openPwaDashboardView,
+  openSensorProperties,
+  openWebInterface,
+  openWorkerDispatcherConfiguration,
+  persistCurrentSource,
+  projectSoftwareUnits,
+  refreshCommunicationSetupPreview,
+  renderDriverManagement,
+  renderIdeDeviceAllocation,
+  renderIdeProjectInformation,
+  renderIdeShell,
+  renderIdeSoftwareUnitSelection,
+  renderIdeViewMode,
+  renderWebInterface,
+  restoreIdeChatInputHeight,
+  saveComponentFeatures,
+  saveEventConfiguration,
+  saveIdeBoardConfiguration,
+  saveMotorDriverAssignment,
+  savePwaDashboard,
+  saveSource,
+  selectIdeTreePath,
+  setIdeConsoleView,
+  softwareUnitForIdeComponent,
+  suggestedDeviceWebUrl,
+  updateIdeProjectTools,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: 6 Dateien.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  activeIdeSoftwareUnit,
+  allocatedIdeDevice,
+  handleDriverManagementClick,
+  ideDeviceConfigurationComponents,
+  initializeIdeWorkspaceResize,
+  loadDeviceWebPreview,
+  loadIdeProject,
+  loadProjectSources,
+  markIdeSourceDirty,
+  openBoardProperties,
+  openCommunicationSetup,
+  openComponentFeatures,
+  openDeviceConnections,
+  openDriverManagement,
+  openIdeSource,
+  openPwaDashboardEditor,
+  openPwaDashboardView,
+  openSensorProperties,
+  openWebInterface,
+  openWorkerDispatcherConfiguration,
+  persistCurrentSource,
+  projectSoftwareUnits,
+  refreshCommunicationSetupPreview,
+  renderDriverManagement,
+  renderIdeDeviceAllocation,
+  renderIdeProjectInformation,
+  renderIdeShell,
+  renderIdeSoftwareUnitSelection,
+  renderIdeViewMode,
+  renderWebInterface,
+  restoreIdeChatInputHeight,
+  saveComponentFeatures,
+  saveEventConfiguration,
+  saveIdeBoardConfiguration,
+  saveMotorDriverAssignment,
+  savePwaDashboard,
+  saveSource,
+  selectIdeTreePath,
+  setIdeConsoleView,
+  softwareUnitForIdeComponent,
+  suggestedDeviceWebUrl,
+  updateIdeProjectTools,
+});
+/* ---- /Uebergangsbruecke ---- */

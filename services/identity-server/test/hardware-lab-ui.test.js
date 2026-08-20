@@ -76,7 +76,7 @@ test("invalidates cached hardware-lab UI assets", () => {
   // Verhalten.
   assert.doesNotMatch(scriptAbschnitt(html), /hardware-lab-controller\.js/);
   assert.match(shellController, /const version = "[0-9a-z-]+"/);
-  assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
+  assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`(?:, \{ module: true \})?\)/);
   assert.match(shellController, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadPlatformStyle\(`\/app\/hardware-lab-route\.css\?v=\$\{version\}`\)/);
 });

@@ -60,12 +60,3 @@ export {
   closeMainMenu,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: app-event-bindings.js, device-wifi-setup-dialog.js.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  closeMainMenu,
-});
-/* ---- /Uebergangsbruecke ---- */

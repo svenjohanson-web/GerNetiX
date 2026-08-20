@@ -105,17 +105,3 @@ export {
   routeName,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: 11 Dateien.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  ROUTE_CHANGED_EVENT,
-  isPublicInformationPage,
-  isPublicKnowledgePage,
-  navigate,
-  routeMap,
-  routeName,
-});
-/* ---- /Uebergangsbruecke ---- */

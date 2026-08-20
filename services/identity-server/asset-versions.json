@@ -14,60 +14,60 @@
       "pruefsumme": "19e341cff45eacba"
     },
     "/app/app-account-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "d51c0f504381dcd5"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "0affd23e888dae42"
     },
     "/app/app-billing-controller.js": {
-      "version": "20260803-storage-policy-1",
-      "pruefsumme": "fb92b80c62942c34"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "2bd8c67ecf5f4401"
     },
     "/app/app-community-controller.js": {
-      "version": "20260820-esm-mitte-2",
+      "version": "20260820-esm-kopf-1",
       "pruefsumme": "7624d44d88e40cf2"
     },
     "/app/app-dashboard-controller.js": {
-      "version": "20260820-esm-state-1",
-      "pruefsumme": "b181b741c13fba4e"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "0fdf8168288b3ae9"
     },
     "/app/app-device-build-controller.js": {
-      "version": "20260807-action-observability-1",
-      "pruefsumme": "70c64bd946de552f"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "741160f30fd37a9a"
     },
     "/app/app-event-bindings.js": {
-      "version": "20260819-esm-schritt-1",
-      "pruefsumme": "7d02ac8e3a598f53"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "51ca36c80195bf9d"
     },
     "/app/app-ide-controller.js": {
-      "version": "20260807-action-observability-1",
-      "pruefsumme": "32015861103938cb"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "9b5bfb46a7946dee"
     },
     "/app/app-project-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "b17b7830b5e06a5c"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "c414d63166961e25"
     },
     "/app/app-push-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "2a3ec978b3887421"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "69727edb2b79637c"
     },
     "/app/app-runtime-utils.js": {
       "version": "20260820-esm-utils-1",
       "pruefsumme": "d525da0a6d415c9c"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-esm-mitte-3",
-      "pruefsumme": "9092de05551d5198"
+      "version": "20260820-esm-kopf-3",
+      "pruefsumme": "d2e15fc053bff036"
     },
     "/app/app-shell-early.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "1462ace4525d05cf"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "e65ebf1646bf7caa"
     },
     "/app/app.css": {
       "version": "20260819-start-error-1",
       "pruefsumme": "a4a97a7c79781945"
     },
     "/app/app.js": {
-      "version": "20260820-esm-app-1",
-      "pruefsumme": "919cc3db625d542e"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "e7505f31352613e6"
     },
     "/app/auth/auth.css": {
       "version": "20260815-public-theme-1",
@@ -82,19 +82,19 @@
       "pruefsumme": "8c0b6df2e8f2a2d5"
     },
     "/app/community-ideas-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "29d278a3afdf73b6"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "3fa614204c181ed9"
     },
     "/app/community-marketplace-controller.js": {
-      "version": "20260820-esm-mitte-2",
+      "version": "20260820-esm-kopf-1",
       "pruefsumme": "30f565c99ae0369b"
     },
     "/app/community-portal-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "882e7c30676226d7"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "3bddba3fdcb5bf50"
     },
     "/app/community-routes.css": {
-      "version": "20260820-esm-mitte-2",
+      "version": "20260820-esm-kopf-1",
       "pruefsumme": "4e7c5223fa78d071"
     },
     "/app/development-component-metamodel.js": {
@@ -110,8 +110,8 @@
       "pruefsumme": "e2fbbfbdefe7bc37"
     },
     "/app/device-debug-controller.js": {
-      "version": "20260807-action-observability-1",
-      "pruefsumme": "cefe7b9ac0a145aa"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "b57141e905210044"
     },
     "/app/device-onboarding-controller.js": {
       "version": "20260820-esm-mitte-2",
@@ -134,15 +134,15 @@
       "pruefsumme": "2569880a6685df65"
     },
     "/app/guided-project-view.js": {
-      "version": "20260808-guided-sequence-17",
-      "pruefsumme": "be47af692d327bae"
+      "version": "20260820-esm-kopf-2",
+      "pruefsumme": "ebbb1789b66b3914"
     },
     "/app/hardware-lab-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "83954bfa22bce405"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "6218f459dead5de3"
     },
     "/app/hardware-lab-route.css": {
-      "version": "20260820-esm-mitte-2",
+      "version": "20260820-esm-kopf-1",
       "pruefsumme": "bbc3e666a1981d19"
     },
     "/app/help-chat-service.js": {
@@ -158,8 +158,8 @@
       "pruefsumme": "5ebc24db139191d0"
     },
     "/app/information-view.js": {
-      "version": "20260820-esm-mitte-3",
-      "pruefsumme": "bf57d78f6fc2feb1"
+      "version": "20260820-esm-kopf-2",
+      "pruefsumme": "9ed596ac5217584b"
     },
     "/app/initial-view-router.js": {
       "version": "20260805-hardware-lab-route-1",
@@ -174,16 +174,16 @@
       "pruefsumme": "f0d34c8027706d80"
     },
     "/app/learning-project-controller.js": {
-      "version": "20260808-learning-entry-choice",
-      "pruefsumme": "fd4276cb17e3a95f"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "0574ae547d4e2292"
     },
     "/app/learning-project-locales.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "f0ef240d80c0cce1"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "0ab780cb19c1c550"
     },
     "/app/learning-project-view.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "cc781a4da3d75bfa"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "837c7b880285bd46"
     },
     "/app/operator-shell.css": {
       "version": "20260819-app-theme-toggle-3",
@@ -194,8 +194,8 @@
       "pruefsumme": "a5c804a9960a8f05"
     },
     "/app/platform-routing.js": {
-      "version": "20260820-esm-mitte-1",
-      "pruefsumme": "68f7607d65eaf669"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "c221b5ae3b3ca8b5"
     },
     "/app/platform-state.js": {
       "version": "20260820-esm-blatt-1",
@@ -226,16 +226,16 @@
       "pruefsumme": "35352b3afb719400"
     },
     "/app/reference-library-controller.js": {
-      "version": "20260820-esm-mitte-2",
+      "version": "20260820-esm-kopf-1",
       "pruefsumme": "1fbfa18256e9dd69"
     },
     "/app/reference-library-route.css": {
-      "version": "20260820-esm-mitte-2",
+      "version": "20260820-esm-kopf-1",
       "pruefsumme": "da212a86414b3f94"
     },
     "/app/serial-service-client.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "0dbbfeb319c5bed0"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "79d71a85188d5f33"
     },
     "/app/session-state.js": {
       "version": "20260819-esm-schritt-1",
@@ -266,8 +266,8 @@
       "pruefsumme": "f580bf434befb0ff"
     },
     "/app/welcome-guide.js": {
-      "version": "20260820-esm-mitte-1",
-      "pruefsumme": "4e065d7a0dbd2e3e"
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "9f92d0367a5e40fe"
     },
     "/community/app.js": {
       "version": "20260819-asset-manifest-1",

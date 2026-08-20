@@ -1,3 +1,6 @@
+import { themedPlantUmlSource } from "@app/app-runtime-utils.js";
+import { navigate } from "@app/platform-routing.js";
+
 const GuidedProjectView = (() => {
   function create(deps) {
     const {
@@ -1838,7 +1841,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       if (fn === "previous_step") return setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1), targetSelector);
       if (fn === "next_step") return completeIdeGuidedStep(project, targetSelector);
       if (fn === "runtime_preview") return openGuidedRuntimePreview(view);
-      if (fn === "open_billing") return window.navigate("/app/billing/");
+      if (fn === "open_billing") return navigate("/app/billing/");
       return undefined;
     }
 
@@ -2192,3 +2195,17 @@ if (digitalRead(BUTTON_PIN) == LOW) {
 
   return { create };
 })();
+
+export {
+  GuidedProjectView,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, app.js, learning-project-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GuidedProjectView,
+});
+/* ---- /Uebergangsbruecke ---- */

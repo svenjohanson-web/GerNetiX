@@ -108,12 +108,3 @@ export {
   LearningProjectLocales,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: app-project-controller.js, app-shell-controller.js.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  LearningProjectLocales,
-});
-/* ---- /Uebergangsbruecke ---- */
