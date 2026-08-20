@@ -54,8 +54,8 @@
       "pruefsumme": "2ede5983a853edf2"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-esm-kopf-3",
-      "pruefsumme": "d2e15fc053bff036"
+      "version": "20260820-metamodell-1",
+      "pruefsumme": "1cf439c1d28ab0e6"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-kopf-1",
@@ -98,16 +98,16 @@
       "pruefsumme": "4e7c5223fa78d071"
     },
     "/app/development-component-metamodel.js": {
-      "version": "20260820-esm-blatt-6",
-      "pruefsumme": "2577cf6f97d8b47f"
+      "version": "20260820-metamodell-1",
+      "pruefsumme": "35b3eebae8ac6df8"
     },
     "/app/development-hardware-model.js": {
       "version": "20260820-esm-blatt-6",
       "pruefsumme": "00c00e6121b449fc"
     },
     "/app/development-platform.js": {
-      "version": "20260820-esm-mitte-3",
-      "pruefsumme": "e2fbbfbdefe7bc37"
+      "version": "20260820-metamodell-1",
+      "pruefsumme": "28bd8c95874ebec3"
     },
     "/app/device-debug-controller.js": {
       "version": "20260820-esm-kopf-1",

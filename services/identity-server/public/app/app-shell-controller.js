@@ -349,11 +349,12 @@ async function loadRouteAssets(route) {
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
       loadPlatformScript("/app/development-hardware-model.js?v=20260820-esm-blatt-6", { module: true }),
-      loadPlatformScript("/app/development-component-metamodel.js?v=20260820-esm-blatt-6", { module: true }),
+      // Klassisch: admin-tool liest dieselbe Datei mit require, siehe dort.
+      loadPlatformScript("/app/development-component-metamodel.js?v=20260820-metamodell-1"),
       loadPlatformScript("/app/project-feedback-ui.js?v=20260820-esm-mitte-1", { module: true }),
       loadPlatformScript("/app/project-repository-card.js?v=20260820-esm-blatt-6", { module: true }),
     ]);
-    await loadPlatformScript("/app/development-platform.js?v=20260820-esm-mitte-3", { module: true });
+    await loadPlatformScript("/app/development-platform.js?v=20260820-metamodell-1", { module: true });
     developmentPlatform().init();
     applyDevelopmentSummary();
     return;

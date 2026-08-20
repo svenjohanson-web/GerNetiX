@@ -156,19 +156,20 @@ const DevelopmentComponentMetamodel = (() => {
   });
 })();
 
+/*
+ * Diese Datei bleibt bewusst ein klassisches Skript.
+ *
+ * Sie ist die einzige Browser-Datei, die auch ein Server liest:
+ * services/admin-tool/src/http-app.js bindet sie mit require ein, weil beide
+ * dasselbe Komponentenmetamodell brauchen. Eine export-Anweisung macht sie
+ * fuer den CommonJS-Lader unlesbar -- der Dienst startet dann nicht mehr, und
+ * zwar erst auf dem Server, nicht in der Testsuite.
+ *
+ * Genau das ist einmal passiert. Ein Test haelt die Regel seitdem fest:
+ * server-side-browser-module.test.js.
+ *
+ * Veroeffentlicht wird nach UMD-Art an beide Welten. Im Browser lesen ihre
+ * Leser den Namen darum global; ein import ist hier nicht moeglich.
+ */
 globalThis.DevelopmentComponentMetamodel = DevelopmentComponentMetamodel;
 if (typeof module !== "undefined") module.exports = DevelopmentComponentMetamodel;
-
-export {
-  DevelopmentComponentMetamodel,
-};
-
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: app-shell-controller.js, development-platform.js.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  DevelopmentComponentMetamodel,
-});
-/* ---- /Uebergangsbruecke ---- */

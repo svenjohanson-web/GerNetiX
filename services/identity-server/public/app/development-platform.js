@@ -1,6 +1,10 @@
 import { hasProjectApp } from "@app/app-project-controller.js";
 import { themedPlantUmlSource } from "@app/app-runtime-utils.js";
-import { DevelopmentComponentMetamodel } from "@app/development-component-metamodel.js";
+/*
+ * DevelopmentComponentMetamodel wird global gelesen, nicht eingefuehrt:
+ * development-component-metamodel.js ist kein Modul, weil admin-tool sie mit
+ * require einbindet. Siehe den Kopf jener Datei.
+ */
 import { DevelopmentHardwareModel } from "@app/development-hardware-model.js";
 import { DeviceOnboardingModel } from "@app/device-onboarding-model.js";
 import { ProjectFeedbackUI } from "@app/project-feedback-ui.js";
