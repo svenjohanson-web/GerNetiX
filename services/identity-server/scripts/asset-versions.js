@@ -85,6 +85,19 @@ function verweiseAusJavaScript(quelle, herkunft) {
     const version = tabelle[t[2]];
     if (version) verweise.push({ pfad: t[1], version, herkunft });
   }
+  /*
+   * Das Wissensportal bildet seine Adressen aus einer Liste:
+   *   ["a.js", "b.js"].map((file) => `/app/${file}?v=${version}`)
+   * Auch das ist ein Verweis. Ohne diese Form standen die beiden Dateien
+   * ausserhalb der Versionsverwaltung.
+   */
+  for (const t of quelle.matchAll(/\[([^\]]*?\.js"[^\]]*?)\]\.map\(\(\w+\) => `(\/[^`$]*)\$\{\w+\}\?v=\$\{version\}`\)/g)) {
+    const version = versionVorPosition(quelle, t.index);
+    if (!version) continue;
+    for (const name of t[1].matchAll(/"([^"]+\.js)"/g)) {
+      verweise.push({ pfad: `${t[2]}${name[1]}`, version, herkunft });
+    }
+  }
   return verweise;
 }
 
@@ -145,6 +158,20 @@ function erfasseVerweise() {
   const ladeSteuerung = path.join(OEFFENTLICH, "app", "app-shell-controller.js");
   if (fs.existsSync(ladeSteuerung)) {
     verweise.push(...verweiseAusJavaScript(fs.readFileSync(ladeSteuerung, "utf8"), "public/app/app-shell-controller.js"));
+  }
+  /*
+   * landing.js laedt die Uebersetzung auf jeder oeffentlichen Seite selbst
+   * nach -- mit einer eigenen, fest eingetragenen Version. Sie war nicht
+   * erfasst und wich vom Dokument ab, ohne dass es auffiel. Fuer den Browser
+   * sind zwei Adressen zwei Module: die Datei waere zweimal ausgewertet
+   * worden.
+   */
+  const startseite = path.join(OEFFENTLICH, "landing.js");
+  if (fs.existsSync(startseite)) {
+    const quelle = fs.readFileSync(startseite, "utf8");
+    for (const t of quelle.matchAll(/script\.src = "(\/[^"?]+\.js)\?v=([^"]+)"/g)) {
+      verweise.push({ pfad: t[1], version: t[2], herkunft: "public/landing.js" });
+    }
   }
   return { verweise, ohneVersion };
 }
@@ -262,6 +289,27 @@ function hebeVersionenAn(neueVersion) {
         continue;
       }
 
+      /*
+       * Listenform: der Dateiname steht in einem Feld, die Adresse entsteht
+       * erst beim Bilden. Angehoben wird die Konstante, die die Liste regiert
+       * -- damit ziehen ihre Geschwister mit, was hier richtig ist: sie
+       * gehoeren zu derselben Ansicht und muessen zusammen ungueltig werden.
+       */
+      const name = pfad.split("/").pop().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const inListe = quelle.match(new RegExp(`\\[[^\\]]*"${name}"[^\\]]*\\]\\.map\\(\\(\\w+\\) => \`[^\`]*\\?v=\\$\\{version\\}\``));
+      if (inListe) {
+        const alteKonstante = versionVorPosition(quelle, inListe.index);
+        if (alteKonstante) {
+          gefunden.add(pfad);
+          if (alteKonstante !== neueVersion) {
+            quelle = quelle.replace(`const version = "${alteKonstante}"`, `const version = "${neueVersion}"`);
+            angehoben.add(pfad);
+            konstanten.add(alteKonstante);
+          }
+        }
+        continue;
+      }
+
       // Vorlagenform mit gemeinsamer Tabelle: dort den Eintrag anheben.
       const ausTabelle = quelle.match(new RegExp(`${maskiert}\\?v=\\$\\{lazyAssetVersions\\.(\\w+)\\}`));
       if (!ausTabelle) continue;
@@ -353,7 +401,7 @@ function modulPfade() {
   const pfade = [];
   for (const [pfad, angabe] of [...bestand.entries()].sort()) {
     if (istDurchgereicht(pfad) || !pfad.startsWith("/app/") || !pfad.endsWith(".js")) continue;
-    if (!gebraucht.has(path.basename(pfad)) || !istModulDatei(pfad)) continue;
+    if (!gebraucht.has(pfad.replace("/app/", "")) || !istModulDatei(pfad)) continue;
     pfade.push({ pfad, version: angabe.version });
   }
   return pfade;
@@ -362,7 +410,7 @@ function modulPfade() {
 function baueImportMap() {
   const eintraege = {};
   for (const { pfad, version } of modulPfade()) {
-    eintraege[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
+    eintraege[`@app/${pfad.replace("/app/", "")}`] = `${pfad}?v=${version}`;
   }
   const inhalt = JSON.stringify({ imports: eintraege }, null, 6).replace(/\n/g, "\n    ");
   return `${MARKE_START}\n    <script type="importmap">\n    ${inhalt}\n    </script>\n    ${MARKE_ENDE}`;
@@ -389,7 +437,7 @@ function pruefeImportMap() {
   try { karte = JSON.parse(treffer[1]); } catch (fehler) { return [`Import Map ist kein gueltiges JSON: ${fehler.message}`]; }
   const fehler = [];
   const erwartet = {};
-  for (const { pfad, version } of modulPfade()) erwartet[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
+  for (const { pfad, version } of modulPfade()) erwartet[`@app/${pfad.replace("/app/", "")}`] = `${pfad}?v=${version}`;
   for (const [name, ziel] of Object.entries(erwartet)) {
     if (karte.imports?.[name] !== ziel) fehler.push(`${name} zeigt auf ${karte.imports?.[name] || "(fehlt)"} statt auf ${ziel}`);
   }
@@ -400,4 +448,5 @@ function pruefeImportMap() {
 }
 
 module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL, schreibeImportMap, pruefeImportMap, hebeVersionenAn };
+
 

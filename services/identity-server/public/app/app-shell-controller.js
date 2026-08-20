@@ -182,12 +182,19 @@ function loadRouteFragment(id, src) {
 
 async function loadKnowledgeContentAssets() {
   const urls = knowledgeContentAssetUrls();
-  await Promise.all(urls.slice(0, -1).map(loadPlatformScript));
-  await loadPlatformScript(urls.at(-1));
+  /*
+   * Nicht .map(loadPlatformScript): map reicht den Index als zweites Argument
+   * weiter, und an dieser Stelle stehen die Optionen. Bisher fiel das nicht
+   * auf, weil eine Zahl keine module-Eigenschaft hat -- die Datei wurde dann
+   * klassisch geladen, was sie ohnehin war. Fuer ein Modul waere es ein
+   * Syntaxfehler gewesen, und zwar erst beim Oeffnen des Wissensportals.
+   */
+  await Promise.all(urls.slice(0, -1).map((url) => loadPlatformScript(url, { module: true })));
+  await loadPlatformScript(urls.at(-1), { module: true });
 }
 
 function knowledgeContentAssetUrls() {
-  const version = "20260812-knowledge-library-3";
+  const version = "20260820-esm-wissen-1";
   return ["knowledge-chapter-index.js", "knowledge-content.js"].map((file) => `/app/${file}?v=${version}`);
 }
 
@@ -333,7 +340,7 @@ async function loadRouteAssets(route) {
       loadPlatformScript("/app/project-feedback-ui.js?v=20260820-esm-mitte-1", { module: true }),
       loadPlatformScript("/app/project-repository-card.js?v=20260820-esm-blatt-6", { module: true }),
     ]);
-    await loadPlatformScript("/app/development-platform.js?v=20260806-project-summary-lazy-1");
+    await loadPlatformScript("/app/development-platform.js?v=20260820-esm-mitte-3", { module: true });
     developmentPlatform().init();
     applyDevelopmentSummary();
     return;

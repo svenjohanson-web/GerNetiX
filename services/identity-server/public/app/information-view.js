@@ -1,3 +1,10 @@
+import { ApiClient } from "@app/api-client.js";
+import { DomUtils } from "@app/dom-utils.js";
+import { HelpChatService } from "@app/help-chat-service.js";
+import { HelpContent } from "@app/help-content.js";
+import { KnowledgeContent } from "@app/knowledge-content.js";
+import { navigate } from "@app/platform-routing.js";
+
 const InformationView = (() => {
   let selectedTopicId = "quick-start";
   let messages = [];
@@ -719,3 +726,17 @@ const InformationView = (() => {
 
   return { render, selectTopic, openDialog };
 })();
+
+export {
+  InformationView,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, app.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  InformationView,
+});
+/* ---- /Uebergangsbruecke ---- */

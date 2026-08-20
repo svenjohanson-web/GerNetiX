@@ -96,8 +96,11 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(app, /"knowledge-chapter-index\.js", "knowledge-content\.js"/);
   assert.doesNotMatch(app, /knowledge-chapters\/from-problem-to-system\.js/);
   assert.match(app, /const urls = knowledgeContentAssetUrls\(\)/);
-  assert.match(app, /await Promise\.all\(urls\.slice\(0, -1\)\.map\(loadPlatformScript\)\)/);
-  assert.match(app, /await loadPlatformScript\(urls\.at\(-1\)\)/);
+  // Der Index wird zuerst und gemeinsam geladen, der Inhalt zuletzt und
+  // einzeln -- er baut darauf auf. Beide sind Module, also muss die Angabe an
+  // beiden Aufrufstellen stehen; ohne sie waere die Datei ein Syntaxfehler.
+  assert.match(app, /await Promise\.all\(urls\.slice\(0, -1\)\.map\(\(url\) => loadPlatformScript\(url, \{ module: true \}\)\)\)/);
+  assert.match(app, /await loadPlatformScript\(urls\.at\(-1\), \{ module: true \}\)/);
   assert.match(html, /help-chat-service\.js/);
   assert.match(html, /information-view\.js/);
   assert.match(helpContent, /const topics = \[/);

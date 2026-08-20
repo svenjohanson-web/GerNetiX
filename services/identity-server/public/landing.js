@@ -149,7 +149,19 @@ function loadPublicI18nScript() {
   if (window.GerNetiXI18n) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = "/app/i18n/i18n.js?v=20260726-02";
+    /*
+     * i18n.js ist ein ES-Modul; als klassisches Skript geladen waere seine
+     * export-Anweisung ein Syntaxfehler, und die Uebersetzung fiele auf jeder
+     * oeffentlichen Seite aus.
+     *
+     * Die Adresse muss dabei genau der im Dokument entsprechen -- eine
+     * abweichende Cache-Version waere fuer den Browser ein anderes Modul und
+     * wuerde ein zweites Mal ausgewertet. Dafuer wird diese Datei jetzt mit
+     * erfasst; frueher trug sie unbemerkt eine andere Version als das
+     * Dokument.
+     */
+    script.type = "module";
+    script.src = "/app/i18n/i18n.js?v=20260820-esm-i18n-1";
     script.addEventListener("load", resolve, { once: true });
     script.addEventListener("error", reject, { once: true });
     document.head.append(script);

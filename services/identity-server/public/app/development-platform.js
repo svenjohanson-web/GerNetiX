@@ -1,3 +1,10 @@
+import { hasProjectApp } from "@app/app-project-controller.js";
+import { themedPlantUmlSource } from "@app/app-runtime-utils.js";
+import { DevelopmentComponentMetamodel } from "@app/development-component-metamodel.js";
+import { DevelopmentHardwareModel } from "@app/development-hardware-model.js";
+import { DeviceOnboardingModel } from "@app/device-onboarding-model.js";
+import { ProjectFeedbackUI } from "@app/project-feedback-ui.js";
+
 const DevelopmentPlatform = (() => {
   const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
   let projectTemplates = {};
@@ -3355,3 +3362,17 @@ const DevelopmentPlatform = (() => {
 
   return { create };
 })();
+
+export {
+  DevelopmentPlatform,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, app.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  DevelopmentPlatform,
+});
+/* ---- /Uebergangsbruecke ---- */

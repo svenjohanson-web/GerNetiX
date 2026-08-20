@@ -284,6 +284,16 @@ function analysiereDatei(ast, { istModul = false } = {}) {
     if (s.type === "VariableDeclaration") {
       for (const d of s.declarations) { const n = []; namenAusMuster(d.id, n); for (const name of n) deklariere(ebenen, s.kind === "var" ? "funktion" : "block", name); }
     }
+    /*
+     * Ein eingefuehrter Name ist gebunden -- er kommt nur nicht aus dieser
+     * Datei. Ohne diesen Zweig galt er als frei, und die Zusicherung "kein
+     * Skript verweist auf einen Namen, den niemand bereitstellt" schlug an,
+     * sobald ein Leser den Namen nicht mehr global auflas, sondern
+     * ausdruecklich einfuehrte -- also genau dann, wenn es besser wurde.
+     */
+    if (s.type === "ImportDeclaration") {
+      for (const spezifizierer of s.specifiers) deklariere(ebenen, "block", spezifizierer.local?.name);
+    }
   }
   hebeHoch(ast, ebenen);
   // Nur klassische Skripte veroeffentlichen ihre obersten Deklarationen.

@@ -54,8 +54,8 @@
       "pruefsumme": "d525da0a6d415c9c"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "43e78423873127ba"
+      "version": "20260820-esm-mitte-3",
+      "pruefsumme": "9092de05551d5198"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-blatt-1",
@@ -106,8 +106,8 @@
       "pruefsumme": "00c00e6121b449fc"
     },
     "/app/development-platform.js": {
-      "version": "20260806-project-summary-lazy-1",
-      "pruefsumme": "c2eab8895693c882"
+      "version": "20260820-esm-mitte-3",
+      "pruefsumme": "e2fbbfbdefe7bc37"
     },
     "/app/device-debug-controller.js": {
       "version": "20260807-action-observability-1",
@@ -154,16 +154,24 @@
       "pruefsumme": "bba0d5512b72df05"
     },
     "/app/i18n/i18n.js": {
-      "version": "20260726-01",
-      "pruefsumme": "93d00503c1f69009"
+      "version": "20260820-esm-i18n-1",
+      "pruefsumme": "5ebc24db139191d0"
     },
     "/app/information-view.js": {
-      "version": "20260812-knowledge-library-3",
-      "pruefsumme": "6dd411076ec98eb4"
+      "version": "20260820-esm-mitte-3",
+      "pruefsumme": "bf57d78f6fc2feb1"
     },
     "/app/initial-view-router.js": {
       "version": "20260805-hardware-lab-route-1",
       "pruefsumme": "dd1d3286b92e68d4"
+    },
+    "/app/knowledge-chapter-index.js": {
+      "version": "20260820-esm-wissen-1",
+      "pruefsumme": "4d357801be52af01"
+    },
+    "/app/knowledge-content.js": {
+      "version": "20260820-esm-wissen-1",
+      "pruefsumme": "f0d34c8027706d80"
     },
     "/app/learning-project-controller.js": {
       "version": "20260808-learning-entry-choice",
@@ -282,8 +290,8 @@
       "pruefsumme": "28f26ac6b65f8382"
     },
     "/landing.js": {
-      "version": "20260813-electronics-lab-menu-1",
-      "pruefsumme": "1fe3d92f6c7e1879"
+      "version": "20260820-esm-i18n-2",
+      "pruefsumme": "08f50d4b455cfb5e"
     },
     "/public-header.css": {
       "version": "20260814-auth-theme-1",
