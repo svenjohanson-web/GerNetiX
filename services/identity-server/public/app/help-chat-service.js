@@ -32,10 +32,4 @@ const HelpChatService = (() => {
   return { answer };
 })();
 
-/*
- * Uebergangsbruecke: information-view.js ist noch ein klassisches Skript und
- * liest HelpChatService global. Faellt dieser Leser weg oder wird er selbst
- * ein Modul, verschwindet auch diese Zeile.
- */
 export { HelpChatService };
-globalThis.HelpChatService = HelpChatService;

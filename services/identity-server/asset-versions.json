@@ -10,8 +10,8 @@
       "pruefsumme": "6856a8f311afad2f"
     },
     "/app/api-client.js": {
-      "version": "20260820-esm-export-1",
-      "pruefsumme": "19e341cff45eacba"
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "fb4bbaa4af5b2a13"
     },
     "/app/app-account-controller.js": {
       "version": "20260820-esm-kopf-1",
@@ -50,8 +50,8 @@
       "pruefsumme": "69727edb2b79637c"
     },
     "/app/app-runtime-utils.js": {
-      "version": "20260820-esm-seiten-1",
-      "pruefsumme": "e236011baa1ba1e9"
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "2ede5983a853edf2"
     },
     "/app/app-shell-controller.js": {
       "version": "20260820-esm-kopf-3",
@@ -126,8 +126,8 @@
       "pruefsumme": "33f520184c9dfa62"
     },
     "/app/dom-utils.js": {
-      "version": "20260820-esm-export-1",
-      "pruefsumme": "bfb0592007f99b6a"
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "f7e52774e9b6761b"
     },
     "/app/flash-progress.js": {
       "version": "20260820-esm-blatt-6",
@@ -146,8 +146,8 @@
       "pruefsumme": "bbc3e666a1981d19"
     },
     "/app/help-chat-service.js": {
-      "version": "20260820-esm-seiten-1",
-      "pruefsumme": "85fd5c0e3b647648"
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "2b1388594f3d31c1"
     },
     "/app/help-content.js": {
       "version": "20260820-esm-grenze-1",
