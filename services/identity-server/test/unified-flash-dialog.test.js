@@ -4,8 +4,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { requireForSandbox } = require("../test-support/platform-app-source");
 
-const dialog = require(path.join(__dirname, "../public/app/unified-flash-dialog.js"));
+const dialog = requireForSandbox("unified-flash-dialog.js");
 
 test("normalizes the same USB, OTA and FlashBox choices for every flash entry", () => {
   const methods = dialog.normalizeMethods({

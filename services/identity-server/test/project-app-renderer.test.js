@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { render } = require("../public/app/project-app-renderer");
+const { requireForSandbox } = require("../test-support/platform-app-source");
+const { render } = requireForSandbox("project-app-renderer.js");
 
 function manifest() {
   return {

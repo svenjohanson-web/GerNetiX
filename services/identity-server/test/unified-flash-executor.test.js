@@ -4,8 +4,9 @@ const assert = require("node:assert/strict");
 const { webcrypto } = require("node:crypto");
 const path = require("node:path");
 const test = require("node:test");
+const { requireForSandbox } = require("../test-support/platform-app-source");
 
-const executor = require(path.join(__dirname, "../public/app/unified-flash-executor.js"));
+const executor = requireForSandbox("unified-flash-executor.js");
 
 test("verifies size, SHA-256 and source reference before returning flash bytes", async () => {
   const data = Uint8Array.from([1, 2, 3, 4]);

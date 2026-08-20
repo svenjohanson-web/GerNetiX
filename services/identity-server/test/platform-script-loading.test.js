@@ -56,11 +56,71 @@ test("a lazily loaded file can be requested as a module", () => {
   assert.equal(erzeugte[0].type, "module");
 });
 
-test("the module choice is opt-in for every call site", () => {
-  // Pauschal umgestellt wuerden die Globalen der 28 nachgeladenen Dateien
-  // verschwinden und die Anwendung an vielen Stellen zugleich brechen.
-  const aufrufe = [...shellQuelle.matchAll(/loadPlatformScript\([^)]*\)/g)].map((t) => t[0]);
+/*
+ * Die Wahl muss zur Datei passen -- in beide Richtungen.
+ *
+ * Ein Modul in einem klassischen Skript-Tag ist ein Syntaxfehler: die Datei
+ * laeuft dann ueberhaupt nicht, und alles, was sie bereitstellt, fehlt. Der
+ * umgekehrte Fall ist stiller, aber ebenso falsch: eine klassische Datei als
+ * Modul geladen behaelt ihre Namen fuer sich, und ihre Leser finden nichts.
+ *
+ * Beides laesst sich nicht durch Hinsehen ausschliessen, weil die Angabe an
+ * der Aufrufstelle steht und die Wahrheit in der Datei.
+ */
+test("every lazily loaded file is loaded the way it is written", () => {
+  const aufrufe = [...shellQuelle.matchAll(/loadPlatformScript\(\s*(?:"|`)(\/app\/[^"`?]+\.js)\?v=[^"`]*(?:"|`)([^)]*)\)/g)];
   assert.ok(aufrufe.length > 10, `Zu wenige Aufrufstellen gefunden: ${aufrufe.length}`);
-  const alsModul = aufrufe.filter((a) => a.includes("module"));
-  assert.deepEqual(alsModul, [], "noch ist keine nachgeladene Datei ein Modul");
+
+  const falsch = [];
+  for (const [, pfad, rest] of aufrufe) {
+    const datei = path.resolve(__dirname, "..", "public", pfad.replace(/^\//, ""));
+    if (!fs.existsSync(datei)) { falsch.push(`${pfad}: Datei fehlt`); continue; }
+    const istModul = /^\s*(?:import\s|export\s*[{*]|export\s+(?:const|let|var|function|async|class)\b)/m
+      .test(fs.readFileSync(datei, "utf8"));
+    const alsModul = /module:\s*true/.test(rest);
+    if (istModul && !alsModul) falsch.push(`${pfad} ist ein Modul, wird aber klassisch geladen`);
+    if (!istModul && alsModul) falsch.push(`${pfad} ist klassisch, wird aber als Modul geladen`);
+  }
+  assert.deepEqual(falsch, []);
+});
+
+/*
+ * Dieselbe Frage fuer die Skript-Tags in allen ausgelieferten Seiten.
+ *
+ * Vier Dateien aus /app/ werden auch von anderen Seiten geladen -- der
+ * FlashBox-Einrichtung, dem Nexi-Sprachassistenten, der Anmeldung. Als eine
+ * davon zum Modul wurde, blieben deren Tags klassisch, und die Seiten brachen
+ * mit einem Syntaxfehler. Kein Test der Plattform konnte das sehen, weil er
+ * nur in app/index.html schaute.
+ */
+test("every page loads a module file as a module", () => {
+  const oeffentlich = path.resolve(__dirname, "../public");
+  const seiten = [];
+  const sammle = (verzeichnis) => {
+    for (const eintrag of fs.readdirSync(verzeichnis, { withFileTypes: true })) {
+      const voll = path.join(verzeichnis, eintrag.name);
+      if (eintrag.isDirectory()) { if (eintrag.name !== "node_modules") sammle(voll); }
+      else if (eintrag.name.endsWith(".html")) seiten.push(voll);
+    }
+  };
+  sammle(oeffentlich);
+
+  const falsch = [];
+  for (const seite of seiten) {
+    const html = fs.readFileSync(seite, "utf8");
+    const wo = path.relative(oeffentlich, seite).replace(/\\/g, "/");
+    for (const t of html.matchAll(/<script([^>]*?)src="([^"?]+\.js)(?:\?[^"]*)?"/g)) {
+      const [, attribute, verweis] = t;
+      if (/^https?:/.test(verweis)) continue;
+      const datei = verweis.startsWith("/")
+        ? path.join(oeffentlich, verweis.slice(1))
+        : path.resolve(path.dirname(seite), verweis);
+      if (!fs.existsSync(datei)) continue;
+      const istModul = /^\s*(?:import\s|export\s*[{*]|export\s+(?:const|let|var|function|async|class)\b)/m
+        .test(fs.readFileSync(datei, "utf8"));
+      const alsModul = /type="module"/.test(attribute);
+      if (istModul && !alsModul) falsch.push(`${wo}: ${verweis} ist ein Modul, wird aber klassisch geladen`);
+    }
+  }
+  assert.deepEqual(falsch, []);
 });

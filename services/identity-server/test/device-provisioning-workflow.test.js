@@ -1,4 +1,4 @@
-const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox, scriptAbschnitt } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -176,7 +176,7 @@ test("USB provisioning flashes the basis software before registration and pairin
   assert.match(onboarding, /scanButton\.disabled = state\.provisioningWifiSetupRunning \|\| !state\.provisioningSerialReady;/);
   assert.doesNotMatch(onboarding, /if \(!state\.provisioningPairingToken\) return;\s*state\.provisioningWifiSetupRunning = true;/);
   assert.doesNotMatch(onboarding, /loader\.writeFlash\(/);
-  assert.doesNotMatch(html, /unified-flash-executor\.js/);
+  assert.doesNotMatch(scriptAbschnitt(html), /unified-flash-executor\.js/);
   assert.match(shell, /loadDeviceOnboardingAssets[\s\S]*unified-flash-executor\.js/);
   assert.match(onboarding, /waitForProvisioningSerialReady/);
   assert.match(onboarding, /publishStatus: Status: running/);

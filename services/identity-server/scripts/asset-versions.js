@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Erfassung der Cache-Versionen ausgelieferter Browser-Dateien.
  *
  * Frueher nagelten 33 Zusicherungen in 17 Testdateien einzelne
@@ -47,13 +47,42 @@ function versionVorPosition(quelle, position) {
   return wert;
 }
 
+/*
+ * Die Route-Pakete beziehen ihre Version aus einer gemeinsamen Tabelle:
+ * loadPlatformScript(`/app/x.js?v=${lazyAssetVersions.flashDialog}`).
+ *
+ * Diese Form kannte die Erfassung nicht. Elf nachgeladene Dateien standen
+ * damit ueberhaupt nicht unter Versionskontrolle -- weder wurde ein Wechsel
+ * ihres Inhalts bemerkt, noch liess sich ihre Version anheben. Die Tabelle
+ * wird darum ausgelesen.
+ */
+function lazyVersionsTabelle(quelle) {
+  const block = quelle.match(/const lazyAssetVersions = \{([\s\S]*?)\n\};/);
+  if (!block) return {};
+  const tabelle = {};
+  for (const t of block[1].matchAll(/(\w+):\s*"([^"]+)"/g)) tabelle[t[1]] = t[2];
+  return tabelle;
+}
+
+/*
+ * Der Aufruf kann ein zweites Argument tragen -- loadPlatformScript(src,
+ * { module: true }) fuer nachgeladene ES-Module. Die Muster duerfen darum
+ * nicht auf die schliessende Klammer direkt hinter der Adresse bestehen.
+ * Taten sie es, verschwanden genau die umgestellten Dateien aus der
+ * Erfassung, und ihre Cache-Version wurde nie wieder angehoben.
+ */
 function verweiseAusJavaScript(quelle, herkunft) {
   const verweise = [];
-  for (const t of quelle.matchAll(/loadPlatform(?:Script|Style)\("(\/[^"?]+\.(?:js|css))\?v=([^"]+)"\)/g)) {
+  for (const t of quelle.matchAll(/loadPlatform(?:Script|Style)\("(\/[^"?]+\.(?:js|css))\?v=([^"]+)"\s*[,)]/g)) {
     verweise.push({ pfad: t[1], version: t[2], herkunft });
   }
-  for (const t of quelle.matchAll(/loadPlatform(?:Script|Style)\(`(\/[^`?]+\.(?:js|css))\?v=\$\{version\}`\)/g)) {
+  for (const t of quelle.matchAll(/loadPlatform(?:Script|Style)\(`(\/[^`?]+\.(?:js|css))\?v=\$\{version\}`\s*[,)]/g)) {
     const version = versionVorPosition(quelle, t.index);
+    if (version) verweise.push({ pfad: t[1], version, herkunft });
+  }
+  const tabelle = lazyVersionsTabelle(quelle);
+  for (const t of quelle.matchAll(/loadPlatform(?:Script|Style)\(`(\/[^`?]+\.(?:js|css))\?v=\$\{lazyAssetVersions\.(\w+)\}`\s*[,)]/g)) {
+    const version = tabelle[t[2]];
     if (version) verweise.push({ pfad: t[1], version, herkunft });
   }
   return verweise;
@@ -185,33 +214,65 @@ function hebeVersionenAn(neueVersion) {
   for (const [pfad, jetzt] of Object.entries(eintraege)) {
     const alt = vorher.dateien?.[pfad];
     if (alt && alt.pruefsumme !== jetzt.pruefsumme && alt.version === jetzt.version) betroffen.add(pfad);
+    /*
+     * Eine Datei ohne Eintrag war bisher nicht erfasst. Ob die ausgelieferte
+     * Version zu ihrem Inhalt passt, laesst sich dann nicht sagen -- also wird
+     * sie einmal angehoben. Das kostet einen Abruf und beendet die Ungewissheit.
+     */
+    if (!alt) betroffen.add(pfad);
   }
   if (betroffen.size === 0) return { angehoben: [], konstanten: [] };
 
   const angehoben = new Set();
   const konstanten = new Set();
+  // Getrennt gefuehrt: ein Verweis, der die Zielversion schon traegt, ist
+  // gefunden, aber nicht angehoben. Nur ein gar nicht gefundener ist ein Fehler.
+  const gefunden = new Set();
 
   const bearbeite = (datei, istLadeSteuerung) => {
     const roh = fs.readFileSync(datei, "utf8");
     let quelle = roh;
     for (const pfad of betroffen) {
       const maskiert = pfad.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const direkt = new RegExp(`(["'\`])${maskiert}\\?v=([^"'\`]+)\\1`, "g");
+      /*
+       * Nur ausgeschriebene Versionen. Ein Platzhalter darf hier nicht
+       * hineingeraten: er wuerde durch einen festen Wert ersetzt, die Datei
+       * verlore ihren Anschluss an die gemeinsame Tabelle, und ab dann
+       * traegt sie an einer Stelle eine andere Version als an den anderen.
+       */
+      const direkt = new RegExp(`(["'\`])${maskiert}\\?v=([^"'\`$]+)\\1`, "g");
       quelle = quelle.replace(direkt, (treffer, anfuehrung, version) => {
+        gefunden.add(pfad);
         if (version === neueVersion) return treffer;
         angehoben.add(pfad);
         return `${anfuehrung}${pfad}?v=${neueVersion}${anfuehrung}`;
       });
       if (!istLadeSteuerung) continue;
-      // Vorlagenform: die zustaendige Konstante anheben.
-      const vorlage = new RegExp(`${maskiert}\\?v=\\$\\{version\\}`);
-      const treffer = quelle.match(vorlage);
-      if (!treffer) continue;
-      const alteKonstante = versionVorPosition(quelle, treffer.index);
-      if (!alteKonstante || alteKonstante === neueVersion) continue;
-      quelle = quelle.replace(`const version = "${alteKonstante}"`, `const version = "${neueVersion}"`);
+
+      // Vorlagenform mit lokaler Konstante.
+      const vorlage = quelle.match(new RegExp(`${maskiert}\\?v=\\$\\{version\\}`));
+      if (vorlage) {
+        const alteKonstante = versionVorPosition(quelle, vorlage.index);
+        if (alteKonstante && alteKonstante !== neueVersion) {
+          quelle = quelle.replace(`const version = "${alteKonstante}"`, `const version = "${neueVersion}"`);
+          angehoben.add(pfad);
+          gefunden.add(pfad);
+          konstanten.add(alteKonstante);
+        } else if (alteKonstante) gefunden.add(pfad);
+        continue;
+      }
+
+      // Vorlagenform mit gemeinsamer Tabelle: dort den Eintrag anheben.
+      const ausTabelle = quelle.match(new RegExp(`${maskiert}\\?v=\\$\\{lazyAssetVersions\\.(\\w+)\\}`));
+      if (!ausTabelle) continue;
+      const schluessel = ausTabelle[1];
+      const alterWert = lazyVersionsTabelle(quelle)[schluessel];
+      if (!alterWert) continue;
+      gefunden.add(pfad);
+      if (alterWert === neueVersion) continue;
       angehoben.add(pfad);
-      konstanten.add(alteKonstante);
+      quelle = quelle.replace(new RegExp(`(${schluessel}:\\s*)"${alterWert.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`), `$1"${neueVersion}"`);
+      konstanten.add(`lazyAssetVersions.${schluessel}`);
     }
     if (quelle !== roh) fs.writeFileSync(datei, quelle, "utf8");
   };
@@ -220,7 +281,7 @@ function hebeVersionenAn(neueVersion) {
   const ladeSteuerung = path.join(OEFFENTLICH, "app", "app-shell-controller.js");
   if (fs.existsSync(ladeSteuerung)) bearbeite(ladeSteuerung, true);
 
-  const vergessen = [...betroffen].filter((p) => !angehoben.has(p));
+  const vergessen = [...betroffen].filter((p) => !gefunden.has(p));
   if (vergessen.length > 0) {
     throw new Error(`Kein Verweis gefunden fuer: ${vergessen.join(", ")}`);
   }
@@ -243,17 +304,40 @@ const APP_HTML = path.join(OEFFENTLICH, "app", "index.html");
 const MARKE_START = "<!-- import-map: erzeugt von scripts/update-asset-versions.js -->";
 const MARKE_ENDE = "<!-- /import-map -->";
 
-function modulPfade(html) {
+/*
+ * Welche ausgelieferten Dateien sind Module?
+ *
+ * Nicht nur die mit type="module" im Dokument: die Haelfte der Plattform wird
+ * ueber loadPlatformScript nachgeladen und taucht in index.html gar nicht auf.
+ * Wuerde die Map nur die Tags kennen, koennte eine nachgeladene Datei nichts
+ * einfuehren -- ihr import fiele auf eine unversionierte Adresse zurueck und
+ * legte dasselbe Modul ein zweites Mal an.
+ *
+ * Entschieden wird darum am Inhalt: eine Datei mit import- oder
+ * export-Anweisung ist ein Modul. Das laesst sich nicht vergessen.
+ */
+function istModulDatei(pfad) {
+  const datei = dateiZuPfad(pfad);
+  if (!datei) return false;
+  return /^\s*(?:import\s|export\s*[{*]|export\s+(?:const|let|var|function|async|class)\b)/m
+    .test(fs.readFileSync(datei, "utf8"));
+}
+
+function modulPfade() {
+  const { verweise } = erfasseVerweise();
+  const { bestand } = bestandAusVerweisen(verweise);
   const pfade = [];
-  for (const t of html.matchAll(/<script([^>]*)src="(\/app\/[^"?]+\.js)\?v=([^"]+)"/g)) {
-    if (/type="module"/.test(t[1])) pfade.push({ pfad: t[2], version: t[3] });
+  for (const [pfad, angabe] of [...bestand.entries()].sort()) {
+    if (istDurchgereicht(pfad) || !pfad.startsWith("/app/") || !pfad.endsWith(".js")) continue;
+    if (!istModulDatei(pfad)) continue;
+    pfade.push({ pfad, version: angabe.version });
   }
   return pfade;
 }
 
-function baueImportMap(html) {
+function baueImportMap() {
   const eintraege = {};
-  for (const { pfad, version } of modulPfade(html)) {
+  for (const { pfad, version } of modulPfade()) {
     eintraege[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
   }
   const inhalt = JSON.stringify({ imports: eintraege }, null, 6).replace(/\n/g, "\n    ");
@@ -262,7 +346,7 @@ function baueImportMap(html) {
 
 function schreibeImportMap() {
   const html = fs.readFileSync(APP_HTML, "utf8");
-  const block = baueImportMap(html);
+  const block = baueImportMap();
   const vorhanden = new RegExp(`${MARKE_START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]*?${MARKE_ENDE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
   const neu = vorhanden.test(html)
     ? html.replace(vorhanden, block)
@@ -281,7 +365,7 @@ function pruefeImportMap() {
   try { karte = JSON.parse(treffer[1]); } catch (fehler) { return [`Import Map ist kein gueltiges JSON: ${fehler.message}`]; }
   const fehler = [];
   const erwartet = {};
-  for (const { pfad, version } of modulPfade(html)) erwartet[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
+  for (const { pfad, version } of modulPfade()) erwartet[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
   for (const [name, ziel] of Object.entries(erwartet)) {
     if (karte.imports?.[name] !== ziel) fehler.push(`${name} zeigt auf ${karte.imports?.[name] || "(fehlt)"} statt auf ${ziel}`);
   }
@@ -292,3 +376,4 @@ function pruefeImportMap() {
 }
 
 module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL, schreibeImportMap, pruefeImportMap, hebeVersionenAn };
+

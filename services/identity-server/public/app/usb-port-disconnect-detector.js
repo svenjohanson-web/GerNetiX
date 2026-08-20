@@ -86,3 +86,17 @@ const GerNetiXUsbPortDisconnectDetector = (() => {
 })();
 
 window.GerNetiXUsbPortDisconnectDetector = GerNetiXUsbPortDisconnectDetector;
+
+export {
+  GerNetiXUsbPortDisconnectDetector,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-device-build-controller.js, device-wifi-setup-dialog.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXUsbPortDisconnectDetector,
+});
+/* ---- /Uebergangsbruecke ---- */

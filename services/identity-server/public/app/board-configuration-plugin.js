@@ -259,3 +259,17 @@ const BoardConfigurationPlugin = (() => {
 
   return { availablePins, boardId, boardScope, defaultsForBoard, formatPins, mount, normalizeSelections, renderBoardOptions, renderCompilerProjection, renderFeatureTable, selectionsDiffer, value };
 })();
+
+export {
+  BoardConfigurationPlugin,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-ide-controller.js, device-onboarding-controller.js, guided-project-view.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  BoardConfigurationPlugin,
+});
+/* ---- /Uebergangsbruecke ---- */

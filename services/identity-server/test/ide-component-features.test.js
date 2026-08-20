@@ -1,4 +1,4 @@
-const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox, scriptAbschnitt } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -141,7 +141,7 @@ test("project browser separates implementation and header files below the compon
 });
 
 test("IDE embeds the same board configuration plugin used by provisioning", () => {
-  assert.doesNotMatch(html, /board-configuration-plugin\.js/);
+  assert.doesNotMatch(scriptAbschnitt(html), /board-configuration-plugin\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*board-configuration-plugin\.js/);
   assert.match(app, /BoardConfigurationPlugin\.mount\(pluginRoot/);
   assert.match(app, /Änderungen werden als eigener, vollständiger Projektsnapshot gespeichert/);

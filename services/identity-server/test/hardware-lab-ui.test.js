@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { scriptAbschnitt } = require("../test-support/platform-app-source");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
@@ -67,8 +68,14 @@ test("connects chat, source analysis and safe discovery actions to the board pro
 });
 
 test("invalidates cached hardware-lab UI assets", () => {
-  assert.doesNotMatch(html, /hardware-lab-controller\.js/);
-  assert.match(shellController, /const version = "20260819-app-theme-toggle-3"/);
+  // Der Wert der Version steht hier bewusst nicht: festgenagelt geriete er in
+  // Widerspruch zu anderen Tests, sobald eine Datei sich aendert. Dass die
+  // ausgelieferte Version zum Inhalt passt, sichert asset-cache-versions.
+  // Hier geht es nur darum, dass die drei Teile derselben Ansicht gemeinsam
+  // ungueltig werden -- sonst zeigte ein Browser neue Auszeichnung mit altem
+  // Verhalten.
+  assert.doesNotMatch(scriptAbschnitt(html), /hardware-lab-controller\.js/);
+  assert.match(shellController, /const version = "[0-9a-z-]+"/);
   assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadPlatformStyle\(`\/app\/hardware-lab-route\.css\?v=\$\{version\}`\)/);

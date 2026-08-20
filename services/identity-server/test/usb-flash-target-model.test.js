@@ -1,8 +1,9 @@
 "use strict";
 
 const test = require("node:test");
+const { requireForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
-const model = require("../public/app/usb-flash-target-model");
+const model = requireForSandbox("usb-flash-target-model.js");
 
 test("one IoT firmware requires exactly one detected USB port", () => {
   assert.equal(model.selectionMode(1, 0), "no-port");

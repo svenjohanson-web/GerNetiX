@@ -1,7 +1,8 @@
-"use strict";
+﻿"use strict";
 
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const platformAppFiles = [
   "app-shell-early.js",
@@ -37,12 +38,24 @@ function readPlatformAppSource() {
 }
 
 /*
+ * Das Dokument ohne seine Import Map.
+ *
+ * Zahlreiche Tests sichern zu, dass eine Datei NICHT im Dokument steht, weil
+ * sie erst bei Bedarf nachgeladen wird. Seit die Map alle Modul-Adressen als
+ * JSON auffuehrt, kommt jeder dieser Namen ein zweites Mal im Dokument vor,
+ * und die Zusicherung schlaegt an, ohne dass sich am Laden etwas geaendert
+ * haette. Geprueft werden soll der Rest des Dokuments.
+ */
+function scriptAbschnitt(html) {
+  return html.replace(/<script type="importmap">[\s\S]*?<\/script>/, "");
+}
+
+/*
  * Position eines Skript-Tags in index.html.
  *
- * Seit der Import Map im Dokumentkopf stehen dieselben Adressen ein zweites
- * Mal im Dokument -- als JSON. Eine Suche nach dem blossen Pfad findet dann
- * den Map-Eintrag, der immer zuerst kommt, und jeder Reihenfolgevergleich
- * liefert dasselbe Ergebnis. Geprueft werden muss das Tag.
+ * Aus demselben Grund wird hier das Tag gesucht und nicht der blosse Pfad:
+ * der stuende sonst zuerst im Map-Eintrag, und jeder Reihenfolgevergleich
+ * liefert dasselbe Ergebnis.
  */
 function scriptPosition(html, file) {
   const maskiert = file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -71,10 +84,55 @@ function readForSandbox(file) {
     .replace(/^export (?=(const|let|var|function|async function|class)\b)/gm, "");
 }
 
+/*
+ * Eine Browser-Datei als CommonJS-Modul laden.
+ *
+ * Mehrere Tests binden UMD-Dateien direkt mit require ein und nutzen deren
+ * module.exports. Sobald die Datei zusaetzlich eine export-Anweisung traegt,
+ * lehnt der CommonJS-Lader sie ab -- die Datei ist dann fuer node beides und
+ * damit keines von beidem.
+ *
+ * Hier wird sie darum selbst ausgewertet: Modulsyntax entfernt, in einem
+ * Kontext ausgefuehrt, der wie ein Browser mit CommonJS aussieht, und
+ * zurueckgegeben wird, was die Datei nach UMD-Art veroeffentlicht hat.
+ */
+const geladeneSandkastenModule = new Map();
+
+function requireForSandbox(file) {
+  /*
+   * Wie bei require wird jede Datei nur einmal ausgewertet. Ohne das bekaeme
+   * jeder Aufrufer eigene Objekte, und Tests, die Katalogeintraege ueber zwei
+   * Dateien hinweg mit assert.equal auf Gleichheit pruefen, scheiterten an der
+   * Identitaet statt an der Sache.
+   */
+  if (geladeneSandkastenModule.has(file)) return geladeneSandkastenModule.get(file);
+  /*
+   * Ausgefuehrt wird im selben Kontext, nur in einer Huelle -- so wie es
+   * CommonJS selbst macht. Ein eigener vm-Kontext haette eigene Prototypen;
+   * ein dort erzeugtes Array ist dann kein Array dieses Prozesses mehr, und
+   * assert.deepEqual scheiterte an der Herkunft statt am Inhalt.
+   *
+   * Das globale Objekt ist eine eigene Ablage: die Datei veroeffentlicht nach
+   * UMD-Art dorthin, und der Testprozess bleibt sauber.
+   */
+  const modul = { exports: {} };
+  const ablage = {};
+  const huelle = vm.runInThisContext(
+    `(function (module, exports, window, globalThis) {\n${readForSandbox(file)}\n})`,
+    { filename: file },
+  );
+  huelle(modul, modul.exports, undefined, ablage);
+  geladeneSandkastenModule.set(file, modul.exports);
+  return modul.exports;
+}
+
 module.exports = {
   platformAppFiles,
+  scriptAbschnitt,
+  requireForSandbox,
   readPlatformAppSource,
   routeLazyPlatformAppFiles,
   scriptPosition,
   readForSandbox,
 };
+

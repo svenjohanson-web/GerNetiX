@@ -129,3 +129,14 @@
   globalScope.GerNetiXFlashExecutor = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
+
+/*
+ * Diese Datei veroeffentlicht ihre Schnittstelle nach UMD-Art durch Zuweisung
+ * an das globale Objekt. Es gibt keine gleichnamige Bindung, also wird sie hier
+ * angelegt: derselbe Wert, nur ansprechbar fuer den export.
+ */
+const GerNetiXFlashExecutor = globalThis.GerNetiXFlashExecutor;
+
+export {
+  GerNetiXFlashExecutor,
+};

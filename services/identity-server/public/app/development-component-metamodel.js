@@ -158,3 +158,17 @@ const DevelopmentComponentMetamodel = (() => {
 
 globalThis.DevelopmentComponentMetamodel = DevelopmentComponentMetamodel;
 if (typeof module !== "undefined") module.exports = DevelopmentComponentMetamodel;
+
+export {
+  DevelopmentComponentMetamodel,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, development-platform.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  DevelopmentComponentMetamodel,
+});
+/* ---- /Uebergangsbruecke ---- */

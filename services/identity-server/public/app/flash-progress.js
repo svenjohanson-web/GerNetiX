@@ -79,3 +79,14 @@ window.GerNetiXFlashProgress = (() => {
 
   return { messageFromJob, normalizePercent, progressFromJob, render, renderJob };
 })();
+
+/*
+ * Diese Datei veroeffentlicht ihre Schnittstelle nach UMD-Art durch Zuweisung
+ * an das globale Objekt. Es gibt keine gleichnamige Bindung, also wird sie hier
+ * angelegt: derselbe Wert, nur ansprechbar fuer den export.
+ */
+const GerNetiXFlashProgress = globalThis.GerNetiXFlashProgress;
+
+export {
+  GerNetiXFlashProgress,
+};

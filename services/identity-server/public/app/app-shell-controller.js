@@ -212,46 +212,46 @@ function scheduleKnowledgeContentPrefetch() {
 
 async function loadQuizAssets() {
   await Promise.all([
-    loadPlatformScript("/app/quiz-data.js?v=20260805-route-lazy-2"),
+    loadPlatformScript("/app/quiz-data.js?v=20260820-esm-blatt-6", { module: true }),
     loadPlatformScript("/app/quiz.js?v=20260805-route-lazy-2"),
   ]);
 }
 
 async function loadProjectAppAssets() {
   await Promise.all([
-    loadPlatformScript("/app/project-app-renderer.js?v=20260819-umd-root-fix-1"),
+    loadPlatformScript("/app/project-app-renderer.js?v=20260820-esm-blatt-6", { module: true }),
     loadPlatformScript("/app/project-app-controller.js?v=20260819-umd-root-fix-1"),
   ]);
 }
 
 const lazyAssetVersions = {
-  boardConfiguration: "20260731-board-source-groups-1",
+  boardConfiguration: "20260820-esm-blatt-6",
   build: "20260807-action-observability-1",
-  flashDialog: "20260807-helper-progress-1",
-  flashExecutor: "20260804-unified-flash-2",
-  flashProgress: "20260802-flash-progress",
+  flashDialog: "20260820-esm-blatt-3",
+  flashExecutor: "20260820-esm-blatt-6",
+  flashProgress: "20260820-esm-blatt-6",
   guidedProject: "20260808-guided-sequence-17",
   onboarding: "20260719-04",
-  onboardingModel: "20260803-performance-1",
-  usbDisconnect: "20260801-shared-1",
-  usbTarget: "20260801-partial-usb-flash",
+  onboardingModel: "20260820-esm-blatt-6",
+  usbDisconnect: "20260820-esm-blatt-6",
+  usbTarget: "20260820-esm-blatt-6",
   wifiSetup: "20260801-shared-port-identification",
 };
 
 async function loadBuildWorkbenchAssets() {
   await Promise.all([
-    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`),
-    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
-    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`),
-    loadPlatformScript(`/app/usb-flash-target-model.js?v=${lazyAssetVersions.usbTarget}`),
+    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`, { module: true }),
+    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
+    loadPlatformScript(`/app/usb-flash-target-model.js?v=${lazyAssetVersions.usbTarget}`, { module: true }),
   ]);
   await loadPlatformScript(`/app/app-device-build-controller.js?v=${lazyAssetVersions.build}`);
 }
 
 async function loadGuidedProjectAssets() {
   await Promise.all([
-    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
-    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
+    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=20260820-esm-blatt-3`, { module: true }),
   ]);
   await loadGuidedProjectCoreAssets();
 }
@@ -275,18 +275,18 @@ async function loadIdeWorkbenchAssets() {
 
 async function loadDeviceOnboardingAssets() {
   await Promise.all([
-    loadPlatformScript(`/app/device-onboarding-model.js?v=${lazyAssetVersions.onboardingModel}`),
-    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
-    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`),
-    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
-    loadPlatformScript(`/app/unified-flash-executor.js?v=${lazyAssetVersions.flashExecutor}`),
-    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`),
+    loadPlatformScript(`/app/device-onboarding-model.js?v=${lazyAssetVersions.onboardingModel}`, { module: true }),
+    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`, { module: true }),
+    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=20260820-esm-blatt-3`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-executor.js?v=${lazyAssetVersions.flashExecutor}`, { module: true }),
+    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
   ]);
   await loadPlatformScript(`/app/device-onboarding-controller.js?v=${lazyAssetVersions.onboarding}`);
 }
 
 async function loadDeviceWifiSetupAssets() {
-  await loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`);
+  await loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true });
   await loadPlatformScript(`/app/device-wifi-setup-dialog.js?v=${lazyAssetVersions.wifiSetup}`);
   GerNetiXDeviceWifiSetup.bind();
 }
@@ -325,13 +325,13 @@ function routeAssetsMissing(route) {
 }
 
 async function loadRouteAssets(route) {
-  const version = "20260819-app-theme-toggle-3";
+  const version = "20260820-esm-blatt-6";
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
-      loadPlatformScript("/app/development-hardware-model.js?v=20260731-profile-inheritance-1"),
-      loadPlatformScript("/app/development-component-metamodel.js?v=20260801-hardware-connection-types"),
+      loadPlatformScript("/app/development-hardware-model.js?v=20260820-esm-blatt-6", { module: true }),
+      loadPlatformScript("/app/development-component-metamodel.js?v=20260820-esm-blatt-6", { module: true }),
       loadPlatformScript("/app/project-feedback-ui.js?v=20260802-project-feedback"),
-      loadPlatformScript("/app/project-repository-card.js?v=20260803-forgejo-contract-v1"),
+      loadPlatformScript("/app/project-repository-card.js?v=20260820-esm-blatt-6", { module: true }),
     ]);
     await loadPlatformScript("/app/development-platform.js?v=20260806-project-summary-lazy-1");
     developmentPlatform().init();
@@ -371,7 +371,7 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadRouteFragment("referenceLibraryView", `/app/fragments/reference-library.html?v=${version}`),
       loadPlatformStyle(`/app/reference-library-route.css?v=${version}`),
-      loadPlatformScript(`/app/reference-library-controller.js?v=${version}`),
+      loadPlatformScript(`/app/reference-library-controller.js?v=${version}`, { module: true }),
     ]);
     GerNetiXReferenceLibrary.bind();
     return;

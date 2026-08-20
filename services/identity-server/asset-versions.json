@@ -22,16 +22,24 @@
       "pruefsumme": "fb92b80c62942c34"
     },
     "/app/app-community-controller.js": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "df98394518b5dd27"
     },
     "/app/app-dashboard-controller.js": {
       "version": "20260820-esm-state-1",
       "pruefsumme": "b181b741c13fba4e"
     },
+    "/app/app-device-build-controller.js": {
+      "version": "20260807-action-observability-1",
+      "pruefsumme": "70c64bd946de552f"
+    },
     "/app/app-event-bindings.js": {
       "version": "20260819-esm-schritt-1",
       "pruefsumme": "7d02ac8e3a598f53"
+    },
+    "/app/app-ide-controller.js": {
+      "version": "20260807-action-observability-1",
+      "pruefsumme": "32015861103938cb"
     },
     "/app/app-project-controller.js": {
       "version": "20260820-esm-state-1",
@@ -46,8 +54,8 @@
       "pruefsumme": "d525da0a6d415c9c"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-esm-state-1",
-      "pruefsumme": "5763c89c9e9d0eda"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "403194063a1f45fd"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-blatt-1",
@@ -69,44 +77,72 @@
       "version": "20260814-portfolio-guide-1",
       "pruefsumme": "f3745b6d5ae0d023"
     },
+    "/app/board-configuration-plugin.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "8c0b6df2e8f2a2d5"
+    },
     "/app/community-ideas-controller.js": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "29d278a3afdf73b6"
     },
     "/app/community-marketplace-controller.js": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "70859cafccb5f489"
     },
     "/app/community-portal-controller.js": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "882e7c30676226d7"
     },
     "/app/community-routes.css": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "4e7c5223fa78d071"
     },
     "/app/development-component-metamodel.js": {
-      "version": "20260801-hardware-connection-types",
-      "pruefsumme": "21bf677f6cddbceb"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "2577cf6f97d8b47f"
     },
     "/app/development-hardware-model.js": {
-      "version": "20260731-profile-inheritance-1",
-      "pruefsumme": "59346140ab944379"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "00c00e6121b449fc"
     },
     "/app/development-platform.js": {
       "version": "20260806-project-summary-lazy-1",
       "pruefsumme": "c2eab8895693c882"
     },
+    "/app/device-debug-controller.js": {
+      "version": "20260807-action-observability-1",
+      "pruefsumme": "cefe7b9ac0a145aa"
+    },
+    "/app/device-onboarding-controller.js": {
+      "version": "20260719-04",
+      "pruefsumme": "43ecc8d4405999fb"
+    },
+    "/app/device-onboarding-model.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "9bc5badb7e487c20"
+    },
+    "/app/device-wifi-setup-dialog.js": {
+      "version": "20260801-shared-port-identification",
+      "pruefsumme": "ab378f55d44dd206"
+    },
     "/app/dom-utils.js": {
       "version": "20260820-esm-export-1",
       "pruefsumme": "bfb0592007f99b6a"
     },
+    "/app/flash-progress.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "2569880a6685df65"
+    },
+    "/app/guided-project-view.js": {
+      "version": "20260808-guided-sequence-17",
+      "pruefsumme": "be47af692d327bae"
+    },
     "/app/hardware-lab-controller.js": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "83954bfa22bce405"
     },
     "/app/hardware-lab-route.css": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "bbc3e666a1981d19"
     },
     "/app/help-chat-service.js": {
@@ -162,31 +198,31 @@
       "pruefsumme": "a00c0baa027e95d9"
     },
     "/app/project-app-renderer.js": {
-      "version": "20260819-umd-root-fix-1",
-      "pruefsumme": "1d2b2371fd2157ea"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "0826466e69e9061f"
     },
     "/app/project-feedback-ui.js": {
       "version": "20260802-project-feedback",
       "pruefsumme": "115aa4148bf21825"
     },
     "/app/project-repository-card.js": {
-      "version": "20260803-forgejo-contract-v1",
-      "pruefsumme": "6c6bac10b7572f05"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "b8d1c76c244d55c7"
     },
     "/app/quiz-data.js": {
-      "version": "20260805-route-lazy-2",
-      "pruefsumme": "bd70ec1141d24674"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "0759f19be9e8b2d9"
     },
     "/app/quiz.js": {
       "version": "20260805-route-lazy-2",
       "pruefsumme": "3f3457b9ac656b9b"
     },
     "/app/reference-library-controller.js": {
-      "version": "20260819-app-theme-toggle-3",
-      "pruefsumme": "1b2891cbf16717aa"
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "1fbfa18256e9dd69"
     },
     "/app/reference-library-route.css": {
-      "version": "20260819-app-theme-toggle-3",
+      "version": "20260820-esm-blatt-6",
       "pruefsumme": "da212a86414b3f94"
     },
     "/app/serial-service-client.js": {
@@ -202,8 +238,20 @@
       "pruefsumme": "2b9d28e6467c4d2a"
     },
     "/app/unified-flash-dialog.js": {
-      "version": "20260807-helper-progress-2",
-      "pruefsumme": "3ca666f0f4127697"
+      "version": "20260820-esm-blatt-3",
+      "pruefsumme": "247ad83a0350ceb1"
+    },
+    "/app/unified-flash-executor.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "b509184cd57a0377"
+    },
+    "/app/usb-flash-target-model.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "8bdf4ece3965476e"
+    },
+    "/app/usb-port-disconnect-detector.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "65dc42ff1258040e"
     },
     "/app/welcome-guide.css": {
       "version": "20260819-app-theme-toggle-3",
