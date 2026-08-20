@@ -230,9 +230,21 @@ else
 '
   for changed_file in $changed_files; do
     case "$changed_file" in
-      docs/*|data/*|model/*|tools/architecture-docs/*|tools/yaml-graph-sqlite/out/*|.github/*|README.md|AGENTS.md)
+      docs/*|data/*|model/*|tools/architecture-docs/*|tools/code-dependency-graph/*|tools/yaml-graph-sqlite/out/*|.github/*|.claude/*|README.md|AGENTS.md)
         ;;
       services/*/test/*|*.test.js)
+        ;;
+      # Naehte zwischen Diensten. Diese Muster muessen vor den allgemeinen
+      # Verzeichniszeilen stehen, sonst greift zuerst die weniger genaue.
+      # Sie entsprechen additionalServicesByFile in tools/staging-deploy.js;
+      # staging-deploy.test.js vergleicht beide Listen miteinander.
+      services/identity-server/public/app/development-component-metamodel.js)
+        add_incremental_service identity-server
+        add_incremental_service admin-tool
+        ;;
+      services/build-deploy-server/src/modules/mqtt-transport.js)
+        add_incremental_service build-deploy-server
+        add_incremental_service telemetry-server
         ;;
       services/identity-server/*) add_incremental_service identity-server ;;
       services/project-server/*) add_incremental_service project-server ;;
@@ -241,7 +253,13 @@ else
       services/public-demo-server/*) add_incremental_service public-demo-server ;;
       services/device-management-server/*) add_incremental_service device-management-server ;;
       services/telemetry-server/*) add_incremental_service telemetry-server ;;
-      services/hardware-catalog/*) add_incremental_service hardware-catalog ;;
+      # hardware-shop bindet den Einstiegspunkt von hardware-catalog ein und
+      # haengt damit an dessen ganzem Baum -- entspricht
+      # additionalServicesByDirectory in tools/staging-deploy.js.
+      services/hardware-catalog/*)
+        add_incremental_service hardware-catalog
+        add_incremental_service hardware-shop
+        ;;
       services/hardware-shop/*) add_incremental_service hardware-shop ;;
       services/ai-usage-server/*) add_incremental_service ai-usage-server ;;
       services/device-voice-orchestrator/*) add_incremental_service device-voice-orchestrator ;;

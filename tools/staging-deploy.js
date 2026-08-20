@@ -68,23 +68,39 @@ const incrementalServiceByDirectory = new Map([
 ]);
 
 /*
- * Einzelne Dateien werden von einem zweiten Dienst gelesen.
+ * Naehte zwischen Diensten: wer liest den Code eines anderen mit?
  *
- * admin-tool bindet das Komponentenmetamodell aus dem Browserverzeichnis von
- * identity-server mit require ein. Nach dem Verzeichnis zugeordnet gilt eine
- * Aenderung daran nur identity-server -- admin-tool behaelt dann seinen alten
- * Stand, obwohl er dieselbe Datei liest.
+ * Nach dem Verzeichnis zugeordnet gilt eine Aenderung nur dem Dienst, in dem
+ * sie liegt. Der zweite Leser behaelt seinen alten Stand -- ohne Fehlermeldung,
+ * bis er ueber die veraltete Kopie stolpert.
  *
- * Genau das ist passiert: die Datei wurde zum ES-Modul, admin-tool startete
- * nicht mehr, und der Fix erreichte ihn beim naechsten Lauf nicht, weil er
- * nur unter services/identity-server lag. Der Ausfall zog admin-access-server
- * und damit die Nginx-Konfiguration mit.
+ * Genau das ist passiert: das Komponentenmetamodell wurde zum ES-Modul,
+ * admin-tool konnte es nicht mehr laden und startete nicht, und der Fix
+ * erreichte ihn beim naechsten Lauf nicht, weil er unter identity-server lag.
+ * Der Ausfall zog admin-access-server und damit die Nginx-Konfiguration mit.
  *
- * staging-deploy.test.js prueft, dass diese Liste vollstaendig ist: sie sucht
- * jedes require eines Dienstes auf public/app und verlangt einen Eintrag.
+ * Zwei Koernigkeiten, und die Wahl ist nicht frei:
+ *
+ * - Eine Datei ohne eigene Bezuege ist ein Blatt. Ihr Eintrag darf die Datei
+ *   nennen; mehr kann sich nicht aendern.
+ * - Wer den Einstiegspunkt eines Dienstes einbindet, haengt an dessen ganzem
+ *   Baum. Dort gilt das Verzeichnis, sonst uebersieht die Zuordnung jede
+ *   Aenderung eine Ebene tiefer.
+ *
+ * services/shared/ steht bewusst in keiner der beiden Listen: es ist keinem
+ * Dienst zugeordnet und faellt darum ohnehin auf eine vollstaendige
+ * Auslieferung zurueck.
+ *
+ * staging-deploy.test.js prueft beide Listen gegen die Quellen -- es sucht
+ * jedes dienstuebergreifende require und verlangt die passende Koernigkeit.
  */
 const additionalServicesByFile = new Map([
   ["services/identity-server/public/app/development-component-metamodel.js", ["admin-tool"]],
+  ["services/build-deploy-server/src/modules/mqtt-transport.js", ["telemetry-server"]],
+]);
+
+const additionalServicesByDirectory = new Map([
+  ["hardware-catalog", ["hardware-shop"]],
 ]);
 
 function isIgnoredDeploymentFile(file) {
@@ -151,7 +167,11 @@ function createDeploymentPlan(changedFiles, options = {}) {
     const service = serviceMatch && incrementalServiceByDirectory.get(serviceMatch[1]);
     if (service) {
       if (!services.includes(service)) services.push(service);
-      for (const zusaetzlich of additionalServicesByFile.get(file) || []) {
+      const mitbetroffen = [
+        ...(additionalServicesByFile.get(file) || []),
+        ...(additionalServicesByDirectory.get(serviceMatch[1]) || []),
+      ];
+      for (const zusaetzlich of mitbetroffen) {
         if (!services.includes(zusaetzlich)) services.push(zusaetzlich);
       }
       continue;
@@ -313,7 +333,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+  additionalServicesByDirectory,
   additionalServicesByFile,
+  incrementalServiceByDirectory,
   assertSafeGitRef,
   assertSafeSshTarget,
   createDeploymentPlan,
