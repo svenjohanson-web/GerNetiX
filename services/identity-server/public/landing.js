@@ -134,7 +134,6 @@ async function initializePublicI18n() {
     addPublicLanguageSwitcher();
     decoratePublicNavigation();
     publicI18n = await GerNetiXI18n.create();
-    window.GerNetiXPublicI18n = publicI18n;
     publicI18n.translateDocument();
     const languageSelect = document.querySelector("#publicLanguage");
     languageSelect.value = publicI18n.locale;
@@ -296,3 +295,10 @@ document.addEventListener("click", closeMenu);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeMenu();
 });
+
+/*
+ * Lebendige Bindung: auth.js fuehrt sie ein und liest damit immer den
+ * aktuellen Wert. Zuvor stand hier eine Zuweisung an window; der Leser konnte
+ * nur einen Schnappschuss nehmen und brauchte dafuer einen Rennschutz.
+ */
+export { publicI18n };

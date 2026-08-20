@@ -74,8 +74,8 @@
       "pruefsumme": "6e3ca8ad32c47a83"
     },
     "/app/auth/auth.js": {
-      "version": "20260820-esm-seiten-1",
-      "pruefsumme": "cf1d49e9a93b5af1"
+      "version": "20260820-landing-modul-1",
+      "pruefsumme": "92eac416fe3d71a4"
     },
     "/app/board-configuration-plugin.js": {
       "version": "20260820-esm-blatt-6",
@@ -294,8 +294,8 @@
       "pruefsumme": "28f26ac6b65f8382"
     },
     "/landing.js": {
-      "version": "20260820-esm-seiten-1",
-      "pruefsumme": "8db180dc2405f1f3"
+      "version": "20260820-landing-modul-1",
+      "pruefsumme": "4659eab6fa62d4e8"
     },
     "/public-header.css": {
       "version": "20260814-auth-theme-1",

@@ -1,5 +1,6 @@
 import { GerNetiXActionOps } from "@app/action-observability.js";
 import { GerNetiXI18n } from "@app/i18n/i18n.js";
+import { publicI18n } from "/landing.js";
 
 const loginForm = document.querySelector("#login-form");
 const registerForm = document.querySelector("#register-form");
@@ -32,8 +33,17 @@ const securingAccount = false;
 initializeI18n();
 activeSessionDialog.addEventListener("cancel", (event) => event.preventDefault());
 
+/*
+ * publicI18n ist eine lebendige Bindung: landing.js weist sie zu, sobald die
+ * Uebersetzung geladen ist, und dieser Zugriff liefert immer den aktuellen
+ * Wert. Frueher stand hier ein Schnappschuss aus window.GerNetiXPublicI18n --
+ * ein Rennschutz fuer den Fall, dass das Ereignis schon gefeuert hatte, bevor
+ * der Lauscher stand. Das Rennen gibt es so nicht mehr.
+ *
+ * Das Ereignis bleibt, denn es sagt nicht was, sondern wann.
+ */
 async function initializeI18n() {
-  i18n = window.GerNetiXPublicI18n || null;
+  i18n = publicI18n;
   if (!i18n) {
     document.addEventListener("gernetix:public-i18n-ready", (event) => {
       i18n = event.detail;

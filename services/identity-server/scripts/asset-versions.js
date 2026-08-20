@@ -379,6 +379,19 @@ function istModulDatei(pfad) {
  * im Dokument auf, und jede Zusicherung der Art "diese Datei wird erst bei
  * Bedarf geladen" schlaegt dann auf den Map-Eintrag an statt auf ein Skript.
  */
+/*
+ * Zwei Schreibweisen, weil nicht jedes Modul unter /app/ liegt.
+ *
+ * Der Kurzname "@app/x.js" deckt die Plattform ab. landing.js liegt in der
+ * Wurzel und wird von der Anmeldeseite eingefuehrt; dafuer traegt die Map die
+ * Adresse selbst als Schluessel ("/landing.js"). Eine Import Map darf das --
+ * ein Schluessel muss kein blosser Name sein -- und das Ergebnis wird nicht
+ * erneut abgebildet, es entsteht also keine Schleife.
+ */
+function moduleSchluessel(pfad) {
+  return pfad.startsWith("/app/") ? `@app/${pfad.replace("/app/", "")}` : pfad;
+}
+
 function eingefuehrteNamen() {
   const namen = new Set();
   const suche = (verzeichnis) => {
@@ -387,9 +400,8 @@ function eingefuehrteNamen() {
       if (eintrag.isDirectory()) { if (eintrag.name !== "node_modules" && eintrag.name !== "dist") suche(voll); }
       else if (eintrag.name.endsWith(".js")) {
         const quelle = fs.readFileSync(voll, "utf8");
-        for (const t of quelle.matchAll(/from "@app\/([^"]+)"/g)) namen.add(t[1]);
-        // Auch das spaete Holen zaehlt: import("@app/x.js").
-        for (const t of quelle.matchAll(/import\("@app\/([^"]+)"\)/g)) namen.add(t[1]);
+        // Beide Formen, und auch das spaete Holen: import("...").
+        for (const t of quelle.matchAll(/(?:from|import\()\s*"(@app\/[^"]+|\/[^"]+\.js)"/g)) namen.add(t[1]);
       }
     }
   };
@@ -403,8 +415,8 @@ function modulPfade() {
   const gebraucht = eingefuehrteNamen();
   const pfade = [];
   for (const [pfad, angabe] of [...bestand.entries()].sort()) {
-    if (istDurchgereicht(pfad) || !pfad.startsWith("/app/") || !pfad.endsWith(".js")) continue;
-    if (!gebraucht.has(pfad.replace("/app/", "")) || !istModulDatei(pfad)) continue;
+    if (istDurchgereicht(pfad) || !pfad.endsWith(".js")) continue;
+    if (!gebraucht.has(moduleSchluessel(pfad)) || !istModulDatei(pfad)) continue;
     pfade.push({ pfad, version: angabe.version });
   }
   return pfade;
@@ -413,7 +425,7 @@ function modulPfade() {
 function baueImportMap() {
   const eintraege = {};
   for (const { pfad, version } of modulPfade()) {
-    eintraege[`@app/${pfad.replace("/app/", "")}`] = `${pfad}?v=${version}`;
+    eintraege[moduleSchluessel(pfad)] = `${pfad}?v=${version}`;
   }
   const inhalt = JSON.stringify({ imports: eintraege }, null, 6).replace(/\n/g, "\n    ");
   return `${MARKE_START}\n    <script type="importmap">\n    ${inhalt}\n    </script>\n    ${MARKE_ENDE}`;
@@ -477,7 +489,7 @@ function pruefeImportMapEiner(html) {
   try { karte = JSON.parse(treffer[1]); } catch (fehler) { return [`Import Map ist kein gueltiges JSON: ${fehler.message}`]; }
   const fehler = [];
   const erwartet = {};
-  for (const { pfad, version } of modulPfade()) erwartet[`@app/${pfad.replace("/app/", "")}`] = `${pfad}?v=${version}`;
+  for (const { pfad, version } of modulPfade()) erwartet[moduleSchluessel(pfad)] = `${pfad}?v=${version}`;
   for (const [name, ziel] of Object.entries(erwartet)) {
     if (karte.imports?.[name] !== ziel) fehler.push(`${name} zeigt auf ${karte.imports?.[name] || "(fehlt)"} statt auf ${ziel}`);
   }
