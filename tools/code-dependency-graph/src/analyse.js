@@ -299,6 +299,24 @@ function analysiereDatei(ast, { istModul = false } = {}) {
       && knoten.left.property.type === "Identifier") {
       programmNamen.add(knoten.left.property.name);
     }
+    /*
+     * Object.assign(globalThis, { a, b, c }) ist dieselbe Aussage in kompakter
+     * Form. Die Uebergangsbruecken groesserer Dateien schreiben sie so, weil
+     * zwanzig einzelne Zuweisungen nichts erklaeren wuerden.
+     */
+    if (knoten.type === "CallExpression" && knoten.callee.type === "MemberExpression"
+      && !knoten.callee.computed && knoten.callee.object.type === "Identifier"
+      && knoten.callee.object.name === "Object" && knoten.callee.property.name === "assign"
+      && knoten.arguments[0]?.type === "Identifier" && globalTraeger.has(knoten.arguments[0].name)) {
+      for (const argument of knoten.arguments.slice(1)) {
+        if (argument.type !== "ObjectExpression") continue;
+        for (const eigenschaft of argument.properties) {
+          if (eigenschaft.type === "Property" && !eigenschaft.computed && eigenschaft.key.type === "Identifier") {
+            programmNamen.add(eigenschaft.key.name);
+          }
+        }
+      }
+    }
     for (const kind of kinder(knoten)) sucheGlobalZuweisungen(kind);
   })(ast);
 

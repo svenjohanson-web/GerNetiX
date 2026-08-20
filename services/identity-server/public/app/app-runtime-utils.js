@@ -179,3 +179,61 @@ function escapeAttribute(value) {
 function delay(ms) {
   return DomUtils.delay(ms);
 }
+
+/*
+ * Uebergangsbruecke.
+ *
+ * Diese Datei ist ein ES-Modul; ihre Funktionen sind damit nicht mehr global.
+ * 19 davon lesen andere Dateien noch als klassische Skripte. Sie
+ * werden hier ausdruecklich bereitgestellt, bis der letzte Leser sie einfuehrt.
+ *
+ * Gebrueckt wird nur, was tatsaechlich gelesen wird -- nicht alle 23. So
+ * zeigt die Liste jederzeit, wie viel Kopplung noch offen ist, und schrumpft
+ * mit jedem umgestellten Leser.
+ *
+ * Alle sind Funktionsdeklarationen und werden nie neu zugewiesen, deshalb
+ * genuegt die einfache Zuweisung.
+ */
+export {
+  createPlantUmlSvgUrl,
+  delay,
+  deleteJson,
+  escapeAttribute,
+  escapeHtml,
+  focusIdeStepSource,
+  getJson,
+  guidedViews,
+  meta,
+  patchJson,
+  postJson,
+  primarySourcePath,
+  progressFor,
+  projectById,
+  putJson,
+  renderGuidedProject,
+  renderProjectViewManifest,
+  summaryItem,
+  themedPlantUmlSource,
+};
+
+Object.assign(globalThis, {
+  createPlantUmlSvgUrl,
+  delay,
+  deleteJson,
+  escapeAttribute,
+  escapeHtml,
+  focusIdeStepSource,
+  getJson,
+  guidedViews,
+  meta,
+  patchJson,
+  postJson,
+  primarySourcePath,
+  progressFor,
+  projectById,
+  putJson,
+  renderGuidedProject,
+  renderProjectViewManifest,
+  summaryItem,
+  themedPlantUmlSource,
+});

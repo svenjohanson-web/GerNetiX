@@ -42,8 +42,8 @@
       "pruefsumme": "cbf50bcba76bc6a7"
     },
     "/app/app-runtime-utils.js": {
-      "version": "20260807-flat-guided-learning-2",
-      "pruefsumme": "a770d63c65bda641"
+      "version": "20260820-esm-utils-1",
+      "pruefsumme": "d525da0a6d415c9c"
     },
     "/app/app-shell-controller.js": {
       "version": "20260820-esm-app-1",

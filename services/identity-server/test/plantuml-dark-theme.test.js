@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
+const { readForSandbox } = require("../test-support/platform-app-source");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 const read = (file) => fs.readFileSync(path.join(appRoot, file), "utf8");
@@ -34,8 +35,10 @@ test("all PlantUML renderers use the shared dark theme", () => {
 });
 
 test("dark PlantUML theme is injected before diagram elements", () => {
-  const runtime = read("app-runtime-utils.js");
-  const context = {};
+  // app-runtime-utils.js ist inzwischen ein ES-Modul; die export-Anweisung
+  // waere in diesem klassischen vm-Kontext ein Syntaxfehler.
+  const runtime = readForSandbox("app-runtime-utils.js");
+  const context = { globalThis: {}, Object };
   vm.runInNewContext(`${runtime}\nresult = themedPlantUmlSource('@startuml\\nrectangle "Test" as test\\n@enduml');`, context);
 
   assert.ok(context.result.indexOf("skinparam defaultFontColor #F8FAFC") > context.result.indexOf("@startuml"));

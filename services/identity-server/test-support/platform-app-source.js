@@ -53,4 +53,25 @@ function scriptPosition(html, file) {
   return treffer ? treffer.index : -1;
 }
 
-module.exports = { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles, scriptPosition };
+/*
+ * Quelltext einer Browser-Datei zum Ausfuehren in einer Sandbox.
+ *
+ * Umgestellte Dateien sind ES-Module und enthalten eine export-Anweisung, die
+ * in einem klassischen vm-Kontext ein Syntaxfehler waere. Sie wird entfernt --
+ * gefahrlos, weil dieselben Namen direkt daneben ueber die Uebergangsbruecke
+ * an globalThis gehen und im Sandkasten damit ohnehin sichtbar sind.
+ */
+function readForSandbox(file) {
+  const quelle = fs.readFileSync(path.resolve(__dirname, "../public/app", file), "utf8");
+  return quelle
+    .replace(/^export \{[\s\S]*?\};$/m, "")
+    .replace(/^export (?=(const|let|var|function|async function|class)\b)/gm, "");
+}
+
+module.exports = {
+  platformAppFiles,
+  readPlatformAppSource,
+  routeLazyPlatformAppFiles,
+  scriptPosition,
+  readForSandbox,
+};
