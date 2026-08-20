@@ -50,8 +50,8 @@
       "pruefsumme": "69727edb2b79637c"
     },
     "/app/app-runtime-utils.js": {
-      "version": "20260820-esm-utils-1",
-      "pruefsumme": "d525da0a6d415c9c"
+      "version": "20260820-esm-seiten-1",
+      "pruefsumme": "e236011baa1ba1e9"
     },
     "/app/app-shell-controller.js": {
       "version": "20260820-esm-kopf-3",
@@ -74,8 +74,8 @@
       "pruefsumme": "6e3ca8ad32c47a83"
     },
     "/app/auth/auth.js": {
-      "version": "20260814-portfolio-guide-1",
-      "pruefsumme": "f3745b6d5ae0d023"
+      "version": "20260820-esm-seiten-1",
+      "pruefsumme": "cf1d49e9a93b5af1"
     },
     "/app/board-configuration-plugin.js": {
       "version": "20260820-esm-blatt-6",
@@ -146,20 +146,20 @@
       "pruefsumme": "bbc3e666a1981d19"
     },
     "/app/help-chat-service.js": {
-      "version": "20260820-esm-import-1",
-      "pruefsumme": "351fbf756a7d6dfa"
+      "version": "20260820-esm-seiten-1",
+      "pruefsumme": "85fd5c0e3b647648"
     },
     "/app/help-content.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "bba0d5512b72df05"
+      "version": "20260820-esm-grenze-1",
+      "pruefsumme": "a5a4e585b9f041a1"
     },
     "/app/i18n/i18n.js": {
       "version": "20260820-esm-i18n-1",
       "pruefsumme": "5ebc24db139191d0"
     },
     "/app/information-view.js": {
-      "version": "20260820-esm-kopf-2",
-      "pruefsumme": "9ed596ac5217584b"
+      "version": "20260820-esm-grenze-2",
+      "pruefsumme": "8cfc1eb4f0e29270"
     },
     "/app/initial-view-router.js": {
       "version": "20260805-hardware-lab-route-1",
@@ -190,16 +190,16 @@
       "pruefsumme": "d94ec124f0f328b3"
     },
     "/app/platform-components.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "a5c804a9960a8f05"
+      "version": "20260820-esm-grenze-1",
+      "pruefsumme": "736941009dbd14e0"
     },
     "/app/platform-routing.js": {
       "version": "20260820-esm-kopf-1",
       "pruefsumme": "c221b5ae3b3ca8b5"
     },
     "/app/platform-state.js": {
-      "version": "20260820-esm-blatt-1",
-      "pruefsumme": "301e4669d75b81b5"
+      "version": "20260820-esm-grenze-1",
+      "pruefsumme": "9f8b80062425092c"
     },
     "/app/project-app-controller.js": {
       "version": "20260820-esm-mitte-1",
@@ -278,8 +278,8 @@
       "pruefsumme": "8ececca39973d262"
     },
     "/flashbox-einrichten/app.js": {
-      "version": "20260819-asset-manifest-1",
-      "pruefsumme": "0352a23c05310e88"
+      "version": "20260820-esm-seiten-1",
+      "pruefsumme": "adc6b292d24105f9"
     },
     "/flashbox-einrichten/styles.css": {
       "version": "20260726-responsive-1",
@@ -290,8 +290,8 @@
       "pruefsumme": "28f26ac6b65f8382"
     },
     "/landing.js": {
-      "version": "20260820-esm-i18n-2",
-      "pruefsumme": "08f50d4b455cfb5e"
+      "version": "20260820-esm-seiten-1",
+      "pruefsumme": "8db180dc2405f1f3"
     },
     "/public-header.css": {
       "version": "20260814-auth-theme-1",

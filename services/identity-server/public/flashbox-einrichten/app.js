@@ -1,14 +1,17 @@
+import { GerNetiXSerialService } from "@app/serial-service-client.js";
+import { GerNetiXFlashDialog } from "@app/unified-flash-dialog.js";
+
 const state = {
   port: null,
   probe: null,
   release: null,
   esptool: null,
-  serialService: window.GerNetiXSerialService?.create?.() || null,
+  serialService: GerNetiXSerialService?.create?.() || null,
   busy: false,
   hardwareAcknowledged: false,
 };
 const expected = { chip: "ESP32-S3" };
-const flashDialog = window.GerNetiXFlashDialog.create();
+const flashDialog = GerNetiXFlashDialog.create();
 
 const $ = (selector) => document.querySelector(selector);
 $("#autoSearchButton").addEventListener("click", () => findFlashbox(true));

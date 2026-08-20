@@ -1,3 +1,6 @@
+import { GerNetiXActionOps } from "@app/action-observability.js";
+import { GerNetiXI18n } from "@app/i18n/i18n.js";
+
 const loginForm = document.querySelector("#login-form");
 const registerForm = document.querySelector("#register-form");
 const recoveryForm = document.querySelector("#recovery-form");
@@ -15,7 +18,7 @@ function tr(key, fallback, variables = {}) {
 }
 
 function currentLocale() {
-  return i18n?.locale || window.GerNetiXI18n?.resolveLocale?.() || "de";
+  return i18n?.locale || GerNetiXI18n?.resolveLocale?.() || "de";
 }
 
 const titleElement = document.querySelector("#login-title");
@@ -42,7 +45,7 @@ async function initializeI18n() {
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const action = window.GerNetiXActionOps?.begin("identity.login.passkey", { timeoutMs: 120000 });
+  const action = GerNetiXActionOps?.begin("identity.login.passkey", { timeoutMs: 120000 });
   const username = String(new FormData(loginForm).get("identifier") || "").trim();
   statusElement.textContent = tr("auth.status.passkey.requesting", "Passkey wird angefordert …");
   let browserPasskeyRequest = false;

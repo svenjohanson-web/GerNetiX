@@ -52,7 +52,10 @@ test("uses the one public GerNetiX header and burger menu on the authentication 
   assert.match(publicHeaderScript, /id="publicLanguage"[\s\S]*Deutsch[\s\S]*English[\s\S]*Nederlands/);
   assert.match(publicHeaderScript, /DE · EN · NL/);
   assert.match(html, /\/app\/i18n\/i18n\.js/);
-  assert.match(publicHeaderScript, /window\.GerNetiXI18n\.create\(\)/);
+  // Das Modul wird erst geholt, wenn die Uebersetzung gebraucht wird, und
+  // ueber die Import Map aufgeloest -- nicht mehr aus dem globalen Objekt.
+  assert.match(publicHeaderScript, /return import\("@app\/i18n\/i18n\.js"\)/);
+  assert.match(publicHeaderScript, /GerNetiXI18n\.create\(\)/);
   assert.match(script, /locale: currentLocale\(\)/);
   assert.doesNotMatch(script, /sessionStorage/);
   assert.doesNotMatch(script, /localStorage/);

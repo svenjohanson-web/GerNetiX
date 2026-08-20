@@ -386,7 +386,10 @@ function eingefuehrteNamen() {
       const voll = path.join(verzeichnis, eintrag.name);
       if (eintrag.isDirectory()) { if (eintrag.name !== "node_modules" && eintrag.name !== "dist") suche(voll); }
       else if (eintrag.name.endsWith(".js")) {
-        for (const t of fs.readFileSync(voll, "utf8").matchAll(/from "@app\/([^"]+)"/g)) namen.add(t[1]);
+        const quelle = fs.readFileSync(voll, "utf8");
+        for (const t of quelle.matchAll(/from "@app\/([^"]+)"/g)) namen.add(t[1]);
+        // Auch das spaete Holen zaehlt: import("@app/x.js").
+        for (const t of quelle.matchAll(/import\("@app\/([^"]+)"\)/g)) namen.add(t[1]);
       }
     }
   };
@@ -416,21 +419,58 @@ function baueImportMap() {
   return `${MARKE_START}\n    <script type="importmap">\n    ${inhalt}\n    </script>\n    ${MARKE_ENDE}`;
 }
 
+const MARKE_MUSTER = new RegExp(`${MARKE_START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]*?${MARKE_ENDE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+
+/*
+ * Welche Seiten brauchen die Map?
+ *
+ * Sie ist die Aufloesungstabelle fuer die kurzen Namen und gilt fuer das
+ * Dokument, nicht fuer eine Datei. Gebraucht wird sie, sobald eine Seite ein
+ * Modul laedt -- oder ein klassisches Skript, das sich eines spaeter holt.
+ * landing.js tut genau das und laeuft auf jeder oeffentlichen Seite.
+ */
+function seitenMitModulen() {
+  return htmlDateien(OEFFENTLICH).filter((datei) => {
+    const html = fs.readFileSync(datei, "utf8");
+    if (/<script[^>]*type="module"[^>]*src=/.test(html)) return true;
+    for (const t of html.matchAll(/<script[^>]*src="([^"?]+)[^"]*"/g)) {
+      const ziel = t[1].startsWith("/")
+        ? path.join(OEFFENTLICH, t[1].slice(1))
+        : path.resolve(path.dirname(datei), t[1]);
+      if (fs.existsSync(ziel) && /["'`]@app\//.test(fs.readFileSync(ziel, "utf8"))) return true;
+    }
+    return false;
+  });
+}
+
 function schreibeImportMap() {
-  const html = fs.readFileSync(APP_HTML, "utf8");
   const block = baueImportMap();
-  const vorhanden = new RegExp(`${MARKE_START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]*?${MARKE_ENDE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
-  const neu = vorhanden.test(html)
-    ? html.replace(vorhanden, block)
-    // Vor das erste Skript, denn eine Import Map muss vor jedem Modul stehen.
-    : html.replace(/(\n(\s*)<script src="\/app\/initial-view-router)/, `\n$2${block}$1`);
-  if (neu === html) return false;
-  fs.writeFileSync(APP_HTML, neu, "utf8");
-  return true;
+  let geaendert = false;
+  for (const datei of seitenMitModulen()) {
+    const html = fs.readFileSync(datei, "utf8");
+    const neu = MARKE_MUSTER.test(html)
+      ? html.replace(MARKE_MUSTER, block)
+      // Vor das erste Skript, denn eine Import Map muss vor jedem Modul stehen.
+      : html.replace(/([ \t]*)(<script[^>]*src=)/, `$1${block}\n$1$2`);
+    if (neu === html) continue;
+    fs.writeFileSync(datei, neu, "utf8");
+    geaendert = true;
+  }
+  return geaendert;
 }
 
 function pruefeImportMap() {
-  const html = fs.readFileSync(APP_HTML, "utf8");
+  const fehlerAlle = [];
+  for (const datei of seitenMitModulen()) {
+    const wo = path.relative(OEFFENTLICH, datei).replace(/\\/g, "/");
+    for (const meldung of pruefeImportMapEiner(fs.readFileSync(datei, "utf8"))) {
+      fehlerAlle.push(`${wo}: ${meldung}`);
+    }
+  }
+  return fehlerAlle;
+}
+
+function pruefeImportMapEiner(html) {
   const treffer = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
   if (!treffer) return ["Die Import Map fehlt, obwohl Module geladen werden"];
   let karte;

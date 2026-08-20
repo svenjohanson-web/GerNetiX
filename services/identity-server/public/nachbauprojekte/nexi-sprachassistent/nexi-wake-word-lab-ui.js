@@ -1,10 +1,12 @@
+import { GerNetiXSerialService } from "@app/serial-service-client.js";
+
 (function initializeGuidedNexiSetup() {
   "use strict";
 
   const root = document.querySelector("[data-nexi-guided-setup]");
   if (!root) return;
 
-  const nativeFactory = globalThis.GerNetiXSerialService;
+  const nativeFactory = GerNetiXSerialService;
   const hasWebSerial = "serial" in navigator;
   const serial = hasWebSerial ? createWebSerialTransport() : (nativeFactory ? nativeFactory.create() : null);
   const portSelect = root.querySelector("[data-setup-port]");

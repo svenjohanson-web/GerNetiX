@@ -1,4 +1,7 @@
 // GerNetiX platform module extracted from app.js.
+import { guidedProjectView } from "@app/platform-components.js";
+import { state } from "@app/platform-state.js";
+
 async function createPlantUmlSvgUrl(source) {
   const bytes = new TextEncoder().encode(themedPlantUmlSource(source));
   const compressed = await deflateForPlantUml(bytes);

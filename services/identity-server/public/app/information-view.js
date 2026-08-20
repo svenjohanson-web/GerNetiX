@@ -2,7 +2,15 @@ import { ApiClient } from "@app/api-client.js";
 import { DomUtils } from "@app/dom-utils.js";
 import { HelpChatService } from "@app/help-chat-service.js";
 import { HelpContent } from "@app/help-content.js";
-import { KnowledgeContent } from "@app/knowledge-content.js";
+/*
+ * KnowledgeContent wird hier bewusst NICHT eingefuehrt.
+ *
+ * Diese Datei wird beim Start geladen; der Wissensinhalt erst, wenn das
+ * Wissensportal geoeffnet wird. Ein import waere eine feste Abhaengigkeit und
+ * zoege ihn auf jede Seite mit -- unsichtbar, weil dann alles weiter
+ * funktioniert, nur langsamer. Der Zugriff bleibt darum ueber den globalen
+ * Namensraum, den knowledge-content.js mit einer Bruecke bedient.
+ */
 import { navigate } from "@app/platform-routing.js";
 
 const InformationView = (() => {

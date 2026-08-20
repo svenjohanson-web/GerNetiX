@@ -8,6 +8,7 @@
  * Version wuerde eine zweite Kopie laden und das Modul doppelt anlegen.
  */
 import { ApiClient } from "@app/api-client.js";
+import { HelpContent } from "@app/help-content.js";
 
 const HelpChatService = (() => {
   async function answer(question, history = []) {

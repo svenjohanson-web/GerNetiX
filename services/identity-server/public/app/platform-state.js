@@ -101,12 +101,3 @@ export {
   state,
 };
 
-/* ---- Uebergangsbruecke ---- */
-/*
- * Noch klassisch und liest diese Namen global: 19 Dateien.
- * Verschwindet mit dem letzten davon.
- */
-Object.assign(globalThis, {
-  state,
-});
-/* ---- /Uebergangsbruecke ---- */
