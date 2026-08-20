@@ -113,7 +113,9 @@ function renderDashboard() {
     pushProjectSelect.value = developmentProjects.some((project) => project.id === state.activeProjectId) ? state.activeProjectId : developmentProjects[0]?.id || "";
   }
   document.querySelector("#dashboardSummary").innerHTML = [
-    ["Account", state.account.username],
+    // Ohne geladene Plattformdaten bleibt account leer. Seit die Oberflaeche
+    // einen Fehlstart ueberlebt, wird hier auch dann gerendert.
+    ["Account", state.account?.username || "—"],
     ["Entwicklungsprojekte", developmentProjects.length],
     ["Anwendungen", applications.length],
     ["Geräte", state.devices.length],
