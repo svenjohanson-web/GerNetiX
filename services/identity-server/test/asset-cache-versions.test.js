@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const test = require("node:test");
 
-const { ermittleStand, liesManifest, MANIFEST } = require("../scripts/asset-versions");
+const { ermittleStand, liesManifest, MANIFEST, pruefeImportMap } = require("../scripts/asset-versions");
 
 /*
  * Ersetzt 33 Zusicherungen, die in 17 Testdateien einzelne
@@ -65,6 +65,16 @@ test("the recorded versions match what is actually served", () => {
     [],
     `Nach einer Aenderung an Browser-Dateien: npm run assets:sync --prefix services/identity-server\n${abweichend.join("\n")}`,
   );
+});
+
+test("the import map points at the versions that are actually served", () => {
+  /*
+   * Die Map bindet kurze Namen an versionierte Adressen. Zeigt ein Eintrag auf
+   * eine alte Version, laedt der Browser das Modul ein zweites Mal und legt es
+   * doppelt an -- mit zwei getrennten Zustaenden. Das ist dieselbe Art von
+   * Drift, die zuvor die 33 Versionspins hatten, nur schwerer zu bemerken.
+   */
+  assert.deepEqual(pruefeImportMap(), []);
 });
 
 test("the manifest stays machine-written", () => {

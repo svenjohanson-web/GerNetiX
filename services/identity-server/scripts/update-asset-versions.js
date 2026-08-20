@@ -12,9 +12,13 @@
  *         npm run assets:sync -- --pruefen   (nur melden, nichts schreiben)
  */
 const fs = require("node:fs");
-const { ermittleStand, liesManifest, MANIFEST } = require("./asset-versions");
+const { ermittleStand, liesManifest, MANIFEST, schreibeImportMap } = require("./asset-versions");
 
 const nurPruefen = process.argv.includes("--pruefen");
+
+// Zuerst die Import Map nachziehen: sie leitet sich aus denselben Versionen ab.
+if (!nurPruefen && schreibeImportMap()) console.log("Import Map nachgezogen.");
+
 const { eintraege, widersprueche, fehlend, ohneVersion } = ermittleStand();
 const vorher = liesManifest();
 

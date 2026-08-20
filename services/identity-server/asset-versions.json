@@ -110,8 +110,8 @@
       "pruefsumme": "bbc3e666a1981d19"
     },
     "/app/help-chat-service.js": {
-      "version": "20260715-01",
-      "pruefsumme": "9f9e11192b8aa6b1"
+      "version": "20260820-esm-import-1",
+      "pruefsumme": "351fbf756a7d6dfa"
     },
     "/app/help-content.js": {
       "version": "20260730-content-separation-1",

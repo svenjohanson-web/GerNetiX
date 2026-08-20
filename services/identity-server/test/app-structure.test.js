@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles } = require("../test-support/platform-app-source");
+const { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles, scriptPosition } = require("../test-support/platform-app-source");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 
@@ -40,7 +40,7 @@ test("platform app keeps state composition separate from domain behavior and sta
       assert.doesNotMatch(html, new RegExp(`/app/${file.replaceAll(".", "\\.")}\\?v=`));
       continue;
     }
-    const currentIndex = html.indexOf(`/app/${file}?v=`);
+    const currentIndex = scriptPosition(html, file);
     assert.ok(currentIndex > previousIndex, `${file} must be loaded in module order`);
     previousIndex = currentIndex;
   }

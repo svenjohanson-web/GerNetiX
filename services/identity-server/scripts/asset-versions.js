@@ -162,4 +162,68 @@ function liesManifest() {
   return JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
 }
 
-module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL };
+/*
+ * Import Map fuer die ES-Module der Plattform.
+ *
+ * Module loesen ihre Bezuege ueber URLs auf. Weil hier jede Datei mit ?v=
+ * ausgeliefert wird, wuerde ein import "./api-client.js" eine zweite,
+ * unversionierte Kopie laden und dasselbe Modul zweimal anlegen. Die Map
+ * bindet einen kurzen Namen an die versionierte Adresse -- an einer Stelle
+ * statt in jedem import.
+ *
+ * Sie wird erzeugt, nicht gepflegt: sonst driftete sie von den Cache-Versionen
+ * weg, genau wie es die frueheren Versionspins taten.
+ */
+const APP_HTML = path.join(OEFFENTLICH, "app", "index.html");
+const MARKE_START = "<!-- import-map: erzeugt von scripts/update-asset-versions.js -->";
+const MARKE_ENDE = "<!-- /import-map -->";
+
+function modulPfade(html) {
+  const pfade = [];
+  for (const t of html.matchAll(/<script([^>]*)src="(\/app\/[^"?]+\.js)\?v=([^"]+)"/g)) {
+    if (/type="module"/.test(t[1])) pfade.push({ pfad: t[2], version: t[3] });
+  }
+  return pfade;
+}
+
+function baueImportMap(html) {
+  const eintraege = {};
+  for (const { pfad, version } of modulPfade(html)) {
+    eintraege[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
+  }
+  const inhalt = JSON.stringify({ imports: eintraege }, null, 6).replace(/\n/g, "\n    ");
+  return `${MARKE_START}\n    <script type="importmap">\n    ${inhalt}\n    </script>\n    ${MARKE_ENDE}`;
+}
+
+function schreibeImportMap() {
+  const html = fs.readFileSync(APP_HTML, "utf8");
+  const block = baueImportMap(html);
+  const vorhanden = new RegExp(`${MARKE_START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]*?${MARKE_ENDE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+  const neu = vorhanden.test(html)
+    ? html.replace(vorhanden, block)
+    // Vor das erste Skript, denn eine Import Map muss vor jedem Modul stehen.
+    : html.replace(/(\n(\s*)<script src="\/app\/initial-view-router)/, `\n$2${block}$1`);
+  if (neu === html) return false;
+  fs.writeFileSync(APP_HTML, neu, "utf8");
+  return true;
+}
+
+function pruefeImportMap() {
+  const html = fs.readFileSync(APP_HTML, "utf8");
+  const treffer = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
+  if (!treffer) return ["Die Import Map fehlt, obwohl Module geladen werden"];
+  let karte;
+  try { karte = JSON.parse(treffer[1]); } catch (fehler) { return [`Import Map ist kein gueltiges JSON: ${fehler.message}`]; }
+  const fehler = [];
+  const erwartet = {};
+  for (const { pfad, version } of modulPfade(html)) erwartet[`@app/${path.basename(pfad)}`] = `${pfad}?v=${version}`;
+  for (const [name, ziel] of Object.entries(erwartet)) {
+    if (karte.imports?.[name] !== ziel) fehler.push(`${name} zeigt auf ${karte.imports?.[name] || "(fehlt)"} statt auf ${ziel}`);
+  }
+  for (const name of Object.keys(karte.imports || {})) {
+    if (!erwartet[name]) fehler.push(`${name} steht in der Map, wird aber nicht mehr als Modul geladen`);
+  }
+  return fehler;
+}
+
+module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL, schreibeImportMap, pruefeImportMap };

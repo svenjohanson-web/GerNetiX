@@ -39,4 +39,18 @@ function readPlatformAppSource() {
     .join("\n");
 }
 
-module.exports = { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles };
+/*
+ * Position eines Skript-Tags in index.html.
+ *
+ * Seit der Import Map im Dokumentkopf stehen dieselben Adressen ein zweites
+ * Mal im Dokument -- als JSON. Eine Suche nach dem blossen Pfad findet dann
+ * den Map-Eintrag, der immer zuerst kommt, und jeder Reihenfolgevergleich
+ * liefert dasselbe Ergebnis. Geprueft werden muss das Tag.
+ */
+function scriptPosition(html, file) {
+  const maskiert = file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const treffer = html.match(new RegExp(`<script[^>]*src="/app/${maskiert}\\?v=`));
+  return treffer ? treffer.index : -1;
+}
+
+module.exports = { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles, scriptPosition };

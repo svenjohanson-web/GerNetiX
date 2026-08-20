@@ -14,7 +14,8 @@ const eventBindings = fs.readFileSync(path.join(appRoot, "app-event-bindings.js"
 // Die Position wird ueber den Dateinamen gesucht, nicht ueber eine bestimmte
 // Cache-Version. Geprueft wird die Ladereihenfolge; welche Version dabei
 // ausgeliefert wird, sichert asset-cache-versions.test.js.
-const ladePosition = (datei) => html.indexOf(`/app/${datei}?v=`);
+const { scriptPosition } = require("../test-support/platform-app-source");
+const ladePosition = (datei) => scriptPosition(html, datei);
 
 test("loads the hamburger binding before route and feature controllers", () => {
   const early = ladePosition("app-shell-early.js");
