@@ -68,7 +68,10 @@ const incrementalServiceByDirectory = new Map([
 ]);
 
 function isIgnoredDeploymentFile(file) {
-  return /^(docs|data|model|tools\/architecture-docs|tools\/yaml-graph-sqlite\/out|\.github)\//.test(file)
+  // .claude/ ist Werkzeugkonfiguration dieses Repositoriums, so wie .github/:
+  // Sie beschreibt, wie hier entwickelt wird, und laeuft auf keinem Server.
+  // Ohne diesen Eintrag zwingt eine Aenderung daran den Plan auf "full".
+  return /^(docs|data|model|tools\/architecture-docs|tools\/yaml-graph-sqlite\/out|\.github|\.claude)\//.test(file)
     || ["README.md", "AGENTS.md"].includes(file)
     || file.endsWith(".test.js")
     || /^services\/[^/]+\/test\//.test(file)
