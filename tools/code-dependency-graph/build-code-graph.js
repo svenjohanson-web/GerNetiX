@@ -83,6 +83,21 @@ function baue() {
       verwendungen INTEGER NOT NULL,
       PRIMARY KEY (datei, name)
     );
+    /*
+     * Weiche Kanten: der Nutzer faengt das Fehlen selbst ab, etwa mit
+     * typeof X === "undefined" ? {} : X. Fuer Zyklen zaehlen sie nicht -- der
+     * Aufrufer kommt ohne aus. Fuer die Frage, ob eine Datei zum Modul werden
+     * darf, zaehlen sie sehr wohl: als Modul verschwaende ihr Name, der
+     * Rueckfall griffe, und die Anwendung liefe stillschweigend mit weniger
+     * Inhalt weiter. Genau das drohte bei knowledge-chapter-index.js.
+     */
+    CREATE TABLE weiche_kanten (
+      von TEXT NOT NULL REFERENCES dateien(name),
+      nach TEXT NOT NULL REFERENCES dateien(name),
+      name TEXT NOT NULL,
+      verwendungen INTEGER NOT NULL,
+      PRIMARY KEY (von, nach, name)
+    );
   `);
 
   const dateien = quellDateien();
@@ -120,11 +135,17 @@ function baue() {
   for (const [datei, a] of analysen) einfuegenDatei.run(datei, a.groesse, a.deklariert.size, a.frei.size);
   for (const [datei, a] of analysen) for (const name of a.deklariert) einfuegenName.run(name, datei);
 
+  const einfuegenWeich = db.prepare("INSERT OR IGNORE INTO weiche_kanten VALUES (?, ?, ?, ?)");
+
   for (const [datei, a] of analysen) {
     for (const [name, anzahl] of a.frei) {
       const ziel = herkunft.get(name);
       if (ziel && ziel !== datei) einfuegenKante.run(datei, ziel, name, anzahl);
       else if (!ziel) einfuegenOffen.run(datei, name, anzahl);
+    }
+    for (const [name, anzahl] of a.weich || []) {
+      const ziel = herkunft.get(name);
+      if (ziel && ziel !== datei) einfuegenWeich.run(datei, ziel, name, anzahl);
     }
   }
 
@@ -219,7 +240,20 @@ if (befehl === "build") {
   } else if (befehl === "incoming") {
     zeige(db.prepare("SELECT von AS datei, COUNT(*) AS namen, GROUP_CONCAT(name, ', ') AS bezeichner FROM kanten WHERE nach = ? GROUP BY von ORDER BY namen DESC").all(argument));
   } else if (befehl === "isolated") {
-    zeige(db.prepare("SELECT d.name, d.groesse_bytes FROM dateien d WHERE d.name NOT IN (SELECT nach FROM kanten) ORDER BY d.groesse_bytes").all());
+    /*
+     * Weiche Kanten schliessen ebenso aus. Eine Datei, deren Name nur
+     * typeof-abgesichert gelesen wird, darf trotzdem kein Modul werden: der
+     * Rueckfall des Lesers greift dann klaglos, und der Verlust faellt erst
+     * beim Benutzer auf.
+     */
+    zeige(db.prepare(`
+      SELECT d.name, d.groesse_bytes,
+             (SELECT COUNT(*) FROM weiche_kanten w WHERE w.nach = d.name) AS weiche_nutzer
+      FROM dateien d
+      WHERE d.name NOT IN (SELECT nach FROM kanten)
+        AND d.name NOT IN (SELECT nach FROM weiche_kanten)
+      ORDER BY d.groesse_bytes
+    `).all());
   } else if (befehl === "order") {
     zeige(befehlOrder(db));
   } else if (befehl === "cycles") {

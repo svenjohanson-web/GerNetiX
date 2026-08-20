@@ -83,7 +83,19 @@ function meldeStartFehler(fehler) {
   shell.querySelector(".topbar")?.after(meldung) || shell.prepend(meldung);
 }
 
-function loadPlatformScript(src) {
+/*
+ * Laedt eine Browser-Datei nach.
+ *
+ * Mit { module: true } wird sie als ES-Modul eingebunden. Das ist bewusst
+ * einzeln zu waehlen und nicht der Standard: die 28 hierueber nachgeladenen
+ * Dateien stellen heute Globale bereit, die andere benutzen. Wuerde man sie
+ * pauschal zu Modulen erklaeren, verschwaenden diese Namen und die Anwendung
+ * braeche an vielen Stellen zugleich.
+ *
+ * Ohne diese Wahlmoeglichkeit kann keine der nachgeladenen Dateien je ein
+ * Modul werden -- unabhaengig davon, wie entflochten sie ist.
+ */
+function loadPlatformScript(src, options = {}) {
   const existing = document.querySelector(`script[data-lazy-src="${CSS.escape(src)}"]`);
   if (existing) return existing.dataset.loaded === "true"
     ? Promise.resolve()
@@ -93,6 +105,7 @@ function loadPlatformScript(src) {
     });
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
+    if (options.module) script.type = "module";
     script.src = src;
     script.dataset.lazySrc = src;
     script.addEventListener("load", () => {

@@ -46,8 +46,8 @@
       "pruefsumme": "a770d63c65bda641"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-peers-1",
-      "pruefsumme": "ad632e6f123b361c"
+      "version": "20260820-esm-app-1",
+      "pruefsumme": "ac9cc44217382316"
     },
     "/app/app-shell-early.js": {
       "version": "20260819-app-theme-toggle-3",
@@ -58,7 +58,7 @@
       "pruefsumme": "a4a97a7c79781945"
     },
     "/app/app.js": {
-      "version": "20260820-peers-1",
+      "version": "20260820-esm-app-1",
       "pruefsumme": "919cc3db625d542e"
     },
     "/app/auth/auth.css": {
