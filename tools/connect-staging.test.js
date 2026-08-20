@@ -91,3 +91,24 @@ test("the tunnel forwards every local service the remote-dev identity will call"
   assert.deepEqual(fehlend, []);
 });
 
+/*
+ * Es gibt zwei Wege in denselben Tunnel, und beide fuehren ihre eigene Liste.
+ *
+ * connect-staging.js oeffnet ihn von Hand, desktop-process-control.js aus dem
+ * Prozessmonitor heraus. Die zweite Liste steht dort als Literal; niemand
+ * verband sie mit der ersten. Faehrt jemand einen Dienst nur auf einem Weg
+ * nach, haengt der andere still hinterher -- dieselbe Art Fehler, die den
+ * admin-tool-Port gekostet hat, nur eine Ebene weiter.
+ */
+test("both tunnel paths forward the same services", () => {
+  const quelle = fs.readFileSync(
+    path.join(__dirname, "process-monitor", "desktop-process-control.js"), "utf8");
+  const treffer = quelle.match(/const REMOTE_DEV_SERVICE_FORWARDS\s*=\s*\[([\s\S]*?)\];/);
+  assert.notEqual(treffer, null, "Die Portliste des Prozessmonitors wurde nicht gefunden");
+
+  const ausMonitor = [...treffer[1].matchAll(/\[\s*(\d+)\s*,\s*(\d+)\s*\]/g)]
+    .map((t) => `${t[1]}->${t[2]}`).sort();
+  const ausTunnel = REMOTE_DEV_SERVICE_FORWARDS.map(([local, remote]) => `${local}->${remote}`).sort();
+
+  assert.deepEqual(ausMonitor, ausTunnel);
+});
