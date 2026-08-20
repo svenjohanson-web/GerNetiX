@@ -246,12 +246,12 @@ async function loadProjectAppAssets() {
 
 const lazyAssetVersions = {
   boardConfiguration: "20260820-esm-blatt-6",
-  build: "20260820-statuskanal-1",
+  build: "20260820-flash-pruefsumme-1",
   flashDialog: "20260820-esm-blatt-3",
-  flashExecutor: "20260820-esm-blatt-6",
+  flashExecutor: "20260820-flash-pruefsumme-1",
   flashProgress: "20260820-esm-blatt-6",
   guidedProject: "20260820-esm-kopf-2",
-  onboarding: "20260820-esm-mitte-2",
+  onboarding: "20260820-flash-pruefsumme-1",
   onboardingModel: "20260820-esm-blatt-6",
   usbDisconnect: "20260820-esm-blatt-6",
   usbTarget: "20260820-esm-blatt-6",

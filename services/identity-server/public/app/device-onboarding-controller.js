@@ -1582,7 +1582,7 @@ const DeviceOnboardingController = (() => {
           sourceVersion: artifact.source_version,
         };
         terminal?.setArtifact?.(displayArtifact);
-        await window.GerNetiXFlashExecutor.executeUsb({
+        await GerNetiXFlashExecutor.executeUsb({
           port: isDaemonPort(state.provisioningSerialPort)
             ? { ...state.provisioningSerialPort, source: "gernetix_serial_service" }
             : state.provisioningSerialPort,

@@ -4,6 +4,7 @@ import { delay, deleteJson, escapeAttribute, escapeHtml, getJson, meta, postJson
 import { DASHBOARD_STALE_EVENT, SERIAL_SERVICE_CHOICE_EVENT, deviceOnboarding } from "@app/platform-components.js";
 import { navigate } from "@app/platform-routing.js";
 import { state } from "@app/platform-state.js";
+import { GerNetiXFlashExecutor } from "@app/unified-flash-executor.js";
 import { appendTerminalLine, clearStatus, connectFlashDialog, resetTerminal, showStatus } from "@app/workbench-output-view.js";
 
 const activeBuildJobIds = new Set();
@@ -465,17 +466,26 @@ async function reusableBuildForUsbFlash(project, softwareUnit) {
   }
 }
 
-async function flashBuildViaSerialService(build, device) {
+/*
+ * Der Build liefert zu jedem Artefakt Groesse und SHA-256 mit; der Artefaktspeicher
+ * auf der Serverseite kann beides gar nicht weglassen. Ungeprueft zu schreiben hiesse,
+ * einen abgebrochenen Download auf das Board zu bringen -- und der meldet sich nicht
+ * als Fehler, sondern als Geraet, das sich seltsam verhaelt.
+ */
+async function loadVerifiedFlashPackage(build, transportName) {
   const manifest = Array.isArray(build.flash_manifest) ? build.flash_manifest : [];
   const required = ["bootloader.bin", "partitions.bin", "firmware.bin"];
   if (!required.every((name) => manifest.some((item) => item.name === name))) {
-    throw new Error("Build enthält kein vollständiges ESP32-USB-Flashpaket.");
+    throw new Error(`Build enthält kein vollständiges ESP32-${transportName}-Flashpaket.`);
   }
-  const files = await Promise.all(manifest.map(async (item) => {
-    const response = await fetch(item.url);
-    if (!response.ok) throw new Error(`${item.name} konnte nicht geladen werden.`);
-    return { name: item.name, data: new Uint8Array(await response.arrayBuffer()), address: Number(item.address) };
-  }));
+  return GerNetiXFlashExecutor.downloadAndVerifyBuild(manifest, {
+    buildJobId: build.build_job_id || build.build_deploy_job_id,
+    write: appendTerminalLine,
+  });
+}
+
+async function flashBuildViaSerialService(build, device) {
+  const files = await loadVerifiedFlashPackage(build, "USB");
   const ports = await state.serialService.ports();
   state.usbPorts = ports.map((port) => ({ ...port, port: port.path, name: port.label }));
   renderUsbPortOptions();
@@ -627,16 +637,7 @@ function appendBuildFailureLog(buildLog, fallbackMessage = "") {
 }
 
 async function flashBuildViaWebSerial(build) {
-  const manifest = Array.isArray(build.flash_manifest) ? build.flash_manifest : [];
-  const required = ["bootloader.bin", "partitions.bin", "firmware.bin"];
-  if (!required.every((name) => manifest.some((item) => item.name === name))) {
-    throw new Error("Build enthält kein vollständiges ESP32-Web-Serial-Flashpaket.");
-  }
-  const fileArray = await Promise.all(manifest.map(async (item) => {
-    const response = await fetch(item.url);
-    if (!response.ok) throw new Error(`${item.name} konnte nicht geladen werden.`);
-    return { data: new Uint8Array(await response.arrayBuffer()), address: Number(item.address) };
-  }));
+  const fileArray = await loadVerifiedFlashPackage(build, "Web-Serial");
   const totalBytes = fileArray.reduce((sum, file) => sum + file.data.byteLength, 0);
   const precedingBytes = fileArray.map((_, index) => fileArray.slice(0, index).reduce((sum, file) => sum + file.data.byteLength, 0));
   const port = await navigator.serial.requestPort();

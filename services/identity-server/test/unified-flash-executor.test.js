@@ -35,6 +35,67 @@ test("rejects a binary without an immutable source reference", async () => {
   }], { crypto: webcrypto, fetch: async () => new Response(data) }), /Quellpfad/);
 });
 
+async function buildManifestEntry(data, overrides = {}) {
+  return {
+    name: "firmware.bin",
+    address: 0x10000,
+    url: "/api/user-ide/build-artifacts/job-1/firmware.bin",
+    size_bytes: data.length,
+    sha256: await executor.sha256(data, webcrypto),
+    ...overrides,
+  };
+}
+
+test("verifies a fresh build manifest against the size and checksum the build reported", async () => {
+  const data = Uint8Array.from([7, 7, 7]);
+  const lines = [];
+  const files = await executor.downloadAndVerifyBuild([await buildManifestEntry(data)], {
+    buildJobId: "job-1",
+    crypto: webcrypto,
+    fetch: async () => new Response(data, { status: 200 }),
+    write: (_kind, message) => lines.push(message),
+  });
+  assert.deepEqual(files[0].data, data);
+  assert.equal(files[0].address, 0x10000);
+  assert.match(lines.at(-1), /Größe und SHA-256 geprüft · Build job-1/);
+});
+
+test("refuses build bytes whose checksum does not match the manifest", async () => {
+  const announced = Uint8Array.from([1, 2, 3, 4]);
+  const delivered = Uint8Array.from([1, 2, 3, 5]);
+  await assert.rejects(executor.downloadAndVerifyBuild([await buildManifestEntry(announced)], {
+    buildJobId: "job-1",
+    crypto: webcrypto,
+    fetch: async () => new Response(delivered, { status: 200 }),
+  }), /SHA-256-Prüfsumme/);
+});
+
+test("refuses a truncated download before a single byte reaches the board", async () => {
+  const announced = Uint8Array.from([1, 2, 3, 4, 5, 6]);
+  await assert.rejects(executor.downloadAndVerifyBuild([await buildManifestEntry(announced)], {
+    buildJobId: "job-1",
+    crypto: webcrypto,
+    fetch: async () => new Response(announced.slice(0, 3), { status: 200 }),
+  }), /unerwartete Größe \(3 statt 6 Byte\)/);
+});
+
+test("refuses a build artifact that arrives without a checksum at all", async () => {
+  const data = Uint8Array.from([1]);
+  await assert.rejects(executor.downloadAndVerifyBuild([await buildManifestEntry(data, { sha256: "" })], {
+    buildJobId: "job-1",
+    crypto: webcrypto,
+    fetch: async () => new Response(data, { status: 200 }),
+  }), /SHA-256-Prüfsumme/);
+});
+
+test("names the build a flash order belongs to", async () => {
+  const data = Uint8Array.from([1]);
+  await assert.rejects(executor.downloadAndVerifyBuild([await buildManifestEntry(data)], {
+    crypto: webcrypto,
+    fetch: async () => new Response(data, { status: 200 }),
+  }), /Kennung des Builds/);
+});
+
 test("uses the same verified files for the Serial Helper adapter", async () => {
   const data = Uint8Array.from([9, 8]);
   const hash = await executor.sha256(data, webcrypto);

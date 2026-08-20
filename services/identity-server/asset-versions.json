@@ -30,15 +30,15 @@
       "pruefsumme": "0fdf8168288b3ae9"
     },
     "/app/app-device-build-controller.js": {
-      "version": "20260820-statuskanal-1",
-      "pruefsumme": "0fb9c2c236b4b512"
+      "version": "20260820-flash-pruefsumme-1",
+      "pruefsumme": "e3f41fa8bac922e7"
     },
     "/app/app-event-bindings.js": {
       "version": "20260820-statuskanal-1",
       "pruefsumme": "38d07d5afe55de8e"
     },
     "/app/app-ide-controller.js": {
-      "version": "20260820-statuskanal-1",
+      "version": "20260820-flash-pruefsumme-1",
       "pruefsumme": "7edf33029f357dd3"
     },
     "/app/app-project-controller.js": {
@@ -54,8 +54,8 @@
       "pruefsumme": "2ede5983a853edf2"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-statuskanal-1",
-      "pruefsumme": "ad73aa1f1d846b5a"
+      "version": "20260820-flash-pruefsumme-2",
+      "pruefsumme": "ea0237f269d33b05"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-kopf-1",
@@ -110,12 +110,12 @@
       "pruefsumme": "28bd8c95874ebec3"
     },
     "/app/device-debug-controller.js": {
-      "version": "20260820-statuskanal-1",
+      "version": "20260820-flash-pruefsumme-1",
       "pruefsumme": "b57141e905210044"
     },
     "/app/device-onboarding-controller.js": {
-      "version": "20260820-esm-mitte-2",
-      "pruefsumme": "9f4174e7431d4f15"
+      "version": "20260820-flash-pruefsumme-1",
+      "pruefsumme": "6c345de50e2f2ad6"
     },
     "/app/device-onboarding-model.js": {
       "version": "20260820-esm-blatt-6",
@@ -250,8 +250,8 @@
       "pruefsumme": "247ad83a0350ceb1"
     },
     "/app/unified-flash-executor.js": {
-      "version": "20260820-esm-blatt-6",
-      "pruefsumme": "b509184cd57a0377"
+      "version": "20260820-flash-pruefsumme-1",
+      "pruefsumme": "50b742386e1562d6"
     },
     "/app/usb-flash-target-model.js": {
       "version": "20260820-esm-blatt-6",

@@ -130,8 +130,37 @@ function requireForSandbox(file) {
   return modul.exports;
 }
 
+/*
+ * Eine Browser-Datei ausfuehren und einzelne ihrer Funktionen herausreichen.
+ *
+ * Viele Zusicherungen ueber die Controller sind bisher Textvergleiche auf dem
+ * Quelltext. Die brechen beim Umbauen, obwohl sich nichts geaendert hat, und
+ * sie halten, wenn der Wortlaut bleibt und die Bedeutung kippt. Damit sie das
+ * Verhalten pruefen koennen, muss die Funktion laufen.
+ *
+ * Moeglich ist das, weil readForSandbox die import-Zeilen entfernt: alles, was
+ * die Datei von aussen bezieht, ist danach eine freie Variable. Dasselbe gilt
+ * fuer die Namen, die sie noch ueber den globalen Namensraum liest. Beide
+ * werden hier als Parameter der Huelle gebunden -- der Test entscheidet also,
+ * was die Datei vorfindet, ohne dass an ihr etwas geaendert werden muesste.
+ *
+ * Ausgefuehrt wird im selben Kontext (siehe requireForSandbox), damit
+ * Prototypen und damit assert.deepEqual zusammenpassen.
+ */
+function sandboxModule(file, injected = {}, exportNames = []) {
+  const names = Object.keys(injected);
+  const traeger = { exports: {} };
+  vm.runInThisContext(
+    `(function (${names.join(", ")}, __traeger) {\n${readForSandbox(file)}\n`
+    + `;__traeger.exports = { ${exportNames.join(", ")} };\n})`,
+    { filename: file },
+  )(...names.map((name) => injected[name]), traeger);
+  return traeger.exports;
+}
+
 module.exports = {
   platformAppFiles,
+  sandboxModule,
   scriptAbschnitt,
   requireForSandbox,
   readPlatformAppSource,
