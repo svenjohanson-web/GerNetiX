@@ -20,7 +20,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { analysiereDatei } = require("./src/analyse");
-const { OEFFENTLICH: QUELLE, browserDateien } = require("./src/quellen");
+const { OEFFENTLICH: QUELLE, browserDateien, modulDateien } = require("./src/quellen");
 
 const WURZEL = path.join(__dirname, "..", "..");
 const DB_PFAD = path.join(__dirname, "out", "code-graph.sqlite");
@@ -101,19 +101,21 @@ function baue() {
   `);
 
   const dateien = quellDateien();
+  const module = modulDateien();
   const analysen = new Map();
   const fehler = [];
 
   for (const name of dateien) {
     const quelltext = fs.readFileSync(path.join(QUELLE, name), "utf8");
+    const istModul = module.has(name);
     let ast;
     try {
-      ast = acorn.parse(quelltext, { ecmaVersion: 2024, sourceType: "script" });
+      ast = acorn.parse(quelltext, { ecmaVersion: 2024, sourceType: istModul ? "module" : "script" });
     } catch (problem) {
       fehler.push(`${name}: ${problem.message}`);
       continue;
     }
-    analysen.set(name, { ...analysiereDatei(ast), groesse: Buffer.byteLength(quelltext) });
+    analysen.set(name, { ...analysiereDatei(ast, { istModul }), groesse: Buffer.byteLength(quelltext) });
   }
 
   if (fehler.length > 0) {

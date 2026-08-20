@@ -101,7 +101,13 @@ function parameterDerAeusserenVerpackung(ast) {
   return namen;
 }
 
-function analysiereDatei(ast) {
+/*
+ * istModul: In einem ES-Modul werden Deklarationen auf oberster Ebene NICHT
+ * global. Global ist dort nur, was ausdruecklich an globalThis zugewiesen
+ * wird -- also genau die Uebergangsbruecken. Ohne diese Unterscheidung
+ * meldete der Graph Namen als verfuegbar, die es im Browser nicht mehr sind.
+ */
+function analysiereDatei(ast, { istModul = false } = {}) {
   const programmNamen = new Set();
   const frei = new Map(); // name -> Anzahl
   // Namen, deren Fehlen der Quelltext an Ort und Stelle abfaengt.
@@ -280,7 +286,8 @@ function analysiereDatei(ast) {
     }
   }
   hebeHoch(ast, ebenen);
-  for (const name of programm.namen) programmNamen.add(name);
+  // Nur klassische Skripte veroeffentlichen ihre obersten Deklarationen.
+  if (!istModul) for (const name of programm.namen) programmNamen.add(name);
 
   // Zuweisungen an window.X / globalThis.X erzeugen ebenfalls Globale --
   // ebenso an den Parameter, ueber den die UMD-Verpackung globalThis erhaelt.

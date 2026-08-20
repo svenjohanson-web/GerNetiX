@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const { analysiereDatei } = require("../../../tools/code-dependency-graph/src/analyse");
-const { OEFFENTLICH, browserDateien } = require("../../../tools/code-dependency-graph/src/quellen");
+const { OEFFENTLICH, browserDateien, modulDateien } = require("../../../tools/code-dependency-graph/src/quellen");
 
 const acorn = require(path.join(__dirname, "..", "node_modules", "acorn"));
 
@@ -57,10 +57,14 @@ test("no browser script references an identifier that nothing provides", () => {
   const deklariert = new Set();
   const analysen = new Map();
 
+  // Module werden anders geparst und veroeffentlichen ihre Deklarationen
+  // nicht -- global ist dort nur, was an globalThis zugewiesen wird.
+  const module = modulDateien();
   for (const name of dateien) {
     const quelltext = fs.readFileSync(path.join(OEFFENTLICH, name), "utf8");
-    const ast = acorn.parse(quelltext, { ecmaVersion: 2024, sourceType: "script" });
-    const ergebnis = analysiereDatei(ast);
+    const istModul = module.has(name);
+    const ast = acorn.parse(quelltext, { ecmaVersion: 2024, sourceType: istModul ? "module" : "script" });
+    const ergebnis = analysiereDatei(ast, { istModul });
     analysen.set(name, ergebnis);
     for (const bezeichner of ergebnis.deklariert) deklariert.add(bezeichner);
   }

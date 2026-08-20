@@ -10,8 +10,8 @@
       "pruefsumme": "6856a8f311afad2f"
     },
     "/app/api-client.js": {
-      "version": "20260814-single-session-1",
-      "pruefsumme": "2c8daaced6ab121f"
+      "version": "20260820-esm-export-1",
+      "pruefsumme": "19e341cff45eacba"
     },
     "/app/app-account-controller.js": {
       "version": "20260801-app-modules-1",
@@ -98,8 +98,8 @@
       "pruefsumme": "c2eab8895693c882"
     },
     "/app/dom-utils.js": {
-      "version": "20260803-performance-1",
-      "pruefsumme": "d6a3cacb75a26c71"
+      "version": "20260820-esm-export-1",
+      "pruefsumme": "bfb0592007f99b6a"
     },
     "/app/hardware-lab-controller.js": {
       "version": "20260819-app-theme-toggle-3",

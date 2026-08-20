@@ -83,3 +83,19 @@ const ApiClient = (() => {
     putJson,
   };
 })();
+
+/*
+ * Uebergangsbruecke.
+ *
+ * Diese Datei ist ein ES-Modul, ihre Namen sind damit nicht mehr global. Die
+ * Dateien, die ApiClient heute benutzen, sind aber noch klassische Skripte und
+ * lesen den Namen global. Bis sie ihn einfuehren, wird er hier ausdruecklich
+ * bereitgestellt.
+ *
+ * ApiClient ist ein unveraenderliches Namensraum-Objekt und wird nie neu
+ * zugewiesen, deshalb genuegt eine einfache Zuweisung. Bei veraenderlichen
+ * Werten waeren Zugriffsmethoden noetig, sonst liefe die Zuweisung eines
+ * klassischen Skripts am Modul vorbei.
+ */
+export { ApiClient };
+globalThis.ApiClient = ApiClient;
