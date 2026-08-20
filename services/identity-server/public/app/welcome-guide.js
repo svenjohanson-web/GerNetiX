@@ -1,3 +1,5 @@
+import { ApiClient } from "@app/api-client.js";
+
 const GerNetiXWelcomeGuide = (() => {
   let activeStep = 0;
   let account = null;
@@ -117,3 +119,17 @@ const GerNetiXWelcomeGuide = (() => {
   bind();
   return { maybeOpen, open };
 })();
+
+export {
+  GerNetiXWelcomeGuide,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-event-bindings.js, app-shell-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXWelcomeGuide,
+});
+/* ---- /Uebergangsbruecke ---- */

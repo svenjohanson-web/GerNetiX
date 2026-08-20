@@ -1,3 +1,8 @@
+import { delay, escapeAttribute, escapeHtml } from "@app/app-runtime-utils.js";
+import { closeMainMenu } from "@app/app-shell-early.js";
+import { state } from "@app/platform-state.js";
+import { GerNetiXUsbPortDisconnectDetector } from "@app/usb-port-disconnect-detector.js";
+
 const GerNetiXDeviceWifiSetup = (() => {
   let eventsBound = false;
   let currentContext = {};
@@ -327,3 +332,17 @@ const GerNetiXDeviceWifiSetup = (() => {
 })();
 
 window.GerNetiXDeviceWifiSetup = GerNetiXDeviceWifiSetup;
+
+export {
+  GerNetiXDeviceWifiSetup,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-event-bindings.js, app-shell-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXDeviceWifiSetup,
+});
+/* ---- /Uebergangsbruecke ---- */

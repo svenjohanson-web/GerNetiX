@@ -14,16 +14,16 @@
       "pruefsumme": "19e341cff45eacba"
     },
     "/app/app-account-controller.js": {
-      "version": "20260801-app-modules-1",
-      "pruefsumme": "0c5b07bd94362beb"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "d51c0f504381dcd5"
     },
     "/app/app-billing-controller.js": {
       "version": "20260803-storage-policy-1",
       "pruefsumme": "fb92b80c62942c34"
     },
     "/app/app-community-controller.js": {
-      "version": "20260820-esm-blatt-6",
-      "pruefsumme": "df98394518b5dd27"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "7624d44d88e40cf2"
     },
     "/app/app-dashboard-controller.js": {
       "version": "20260820-esm-state-1",
@@ -42,20 +42,20 @@
       "pruefsumme": "32015861103938cb"
     },
     "/app/app-project-controller.js": {
-      "version": "20260820-esm-state-1",
-      "pruefsumme": "813f6b60a36f46a9"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "b17b7830b5e06a5c"
     },
     "/app/app-push-controller.js": {
-      "version": "20260801-app-modules-1",
-      "pruefsumme": "cbf50bcba76bc6a7"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "2a3ec978b3887421"
     },
     "/app/app-runtime-utils.js": {
       "version": "20260820-esm-utils-1",
       "pruefsumme": "d525da0a6d415c9c"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-esm-blatt-6",
-      "pruefsumme": "403194063a1f45fd"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "43e78423873127ba"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-blatt-1",
@@ -82,19 +82,19 @@
       "pruefsumme": "8c0b6df2e8f2a2d5"
     },
     "/app/community-ideas-controller.js": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "29d278a3afdf73b6"
     },
     "/app/community-marketplace-controller.js": {
-      "version": "20260820-esm-blatt-6",
-      "pruefsumme": "70859cafccb5f489"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "30f565c99ae0369b"
     },
     "/app/community-portal-controller.js": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "882e7c30676226d7"
     },
     "/app/community-routes.css": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "4e7c5223fa78d071"
     },
     "/app/development-component-metamodel.js": {
@@ -114,16 +114,16 @@
       "pruefsumme": "cefe7b9ac0a145aa"
     },
     "/app/device-onboarding-controller.js": {
-      "version": "20260719-04",
-      "pruefsumme": "43ecc8d4405999fb"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "9f4174e7431d4f15"
     },
     "/app/device-onboarding-model.js": {
       "version": "20260820-esm-blatt-6",
       "pruefsumme": "9bc5badb7e487c20"
     },
     "/app/device-wifi-setup-dialog.js": {
-      "version": "20260801-shared-port-identification",
-      "pruefsumme": "ab378f55d44dd206"
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "33f520184c9dfa62"
     },
     "/app/dom-utils.js": {
       "version": "20260820-esm-export-1",
@@ -138,11 +138,11 @@
       "pruefsumme": "be47af692d327bae"
     },
     "/app/hardware-lab-controller.js": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "83954bfa22bce405"
     },
     "/app/hardware-lab-route.css": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "bbc3e666a1981d19"
     },
     "/app/help-chat-service.js": {
@@ -186,24 +186,24 @@
       "pruefsumme": "a5c804a9960a8f05"
     },
     "/app/platform-routing.js": {
-      "version": "20260820-peers-1",
-      "pruefsumme": "d4486ea22c6f9f35"
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "68f7607d65eaf669"
     },
     "/app/platform-state.js": {
       "version": "20260820-esm-blatt-1",
       "pruefsumme": "301e4669d75b81b5"
     },
     "/app/project-app-controller.js": {
-      "version": "20260819-umd-root-fix-1",
-      "pruefsumme": "a00c0baa027e95d9"
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "55bf1dd8da0b8337"
     },
     "/app/project-app-renderer.js": {
       "version": "20260820-esm-blatt-6",
       "pruefsumme": "0826466e69e9061f"
     },
     "/app/project-feedback-ui.js": {
-      "version": "20260802-project-feedback",
-      "pruefsumme": "115aa4148bf21825"
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "d6b6a7d2da3822e0"
     },
     "/app/project-repository-card.js": {
       "version": "20260820-esm-blatt-6",
@@ -214,15 +214,15 @@
       "pruefsumme": "0759f19be9e8b2d9"
     },
     "/app/quiz.js": {
-      "version": "20260805-route-lazy-2",
-      "pruefsumme": "3f3457b9ac656b9b"
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "35352b3afb719400"
     },
     "/app/reference-library-controller.js": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "1fbfa18256e9dd69"
     },
     "/app/reference-library-route.css": {
-      "version": "20260820-esm-blatt-6",
+      "version": "20260820-esm-mitte-2",
       "pruefsumme": "da212a86414b3f94"
     },
     "/app/serial-service-client.js": {
@@ -258,8 +258,8 @@
       "pruefsumme": "f580bf434befb0ff"
     },
     "/app/welcome-guide.js": {
-      "version": "20260814-portfolio-guide-1",
-      "pruefsumme": "19b39cb281dd8651"
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "4e065d7a0dbd2e3e"
     },
     "/community/app.js": {
       "version": "20260819-asset-manifest-1",

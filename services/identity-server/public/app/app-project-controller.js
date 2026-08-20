@@ -1,4 +1,11 @@
 // GerNetiX platform module extracted from app.js.
+import { escapeAttribute, escapeHtml, postJson, progressFor } from "@app/app-runtime-utils.js";
+import { LearningProjectLocales } from "@app/learning-project-locales.js";
+import { LearningProjectView } from "@app/learning-project-view.js";
+import { learningProject } from "@app/platform-components.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+
 async function openProjectInIde(projectId) {
   state.activeProjectId = projectId;
   await postJson("/api/platform/workspace-state", {
@@ -458,3 +465,35 @@ function learningProjectFilter(project, progress) {
   if (progress.currentStep > 0 || progress.completedSteps.length > 0) return "in_progress";
   return "not_started";
 }
+
+export {
+  accountDevelopmentProjects,
+  currentLearningLocale,
+  hasProjectApp,
+  learningText,
+  openProjectInIde,
+  personalApplications,
+  renderApplications,
+  renderLearn,
+  renderLearningProjectOverview,
+  renderProjects,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: 5 Dateien.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  accountDevelopmentProjects,
+  currentLearningLocale,
+  hasProjectApp,
+  learningText,
+  openProjectInIde,
+  personalApplications,
+  renderApplications,
+  renderLearn,
+  renderLearningProjectOverview,
+  renderProjects,
+});
+/* ---- /Uebergangsbruecke ---- */

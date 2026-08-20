@@ -14,6 +14,8 @@
  * Diese Datei haengt nur an window und an state.account, das eine Schicht
  * tiefer liegt.
  */
+import { state } from "@app/platform-state.js";
+
 const ROUTE_CHANGED_EVENT = "gernetix:route-changed";
 
 const routeMap = {
@@ -93,3 +95,27 @@ function navigate(route) {
 const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
 const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
 const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
+
+export {
+  ROUTE_CHANGED_EVENT,
+  isPublicInformationPage,
+  isPublicKnowledgePage,
+  navigate,
+  routeMap,
+  routeName,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: 11 Dateien.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  ROUTE_CHANGED_EVENT,
+  isPublicInformationPage,
+  isPublicKnowledgePage,
+  navigate,
+  routeMap,
+  routeName,
+});
+/* ---- /Uebergangsbruecke ---- */

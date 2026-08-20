@@ -323,13 +323,37 @@ function istModulDatei(pfad) {
     .test(fs.readFileSync(datei, "utf8"));
 }
 
+/*
+ * Welche kurzen Namen werden ueberhaupt eingefuehrt?
+ *
+ * Die Map traegt nur diese. Ein Eintrag fuer ein Modul, das niemand einfuehrt,
+ * hat keine Wirkung -- kostet aber: er fuehrt dessen Adresse ein zweites Mal
+ * im Dokument auf, und jede Zusicherung der Art "diese Datei wird erst bei
+ * Bedarf geladen" schlaegt dann auf den Map-Eintrag an statt auf ein Skript.
+ */
+function eingefuehrteNamen() {
+  const namen = new Set();
+  const suche = (verzeichnis) => {
+    for (const eintrag of fs.readdirSync(verzeichnis, { withFileTypes: true })) {
+      const voll = path.join(verzeichnis, eintrag.name);
+      if (eintrag.isDirectory()) { if (eintrag.name !== "node_modules" && eintrag.name !== "dist") suche(voll); }
+      else if (eintrag.name.endsWith(".js")) {
+        for (const t of fs.readFileSync(voll, "utf8").matchAll(/from "@app\/([^"]+)"/g)) namen.add(t[1]);
+      }
+    }
+  };
+  suche(OEFFENTLICH);
+  return namen;
+}
+
 function modulPfade() {
   const { verweise } = erfasseVerweise();
   const { bestand } = bestandAusVerweisen(verweise);
+  const gebraucht = eingefuehrteNamen();
   const pfade = [];
   for (const [pfad, angabe] of [...bestand.entries()].sort()) {
     if (istDurchgereicht(pfad) || !pfad.startsWith("/app/") || !pfad.endsWith(".js")) continue;
-    if (!istModulDatei(pfad)) continue;
+    if (!gebraucht.has(path.basename(pfad)) || !istModulDatei(pfad)) continue;
     pfade.push({ pfad, version: angabe.version });
   }
   return pfade;

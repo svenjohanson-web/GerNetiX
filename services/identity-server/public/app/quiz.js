@@ -1,3 +1,5 @@
+import { GerNetiXQuizData } from "@app/quiz-data.js";
+
 (() => {
   function interpolate(message, variables) {
     return String(message).replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, key) =>
@@ -225,3 +227,14 @@
     scoreAnswers,
   };
 })();
+
+/*
+ * Diese Datei veroeffentlicht ihre Schnittstelle nach UMD-Art durch Zuweisung
+ * an das globale Objekt. Es gibt keine gleichnamige Bindung, also wird sie hier
+ * angelegt: derselbe Wert, nur ansprechbar fuer den export.
+ */
+const GerNetiXQuiz = globalThis.GerNetiXQuiz;
+
+export {
+  GerNetiXQuiz,
+};

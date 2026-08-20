@@ -213,14 +213,14 @@ function scheduleKnowledgeContentPrefetch() {
 async function loadQuizAssets() {
   await Promise.all([
     loadPlatformScript("/app/quiz-data.js?v=20260820-esm-blatt-6", { module: true }),
-    loadPlatformScript("/app/quiz.js?v=20260805-route-lazy-2"),
+    loadPlatformScript("/app/quiz.js?v=20260820-esm-mitte-1", { module: true }),
   ]);
 }
 
 async function loadProjectAppAssets() {
   await Promise.all([
     loadPlatformScript("/app/project-app-renderer.js?v=20260820-esm-blatt-6", { module: true }),
-    loadPlatformScript("/app/project-app-controller.js?v=20260819-umd-root-fix-1"),
+    loadPlatformScript("/app/project-app-controller.js?v=20260820-esm-mitte-1", { module: true }),
   ]);
 }
 
@@ -231,11 +231,11 @@ const lazyAssetVersions = {
   flashExecutor: "20260820-esm-blatt-6",
   flashProgress: "20260820-esm-blatt-6",
   guidedProject: "20260808-guided-sequence-17",
-  onboarding: "20260719-04",
+  onboarding: "20260820-esm-mitte-2",
   onboardingModel: "20260820-esm-blatt-6",
   usbDisconnect: "20260820-esm-blatt-6",
   usbTarget: "20260820-esm-blatt-6",
-  wifiSetup: "20260801-shared-port-identification",
+  wifiSetup: "20260820-esm-mitte-2",
 };
 
 async function loadBuildWorkbenchAssets() {
@@ -282,12 +282,12 @@ async function loadDeviceOnboardingAssets() {
     loadPlatformScript(`/app/unified-flash-executor.js?v=${lazyAssetVersions.flashExecutor}`, { module: true }),
     loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
   ]);
-  await loadPlatformScript(`/app/device-onboarding-controller.js?v=${lazyAssetVersions.onboarding}`);
+  await loadPlatformScript(`/app/device-onboarding-controller.js?v=${lazyAssetVersions.onboarding}`, { module: true });
 }
 
 async function loadDeviceWifiSetupAssets() {
   await loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true });
-  await loadPlatformScript(`/app/device-wifi-setup-dialog.js?v=${lazyAssetVersions.wifiSetup}`);
+  await loadPlatformScript(`/app/device-wifi-setup-dialog.js?v=${lazyAssetVersions.wifiSetup}`, { module: true });
   GerNetiXDeviceWifiSetup.bind();
 }
 
@@ -325,12 +325,12 @@ function routeAssetsMissing(route) {
 }
 
 async function loadRouteAssets(route) {
-  const version = "20260820-esm-blatt-6";
+  const version = "20260820-esm-mitte-2";
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
       loadPlatformScript("/app/development-hardware-model.js?v=20260820-esm-blatt-6", { module: true }),
       loadPlatformScript("/app/development-component-metamodel.js?v=20260820-esm-blatt-6", { module: true }),
-      loadPlatformScript("/app/project-feedback-ui.js?v=20260802-project-feedback"),
+      loadPlatformScript("/app/project-feedback-ui.js?v=20260820-esm-mitte-1", { module: true }),
       loadPlatformScript("/app/project-repository-card.js?v=20260820-esm-blatt-6", { module: true }),
     ]);
     await loadPlatformScript("/app/development-platform.js?v=20260806-project-summary-lazy-1");
@@ -379,7 +379,7 @@ async function loadRouteAssets(route) {
   if (route === "community") {
     await Promise.all([
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
-      loadPlatformScript(`/app/app-community-controller.js?v=${version}`),
+      loadPlatformScript(`/app/app-community-controller.js?v=${version}`, { module: true }),
       loadPlatformScript(`/app/community-ideas-controller.js?v=${version}`),
       loadPlatformScript(`/app/community-portal-controller.js?v=${version}`),
     ]);
@@ -392,7 +392,7 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadRouteFragment("messagesView", `/app/fragments/messages.html?v=${version}`),
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
-      loadPlatformScript(`/app/app-community-controller.js?v=${version}`),
+      loadPlatformScript(`/app/app-community-controller.js?v=${version}`, { module: true }),
     ]);
     bindCommunityMessageEvents();
     return;
@@ -400,7 +400,7 @@ async function loadRouteAssets(route) {
   if (route === "shop") {
     await Promise.all([
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
-      loadPlatformScript(`/app/community-marketplace-controller.js?v=${version}`),
+      loadPlatformScript(`/app/community-marketplace-controller.js?v=${version}`, { module: true }),
     ]);
     bindCommunityMarketplaceEvents();
   }
