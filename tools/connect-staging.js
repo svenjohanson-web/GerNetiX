@@ -9,6 +9,7 @@ const { assertSafeSshTarget, parseEnvFile } = require("./staging-deploy");
 const repoRoot = path.resolve(__dirname, "..");
 const REMOTE_DEV_SERVICE_FORWARDS = [
   [4400, 4400],
+  [4600, 4600],
   [4700, 4700],
   [4800, 4800],
   [4900, 4900],
