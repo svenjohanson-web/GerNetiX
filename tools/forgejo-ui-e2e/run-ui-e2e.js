@@ -120,7 +120,13 @@ async function createIdentityFixtureServer({ service, publicResponses }) {
       if (requestedProjectId !== uiProjectId || session.account.user_id !== accountId) throw httpError(404, "project_not_found", "Projekt wurde nicht gefunden.");
       const project = await service.getProject(projectId);
       if (project.user_id !== session.account.user_id) throw httpError(404, "project_not_found", "Projekt wurde nicht gefunden.");
-      return { id: uiProjectId, project_server_id: projectId };
+      /*
+       * Der Besitzer gehoert mit in die Antwort. projectAccess() im
+       * Repository-Zugriff leitet daraus die Delegation ab und weist einen
+       * Aufruf ohne serverseitig bestaetigten Besitzer zurueck -- der Test
+       * bekaeme sonst eine leere Karte und keinen Hinweis auf den Grund.
+       */
+      return { id: uiProjectId, project_server_id: projectId, user_id: project.user_id };
     },
   });
 
