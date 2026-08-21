@@ -224,7 +224,18 @@ async function ensureOrganization() {
 }
 
 function fixtureHtml() {
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Forgejo UI E2E</title><link rel="stylesheet" href="/app/app.css"></head><body><main style="max-width:1100px;margin:24px auto;padding:0 16px"><article id="projectRepositoryCard" class="panel project-repository-card hidden" aria-label="Git-Repository"></article></main><script src="/app/project-repository-card.js"></script><script>
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Forgejo UI E2E</title><link rel="stylesheet" href="/app/app.css"></head><body><main style="max-width:1100px;margin:24px auto;padding:0 16px"><article id="projectRepositoryCard" class="panel project-repository-card hidden" aria-label="Git-Repository"></article></main><script type="module">
+  /*
+   * project-repository-card.js ist ein ES-Modul. Als klassisches Skript
+   * geladen scheitert es am export-Schluesselwort, der Controller bleibt
+   * undefiniert und die Karte erscheint nie -- der Test lief dann in seinen
+   * Timeout, ohne die Ursache zu nennen.
+   *
+   * Eingefuehrt wird direkt statt ueber die Uebergangsbruecke der Datei: die
+   * setzt den Namen zwar global, aber Module werden verzoegert ausgefuehrt,
+   * und ein klassisches Skript daneben liefe vorher.
+   */
+  import { ProjectRepositoryCard } from "/app/project-repository-card.js";
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   const getJson = async (url) => { const response = await fetch(url, { headers: { Accept: "application/json" } }); const body = await response.json(); if (!response.ok) { const error = new Error(body.message || "Request failed"); error.status = response.status; error.code = body.error; throw error; } return body; };
   const controller = ProjectRepositoryCard.create({ getJson, escapeHtml, escapeAttribute: escapeHtml });
