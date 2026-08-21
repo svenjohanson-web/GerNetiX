@@ -7,6 +7,10 @@ const test = require("node:test");
 const { parseArgs } = require("../cli");
 const { runSystemTests, safeBrokerUrl, safeHttpUrl } = require("..");
 
+function withSlashes(value) {
+  return String(value).split("\\").join("/");
+}
+
 test("CLI exposes execution inputs but no infrastructure or chaos switch", () => {
   assert.deepEqual(parseArgs(["--profile", "smoke", "--identity-url", "http://127.0.0.1:14300", "--browser"]), {
     browser: true,
@@ -74,8 +78,9 @@ test("runs k6 and devices together, then the optional browser, without forwardin
 
   await firstWaveReady;
   assert.equal(calls.length, 2, "k6 and devices start before either one completes");
-  assert.equal(calls[0].args[1].endsWith("/tools/system-tests/k6/scenario.js"), true);
-  assert.equal(calls[1].args[0].endsWith("/tools/system-tests/devices/src/cli.js"), true);
+  // Windows liefert Backslash-Pfade; der Vergleich gilt plattformunabhaengig.
+  assert.equal(withSlashes(calls[0].args[1]).endsWith("/tools/system-tests/k6/scenario.js"), true);
+  assert.equal(withSlashes(calls[1].args[0]).endsWith("/tools/system-tests/devices/src/cli.js"), true);
   children[0].close(0);
   children[1].close(0);
   const result = await running;

@@ -1,0 +1,55 @@
+version: 2
+
+# Die Verzeichnisse werden per Muster erfasst, nicht einzeln gepflegt: bei 21
+# Services mit je eigenem Lockfile veraltet eine Liste sonst still. Ein neuer
+# Service ist damit automatisch erfasst.
+#
+# Die Updates sind gebuendelt. Ohne Gruppierung erzeugt ein Sicherheitsupdate
+# von pg allein zwoelf Pull Requests, und die liest dann niemand mehr.
+updates:
+  - package-ecosystem: "npm"
+    directories:
+      - "/services/*"
+      - "/tools/*"
+      - "/tools/system-tests/*"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      produktionsabhaengigkeiten:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      entwicklungsabhaengigkeiten:
+        dependency-type: "development"
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker"
+      - "/tools/forgejo-integration"
+      - "/tools/forgejo-ui-e2e"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      images:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "docker"

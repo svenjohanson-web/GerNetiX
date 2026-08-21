@@ -17,6 +17,9 @@ const platformAppFiles = [
   "app-community-controller.js",
   "app-account-controller.js",
   "app-project-controller.js",
+  // Projektstruktur und Quellbaum, aus dem IDE-Controller herausgeloest und
+  // von ihm eingefuehrt; steht deshalb davor.
+  "ide-project-model.js",
   "app-ide-controller.js",
   // Statuszeile und Terminal der Werkbank. Wird mit dem Bau-Paket nachgeladen
   // und vom Bau-Controller eingefuehrt, steht also vor ihm.
@@ -31,6 +34,7 @@ const platformAppFiles = [
 ];
 const routeLazyPlatformAppFiles = new Set([
   "app-community-controller.js",
+  "ide-project-model.js",
   "app-ide-controller.js",
   "workbench-output-view.js",
   "app-device-build-controller.js",
@@ -39,6 +43,31 @@ const routeLazyPlatformAppFiles = new Set([
 
 function readPlatformAppSource() {
   return platformAppFiles.map((file) => readForSandbox(file)).join("\n");
+}
+
+/*
+ * Die Entwicklungsplattform besteht aus mehreren Dateien.
+ *
+ * development-platform.js wird schrittweise entflochten; herausgeloeste Teile
+ * stehen hier daneben. Tests, die den Quelltext der Plattform pruefen, lesen
+ * ueber diese Liste statt eine einzelne Datei -- sonst schlaegt jede
+ * Verschiebung an, ohne dass sich am Verhalten etwas geaendert haette.
+ *
+ * Neue herausgeloeste Datei: hier eintragen, dann finden die vorhandenen
+ * Zusicherungen ihren Code weiterhin.
+ */
+const developmentPlatformFiles = [
+  "development-platform.js",
+  "development-plantuml.js",
+  "hardware-configuration-model.js",
+  "home-automation-model.js",
+  "requirements-analysis.js",
+];
+
+function readDevelopmentPlatformSource() {
+  return developmentPlatformFiles
+    .map((file) => fs.readFileSync(path.resolve(__dirname, "../public/app", file), "utf8"))
+    .join("\n");
 }
 
 /*
@@ -159,7 +188,9 @@ function sandboxModule(file, injected = {}, exportNames = []) {
 }
 
 module.exports = {
+  developmentPlatformFiles,
   platformAppFiles,
+  readDevelopmentPlatformSource,
   sandboxModule,
   scriptAbschnitt,
   requireForSandbox,

@@ -202,7 +202,7 @@
         "services/identity-server/src/dev/server/system-routes.js",
         "services/identity-server/src/dev/server/web-routes.js"
       ],
-      "fingerprint": "sha256:c2a56a557683fafa8209196b39a799bf01e78ea68406f79bd68dcfc14f33edad"
+      "fingerprint": "sha256:68eb2a3436d34f679e1697cb98f4bc1d62cc77ab1229c7bdf4214d02e169bfe1"
     },
     "persistence-server": {
       "inventorySection": "Lokale Entwicklungs- und Persistenzdienste",
@@ -226,7 +226,7 @@
       "files": [
         "services/project-server/src/http-app.js"
       ],
-      "fingerprint": "sha256:f63721b18cc88665c80e18f34514c3dc6782ba2bd2314a1264e1fa05ae42a644"
+      "fingerprint": "sha256:1c68eb9a1c3953da3b4b0828d090f49904fae58e5d0c678da99a94ddcd058645"
     },
     "provisioning-tool": {
       "inventorySection": "Geraete, Provisionierung und Recovery",

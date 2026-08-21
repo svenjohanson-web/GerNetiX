@@ -1,8 +1,11 @@
 const { issueInternalToken } = require("../../../shared/internal-api-auth");
+const { describeDeliveryFailure } = require("./internal-delivery-error");
 
 function createSystemEventReporter(options = {}) {
   const baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
-  const signingKey = String(options.internalApiSigningKey || "");
+  // Siehe user-action-reporter: der Schluesselbund muss als Objekt erhalten
+  // bleiben, sonst wird ein kid-loses Legacy-Token signiert.
+  const signingKey = options.internalApiSigningKey || "";
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const timeoutMs = Number(options.timeoutMs || 700);
@@ -29,7 +32,7 @@ function createSystemEventReporter(options = {}) {
         body: JSON.stringify(safeEvent),
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error(`Admin Tool antwortete mit HTTP ${response.status}.`);
+      if (!response.ok) throw new Error(`Admin Tool antwortete mit HTTP ${response.status}.${await describeDeliveryFailure(response)}`);
       return true;
     } catch (error) {
       logger.warn?.(`System event delivery failed: ${error.message || error}`);

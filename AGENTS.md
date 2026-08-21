@@ -11,6 +11,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Pruefe bei groesseren Architektur- oder Dokumentationsaenderungen `docs/architecture-documentation.md` und erzeuge die zentrale Offline-Lesesicht mit `npm run build` unter `tools/architecture-docs` neu. Die erzeugte Browser-Sicht ist kein Ersatz fuer den SQLite-Graphen oder gepflegte Quelldokumente.
 - Lies vor Aenderungen an VPS, Authentifizierung, Autorisierung, oeffentlichen Endpunkten, Secrets, Persistenz, Backup, Logging oder Security-Monitoring `docs/security-posture.md` und aktualisiere dort umgesetzte sowie empfohlene Sicherheitsmassnahmen mit Nachweisstatus.
 - Pruefe bei neuen Anforderungen, Artefakten, Entscheidungen oder Runtime-Komponenten, ob Context-Manager-Vorschlaege oder Context-Eintraege aktualisiert werden muessen.
+- Der Routen-Guard (`npm run routes:accept`) und die Graph-Baseline (`node tools/ci/check-graph-baseline.js --accept`) schlagen absichtlich bei jeder Aenderung an. Beide Freigaben nie ausfuehren, um die CI gruen zu bekommen, sondern erst nach fachlicher Pruefung: beim Routen-Guard neue Route in `docs/internal-api-access-inventory.md` einordnen, Zugriffsklasse kontrollieren und Negativtest ergaenzen. Der Manifest-Diff darf danach keine unerwarteten Dateilisten oder Zugriffsklassen enthalten.
 
 ## Umgang mit lokalen Dev-Prozessen
 
@@ -40,6 +41,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
 - Lokale Firmware-Builds darf Codex auf macOS und Windows ausschliesslich nach ausdruecklicher Nutzerfreigabe ausfuehren. USB-/OTA-Flashes und sonstige Upload-Befehle fuehrt weiterhin ausschliesslich der Nutzer aus.
 - Bei Code-/UI-Aenderungen zuerst lokal implementieren und gezielte Unit-/Contract-Tests ausfuehren.
+- Fuer die breite Pruefung `node tools/ci/verify.js` verwenden: `--quick` nur Repo-Pruefungen (ca. 18s), `--changed` zusaetzlich die geaenderten Services, ohne Schalter alles wie die CI (ca. 2 Minuten). Die Pruefung ist rein statisch und startet keinen Dienst; die Laufzeitsicht bleibt beim Prozess-Monitor. Details in `tools/ci/README.md`.
 - Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
 - Keine vorsorglichen Neustarts.
 - Live-Runtime nur anfassen, wenn der Nutzer explizit eine sofortige Live-Pruefung verlangt oder ein Fehler nur live reproduzierbar ist.

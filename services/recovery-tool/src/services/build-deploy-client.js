@@ -6,7 +6,9 @@ class BuildDeployClient {
     this.baseUrl = String(options.baseUrl || "http://127.0.0.1:4400").replace(/\/$/, "");
     this.fetchImpl = options.fetchImpl || fetch;
     this.timeoutMs = Number(options.timeoutMs || 15000);
-    this.signingKey = String(options.signingKey || "");
+    // Der Schluesselbund bleibt ein Objekt; String() wuerde ein kid-loses
+    // Legacy-Token erzwingen, das der Empfaenger ablehnt.
+    this.signingKey = options.signingKey || "";
   }
 
   async submit(buildRequest) {

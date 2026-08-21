@@ -1,10 +1,22 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const test = require("node:test");
 const { normalizeUserActionEvent, createUserActionIngestHandler, readUserActionContext } = require("../src/services/user-action-events");
 const { createUserActionReporter } = require("../src/services/user-action-reporter");
-const { verifyInternalToken } = require("../../shared/internal-api-auth");
+const { readInternalApiAuthConfig, verifyInternalToken } = require("../../shared/internal-api-auth");
+
+function ed25519Keyring(serviceId, kid) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+  return readInternalApiAuthConfig({
+    INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON: JSON.stringify({
+      [kid]: { issuer: serviceId, publicKeyB64: publicKey.export({ format: "der", type: "spki" }).toString("base64") },
+    }),
+    INTERNAL_API_SIGNING_KEY_ID: kid,
+    INTERNAL_API_SIGNING_PRIVATE_KEY_B64: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64"),
+  }, { serviceId });
+}
 
 const validInput = {
   action_type: "nexi.flash.usb.start",
@@ -98,6 +110,31 @@ test("identity reports user actions through the protected Admin Tool endpoint", 
   assert.equal(await report(normalizeUserActionEvent(validInput)), true);
   assert.equal(requests[0].url, "http://admin-tool:4600/api/internal/user-action-events");
   verifyInternalToken(requests[0].options.headers.Authorization.replace(/^Bearer\s+/, ""), "ops-signing-key", { audience: "admin-tool", requiredScopes: ["operations.user_actions.write"] });
+});
+
+test("identity names the rejection reason when Operations refuses a delivery", async () => {
+  const warnings = [];
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: "ops-signing-key",
+    logger: { warn(value) { warnings.push(String(value)); } },
+    fetchImpl: async () => new Response(JSON.stringify({ error: "internal_token_invalid", message: "Interner API-Zugriff ist nicht berechtigt." }), { status: 403 }),
+  });
+  assert.equal(await report(normalizeUserActionEvent(validInput)), false);
+  assert.ok(warnings.some((entry) => entry.includes("HTTP 403") && entry.includes("internal_token_invalid")), warnings.join(" | "));
+});
+
+test("identity signs user action events with the active key id instead of a legacy token", async () => {
+  const signingKey = ed25519Keyring("identity-server", "identity-server-test");
+  const requests = [];
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: signingKey, logger: { warn() {} },
+    fetchImpl: async (url, options) => { requests.push({ url, options }); return { ok: true, status: 201 }; },
+  });
+  assert.equal(await report(normalizeUserActionEvent(validInput)), true);
+  const token = requests[0].options.headers.Authorization.replace(/^Bearer\s+/, "");
+  const claims = verifyInternalToken(token, signingKey, { audience: "admin-tool", requiredScopes: ["operations.user_actions.write"] });
+  assert.equal(claims.kid, "identity-server-test");
+  assert.equal(claims.alg, "Ed25519");
 });
 
 test("identity keeps failed Operations deliveries in a persistent outbox and flushes after recovery", async () => {

@@ -1,7 +1,11 @@
 # GerNetiX Workspace
 
-Dieser Workspace dient zunaechst der Planung und Dokumentation von GerNetiX.
-GerNetiX wird als Engineering Knowledge Platform verstanden.
+Dieser Workspace umfasst die Planung, die Dokumentation und die Implementierung
+von GerNetiX. GerNetiX wird als Engineering Knowledge Platform verstanden.
+
+Die Dienste liegen unter `services/`, die Werkzeuge unter `tools/`. Vor Commit
+und Push prueft `node tools/ci/verify.js` denselben Stand wie die CI; Details in
+[tools/ci/README.md](tools/ci/README.md).
 
 Leitsatz:
 
@@ -74,8 +78,7 @@ Markdown dient der Lesbarkeit und Dokumentation.
 
 ## Arbeitsweise
 
-- Zuerst Dokumentation und Konfiguration klaeren.
-- Noch keine Software implementieren.
+- Zuerst Dokumentation und Konfiguration klaeren, dann implementieren.
 - Dokumentation erfolgt top-down: Vision -> Business Goals -> Customer Journey -> Requirements -> Metamodell -> Datenmodell -> Implementierung -> Nachweis.
 - Neue Metamodell-Klassen entstehen nur, wenn sie durch Customer Journey oder Requirement begruendet sind.
 - Entscheidungen nachvollziehbar in den Dokumenten festhalten.

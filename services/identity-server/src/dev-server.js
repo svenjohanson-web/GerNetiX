@@ -1126,14 +1126,18 @@ async function bootstrap() {
   if (identityUserActionOutboxStore) {
     await measureBootstrapStep("identity-user-action-outbox-init", async () => {
       await identityUserActionOutboxStore.initialize();
-      const outboxResult = await recordUserActionEvent.flush();
-      if (outboxResult.pending) console.warn(`User action outbox: ${outboxResult.pending} Ereignisse warten auf Operations.`);
+      const pending = await recordUserActionEvent.pending();
+      if (pending) console.warn(`User action outbox: ${pending} Ereignisse warten auf Operations.`);
     });
   }
   const userActionFlushTimer = setInterval(() => {
     recordUserActionEvent.flush().catch((error) => console.warn(`User action outbox flush failed: ${error.message || error}`));
   }, Math.max(1000, Number(process.env.USER_ACTION_OUTBOX_FLUSH_MS || 5000)));
   userActionFlushTimer.unref?.();
+  // Ein Rueckstau darf den Start nicht aufhalten: je groesser er ist, desto
+  // laenger braeuchte der Bootstrap und desto sicherer liefe er in die
+  // Startfrist des Prozess-Monitors, wodurch der Rueckstau erst recht bliebe.
+  recordUserActionEvent.flush().catch((error) => console.warn(`User action outbox flush failed: ${error.message || error}`));
   if (identityHardwareLabStateStore) {
     await measureBootstrapStep("identity-hardware-lab-store-init", async () => {
       await identityHardwareLabStateStore.initialize();

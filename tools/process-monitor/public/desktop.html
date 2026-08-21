@@ -58,13 +58,13 @@
       <div class="runtime-overview-grid">
         <section class="monitor-group local-runtime-group">
           <div class="group-head">
-            <div><p>MAC</p><h2>Lokale Prozesse</h2></div>
+            <div><p>LOKALE ENTWICKLUNG</p><h2>Identity Dev-Server</h2></div>
             <div class="group-actions">
-              <span id="summary">Prüfe Identity ...</span>
-              <button id="startAllLocal" class="primary" title="Identity lokal mit Server-PostgreSQL starten">Identity starten</button>
+              <span id="summary">Prüfe Dev-Server ...</span>
+              <button id="startAllLocal" class="primary" title="Identity Dev-Server lokal mit Server-PostgreSQL starten">Dev-Server starten</button>
             </div>
           </div>
-          <p class="runtime-description">Der Identity-Prozess läuft lokal auf Port 4300. Beim Start werden VPN und VPS-Tunnel bei Bedarf automatisch verbunden. Sämtliche Identity-Daten bleiben in PostgreSQL auf dem VPS; eine lokale Identity-SQLite wird nicht verwendet. Der Build-Worker läuft bei Bedarf isoliert in Docker Desktop und wird separat gestartet.</p>
+          <p class="runtime-description">Der Identity Dev-Server wird hier immer als eigener Prozess auf Port 4300 angezeigt. Ist er gestoppt, kann er direkt über „Dev-Server starten“ gestartet werden. Dabei werden VPN und VPS-Tunnel bei Bedarf automatisch verbunden. Sämtliche Identity-Daten bleiben in PostgreSQL auf dem VPS; eine lokale Identity-SQLite wird nicht verwendet. Der Build-Worker läuft bei Bedarf isoliert in Docker Desktop und wird separat gestartet.</p>
           <section id="processes" class="process-grid" aria-live="polite"></section>
         </section>
         <section class="monitor-group vps-runtime-group">
@@ -137,7 +137,7 @@
         <p id="linkIntegrityError" class="group-error"></p>
       </section>
     </div>
-    <footer>Eigenständige Desktop-App · lokale Identity auf Port 4300 · zentrale PostgreSQL-Daten auf dem VPS</footer>
+    <footer>Eigenständige Desktop-App · Identity Dev-Server auf Port 4300 · zentrale PostgreSQL-Daten auf dem VPS</footer>
   </main>
   <script src="desktop-app.js"></script>
 </body>

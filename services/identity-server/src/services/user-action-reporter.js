@@ -1,8 +1,12 @@
 const { issueInternalToken } = require("../../../shared/internal-api-auth");
+const { describeDeliveryFailure } = require("./internal-delivery-error");
 
 function createUserActionReporter(options = {}) {
   const baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
-  const signingKey = String(options.internalApiSigningKey || "");
+  // Die Signaturkonfiguration ist ein Schluesselbund-Objekt und darf nicht in
+  // einen String verwandelt werden: das faellt sonst auf den kid-losen
+  // Legacy-Vertrag zurueck und der Empfaenger lehnt das Token ab.
+  const signingKey = options.internalApiSigningKey || "";
   const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const timeoutMs = Number(options.timeoutMs || 700);
@@ -39,7 +43,7 @@ function createUserActionReporter(options = {}) {
         body: JSON.stringify(event),
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error(`Admin Tool antwortete mit HTTP ${response.status}.`);
+      if (!response.ok) throw new Error(`Admin Tool antwortete mit HTTP ${response.status}.${await describeDeliveryFailure(response)}`);
       return true;
     } catch (error) {
       logger.warn?.(`User action event delivery failed: ${error.message || error}`);

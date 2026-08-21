@@ -8,7 +8,8 @@ const { DatabaseSync } = require("node:sqlite");
 const execFileAsync = promisify(execFile);
 const VPN_SERVICE_NAME = "WireGuardTunnel$gernetix-vps";
 const MACOS_VPN_SERVICE_NAME = "gernetix-vps-mac";
-const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4700,4700],[4800,4800],[4900,4900],[4920,4920],[5001,5000],[5200,5200],[5500,5500],[5600,5600],[5800,5800]];
+const IDENTITY_START_ATTEMPTS = 120;
+const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4600,4600],[4700,4700],[4800,4800],[4900,4900],[4920,4920],[5001,5000],[5200,5200],[5500,5500],[5600,5600],[5800,5800]];
 const SECURITY_CACHE_MS = 60000;
 const VPS_SERVICE_PORTS = Object.freeze({
   "runtime-postgres": "5432 intern · lokal 25432 per Tunnel",
@@ -48,7 +49,7 @@ const services = [
   service("hardware-shop", "Hardware Shop", 4900, {PERSISTENCE_BACKEND:"memory"}), service("ai-usage-server", "AI Usage Server", 5000, {PERSISTENCE_BACKEND:"memory"}),
   service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
   service("community-platform", "Community Platform", 5200),
-  service("identity-server", "Identity Server", 4300, {}, {local:true}),
+  service("identity-server", "Identity Dev-Server", 4300, {}, {local:true}),
   service("build-worker", "Lokaler Build-Worker", 4400, {}, {local:true,autoStart:false,kind:"docker-build-worker"}),
   service("admin-access-server", "Admin Access Server", 4610, {}, {autoStart:false}),
   service("telemetry-server", "Telemetry Server", 5600, {}, {autoStart:false}),
@@ -692,7 +693,10 @@ async function startIdentityRemoteDev(options={}){
   const child=launch(item,env);
   child.unref?.();
   const wait=options.delay||delay;
-  for(let i=0;i<40;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null)break;await wait(250);}
+  // 30s statt 10s: Der Bootstrap laeuft ueber den VPS-Tunnel und darf bei
+  // langsamer Verbindung nicht abgeschnitten werden. Ein abgestuerzter Start
+  // bricht ohnehin sofort ueber exitCode ab.
+  for(let i=0;i<IDENTITY_START_ATTEMPTS;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null)break;await wait(250);}
   const detail=recentServiceLog(item.id);
   if(child.exitCode===null&&!child.killed)child.kill?.("SIGTERM");
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);

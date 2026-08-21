@@ -1,5 +1,33 @@
 import { hasProjectApp } from "@app/app-project-controller.js";
-import { themedPlantUmlSource } from "@app/app-runtime-utils.js";
+import {
+  normalizeArchitecturePlantUml,
+  plantUmlLabel,
+  renderPlantUmlImage,
+  sanitizeArchitectureDiagram,
+  stripPlantUmlNotes,
+} from "@app/development-plantuml.js";
+import {
+  homeAutomationBoardFeatureOptions,
+  homeAutomationRoleOptions,
+  homeAutomationTransportOptions,
+  normalizeHomeAutomationConfiguration,
+} from "@app/home-automation-model.js";
+import {
+  abstractArchitectureComponents,
+  actuatorTypes,
+  boardPins,
+  circuitFor,
+  hardwareConfigurationValidation,
+  hardwareConnectionPathAssessment,
+  hardwareValidationTargets,
+  motorDriverTypes,
+  parseDevelopmentBoardPins,
+  pinLabel,
+  processorLabel,
+  recommendedHardwareAction,
+  requiresAdditionalCircuit,
+} from "@app/hardware-configuration-model.js";
+import { requirementSummaryItems } from "@app/requirements-analysis.js";
 /*
  * DevelopmentComponentMetamodel wird global gelesen, nicht eingefuehrt:
  * development-component-metamodel.js ist kein Modul, weil admin-tool sie mit
@@ -793,37 +821,6 @@ const DevelopmentPlatform = (() => {
       return options.map((option) => `<option value="${escapeAttribute(option.id)}" ${String(option.id) === String(value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("");
     }
 
-    function homeAutomationRoleOptions() {
-      return [
-        { id: "sensor_node", label: "Sensor-Node" },
-        { id: "actuator_node", label: "Aktor-Node" },
-        { id: "combined_node", label: "Sensor- und Aktor-Node" },
-        { id: "control_node", label: "Bedien-Node" },
-        { id: "gateway", label: "Gateway" },
-      ];
-    }
-
-    function homeAutomationTransportOptions() {
-      return [
-        { id: "undecided", label: "Noch offen" },
-        { id: "local", label: "Nur lokal am Device" },
-        { id: "wifi_rest", label: "WLAN / REST" },
-        { id: "wifi_mqtt", label: "WLAN / MQTT" },
-        { id: "zigbee", label: "Zigbee" },
-      ];
-    }
-
-    function homeAutomationBoardFeatureOptions() {
-      return [
-        { id: "integrated_display", label: "Display" },
-        { id: "integrated_touchscreen", label: "Touchscreen" },
-        { id: "battery_operation", label: "Akkubetrieb" },
-        { id: "sd_card", label: "SD-Karte" },
-        { id: "audio", label: "Audio" },
-        { id: "many_gpio", label: "Viele GPIOs" },
-      ];
-    }
-
     function recommendedBoardForNode(node) {
       const features = node.board_features || {};
       if (features.integrated_touchscreen && node.transport === "zigbee") return "ESP32-S3 Touch-Display-Board mit Zigbee-Erweiterung";
@@ -1167,173 +1164,6 @@ const DevelopmentPlatform = (() => {
       return { type: "plantuml", source: lines.join("\n"), title: "Statische Architektur der Touchscreen-Spielesammlung", summary: "Logische Struktur aus Nutzer und Board; Verhalten und Realisierung werden getrennt gepflegt.", derived_from: "project_template" };
     }
 
-    function normalizeHomeAutomationConfiguration(value = {}) {
-      const defaults = defaultHomeAutomationConfiguration();
-      const allowedCoordinators = new Set(["undecided", "none", "gernetix_home_server", "home_assistant", "gernetix_with_home_assistant"]);
-      const allowedPolicies = new Set(["local_fallback", "safe_state", "central_required", "undecided"]);
-      const allowedRoles = new Set(homeAutomationRoleOptions().map((option) => option.id));
-      const allowedTransports = new Set(homeAutomationTransportOptions().map((option) => option.id));
-      const nodes = Array.isArray(value?.nodes) ? value.nodes.slice(0, 30).map((node, index) => {
-        const legacyTouchscreen = boundedHomeAutomationCount(node?.control_count) > 0;
-        const boardFeatures = Object.fromEntries(homeAutomationBoardFeatureOptions().map((feature) => [feature.id, node?.board_features?.[feature.id] === true]));
-        if (legacyTouchscreen) boardFeatures.integrated_touchscreen = true;
-        if (boardFeatures.integrated_touchscreen) boardFeatures.integrated_display = true;
-        return {
-          name: String(node?.name || `IoT-Device ${index + 1}`).trim().slice(0, 80),
-          role: allowedRoles.has(node?.role) ? node.role : "combined_node",
-          transport: allowedTransports.has(node?.transport) ? node.transport : "undecided",
-          sensor_count: boundedHomeAutomationCount(node?.sensor_count),
-          actuator_count: boundedHomeAutomationCount(node?.actuator_count),
-          board_features: boardFeatures,
-        };
-      }) : defaults.nodes;
-      return {
-        schema_version: 2,
-        coordinator: allowedCoordinators.has(value?.coordinator) ? value.coordinator : defaults.coordinator,
-        failure_policy: allowedPolicies.has(value?.failure_policy) ? value.failure_policy : defaults.failure_policy,
-        state_model: Object.fromEntries(["commands", "desired_state", "actual_state", "events"].map((key) => [key, value?.state_model?.[key] !== false])),
-        nodes,
-      };
-    }
-
-    function boundedHomeAutomationCount(value) {
-      const number = Number.parseInt(value, 10);
-      return Number.isFinite(number) ? Math.min(20, Math.max(0, number)) : 0;
-    }
-
-    function defaultHomeAutomationConfiguration() {
-      return {
-        schema_version: 1,
-        coordinator: "undecided",
-        failure_policy: "local_fallback",
-        state_model: { commands: true, desired_state: true, actual_state: true, events: true },
-        nodes: [
-          { name: "Raumklima", role: "sensor_node", transport: "undecided", sensor_count: 2, actuator_count: 0, board_features: {} },
-          { name: "Lichtsteuerung", role: "actuator_node", transport: "undecided", sensor_count: 0, actuator_count: 1, board_features: {} },
-          { name: "Touchpanel", role: "control_node", transport: "undecided", sensor_count: 0, actuator_count: 0, board_features: { integrated_display: true, integrated_touchscreen: true } },
-        ],
-      };
-    }
-
-    function homeAutomationArchitectureDiagram(configuration, title = "Verteilte Hausautomatisierung") {
-      const config = normalizeHomeAutomationConfiguration(configuration);
-      const coordinatorLabels = {
-        undecided: "Zustandskoordination\\nNoch offen",
-        none: "Verteilte Zustandssynchronisation",
-        gernetix_home_server: "GerNetiX Home Server",
-        home_assistant: "Home Assistant",
-        gernetix_with_home_assistant: "GerNetiX Home Server\\nmit Home Assistant",
-      };
-      const roleLabels = Object.fromEntries(homeAutomationRoleOptions().map((option) => [option.id, option.label]));
-      const transportLabels = Object.fromEntries(homeAutomationTransportOptions().map((option) => [option.id, option.label]));
-      const failureLabels = {
-        local_fallback: "Lokal weiterarbeiten",
-        safe_state: "Sicheren Zustand einnehmen",
-        central_required: "Zentrale Instanz erforderlich",
-        undecided: "Noch offen",
-      };
-      const stateLabels = { commands: "Befehle", desired_state: "Sollzustand", actual_state: "Istzustand", events: "Ereignisse / Messwerte" };
-      const activeStates = Object.entries(config.state_model).filter(([, enabled]) => enabled).map(([key]) => stateLabels[key]);
-      const lines = [
-        "@startuml",
-        `title ${plantUmlLabel(title)}`,
-        "left to right direction",
-        `rectangle "${coordinatorLabels[config.coordinator]}" as coordination`,
-        `rectangle "Konfiguration\\nAusfall: ${plantUmlLabel(failureLabels[config.failure_policy])}\\nDaten: ${plantUmlLabel(activeStates.join(", ") || "Keine")}" as configuration`,
-        "configuration .. coordination",
-      ];
-      config.nodes.forEach((node, index) => {
-        const id = `device_${index + 1}`;
-        const featureLabels = homeAutomationBoardFeatureOptions().filter((feature) => node.board_features[feature.id]).map((feature) => feature.label);
-        lines.push(`rectangle "IoT-Device ${index + 1}\\n${plantUmlLabel(node.name)}\\n${plantUmlLabel(roleLabels[node.role])}\\n${plantUmlLabel(transportLabels[node.transport])}\\nBoard: ${plantUmlLabel(featureLabels.join(", ") || "Standard")}" as ${id}`);
-        if (config.state_model.events || config.state_model.actual_state) lines.push(`${id} --> coordination : ${plantUmlLabel(transportLabels[node.transport])} / Istzustand`);
-        if (config.state_model.commands || config.state_model.desired_state) lines.push(`coordination --> ${id} : Befehl / Sollzustand`);
-        for (let sensorIndex = 1; sensorIndex <= node.sensor_count; sensorIndex += 1) {
-          lines.push(`rectangle "Sensor ${index + 1}.${sensorIndex}" as sensor_${index + 1}_${sensorIndex}`);
-          lines.push(`sensor_${index + 1}_${sensorIndex} --> ${id} : Messwert`);
-        }
-        for (let actuatorIndex = 1; actuatorIndex <= node.actuator_count; actuatorIndex += 1) {
-          lines.push(`rectangle "Aktor ${index + 1}.${actuatorIndex}" as actuator_${index + 1}_${actuatorIndex}`);
-          lines.push(`${id} --> actuator_${index + 1}_${actuatorIndex} : schaltet`);
-        }
-      });
-      lines.push("@enduml");
-      return {
-        type: "plantuml",
-        source: lines.join("\n"),
-        title: "Konfigurierte Hausautomationsarchitektur",
-        summary: "Aus dem statischen Konfigurationsassistenten erzeugte Startarchitektur.",
-        derived_from: "project_template",
-      };
-    }
-
-    function plantUmlLabel(value) {
-      return String(value || "").replace(/["\r\n]/g, " ").trim();
-    }
-
-    function requirementSummaryItems(project, chat) {
-      const messages = Array.isArray(chat) ? chat : [];
-      const transcript = messages.map((message) => message.content || "").join("\n");
-      const items = [];
-      if (project?.description) {
-        items.push(["Projektkern", compactRequirementText(project.description)]);
-      }
-      const patterns = detectRequirementPatterns(transcript);
-      if (patterns.length) items.push(["Funktionsklasse", patterns.join(", ")]);
-      const access = detectAccessScope(transcript);
-      if (access) items.push(["Zugriff", access]);
-      const devices = detectIotDeviceScope(`${project?.description || ""}\n${transcript}`);
-      if (devices) items.push(["IoT-Devices", devices]);
-      const openQuestions = extractOpenRequirementQuestions(messages);
-      if (openQuestions.length) items.push(["Offene Klaerung", openQuestions.join("\n")]);
-      return items;
-    }
-
-    function compactRequirementText(text) {
-      const normalized = String(text || "").replace(/\s+/g, " ").trim();
-      if (normalized.length <= 180) return normalized;
-      return `${normalized.slice(0, 177).trim()}...`;
-    }
-
-    function detectRequirementPatterns(text) {
-      const normalized = String(text || "").toLowerCase();
-      return [
-        [/\b(observer|benachrichtigung|benachrichtigen|ereignis)\b/, "Observer / Benachrichtigung"],
-        [/\b(datenlogger|data logger|logger|messdaten|messwerte)\b/, "Datenlogger"],
-        [/\b(touchscreen game loop|touch[- ]?display|touchscreen.*spiel|spiel.*touchscreen|game loop)\b/, "Touchscreen Game Loop"],
-        [/\b(remote|steuerung|steuern|schalten|aktor)\b/, "Remote-Steuerung / Aktorik"],
-        [/\b(regelung|regelstrecke|autonom|ohne wlan|lokal ausfuehren)\b/, "Lokale Regel-/Steuerstrecke"],
-        [/\b(zustandsmodell|state|states|synchronisiert|broadcast)\b/, "Synchronisiertes Zustandsmodell"],
-      ].filter(([pattern]) => pattern.test(normalized)).map(([, label]) => label);
-    }
-
-    function detectAccessScope(text) {
-      const normalized = String(text || "").toLowerCase();
-      if (/\b(weltweit|internet|remote|von unterwegs|extern erreichbar)\b/.test(normalized)) return "weltweit / ueber Internet";
-      if (/\b(nur lokal|lokal|heimnetz|wlan|lan)\b/.test(normalized)) return "lokal / eigenes Netzwerk";
-      if (/lokal funktionieren oder weltweit erreichbar/.test(normalized)) return "noch offen: lokal oder weltweit";
-      return "";
-    }
-
-    function detectIotDeviceScope(text) {
-      const normalized = String(text || "").toLowerCase();
-      const explicitCount = normalized.match(/\b(\d+|ein|eine|einen|mehrere)\s+(iot[- ]?)?(devices?|logger|esp32|boards?)\b/);
-      if (explicitCount) return `${explicitCount[1]} ${explicitCount[3]}`.replace(/\bein(en|e)?\b/, "1");
-      if (/\besp32\b/.test(normalized)) return "ESP32 als IoT-Device beteiligt";
-      if (/wie viele iot-devices/.test(normalized)) return "noch offen";
-      return "";
-    }
-
-    function extractOpenRequirementQuestions(messages) {
-      const latestAssistant = [...messages].reverse().find((message) => message.role === "assistant")?.content || "";
-      return latestAssistant
-        .split(/\r?\n/)
-        .map((line) => line.replace(/^\s*\d+\.\s*/, "").trim())
-        .filter((line) => line.endsWith("?"))
-        .filter((line) => /ereignis|benachrichtigt|lokal|weltweit|iot-devices|messwerte|gemessen|abrufbar|logger/i.test(line))
-        .slice(0, 4);
-    }
-
     function developmentProjects() {
       return (state.projects || []).filter((project) => !project.isDraft && (project.type === "development_project" || project.type === "custom_project"));
     }
@@ -1526,60 +1356,6 @@ const DevelopmentPlatform = (() => {
         source: normalizeArchitecturePlantUml(refreshedSource, "project_template"),
         derived_from: "project_template",
       };
-    }
-
-    function sanitizeArchitectureDiagram(diagram) {
-      if (!diagram?.source) return null;
-      const derivedFrom = diagram.derived_from || diagram.derivedFrom || "";
-      return {
-        ...diagram,
-        source: normalizeArchitecturePlantUml(stripPlantUmlNotes(diagram.source), derivedFrom),
-      };
-    }
-
-    function stripPlantUmlNotes(source) {
-      const lines = String(source || "").split(/\r?\n/);
-      const cleaned = [];
-      let inNote = false;
-      lines.forEach((line) => {
-        if (/^\s*note\b/i.test(line)) {
-          inNote = true;
-          return;
-        }
-        if (inNote) {
-          if (/^\s*end\s+note\b/i.test(line)) inNote = false;
-          return;
-        }
-        cleaned.push(line);
-      });
-      return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim();
-    }
-
-    function normalizeArchitecturePlantUml(source, derivedFrom = "") {
-      const isTemplate = derivedFrom === "project_template" || /Startarchitektur aus Projekttemplate/i.test(source);
-      let normalized = String(source || "")
-        .replace(/^(\s*)(?:node|component|database|cloud|queue|artifact)\s+("[^"]+")(\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?/gmi, "$1rectangle $2$3");
-      if (isTemplate) {
-        normalized = normalized
-          .replace(/ESP32 Datenlogger/g, "IoT-Device Datenlogger")
-          .replace(/ESP32 Device/g, "IoT-Device")
-          .replace(/ESP32-Device/g, "IoT-Device")
-          .replace(/^\s*Startarchitektur aus Projekttemplate;.*$/gmi, "");
-      }
-      return numberGenericIotDeviceInstances(normalized).replace(/\n{3,}/g, "\n\n").trim();
-    }
-
-    function numberGenericIotDeviceInstances(source) {
-      const text = String(source || "");
-      const usedNumbers = new Set(Array.from(text.matchAll(/\bIoT[- ]Device\s+(\d+)\b/gi), (match) => Number(match[1])));
-      let nextNumber = 1;
-      return text.replace(/(\brectangle\s+")IoT[- ]Device(")/gi, (_match, prefix, suffix) => {
-        while (usedNumbers.has(nextNumber)) nextNumber += 1;
-        const instanceNumber = nextNumber;
-        usedNumbers.add(instanceNumber);
-        nextNumber += 1;
-        return `${prefix}IoT-Device ${instanceNumber}${suffix}`;
-      });
     }
 
     async function createDevelopmentProject(event) {
@@ -2018,22 +1794,6 @@ const DevelopmentPlatform = (() => {
       return board?.title || board?.hardware_item_id || board?.hardware_profile_id || "IoT-Device";
     }
 
-    function processorLabel(processor) {
-      const familyLabels = {
-        esp32: "ESP32",
-        esp8266: "ESP8266",
-        avr_8bit: "AVR 8-bit",
-        raspberry_pi: "Raspberry Pi",
-      };
-      const family = familyLabels[processor.family] || processor.family;
-      if (processor.family === "esp32") {
-        return processor.variant === "ESP32" ? "ESP32 (klassisch)" : processor.variant;
-      }
-      return processor.variant.toLowerCase() === String(family).toLowerCase()
-        ? processor.variant
-        : `${processor.variant} (${family})`;
-    }
-
     function compatibleInventoryDevices(project) {
       const projectPlatform = String(project?.buildConfig?.platform || "").toLowerCase();
       return (state.devices || []).filter((device) => {
@@ -2222,34 +1982,6 @@ const DevelopmentPlatform = (() => {
       };
     }
 
-    function abstractArchitectureComponents(source) {
-      const components = [];
-      String(source || "").split(/\r?\n/).forEach((line) => {
-        const match = line.match(/^\s*(actor|node|component|rectangle|database|cloud|queue|artifact)\s+"([^"]+)"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
-        if (!match) return;
-        const label = match[2].replace(/\\n/g, " ").trim();
-        components.push({
-          component_id: match[3],
-          label,
-          plantuml_type: match[1].toLowerCase(),
-          abstract_type: hardwareComponentType(label, match[1], match[3]),
-          concrete_type: "",
-          sensor_category: "",
-          signal_type: "",
-          processor_family: "",
-          processor_variant: "",
-          board_profile_id: "",
-          inventory_device_id: "",
-          target_device_id: "",
-          pin: "",
-          secondary_pin: "",
-          properties: {},
-          circuit: null,
-        });
-      });
-      return components;
-    }
-
     function controlUnitAssignments(source) {
       const components = abstractArchitectureComponents(source);
       const byId = new Map(components.map((component) => [component.component_id, component]));
@@ -2289,10 +2021,6 @@ const DevelopmentPlatform = (() => {
         if (byId.get(relation[2])?.abstract_type === "actuator") assignments.set(relation[2], mode);
       });
       return assignments;
-    }
-
-    function hardwareComponentType(label, plantUmlType, componentId = "") {
-      return globalThis.DevelopmentComponentMetamodel?.componentTypeForPlantUml(label, plantUmlType, componentId) || "structural";
     }
 
     function renderHardwareComponentTable(configuration) {
@@ -2472,16 +2200,6 @@ const DevelopmentPlatform = (() => {
         .join(", ");
     }
 
-    function parseDevelopmentBoardPins(value) {
-      const result = {};
-      String(value || "").split(/[,;]+/).map((item) => item.trim()).filter(Boolean).forEach((entry) => {
-        const match = entry.match(/^([a-z0-9_ -]+)\s*[=:]\s*(?:(?:gpio)?\s*(-?\d+)|nicht verbunden)$/i);
-        if (!match) return;
-        result[match[1].trim().toLowerCase().replace(/\s+/g, "_")] = /nicht verbunden/i.test(entry) ? -1 : Number(match[2]);
-      });
-      return result;
-    }
-
     function normalizeDevelopmentBoardPins(pins) {
       if (!pins || typeof pins !== "object" || Array.isArray(pins)) return {};
       return Object.fromEntries(Object.entries(pins).filter(([, pin]) => Number.isInteger(pin)).map(([signal, pin]) => [String(signal), pin]));
@@ -2556,39 +2274,6 @@ const DevelopmentPlatform = (() => {
         };
       }
       return result;
-    }
-
-    function actuatorTypes() {
-      return [
-        { id: "dc_motor", label: "DC-Motor" },
-        { id: "stepper_motor", label: "Schrittmotor" },
-        { id: "synchronous_motor", label: "Synchronmotor / BLDC / PMSM" },
-        { id: "relay", label: "Relais" },
-        { id: "servo", label: "Servo" },
-        { id: "led", label: "LED" },
-        { id: "buzzer", label: "Summer" },
-      ];
-    }
-
-    function motorDriverTypes(concreteType) {
-      const drivers = {
-        dc_motor: [
-          { id: "h_bridge", label: "H-Brücke (Drehrichtung und Drehzahl)", resources: "PWM + 2 GPIO" },
-          { id: "low_side_mosfet", label: "MOSFET-Treiber (eine Drehrichtung)", resources: "PWM + GPIO" },
-        ],
-        servo: [
-          { id: "servo_pwm", label: "Servo-PWM-Treiber", resources: "PWM + Zeitgeber" },
-        ],
-        stepper_motor: [
-          { id: "step_dir", label: "STEP/DIR-Schrittmotortreiber", resources: "Zeitgeber/RMT + 2 GPIO" },
-          { id: "four_phase", label: "4-Phasen-Treiber", resources: "4 GPIO + Zeitgeber" },
-        ],
-        synchronous_motor: [
-          { id: "three_phase_foc", label: "3-Phasen-Treiber mit FOC", resources: "Motor-PWM + 3 Phasen + ADC + Rotorlage" },
-          { id: "three_phase_six_step", label: "3-Phasen-Treiber mit 6-Step-Kommutierung", resources: "Motor-PWM + 3 Phasen + Rotorlage" },
-        ],
-      };
-      return drivers[concreteType] || [];
     }
 
     function measurementAcquisitionControls(component) {
@@ -2683,7 +2368,7 @@ const DevelopmentPlatform = (() => {
         `;
       }
       const motorDriverSpecific = motorDriverTypes(component.concrete_type).length > 0;
-      const pinOptions = boardPins(targetDevice?.board_profile_id, component);
+      const pinOptions = boardPins(targetDevice?.board_profile_id, component, availableProcessorBoards());
       return `
         <label>IoT-Device<select data-hardware-field="target_device_id">
           <option value="">Device waehlen</option>
@@ -2703,7 +2388,7 @@ const DevelopmentPlatform = (() => {
       const required = requiresAdditionalCircuit(component);
       const mode = required ? "additional_circuit" : component.properties?.connection_mode || "direct";
       const defaultLabel = component.abstract_type === "sensor" ? "Signalaufbereitung / Schutzschaltung" : "Treiber- / Leistungsschaltung";
-      const assessment = hardwareConnectionPathAssessment(component, targetDevice, mode);
+      const assessment = hardwareConnectionPathAssessment(component, targetDevice, mode, availableProcessorBoards());
       return `<label>Anschlussweg zum Prozessor / Board
         <select data-hardware-property="connection_mode">
           ${required ? "" : `<option value="direct" ${selected(mode, "direct")}>Direkt anschliessen</option>`}
@@ -2714,62 +2399,8 @@ const DevelopmentPlatform = (() => {
       ${mode === "additional_circuit" ? `<label>Zusatzschaltung<input data-hardware-property="circuit_label" value="${escapeAttribute(component.properties?.circuit_label || "")}" placeholder="${escapeAttribute(defaultLabel)}"><small>Bezeichnung der Signalaufbereitung, Schutz- oder Treiberschaltung</small></label>` : ""}`;
     }
 
-    function requiresAdditionalCircuit(component) {
-      return ["pt1000", "ntc", "ptc", "dc_motor", "servo", "stepper_motor", "synchronous_motor"].includes(component.concrete_type);
-    }
-
-    function hardwareConnectionPathAssessment(component, targetDevice, mode) {
-      if (requiresAdditionalCircuit(component)) return "Dieser konkrete Typ benoetigt eine zusaetzliche Mess-, Treiber- oder Leistungsschaltung.";
-      if (mode === "additional_circuit") return "Die Zusatzschaltung wird als eigener Teil der Signalkette gespeichert und im Verdrahtungsdiagramm dargestellt.";
-      if (!component.concrete_type || !targetDevice?.board_profile_id) return "Nach Auswahl von konkretem Bauteil und Board prueft GerNetiX die verfuegbare Prozessorschnittstelle.";
-      const compatiblePins = boardPins(targetDevice.board_profile_id, component);
-      return compatiblePins.length
-        ? "Eine grundsaetzlich passende Prozessorschnittstelle ist vorhanden. Signalpegel, Strombedarf und Schutzbeschaltung muessen trotzdem zu den Datenblaettern passen."
-        : "Am gewaehlten Board wurde keine passende Prozessorschnittstelle gefunden. Waehle eine Zusatzschaltung oder ein anderes Board.";
-    }
-
     function selected(left, right) {
       return String(left ?? "") === String(right ?? "") ? "selected" : "";
-    }
-
-    function pinLabel(component) {
-      const type = typeof component === "object" ? component.concrete_type : component;
-      const signalType = typeof component === "object" ? component.signal_type : "";
-      if (signalType === "analog" || ["pt1000", "ntc", "ptc", "analog_sensor"].includes(type)) return "Analogeingang";
-      if (signalType === "i2c" || type === "i2c_sensor") return "I2C-Anschluss";
-      if (signalType === "spi") return "SPI-Anschluss";
-      if (signalType === "one_wire") return "1-Wire-Pin";
-      if (signalType === "uart") return "UART-Anschluss";
-      if (signalType === "pulse_counter") return "Zaehleingang";
-      if (signalType === "incremental_ab") return "Kanal A";
-      if (["dc_motor", "servo", "synchronous_motor"].includes(type)) return type === "synchronous_motor" ? "Phase U" : "PWM-Pin";
-      if (type === "stepper_motor") return "STEP-Pin";
-      return "GPIO-Pin";
-    }
-
-    function boardPins(boardId, componentOrType) {
-      const id = String(boardId || "").toLowerCase();
-      if (!id) return [];
-      const concreteType = typeof componentOrType === "object" ? componentOrType.concrete_type : componentOrType;
-      const signalType = typeof componentOrType === "object" ? componentOrType.signal_type : "";
-      const board = availableProcessorBoards().find((item) => String(item.hardware_item_id || item.hardware_profile_id || "").toLowerCase() === id);
-      const profile = board?.pin_profile || {};
-      if ((signalType === "analog" || ["pt1000", "ntc", "ptc", "analog_sensor"].includes(concreteType)) && Array.isArray(profile.analog_inputs)) return profile.analog_inputs;
-      if ((signalType === "i2c" || concreteType === "i2c_sensor") && Array.isArray(profile.i2c)) return profile.i2c;
-      if (["dc_motor", "servo", "synchronous_motor"].includes(concreteType) && Array.isArray(profile.pwm_pins)) return profile.pwm_pins;
-      if (Array.isArray(profile.digital_pins) && profile.digital_pins.length) return profile.digital_pins;
-      const analog = id.includes("arduino_nano_r3") ? ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7"]
-        : id.includes("esp8266") || id.includes("d1_mini") ? ["A0"]
-          : id.includes("raspberry") ? []
-            : ["GPIO32 / ADC1_CH4", "GPIO33 / ADC1_CH5", "GPIO34 / ADC1_CH6", "GPIO35 / ADC1_CH7", "GPIO36 / ADC1_CH0", "GPIO39 / ADC1_CH3"];
-      const digital = id.includes("arduino_nano_r3") ? ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13"]
-        : id.includes("esp8266") || id.includes("d1_mini") ? ["D1 / GPIO5", "D2 / GPIO4", "D5 / GPIO14", "D6 / GPIO12", "D7 / GPIO13"]
-          : id.includes("raspberry") ? ["GPIO17", "GPIO18", "GPIO22", "GPIO23", "GPIO24", "GPIO25", "GPIO27"]
-            : ["GPIO4", "GPIO5", "GPIO12", "GPIO13", "GPIO14", "GPIO16", "GPIO17", "GPIO18", "GPIO19", "GPIO21", "GPIO22", "GPIO23", "GPIO25", "GPIO26", "GPIO27"];
-      if (signalType === "analog" || ["pt1000", "ntc", "ptc", "analog_sensor"].includes(concreteType)) return analog;
-      if (signalType === "i2c" || concreteType === "i2c_sensor") return id.includes("arduino_nano_r3") ? ["SDA A4 + SCL A5"] : id.includes("raspberry") ? ["SDA GPIO2 + SCL GPIO3"] : ["SDA GPIO21 + SCL GPIO22"];
-      if (["dc_motor", "servo", "synchronous_motor"].includes(concreteType)) return digital.filter((pin) => /D3|D5|D6|D9|D10|D11|GPIO4|GPIO5|GPIO12|GPIO13|GPIO14|GPIO18|GPIO19|GPIO23|GPIO25|GPIO26|GPIO27/.test(pin));
-      return digital;
     }
 
     function handleHardwareConfigurationChange(event) {
@@ -2919,80 +2550,6 @@ const DevelopmentPlatform = (() => {
       await loadProcessorBoardCatalog({ force: true });
     }
 
-    function circuitFor(component) {
-      if (component.concrete_type === "pt1000") return { type: "pt1000_measurement", label: "PT1000-Messschaltung", stages: ["PT1000", "Konstantstromquelle / Messbruecke", "Messverstaerker", "ADC"] };
-      if (["ntc", "ptc"].includes(component.concrete_type)) return { type: "resistive_divider", label: "Widerstands-Messschaltung", stages: [component.concrete_type.toUpperCase(), "Spannungsteiler", "ADC"] };
-      const driver = component.properties?.motor_driver_type || "";
-      if (component.concrete_type === "dc_motor") return { type: "motor_driver", label: "DC-Motorsteuerung", stages: ["PWM / Richtung", driver === "low_side_mosfet" ? "MOSFET-Treiber" : "H-Bruecke", "DC-Motor"] };
-      if (component.concrete_type === "servo") return { type: "servo_driver", label: "Servo-Steuerung", stages: ["Zeitgeber", "Servo-PWM", "Servo"] };
-      if (component.concrete_type === "stepper_motor") return { type: "stepper_driver", label: "Schrittmotor-Steuerung", stages: ["Zeitgeber / RMT", driver === "four_phase" ? "4-Phasen-Treiber" : "STEP/DIR-Treiber", "Schrittmotor"] };
-      if (component.concrete_type === "synchronous_motor") return { type: "synchronous_motor_driver", label: "Synchronmotor-Steuerung", stages: [driver === "three_phase_six_step" ? "6-Step-Kommutierung" : "FOC", "Motor-PWM / ADC / Rotorlage", "3-Phasen-Leistungstreiber", "BLDC / PMSM"] };
-      if (component.properties?.connection_mode === "additional_circuit") {
-        const label = component.properties?.circuit_label
-          || (component.abstract_type === "actuator" ? "Treiber- / Leistungsschaltung" : "Signalaufbereitung / Schutzschaltung");
-        return component.abstract_type === "actuator"
-          ? { type: "actuator_interface_circuit", label, stages: ["Prozessorausgang", label, component.label] }
-          : { type: "sensor_interface_circuit", label, stages: [component.label, label, "Prozessoreingang"] };
-      }
-      return null;
-    }
-
-    function hardwareConfigurationValidation(configuration) {
-      const missing = [];
-      const issues = [];
-      const addIssue = (component, field, detail) => {
-        const message = `${component.label}: ${detail}`;
-        missing.push(message);
-        issues.push({ componentId: component.component_id, field, message });
-      };
-      configuration.components.forEach((component) => {
-        if (component.abstract_type === "iot_device" && (!component.processor_family || !component.processor_variant)) addIssue(component, "processor", "Prozessor");
-        if (component.abstract_type === "iot_device" && !component.board_profile_id) addIssue(component, "board_profile_id", "reales Board");
-        if (component.abstract_type === "iot_device" && component.board_configuration?.source === "custom_draft") addIssue(component, "board_configuration", "geänderte Boardkonfiguration als eigenes Board speichern");
-        if (component.abstract_type === "sensor") {
-          if (!component.sensor_category) addIssue(component, "sensor_category", "Sensorart");
-          if (!component.signal_type) addIssue(component, "signal_type", "Erfassung");
-          if (component.properties?.measurement_mode === "periodic_log") {
-            if (!(Number(component.properties?.sampling_interval_value) > 0)) addIssue(component, "sampling_interval_value", "Messintervall");
-            if (!(Number(component.properties?.samples_per_record) >= 1)) addIssue(component, "samples_per_record", "Werte pro Datensatz");
-            if (!component.properties?.aggregation) addIssue(component, "aggregation", "Auswertung");
-            if (!component.properties?.storage_mode) addIssue(component, "storage_mode", "Speicherziel");
-          }
-        }
-        if (["sensor", "actuator"].includes(component.abstract_type)) {
-          const driverSpecific = component.abstract_type === "actuator" && motorDriverTypes(component.concrete_type).length > 0;
-          const boardIntegrated = String(component.concrete_type || "").startsWith("integrated_");
-          const boardSuppliedPins = boardFeatureForHardwareComponent(component, configuration);
-          if (!component.concrete_type) addIssue(component, "concrete_type", "konkreter Typ");
-          if (!component.target_device_id) addIssue(component, "target_device_id", "IoT-Device");
-          if (!boardIntegrated && !driverSpecific && !boardSuppliedPins && !component.pin) addIssue(component, "pin", "Pin");
-          if (component.signal_type === "incremental_ab" && !component.secondary_pin) addIssue(component, "secondary_pin", "Kanal B");
-          if (component.signal_type === "incremental_ab" && component.pin && component.secondary_pin === component.pin) {
-            addIssue(component, "pin_pair", "Kanal A und B muessen verschieden sein");
-          }
-        }
-      });
-      return { complete: missing.length === 0, missing, issues };
-    }
-
-    function boardFeatureForHardwareComponent(component, configuration) {
-      const device = configuration.components.find((item) => item.abstract_type === "iot_device" && item.component_id === component.target_device_id);
-      if (!device) return null;
-      const featureId = component.abstract_type === "sensor" && component.sensor_category === "image"
-        ? "camera"
-        : component.abstract_type === "sensor" && component.sensor_category === "audio_input"
-          ? "microphone"
-        : component.abstract_type === "actuator" && component.concrete_type === "integrated_display"
-          ? "display"
-          : component.abstract_type === "actuator" && component.concrete_type === "integrated_speaker"
-            ? "speaker"
-          : "";
-      const feature = featureId ? device.board_configuration?.board_features?.[featureId] : null;
-      if (!feature?.enabled || !Object.keys(feature.pins || {}).length) return null;
-      if (featureId === "camera" && component.concrete_type && feature.hardware && component.concrete_type !== feature.hardware) return null;
-      return feature;
-    }
-
     function syncHardwareActions(configuration) {
       const validation = hardwareConfigurationValidation(configuration);
       const continueButton = document.querySelector("#continueDevelopmentHardwareButton");
@@ -3005,26 +2562,6 @@ const DevelopmentPlatform = (() => {
       renderHardwareValidationSummary(configuration, validation);
       renderHardwareHints(configuration, validation);
       setHardwareStatus("");
-    }
-
-    function hardwareValidationTargets(row, field) {
-      const selectors = {
-        processor: "[data-hardware-processor]",
-        board_profile_id: '[data-hardware-field="board_profile_id"], [data-hardware-field="inventory_device_id"]',
-        board_configuration: "[data-development-board-configuration]",
-        sensor_category: "[data-hardware-sensor-category]",
-        signal_type: "[data-hardware-signal-type]",
-        concrete_type: '[data-hardware-field="concrete_type"]',
-        target_device_id: '[data-hardware-field="target_device_id"]',
-        pin: '[data-hardware-field="pin"]',
-        secondary_pin: '[data-hardware-field="secondary_pin"]',
-        pin_pair: '[data-hardware-field="pin"], [data-hardware-field="secondary_pin"]',
-        sampling_interval_value: '[data-hardware-property="sampling_interval_value"]',
-        samples_per_record: '[data-hardware-property="samples_per_record"]',
-        aggregation: '[data-hardware-property="aggregation"]',
-        storage_mode: '[data-hardware-property="storage_mode"]',
-      };
-      return selectors[field] ? [...row.querySelectorAll(selectors[field])] : [];
     }
 
     function highlightHardwareValidationIssues(validation) {
@@ -3086,26 +2623,6 @@ const DevelopmentPlatform = (() => {
         </section>
       ` : "";
       target.innerHTML = `${completedSection}${openSection}${optionalSection}`;
-    }
-
-    function recommendedHardwareAction(item) {
-      const detail = String(item || "").split(":").slice(1).join(":").trim();
-      if (/Kanal A und B/.test(detail)) return "Wähle für Kanal A und Kanal B unterschiedliche Pins.";
-      if (/Richtungspin/.test(detail)) return "Wähle einen zweiten freien Pin für die Motor-Richtung.";
-      if (/Kanal B/.test(detail)) return "Wähle einen zweiten freien Pin für Kanal B.";
-      if (/Prozessor/.test(detail)) return "Wähle Prozessorfamilie und Prozessorvariante für dieses IoT-Device.";
-      if (/reales Board/.test(detail)) return "Wähle ein zum Prozessor passendes reales Board aus dem Hardware-Katalog.";
-      if (/geänderte Boardkonfiguration/.test(detail)) return "Gib dem geänderten Boardprofil einen Namen und wähle „Als eigenes Board speichern“; das Katalogboard bleibt unverändert.";
-      if (/Sensorart/.test(detail)) return "Wähle die Sensorart beziehungsweise Messgröße.";
-      if (/Erfassung/.test(detail)) return "Wähle die passende Erfassungs- oder Signalart.";
-      if (/Messintervall/.test(detail)) return "Gib ein positives Intervall für die zyklische Messung an.";
-      if (/Werte pro Datensatz/.test(detail)) return "Lege fest, wie viele Rohwerte zu einem Datensatz zusammengefasst werden.";
-      if (/Auswertung/.test(detail)) return "Wähle beispielsweise Mittelwert, Minimum, Maximum oder RMS.";
-      if (/Speicherziel/.test(detail)) return "Wähle lokale Historie, Übertragung oder nur den letzten Datensatz.";
-      if (/konkreter Typ/.test(detail)) return "Wähle den konkreten Sensor- oder Aktortyp.";
-      if (/IoT-Device/.test(detail)) return "Ordne den Sensor oder Aktor dem zuständigen IoT-Device zu.";
-      if (/Pin/.test(detail)) return "Wähle einen geeigneten freien Pin am zugeordneten Board.";
-      return "Ergänze die fehlende Hardware-Angabe in der zugehörigen Tabellenzeile.";
     }
 
     function setHardwareStatus(text) {
@@ -3290,67 +2807,6 @@ const DevelopmentPlatform = (() => {
         missing,
         invalid,
       };
-    }
-
-    async function renderPlantUmlImage(image, source) {
-      const status = image.closest(".plantuml-viewer")?.querySelector(".plantuml-status");
-      if (!source) return;
-      try {
-        image.src = await createPlantUmlSvgUrl(source);
-        image.addEventListener("load", () => {
-          image.classList.add("loaded");
-          if (status) status.textContent = "Gerendert aus PlantUML.";
-        }, { once: true });
-        image.addEventListener("error", () => {
-          if (status) status.textContent = "PlantUML-Bild konnte nicht geladen werden.";
-        }, { once: true });
-      } catch {
-        if (status) status.textContent = "PlantUML-Bild konnte im Browser nicht erzeugt werden.";
-      }
-    }
-
-    async function createPlantUmlSvgUrl(source) {
-      const bytes = new TextEncoder().encode(themedPlantUmlSource(source));
-      const compressed = await deflateForPlantUml(bytes);
-      return `https://www.plantuml.com/plantuml/svg/${encodePlantUmlBytes(compressed)}`;
-    }
-
-    async function deflateForPlantUml(bytes) {
-      if (typeof CompressionStream === "undefined") throw new Error("CompressionStream unavailable");
-      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate"));
-      const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
-      return compressed.slice(2, -4);
-    }
-
-    function encodePlantUmlBytes(bytes) {
-      let output = "";
-      for (let index = 0; index < bytes.length; index += 3) {
-        output += appendPlantUml3Bytes(bytes[index], bytes[index + 1] ?? 0, bytes[index + 2] ?? 0);
-      }
-      return output;
-    }
-
-    function appendPlantUml3Bytes(byte1, byte2, byte3) {
-      const c1 = byte1 >> 2;
-      const c2 = ((byte1 & 0x3) << 4) | (byte2 >> 4);
-      const c3 = ((byte2 & 0xf) << 2) | (byte3 >> 6);
-      const c4 = byte3 & 0x3f;
-      return encodePlantUml6Bit(c1 & 0x3f)
-        + encodePlantUml6Bit(c2 & 0x3f)
-        + encodePlantUml6Bit(c3 & 0x3f)
-        + encodePlantUml6Bit(c4 & 0x3f);
-    }
-
-    function encodePlantUml6Bit(value) {
-      if (value < 10) return String.fromCharCode(48 + value);
-      value -= 10;
-      if (value < 26) return String.fromCharCode(65 + value);
-      value -= 26;
-      if (value < 26) return String.fromCharCode(97 + value);
-      value -= 26;
-      if (value === 0) return "-";
-      if (value === 1) return "_";
-      return "?";
     }
 
     return {

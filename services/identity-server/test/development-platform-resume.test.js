@@ -1,10 +1,10 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readDevelopmentPlatformSource, readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const publicController = fs.readFileSync(path.resolve(__dirname, "../public/app/development-platform.js"), "utf8");
+const publicController = readDevelopmentPlatformSource();
 const publicRuntimeUtils = fs.readFileSync(path.resolve(__dirname, "../public/app/app-runtime-utils.js"), "utf8");
 const publicCss = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicHtml = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");

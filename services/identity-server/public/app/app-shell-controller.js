@@ -246,7 +246,7 @@ async function loadProjectAppAssets() {
 
 const lazyAssetVersions = {
   boardConfiguration: "20260820-esm-blatt-6",
-  build: "20260820-flash-pruefsumme-1",
+  build: "20260820-entflechtung-7",
   flashDialog: "20260820-esm-blatt-3",
   flashExecutor: "20260820-flash-pruefsumme-1",
   flashProgress: "20260820-esm-blatt-6",
@@ -293,6 +293,10 @@ function activeLearningProjectNeedsHardwareWorkbench() {
 
 async function loadIdeWorkbenchAssets() {
   await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
+  // Aus app-ide-controller.js herausgeloest und von dort eingefuehrt; steht
+  // deshalb davor und muss hier verwiesen sein, damit die Import Map den
+  // kurzen Namen aufloesen kann.
+  await loadPlatformScript(`/app/ide-project-model.js?v=${lazyAssetVersions.build}`, { module: true });
   await loadPlatformScript(`/app/app-ide-controller.js?v=${lazyAssetVersions.build}`, { module: true });
   initializeIdeWorkspaceResize();
   await loadPlatformScript(`/app/device-debug-controller.js?v=${lazyAssetVersions.build}`, { module: true });
@@ -354,12 +358,22 @@ async function loadRouteAssets(route) {
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
       loadPlatformScript("/app/development-hardware-model.js?v=20260820-esm-blatt-6", { module: true }),
+      /*
+       * Aus development-platform.js herausgeloest. Beide werden von dort
+       * eingefuehrt und muessen hier stehen: die Import Map entsteht aus diesen
+       * Verweisen, und ohne Eintrag kann der Browser den kurzen Namen nicht
+       * aufloesen.
+       */
+      loadPlatformScript("/app/development-plantuml.js?v=20260820-entflechtung-2", { module: true }),
+      loadPlatformScript("/app/home-automation-model.js?v=20260820-entflechtung-2", { module: true }),
+      loadPlatformScript("/app/hardware-configuration-model.js?v=20260820-entflechtung-3", { module: true }),
+      loadPlatformScript("/app/requirements-analysis.js?v=20260820-entflechtung-5", { module: true }),
       // Klassisch: admin-tool liest dieselbe Datei mit require, siehe dort.
       loadPlatformScript("/app/development-component-metamodel.js?v=20260820-metamodell-1"),
       loadPlatformScript("/app/project-feedback-ui.js?v=20260820-esm-mitte-1", { module: true }),
       loadPlatformScript("/app/project-repository-card.js?v=20260820-esm-blatt-6", { module: true }),
     ]);
-    await loadPlatformScript("/app/development-platform.js?v=20260820-metamodell-1", { module: true });
+    await loadPlatformScript("/app/development-platform.js?v=20260820-entflechtung-5", { module: true });
     developmentPlatform().init();
     applyDevelopmentSummary();
     return;

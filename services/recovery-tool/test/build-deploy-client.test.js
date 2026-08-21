@@ -1,9 +1,40 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const test = require("node:test");
 const { BuildDeployClient } = require("../src/services/build-deploy-client");
-const { verifyDelegation, verifyInternalToken } = require("../../shared/internal-api-auth");
+const { readInternalApiAuthConfig, verifyDelegation, verifyInternalToken } = require("../../shared/internal-api-auth");
+
+function ed25519Keyring(serviceId, kid) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+  return readInternalApiAuthConfig({
+    INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON: JSON.stringify({
+      [kid]: { issuer: serviceId, publicKeyB64: publicKey.export({ format: "der", type: "spki" }).toString("base64") },
+    }),
+    INTERNAL_API_SIGNING_KEY_ID: kid,
+    INTERNAL_API_SIGNING_PRIVATE_KEY_B64: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64"),
+  }, { serviceId });
+}
+
+test("Build Deploy client signs with the active key id instead of a legacy token", async () => {
+  const signingKey = ed25519Keyring("recovery-tool", "recovery-tool-test");
+  const calls = [];
+  const client = new BuildDeployClient({
+    baseUrl: "https://build.internal",
+    signingKey,
+    fetchImpl: async (url, options) => {
+      calls.push({ options });
+      return new Response(JSON.stringify({ job_id: "job-1" }), { status: 202 });
+    },
+  });
+  await client.submit({ account_id: "acct-1", project_id: "project-1" });
+  const claims = verifyInternalToken(calls[0].options.headers.Authorization.replace(/^Bearer /, ""), signingKey, {
+    audience: "build-deploy-server", requiredScopes: ["build.job.request"],
+  });
+  assert.equal(claims.kid, "recovery-tool-test");
+  assert.equal(claims.alg, "Ed25519");
+});
 
 test("Build Deploy client binds service and delegation tokens to account and project", async () => {
   const calls = [];

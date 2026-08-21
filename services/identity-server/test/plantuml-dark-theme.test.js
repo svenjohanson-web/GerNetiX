@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
-const { readForSandbox } = require("../test-support/platform-app-source");
+const { readDevelopmentPlatformSource, readForSandbox } = require("../test-support/platform-app-source");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 const read = (file) => fs.readFileSync(path.join(appRoot, file), "utf8");
@@ -14,7 +14,7 @@ const guidedToolRoot = path.resolve(__dirname, "../../../tools/guided-code-lesso
 test("all PlantUML renderers use the shared dark theme", () => {
   const runtime = read("app-runtime-utils.js");
   const guided = read("guided-project-view.js");
-  const development = read("development-platform.js");
+  const development = readDevelopmentPlatformSource();
   const css = read("app.css");
   const html = read("index.html");
   const shell = read("app-shell-controller.js");

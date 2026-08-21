@@ -30,7 +30,7 @@
       "pruefsumme": "0fdf8168288b3ae9"
     },
     "/app/app-device-build-controller.js": {
-      "version": "20260820-flash-pruefsumme-1",
+      "version": "20260820-entflechtung-7",
       "pruefsumme": "e3f41fa8bac922e7"
     },
     "/app/app-event-bindings.js": {
@@ -38,8 +38,8 @@
       "pruefsumme": "38d07d5afe55de8e"
     },
     "/app/app-ide-controller.js": {
-      "version": "20260820-flash-pruefsumme-1",
-      "pruefsumme": "7edf33029f357dd3"
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "59c2e43eaf1216d6"
     },
     "/app/app-project-controller.js": {
       "version": "20260820-esm-kopf-1",
@@ -54,8 +54,8 @@
       "pruefsumme": "2ede5983a853edf2"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-flash-pruefsumme-2",
-      "pruefsumme": "ea0237f269d33b05"
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "ed5d669d13aed030"
     },
     "/app/app-shell-early.js": {
       "version": "20260820-esm-kopf-1",
@@ -105,12 +105,16 @@
       "version": "20260820-esm-blatt-6",
       "pruefsumme": "00c00e6121b449fc"
     },
+    "/app/development-plantuml.js": {
+      "version": "20260820-entflechtung-2",
+      "pruefsumme": "0af66624ffdc6a64"
+    },
     "/app/development-platform.js": {
-      "version": "20260820-metamodell-1",
-      "pruefsumme": "28bd8c95874ebec3"
+      "version": "20260820-entflechtung-5",
+      "pruefsumme": "9ff8c179b5a1fc96"
     },
     "/app/device-debug-controller.js": {
-      "version": "20260820-flash-pruefsumme-1",
+      "version": "20260820-entflechtung-7",
       "pruefsumme": "b57141e905210044"
     },
     "/app/device-onboarding-controller.js": {
@@ -137,6 +141,10 @@
       "version": "20260820-esm-kopf-2",
       "pruefsumme": "ebbb1789b66b3914"
     },
+    "/app/hardware-configuration-model.js": {
+      "version": "20260820-entflechtung-3",
+      "pruefsumme": "44f8360dba86bed0"
+    },
     "/app/hardware-lab-controller.js": {
       "version": "20260820-esm-kopf-1",
       "pruefsumme": "6218f459dead5de3"
@@ -153,9 +161,17 @@
       "version": "20260820-esm-grenze-1",
       "pruefsumme": "a5a4e585b9f041a1"
     },
+    "/app/home-automation-model.js": {
+      "version": "20260820-entflechtung-2",
+      "pruefsumme": "36057fff5526790d"
+    },
     "/app/i18n/i18n.js": {
       "version": "20260820-esm-i18n-1",
       "pruefsumme": "5ebc24db139191d0"
+    },
+    "/app/ide-project-model.js": {
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "1cf14221ba34368e"
     },
     "/app/information-view.js": {
       "version": "20260820-esm-grenze-2",
@@ -232,6 +248,10 @@
     "/app/reference-library-route.css": {
       "version": "20260820-esm-kopf-1",
       "pruefsumme": "da212a86414b3f94"
+    },
+    "/app/requirements-analysis.js": {
+      "version": "20260820-entflechtung-5",
+      "pruefsumme": "ee10670cf20f7652"
     },
     "/app/serial-service-client.js": {
       "version": "20260820-esm-kopf-1",

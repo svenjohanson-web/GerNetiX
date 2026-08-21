@@ -28,7 +28,9 @@ test("worker setup keeps the generated secret out of the remote command", () => 
     assert.match(invocation.options.input,/dedicated-secret/);
     assert.match(fs.readFileSync(localFile,"utf8"),/BUILD_POSTGRES_PASSWORD=dedicated-secret/);
     assert.match(fs.readFileSync(localFile,"utf8"),/BUILD_ARTIFACT_UPLOAD_TOKEN=artifact-secret/);
-    assert.equal(fs.statSync(localFile).mode & 0o777,0o600);
+    // NTFS bildet POSIX-Modi nicht ab und meldet immer 0o666. Die Rechtezusage
+    // wird deshalb dort geprueft, wo sie gilt: Linux und macOS.
+    if (process.platform !== "win32") assert.equal(fs.statSync(localFile).mode & 0o777,0o600);
   } finally {
     fs.rmSync(root,{recursive:true,force:true});
   }

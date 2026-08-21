@@ -6,7 +6,9 @@ class AiUsageClient {
     this.baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
     this.fetchImpl = options.fetchImpl || fetch;
     this.timeoutMs = Number(options.timeoutMs || 10000);
-    this.signingKey = String(options.signingKey || "");
+    // Der Schluesselbund bleibt ein Objekt; String() wuerde ein kid-loses
+    // Legacy-Token erzwingen, das der Empfaenger ablehnt.
+    this.signingKey = options.signingKey || "";
   }
 
   async preflight(payload, delegationContext) {

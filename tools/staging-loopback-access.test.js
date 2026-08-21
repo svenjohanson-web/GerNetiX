@@ -33,7 +33,20 @@ test("remote-dev services with loopback ports use a non-internal access network"
     assert.match(block, new RegExp(`\\n      - "127\\.0\\.0\\.1:${port}:${port}"\\n`));
   }
 
-  assert.match(compose, /\n  loopback-access:\n  runtime-postgres-access:\n/);
+  // Einzeln pruefen statt als Nachbarn: sonst bricht die Zusage bei jedem
+  // zusaetzlichen Netzwerk, das dazwischen deklariert wird.
+  assert.match(compose, /\n  loopback-access:\n/);
+  assert.match(compose, /\n  runtime-postgres-access:\n/);
+});
+
+// Identity beantwortet /health mit Detaildiagnose (identity_db, dependencies mit
+// Fehlermeldungen). Das ist laut docs/internal-api-access-inventory.md nur
+// zulaessig, solange der Plattform-Tunnel ausschliesslich an 127.0.0.1 haengt.
+// Faellt die Bindung weg, wird die Detaildiagnose oeffentlich erreichbar.
+test("platform tunnel to Identity stays bound to loopback", () => {
+  const block = serviceBlock("nginx");
+  assert.match(block, /\n      - "127\.0\.0\.1:\$\{PRIVATE_PLATFORM_TUNNEL_PORT:-\d+\}:8081"\n/);
+  assert.doesNotMatch(block, /\n      - "(?:0\.0\.0\.0:)?\$\{PRIVATE_PLATFORM_TUNNEL_PORT[^\n]*:8081"\n/);
 });
 
 test("AI Context warmup does not fail the staging deployment prematurely", () => {

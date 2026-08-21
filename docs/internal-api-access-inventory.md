@@ -62,7 +62,8 @@ freigegeben.
 
 | Routen | Heute | Zielklasse / Scope |
 | --- | --- | --- |
-| `GET /health` in jedem HTTP-Service | Keine HTTP-Authentifizierung; Inhalt ist derzeit minimal. | `health`; nur private Container-/Monitoring-Netze, keine Detaildiagnose. |
+| `GET /health` in jedem HTTP-Service | Keine HTTP-Authentifizierung; Inhalt ist minimal, ausser bei Identity. | `health`; nur private Container-/Monitoring-Netze, keine Detaildiagnose. |
+| `GET /health` bei Identity | Zusaetzlich `identity_db` und `dependencies` mit Erreichbarkeit, Fehlercode und Fehlermeldung je Abhaengigkeit. | `health`; die Detaildiagnose ist nur zulaessig, weil der Identity-Port ausschliesslich an `127.0.0.1` gebunden ist (`compose.vps.yaml`, privater Plattform-Tunnel). Wird die Route je oeffentlich erreichbar, muss der Detailteil entfallen. |
 | Dokument-/UI- und Static-GET-Routen der Operator-Tools | Teilweise ueber Admin-Access-Session geschuetzt, teilweise lokaler Dev-Server. | Kein Ersatz fuer API-Schutz; nur explizite `public`-Assets oder `admin`-Session. |
 
 ## Identitaets- und Admin-Kante

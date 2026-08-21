@@ -18,23 +18,32 @@ env:
   CI: "true"
 
 jobs:
+  # Die Matrix wird aus services/ ermittelt, nicht im Workflow gepflegt.
+  # Ein neuer Service laeuft dadurch automatisch mit; Ausnahmen stehen mit
+  # Begruendung in tools/ci/ci-test-policy.json.
+  service-matrix:
+    name: Service-Matrix bestimmen
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Resolve service matrix
+        id: resolve
+        run: node tools/ci/service-test-matrix.js
+
   service-tests:
     name: ${{ matrix.label }}
+    needs: service-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - label: Project Server
-            workspace: services/project-server
-            test_skip_pattern: "loads the protected ESP32 basis and overlays only the project user main"
-          - label: Identity Server
-            workspace: services/identity-server
-            test_skip_pattern: ""
-          - label: Build and Deploy Server
-            workspace: services/build-deploy-server
-            test_skip_pattern: ""
+      matrix: ${{ fromJSON(needs.service-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,7 +62,7 @@ jobs:
       - name: Run service tests
         working-directory: ${{ matrix.workspace }}
         env:
-          TEST_SKIP_PATTERN: ${{ matrix.test_skip_pattern }}
+          TEST_SKIP_PATTERN: ${{ matrix.skipPattern }}
         run: |
           if [ -n "$TEST_SKIP_PATTERN" ]; then
             node --test --test-skip-pattern="$TEST_SKIP_PATTERN"
@@ -61,43 +70,35 @@ jobs:
             node --test
           fi
 
-  forgejo-contracts:
-    name: Forgejo and migration contracts
+  # Sammelt tools/**/*.test.js per Glob. Neue Tools-Tests laufen ohne
+  # Workflow-Aenderung mit; Ausnahmen stehen in tools/ci/ci-test-policy.json.
+  tools-tests:
+    name: Tools and contract tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            services/project-server/package-lock.json
-            services/identity-server/package-lock.json
-      - name: Install Project Server dependencies
-        working-directory: services/project-server
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Install Identity Server dependencies
-        working-directory: services/identity-server
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Run Forgejo contracts
-        run: >-
-          node --test
-          tools/forgejo-ops-contract.test.js
-          tools/forgejo-integration/contract.test.js
-          tools/forgejo-ui-e2e/contract.test.js
-          tools/forgejo-backup-restore-contract.test.js
-          services/project-server/test/forgejo-client.test.js
-          services/project-server/test/git-project-repository-store.test.js
-          services/project-server/test/project-repository-api.test.js
-          services/identity-server/test/project-repository-contract-stub.test.js
-          services/identity-server/test/project-repository-routes.test.js
-          services/identity-server/test/project-git-light.test.js
-      - name: Run migration dry-run contracts
-        run: >-
-          node --test
-          tools/forgejo-migration-dry-run.test.js
-          tools/forgejo-migration-dry-run-fixtures.test.js
+      - name: Prepare ephemeral test runtime
+        run: mkdir -p .runtime services/build-deploy-server/.runtime
+      # Die Tools-Tests kommen ohne installierte Abhaengigkeiten aus; sie nutzen
+      # nur node:-Builtins und lesen Quelldateien. Deshalb kein npm ci.
+      - name: Run tools and contract tests
+        run: node tools/ci/run-tools-tests.js
+
+  customer-data-backup-e2e:
+    name: Customer data backup and restore E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run isolated customer data backup and restore
+        run: tools/backup-restore-e2e.sh
 
   forgejo-container-e2e:
     name: Forgejo container and restore E2E
@@ -134,8 +135,10 @@ jobs:
         run: node tools/ci/check-javascript-syntax.js
       - name: Validate Compose models
         run: node tools/ci/check-compose.js
-      - name: Verify internal network boundary and secret leakage
-        run: node --test tools/verify-internal-network-boundary.test.js
+      - name: Check file size ratchet
+        run: node tools/ci/check-file-sizes.js
+      - name: Check for committed secrets
+        run: node tools/ci/check-committed-secrets.js
       - name: Check HTTP route classification
         run: node tools/internal-api-route-guard/index.js
       - name: Check committed diff
@@ -159,8 +162,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Test architecture documentation builder
-        run: node --test tools/architecture-docs/test/build.test.js
       - name: Rebuild architecture documentation
         run: node tools/architecture-docs/build.js
       - name: Verify generated documentation diff

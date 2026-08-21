@@ -33,7 +33,9 @@ test("server-side publisher signs the scoped request inside Identity", async () 
     env: { PUBLIC_DEMO_BASE_URL: "http://public-demo-server:4920" },
     signingConfig: {
       activeKid: keyId,
-      signingKeys: { [keyId]: { key: pair.privateKey.export({ format: "der", type: "pkcs8" }), algorithm: "Ed25519" } },
+      // Wie readInternalApiAuthConfig: ein KeyObject, kein Rohpuffer. Ein DER-Buffer
+      // wird von der Signaturschicht als PEM gelesen und scheitert generisch.
+      signingKeys: { [keyId]: { key: pair.privateKey, algorithm: "Ed25519" } },
     },
     fetchImpl: async (url, options) => {
       request = { url: String(url), options };
@@ -41,7 +43,8 @@ test("server-side publisher signs the scoped request inside Identity", async () 
     },
   });
   assert.equal(request.url, "http://public-demo-server:4920/api/internal/public-demos");
-  assert.match(request.options.headers.Authorization, /^Bearer [^.]+\.[^.]+\.[^.]+$/);
+  // Interne Tokens sind zweiteilig (Payload.Signatur); kid und alg stehen im Payload.
+  assert.match(request.options.headers.Authorization, /^Bearer [^.]+\.[^.]+$/);
   assert.deepEqual(JSON.parse(request.options.body), { demo_id: "touch-spielesammlung", version: "1.0.0" });
   assert.equal(result.releases[0].version, "1.0.0");
 });

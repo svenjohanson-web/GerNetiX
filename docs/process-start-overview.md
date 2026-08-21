@@ -45,7 +45,7 @@ Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerk
 
 Die VPS-Prozesskarten stammen aus einer getrennten, kurzlebigen read-only SSH-Diagnoseabfrage. Schlaegt diese Abfrage fehl, zeigt der Monitor zuletzt bekannte oder erwartete Dienste ausschliesslich mit `Status unbekannt`, nennt den Fehler sowie Pruefzeitpunkt und gegebenenfalls den letzten erfolgreichen Nachweis. Ein alter gruener Containerstatus darf nicht als aktueller Zustand stehen bleiben. Die dauerhafte Portweiterleitung wird separat angezeigt und entscheidet ueber die Erreichbarkeit lokaler Tunnel-URLs wie `127.0.0.1:14600`.
 
-Die App selbst oeffnet keinen HTTP-Port. Ihre Start-/Stop-Aktionen steuern den lokalen Identity-Listener auf Port `4300` und getrennt davon den build-only Docker-Worker auf seiner privaten WireGuard-Adresse. PostgreSQL und die Domaenendienste bleiben auf dem VPS. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; separat gestartete lokale Prozesse und die VPS-Prozesse bleiben davon unberuehrt.
+Die App selbst oeffnet keinen HTTP-Port. In der lokalen Prozesssicht erscheint der kontrollierte Prozess eindeutig als `Identity Dev-Server` mit Status, PID und Port `4300`. Ist er gestoppt, kann er dort direkt ueber `Dev-Server starten` gestartet werden. Die Start-/Stop-Aktionen steuern ausschliesslich diesen lokalen Identity-Listener und getrennt davon den build-only Docker-Worker auf seiner privaten WireGuard-Adresse. PostgreSQL und die Domaenendienste bleiben auf dem VPS. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; separat gestartete lokale Prozesse und die VPS-Prozesse bleiben davon unberuehrt.
 
 ```powershell
 netstat -ano | findstr :4300
