@@ -12,6 +12,7 @@ const { ForgejoClient } = require("../../services/project-server/src/repository-
 const { ForgejoProjectRepositoryStore } = require("../../services/project-server/src/repository-store/forgejo-project-repository-store");
 const { GitProjectRepositoryStore } = require("../../services/project-server/src/repository-store/git-project-repository-store");
 const { ProjectService } = require("../../services/project-server/src/services/project-service");
+const { issueInternalToken } = require("../../services/shared/internal-api-auth");
 const { createProjectRepositoryRead } = require("../../services/identity-server/src/dev/project-repository-read");
 const { createRouteRegistry } = require("../../services/identity-server/src/dev/server/route-registry");
 const { registerProjectRoutes } = require("../../services/identity-server/src/dev/server/project-routes");
@@ -25,6 +26,14 @@ const uiProjectId = "ui-e2e-project";
 const projectId = "ui-e2e-project-server-id";
 const projectServerOrigin = "http://127.0.0.1:4800";
 const identityOrigin = "http://127.0.0.1:4300";
+/*
+ * Der Project Server ist eine interne API und weist einen Aufruf ohne
+ * Dienstidentitaet ab -- ohne Schluessel faellt er absichtlich zu. Der Lauf
+ * bringt darum sein eigenes Geheimnis mit und signiert wie Identity im Betrieb:
+ * ein Dienst-Token fuer die Identitaet, ein Delegations-Token fuer den Zugriff
+ * auf die Daten genau eines Kontos und Projekts.
+ */
+const internalAuthSecret = "ui-e2e-internal-api-secret";
 
 async function main() {
   await ensureOrganization();
@@ -38,7 +47,7 @@ async function main() {
   await service.ready;
   await seedProject({ repository, service, projectRepositoryStore });
 
-  const projectApp = createHttpApp({ service });
+  const projectApp = createHttpApp({ service, internalAuthSecret });
   const projectServer = http.createServer((req, res) => projectApp(req, res).catch((error) => sendError(res, error)));
   await listen(projectServer, 4800);
 
@@ -228,9 +237,27 @@ async function verifyRepositoryCard(browser, publicResponses) {
 }
 
 async function projectServerJson(pathname, options = {}) {
+  /*
+   * projectAccess() im Repository-Zugriff reicht Scopes und Delegation als
+   * options.internalAuth durch. Der Aufbau des Laufs ruft ohne diese Angabe
+   * auf; er arbeitet auf demselben Konto und Projekt, also gilt dieselbe
+   * Delegation.
+   */
+  const scopes = options.internalAuth?.scopes || ["project.read", "project.write"];
+  const delegation = options.internalAuth?.delegation
+    || { account_id: accountId, project_ids: [projectId] };
+  const claims = { iss: "identity-server", sub: "identity-server", aud: "project-server", scopes };
   const response = await fetch(`${projectServerOrigin}${pathname}`, {
     method: options.method || "GET",
-    headers: { Accept: "application/json", ...(options.body ? { "Content-Type": "application/json" } : {}) },
+    headers: {
+      Accept: "application/json",
+      authorization: `Bearer ${issueInternalToken(claims, internalAuthSecret)}`,
+      "x-gernetix-project-delegation": issueInternalToken(
+        { ...claims, kind: "delegated_user_action", context: delegation },
+        internalAuthSecret,
+      ),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+    },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
   const body = await response.json();
