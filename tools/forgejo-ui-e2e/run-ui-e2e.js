@@ -275,6 +275,13 @@ function sendAsset(res, contentType, content) {
 function sendError(res, error) {
   if (res.headersSent) return res.end();
   const status = Number(error.status || 500);
+  /*
+   * Ein 500er ist ein Fehler des Testaufbaus, nicht der geprueften Sache. Der
+   * Browser bekommt weiterhin nur "Interner Testfehler", damit der Test keine
+   * Interna spiegelt -- im Lauf selbst muss die Ursache aber lesbar sein,
+   * sonst bleibt als Befund nur eine leere Karte.
+   */
+  if (status >= 500) console.error(`Testserver-Fehler bei ${res.req?.url || "unbekannt"}: ${error?.stack || error?.message || error}`);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   res.end(JSON.stringify({ error: error.code || "internal_error", message: status >= 500 ? "Interner Testfehler." : error.message }));
 }
