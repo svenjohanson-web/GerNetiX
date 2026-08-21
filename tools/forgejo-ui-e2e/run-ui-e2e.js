@@ -169,7 +169,30 @@ async function verifyRepositoryCard(browser, publicResponses) {
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("request", (request) => requestUrls.push(request.url()));
   await page.goto(identityOrigin, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.querySelector(".repository-state")?.textContent === "Aktiv");
+  /*
+   * Beim Warten auf die Karte sagt ein blosser Timeout nichts darueber, warum
+   * sie ausbleibt. Die Fehler der Seite werden oben schon gesammelt; hier
+   * werden sie samt dem tatsaechlichen Zustand der Karte ausgegeben, sonst
+   * bleibt als Befund nur "30000ms exceeded".
+   */
+  try {
+    await page.waitForFunction(() => document.querySelector(".repository-state")?.textContent === "Aktiv");
+  } catch (error) {
+    const zustand = await page.evaluate(() => {
+      const card = document.querySelector("#projectRepositoryCard");
+      return {
+        karteVorhanden: Boolean(card),
+        klassen: card?.className || "",
+        zustand: document.querySelector(".repository-state")?.textContent ?? null,
+        inhalt: (card?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 300),
+      };
+    }).catch(() => null);
+    console.error("Repository-Karte blieb aus.");
+    console.error(`  Seitenfehler: ${browserErrors.length ? browserErrors.join(" | ") : "keine"}`);
+    console.error(`  Zustand: ${JSON.stringify(zustand)}`);
+    console.error(`  Angefragte Adressen: ${requestUrls.join(", ")}`);
+    throw error;
+  }
 
   assert.equal((await page.locator("#projectRepositoryCard h2").textContent()).trim(), "Git-Repository");
   assert.equal((await page.locator(".repository-state").textContent()).trim(), "Aktiv");
