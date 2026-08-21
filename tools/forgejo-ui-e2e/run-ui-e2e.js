@@ -234,7 +234,12 @@ async function projectServerJson(pathname, options = {}) {
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
   const body = await response.json();
-  if (!response.ok) throw httpError(response.status, body.error || "project_server_error", body.message || "Project Server error");
+  if (!response.ok) {
+    // Ohne diese Zeile bleibt vom Fehlschlag nur der Ersatztext uebrig, und
+    // weder Adresse noch Code des Project Servers sind im Lauf nachlesbar.
+    console.error(`Project Server ${response.status} bei ${options.method || "GET"} ${pathname}: ${JSON.stringify(body)}`);
+    throw httpError(response.status, body.error || "project_server_error", body.message || "Project Server error");
+  }
   return body;
 }
 
