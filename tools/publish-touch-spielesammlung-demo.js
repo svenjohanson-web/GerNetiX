@@ -52,13 +52,22 @@ function assertCleanAndPushed(repoPath) {
 function resolveBuildCacheRoot(repoPath, env = process.env, platform = process.platform) {
   const configured = String(env.GERNETIX_LOCAL_BUILD_CACHE_DIR || "").trim();
   if (configured) return path.resolve(configured);
-  if (platform !== "win32") return path.join(repoPath, ".gernetix-build");
-  const repositoryName = path.basename(path.resolve(repoPath)) || "project";
+  if (platform !== "win32") return path.posix.join(repoPath, ".gernetix-build");
+  /*
+   * Ab hier gilt Windows-Semantik, auch wenn der Code anderswo laeuft.
+   *
+   * Das schlichte path-Modul richtet sich nach dem ausfuehrenden System: unter
+   * Linux erkennt path.parse("C:\\...") kein Laufwerk und liefert eine leere
+   * Wurzel. Der platform-Parameter waere dann wirkungslos -- die Funktion gaebe
+   * je nach Rechner ein anderes Ergebnis fuer denselben Pfad.
+   */
+  const win = path.win32;
+  const repositoryName = win.basename(win.resolve(repoPath)) || "project";
   const suffix = repositoryName.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 16) || "project";
-  const driveRoot = path.parse(repoPath).root;
-  if (driveRoot) return path.join(driveRoot, "g", "gernetix-build", suffix);
+  const driveRoot = win.parse(repoPath).root;
+  if (driveRoot) return win.join(driveRoot, "g", "gernetix-build", suffix);
   const temporaryRoot = env.TEMP || env.TMP;
-  return temporaryRoot ? path.join(temporaryRoot, "gernetix-build", suffix) : path.join(repoPath, ".gernetix-build");
+  return temporaryRoot ? win.join(temporaryRoot, "gernetix-build", suffix) : win.join(repoPath, ".gernetix-build");
 }
 
 function findBuildWorkspace(repoPath, env = process.env) {
