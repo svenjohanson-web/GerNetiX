@@ -33,3 +33,5 @@ const DomUtils = (() => {
     summaryItem,
   };
 })();
+
+export { DomUtils };

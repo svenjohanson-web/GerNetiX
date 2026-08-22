@@ -1,5 +1,7 @@
 "use strict";
 
+const { issueInternalToken } = require("../../../../shared/internal-api-auth");
+
 function registerHardwareLabRoutes({
   registry,
   requireSession,
@@ -10,6 +12,7 @@ function registerHardwareLabRoutes({
   hardwareLabRepository,
   buildDeployBaseUrl,
   aiUsageJson,
+  internalApiSigningKey,
   fetchImpl = fetch,
 }) {
   registry.register({
@@ -19,7 +22,12 @@ function registerHardwareLabRoutes({
       const session = await requireSession(req, res);
       if (!session) return;
       const accountId = projectServerUserId(session);
-      const rating = await aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`);
+      const rating = await aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`, {
+        internalAuth: {
+          scopes: ["ai.usage.read"],
+          delegation: { account_id: accountId, project_ids: [], entitlements: [] },
+        },
+      });
       sendJson(res, 200, { rating });
     },
   });
@@ -73,7 +81,7 @@ function registerHardwareLabRoutes({
         sendJson(res, 404, { error: "hardware_lab_firmware_not_found", message: "Für diesen Laborvorgang ist keine Firmware verfügbar." });
         return;
       }
-      await proxyFirmware(res, build.build_job_id, build.artifact_file_name);
+      await proxyFirmware(res, build.build_job_id, build.artifact_file_name, labSession.account_id);
     },
   });
 
@@ -103,9 +111,20 @@ function registerHardwareLabRoutes({
     return labSession;
   }
 
-  async function proxyFirmware(res, jobId, fileName) {
+  async function proxyFirmware(res, jobId, fileName, accountId) {
     try {
-      const response = await fetchImpl(`${String(buildDeployBaseUrl).replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+      const scopes = ["artifact.download"];
+      const common = { iss: "identity-server", sub: "identity-server", aud: "build-deploy-server", scopes };
+      const response = await fetchImpl(`${String(buildDeployBaseUrl).replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`, {
+        headers: {
+          Authorization: `Bearer ${issueInternalToken(common, internalApiSigningKey)}`,
+          "X-GerNetiX-Delegation": issueInternalToken({
+            ...common,
+            kind: "delegated_user_action",
+            context: { account_id: accountId, project_ids: [], entitlements: [] },
+          }, internalApiSigningKey),
+        },
+      });
       if (!response.ok) {
         sendJson(res, response.status === 404 ? 404 : 502, { error: "hardware_lab_firmware_fetch_failed", message: "Die Discovery-Firmware konnte nicht geladen werden." });
         return;

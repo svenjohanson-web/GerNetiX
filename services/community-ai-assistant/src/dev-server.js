@@ -4,7 +4,7 @@ const { sendJson } = require("./http-app");
 
 const config = createConfig();
 const service = createDefaultCommunityAiAssistant(config);
-const app = createHttpApp({ service });
+const app = createHttpApp({ service, internalAuthSecret: config.internalApiSigningKey });
 
 const server = http.createServer((req, res) => {
   app(req, res).catch((error) => {

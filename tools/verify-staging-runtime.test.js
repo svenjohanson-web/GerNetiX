@@ -53,6 +53,16 @@ test("extracts every source from shell-form COPY commands", () => {
   );
 });
 
+test("fails locally for an unresolved relative Identity runtime import", () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "gernetix-runtime-import-"));
+  const entryFile = path.join(temporaryRoot, "entry.js");
+  fs.writeFileSync(entryFile, 'require("./missing-module");\n');
+  assert.throws(
+    () => discoverIdentityRuntimePaths({ repoRoot: temporaryRoot, entryFile }),
+    /Nicht aufloesbarer relativer Runtime-Import.*missing-module/,
+  );
+});
+
 test("rejects missing COPY sources in every staging runtime Dockerfile", () => {
   assert.throws(
     () => verifyDockerfileCopySources({
@@ -67,4 +77,12 @@ test("keeps protected project repositories out of the Docker build context", () 
   assert.match(dockerIgnore, /^basissoftware$/m);
   assert.match(dockerIgnore, /^projects$/m);
   assert.match(dockerIgnore, /^Demoanwendungen$/m);
+});
+
+test("includes only the architecture artifacts required by the Context Manager image", () => {
+  assert.match(dockerIgnore, /^docs$/m);
+  assert.match(dockerIgnore, /^!docs\/$/m);
+  assert.match(dockerIgnore, /^docs\/\*$/m);
+  assert.match(dockerIgnore, /^!docs\/system-process-application-uml\.md$/m);
+  assert.match(dockerIgnore, /^!docs\/system-process-application-uml\.svg$/m);
 });

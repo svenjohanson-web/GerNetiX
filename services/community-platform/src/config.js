@@ -1,14 +1,14 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 function createConfig(env = process.env) {
   return {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 5200),
     triageSlaHours: Number(env.COMMUNITY_TRIAGE_SLA_HOURS || 24),
-    internalToken: env.COMMUNITY_INTERNAL_TOKEN || "",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "community-platform"),
     // A separate secret is required for the Admin Tool. It must not be shared
     // with Identity, which only acts on behalf of regular customer accounts.
-    adminToken: env.COMMUNITY_ADMIN_TOKEN || "",
     messageRateLimit: Number(env.COMMUNITY_MESSAGE_RATE_LIMIT || 20),
     messageRateWindowSeconds: Number(env.COMMUNITY_MESSAGE_RATE_WINDOW_SECONDS || 600),
     notificationRetention: {

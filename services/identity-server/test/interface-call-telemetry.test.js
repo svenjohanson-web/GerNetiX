@@ -15,7 +15,7 @@ test("identity records outbound service calls in central or local SQL telemetry"
   assert.match(server, /PERSISTENCE_SQLITE_PATH/);
   assert.match(clients, /sourceService: "identity-server"/);
   assert.match(clients, /targetService: "project-server"/);
-  assert.match(clients, /targetService: "device-management-server"/);
+  assert.match(clients, /deviceManagementJson: securedClient\([^\n]+"device-management-server"\)/);
   assert.match(clients, /targetService: "ai-usage-server"/);
   assert.match(clients, /durationMs: Date\.now\(\) - startedAt/);
   assert.match(clients, /x-gernetix-action-id/);

@@ -9,6 +9,8 @@ const {
 } = require("./basissoftware-profiles");
 const elasticComputeContract = require("./elastic-compute-contract");
 const { ContentAddressedArtifactStore, normalizeSourceReference } = require("./persistence/content-addressed-artifact-store");
+const internalApiAuth = require("./internal-api-auth");
+const internalApiAuthEnv = require("./internal-api-auth-env");
 
 module.exports = {
   JsonFileStore,
@@ -22,4 +24,6 @@ module.exports = {
   ...elasticComputeContract,
   ContentAddressedArtifactStore,
   normalizeSourceReference,
+  ...internalApiAuth,
+  ...internalApiAuthEnv,
 };

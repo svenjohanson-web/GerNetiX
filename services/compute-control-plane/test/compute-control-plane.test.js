@@ -28,7 +28,7 @@ function job(overrides = {}) {
     job_id: overrides.job_id || "job-1", job_type: "firmware_build", execution_class: "trusted_system",
     tenant: { account_id: "account-a", project_id: "project-a" }, priority_class: "customer_background",
     input_revision: "sha256:0123456789abcdef", requirements: { cpu_arch: ["amd64", "arm64"], cpu_millis: 1000, memory_bytes: 1024, toolchains: ["platformio-6"], network_policy: "artifact_api_only" },
-    limits: { deadline_at: "2026-08-03T08:00:00.000Z", max_runtime_ms: 60000, max_output_bytes: 4096, max_attempts: 2 }, ...overrides,
+    limits: { deadline_at: "2099-08-03T08:00:00.000Z", max_runtime_ms: 60000, max_output_bytes: 4096, max_attempts: 2 }, ...overrides,
   };
 }
 function worker(overrides = {}) {

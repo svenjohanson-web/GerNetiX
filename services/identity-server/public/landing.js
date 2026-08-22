@@ -92,11 +92,10 @@ function navigationPathIsActive(href) {
 
 async function initializePublicI18n() {
   try {
-    await loadPublicI18nScript();
+    const { GerNetiXI18n } = await ladePublicI18nModul();
     addPublicLanguageSwitcher();
     decoratePublicNavigation();
-    publicI18n = await window.GerNetiXI18n.create();
-    window.GerNetiXPublicI18n = publicI18n;
+    publicI18n = await GerNetiXI18n.create();
     publicI18n.translateDocument();
     const languageSelect = document.querySelector("#publicLanguage");
     languageSelect.value = publicI18n.locale;
@@ -107,15 +106,21 @@ async function initializePublicI18n() {
   }
 }
 
-function loadPublicI18nScript() {
-  if (window.GerNetiXI18n) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "/app/i18n/i18n.js?v=20260726-02";
-    script.addEventListener("load", resolve, { once: true });
-    script.addEventListener("error", reject, { once: true });
-    document.head.append(script);
-  });
+/*
+ * Die Uebersetzung wird erst geholt, wenn sie gebraucht wird.
+ *
+ * Frueher baute diese Datei dafuer ein Skript-Tag zusammen -- mit einer eigenen,
+ * hier eingetragenen Cache-Version. Die wich vom Dokument ab, ohne dass es
+ * jemandem auffiel; fuer den Browser sind zwei Adressen zwei Module, i18n.js
+ * waere also zweimal ausgewertet worden.
+ *
+ * import() nimmt die Adresse aus der Import Map der Seite. Damit gibt es nur
+ * noch eine Angabe, und sie steht dort, wo sie ohnehin gepflegt wird. Auch ein
+ * klassisches Skript darf das: die Map gilt fuer das Dokument, nicht fuer die
+ * Datei.
+ */
+function ladePublicI18nModul() {
+  return import("@app/i18n/i18n.js");
 }
 
 function addPublicLanguageSwitcher() {
@@ -144,8 +149,10 @@ function initializePublicTheme() {
   const storageKey = "gernetix-public-theme";
   const root = document.documentElement;
   const savedTheme = window.localStorage.getItem(storageKey);
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  let theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : (prefersDark ? "dark" : "light");
+  // Hell ist der bewusste Auslieferungszustand. Erst eine eigene Wahl des
+  // Nutzers weicht davon ab; die Systemeinstellung entscheidet absichtlich
+  // nicht mit, damit alle Besucher denselben ersten Eindruck erhalten.
+  let theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : "light";
 
   const applyTheme = (nextTheme) => {
     theme = nextTheme;
@@ -231,3 +238,10 @@ document.addEventListener("click", closeMenu);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeMenu();
 });
+
+/*
+ * Lebendige Bindung: auth.js fuehrt sie ein und liest damit immer den
+ * aktuellen Wert. Zuvor stand hier eine Zuweisung an window; der Leser konnte
+ * nur einen Schnappschuss nehmen und brauchte dafuer einen Rennschutz.
+ */
+export { publicI18n };

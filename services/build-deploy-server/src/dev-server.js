@@ -10,7 +10,11 @@ start().catch((error) => {
 
 async function start() {
   const service = await createDefaultBuildDeployService(config);
-  const app = createHttpApp({ service, artifactStore: service.artifactStore });
+  const app = createHttpApp({
+    service,
+    artifactStore: service.artifactStore,
+    internalApiSigningKey: config.internalApiSigningKey,
+  });
   const server = http.createServer((req, res) => {
     app(req, res).catch((error) => {
       const status = error.status || 500;

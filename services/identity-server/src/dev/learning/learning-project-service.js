@@ -3,6 +3,14 @@
 const { hasLearningProjectCatalogAccess, learningProjectPurchaseUrl } = require("../learning-project-access");
 
 function createLearningProjectService({ userIdeState, catalogProjectIdForDefinition, sendJson, projectServerUserId, projectServerJson, crypto, accountSubscription, projectViewManifest, demoProjectSources, mapProjectServerProject, invalidateUserIdeProjectCaches, touchWorkspace, learningProgress, toPlatformProject, nexiCourseModel, mapUserIdeProjects, requireSessionProject, readJsonBody, loadUserIdeDevices, loadAvailableProcessorBoards, platformSoftwareUnits, buildConfigForBoard, compilerBoardConfiguration, telemetryJson, webPushService }) {
+function accountAccess(accountId, scope = "project.read") {
+  return { internalAuth: { scopes: [scope], delegation: { account_id: String(accountId), project_ids: [] } } };
+}
+
+function projectAccess(accountId, projectId, scope = "project.read") {
+  return { internalAuth: { scopes: [scope], delegation: { account_id: String(accountId), project_ids: [String(projectId)] } } };
+}
+
 async function handleLearningProjectStart(res, session, catalogProjectId) {
   const definition = userIdeState.projectDefinitions
     .find((item) => item.project_server_id === catalogProjectId || catalogProjectIdForDefinition(item) === catalogProjectId);
@@ -22,18 +30,19 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
   }
 
   const userId = projectServerUserId(session);
-  const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`);
+  const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`, accountAccess(userId));
   const existingSummary = existing.items.find((item) => item.learning_project_id === definition.learning_project_id
     && item.project_id !== definition.project_server_id
     && item.entry_mode !== "standalone_lesson");
   const alreadyStarted = existingSummary
-    ? await projectServerJson(`/api/projects/${encodeURIComponent(existingSummary.project_id)}`)
+    ? await projectServerJson(`/api/projects/${encodeURIComponent(existingSummary.project_id)}`, projectAccess(userId, existingSummary.project_id))
     : null;
   const projectId = `learning_${definition.slug}_${crypto.randomUUID().slice(0, 8)}`;
   const project = alreadyStarted
-    ? await synchronizeLearningProjectOnStart(alreadyStarted, definition)
+    ? await synchronizeLearningProjectOnStart(alreadyStarted, definition, session)
     : await projectServerJson("/api/projects", {
     method: "POST",
+    ...accountAccess(userId, "project.write"),
     body: {
       project_id: projectId,
       user_id: userId,
@@ -66,7 +75,7 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
   });
 }
 
-async function synchronizeLearningProjectOnStart(project, definition) {
+async function synchronizeLearningProjectOnStart(project, definition, session) {
   const canonicalManifest = learningProjectManifestForPersistedProject(project, definition);
   const needsManifestSync = Number(canonicalManifest?.schema_version || 0)
     > Number(project.view_manifest?.schema_version || 0);
@@ -75,7 +84,7 @@ async function synchronizeLearningProjectOnStart(project, definition) {
     .some((source) => !existingPaths.has(source.path));
   const needsLegacyNexiCheck = definition.slug === nexiCourseModel.slug;
   if (!needsManifestSync && !needsSourceSync && !needsLegacyNexiCheck) return project;
-  return synchronizeLearningProjectStructure(project, definition);
+  return synchronizeLearningProjectStructure(project, definition, session);
 }
 
 async function handlePlatformProjectRead(res, session, projectId) {
@@ -137,6 +146,7 @@ async function handleDevelopmentLessonStart(res, session, catalogProjectId, less
   const projectId = `lesson_${lesson.id.replace(/[^a-zA-Z0-9]+/g, "_")}_${crypto.randomUUID().slice(0, 8)}`;
   const project = await projectServerJson("/api/projects", {
     method: "POST",
+    ...accountAccess(userId, "project.write"),
     body: {
       project_id: projectId,
       user_id: userId,
@@ -161,14 +171,16 @@ async function handleDevelopmentLessonStart(res, session, catalogProjectId, less
   });
 }
 
-async function synchronizeLearningProjectStructure(project, definition) {
+async function synchronizeLearningProjectStructure(project, definition, session = null) {
   const projectId = project.project_id;
+  const accountId = session ? projectServerUserId(session) : String(project.user_id || project.owner_user_id || "");
   const isLegacyNexiBuild = definition.slug === nexiCourseModel.slug
     && project.build_config?.environment !== definition.build_config?.environment;
   const needsBuildConfig = !project.build_config?.user_source_path || isLegacyNexiBuild;
   const canonicalManifest = learningProjectManifestForPersistedProject(project, definition);
   const updated = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}`, {
     method: "PATCH",
+    ...projectAccess(accountId, projectId, "project.write"),
     body: {
       view_manifest: canonicalManifest,
       ...(needsBuildConfig ? { build_config: definition.build_config } : {}),
@@ -178,7 +190,7 @@ async function synchronizeLearningProjectStructure(project, definition) {
     ? canonicalManifest.lesson_focus_id
     : "";
   for (const source of demoProjectSources(definition, { lessonId, projectId })) {
-    const persistedSource = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(source.path)}`)
+    const persistedSource = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(source.path)}`, projectAccess(accountId, projectId))
       .catch((error) => {
         if (error.status === 404) return null;
         throw error;
@@ -188,7 +200,7 @@ async function synchronizeLearningProjectStructure(project, definition) {
       && persistedSource?.content?.includes('"app_id": "nexi"')
       && projectAppManifestVersion(persistedSource.content) < 3;
     if (!persistedSource || isLegacyNexiManifest) {
-      await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, { method: "PUT", body: source });
+      await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, { method: "PUT", ...projectAccess(accountId, projectId, "project.write"), body: source });
     }
   }
   return updated;
@@ -250,6 +262,7 @@ async function handleLearningProjectDeviceAssign(req, res, session, projectId) {
   } : unit);
   const updated = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
+    ...projectAccess(projectServerUserId(session), project.project_server_id, "project.write"),
     body: {
       device_id: device?.device_id || project.device_id || "",
       hardware_profile_id: baseBoardId,
@@ -271,7 +284,7 @@ async function handlePlatformProjectDelete(res, session, projectId) {
   const telemetryPath = `/api/telemetry/internal/accounts/${encodeURIComponent(accountId)}/projects/${encodeURIComponent(project.project_server_id)}/data`;
   const telemetry = await telemetryJson(telemetryPath, { method: 'DELETE' });
   const push = await webPushService.unsubscribeProject(accountId, project.project_server_id);
-  const deletion = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, { method: 'DELETE' });
+  const deletion = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, { method: 'DELETE', ...projectAccess(accountId, project.project_server_id, "project.write") });
   sendJson(res, 200, { deleted: true, project_id: project.project_server_id, project: deletion, telemetry, push });
 }
 

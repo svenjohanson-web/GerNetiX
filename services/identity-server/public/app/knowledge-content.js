@@ -1,4 +1,6 @@
 // Wissensspeicher: übergreifendes Fachwissen unabhängig von der Plattformhilfe.
+import { KnowledgeChapterIndex } from "@app/knowledge-chapter-index.js";
+
 const KnowledgeContent = (() => {
   const topics = [
     {
@@ -442,3 +444,17 @@ const KnowledgeContent = (() => {
     adjacentArticleIds,
   };
 })();
+
+export {
+  KnowledgeContent,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: help-chat-service.js, information-view.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  KnowledgeContent,
+});
+/* ---- /Uebergangsbruecke ---- */

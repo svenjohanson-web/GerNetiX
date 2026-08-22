@@ -554,13 +554,13 @@ function importGraph(dbPath = DEFAULT_DB_PATH) {
   const extracted = extractArtifacts(files);
   const db = openDatabase(dbPath);
   const authoredArtifacts = readAuthoredArtifacts(db);
-  const authoredArtifactIds = new Set(authoredArtifacts.map((artifact) => artifact.id));
-  const artifacts = [
-    ...extracted.artifacts.filter((artifact) => !authoredArtifactIds.has(artifact.id)),
-    ...authoredArtifacts
-  ];
+  // Authored graph records are the canonical continuation of legacy YAML.
+  // Keeping a legacy ID deliberately replaces its bootstrap projection.
+  const authoredIds = new Set(authoredArtifacts.map((artifact) => artifact.id));
+  const legacyArtifacts = extracted.artifacts.filter((artifact) => !authoredIds.has(artifact.id));
+  const artifacts = [...legacyArtifacts, ...authoredArtifacts];
   const occurrences = [
-    ...extracted.occurrences.filter((occurrence) => !authoredArtifactIds.has(occurrence.id)),
+    ...extracted.occurrences.filter((occurrence) => !authoredIds.has(occurrence.id)),
     ...authoredArtifacts.map((artifact) => ({
       id: artifact.id,
       sourceFile: artifact.sourceFile,

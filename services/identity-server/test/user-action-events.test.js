@@ -1,9 +1,22 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const test = require("node:test");
 const { normalizeUserActionEvent, createUserActionIngestHandler, readUserActionContext } = require("../src/services/user-action-events");
 const { createUserActionReporter } = require("../src/services/user-action-reporter");
+const { readInternalApiAuthConfig, verifyInternalToken } = require("../../shared/internal-api-auth");
+
+function ed25519Keyring(serviceId, kid) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+  return readInternalApiAuthConfig({
+    INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON: JSON.stringify({
+      [kid]: { issuer: serviceId, publicKeyB64: publicKey.export({ format: "der", type: "spki" }).toString("base64") },
+    }),
+    INTERNAL_API_SIGNING_KEY_ID: kid,
+    INTERNAL_API_SIGNING_PRIVATE_KEY_B64: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64"),
+  }, { serviceId });
+}
 
 const validInput = {
   action_type: "nexi.flash.usb.start",
@@ -91,12 +104,37 @@ test("same-origin action ingest forwards only the normalized event", async () =>
 test("identity reports user actions through the protected Admin Tool endpoint", async () => {
   const requests = [];
   const report = createUserActionReporter({
-    baseUrl: "http://admin-tool:4600/", ingestToken: "ops-token", logger: { warn() {} },
+    baseUrl: "http://admin-tool:4600/", internalApiSigningKey: "ops-signing-key", logger: { warn() {} },
     fetchImpl: async (url, options) => { requests.push({ url, options }); return { ok: true, status: 201 }; },
   });
   assert.equal(await report(normalizeUserActionEvent(validInput)), true);
   assert.equal(requests[0].url, "http://admin-tool:4600/api/internal/user-action-events");
-  assert.equal(requests[0].options.headers["X-GerNetiX-System-Event-Token"], "ops-token");
+  verifyInternalToken(requests[0].options.headers.Authorization.replace(/^Bearer\s+/, ""), "ops-signing-key", { audience: "admin-tool", requiredScopes: ["operations.user_actions.write"] });
+});
+
+test("identity names the rejection reason when Operations refuses a delivery", async () => {
+  const warnings = [];
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: "ops-signing-key",
+    logger: { warn(value) { warnings.push(String(value)); } },
+    fetchImpl: async () => new Response(JSON.stringify({ error: "internal_token_invalid", message: "Interner API-Zugriff ist nicht berechtigt." }), { status: 403 }),
+  });
+  assert.equal(await report(normalizeUserActionEvent(validInput)), false);
+  assert.ok(warnings.some((entry) => entry.includes("HTTP 403") && entry.includes("internal_token_invalid")), warnings.join(" | "));
+});
+
+test("identity signs user action events with the active key id instead of a legacy token", async () => {
+  const signingKey = ed25519Keyring("identity-server", "identity-server-test");
+  const requests = [];
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: signingKey, logger: { warn() {} },
+    fetchImpl: async (url, options) => { requests.push({ url, options }); return { ok: true, status: 201 }; },
+  });
+  assert.equal(await report(normalizeUserActionEvent(validInput)), true);
+  const token = requests[0].options.headers.Authorization.replace(/^Bearer\s+/, "");
+  const claims = verifyInternalToken(token, signingKey, { audience: "admin-tool", requiredScopes: ["operations.user_actions.write"] });
+  assert.equal(claims.kid, "identity-server-test");
+  assert.equal(claims.alg, "Ed25519");
 });
 
 test("identity keeps failed Operations deliveries in a persistent outbox and flushes after recovery", async () => {
@@ -107,7 +145,7 @@ test("identity keeps failed Operations deliveries in a persistent outbox and flu
     async save(value) { state = structuredClone(value); },
   };
   const report = createUserActionReporter({
-    baseUrl: "http://admin-tool:4600", ingestToken: "ops-token", outboxStore: store,
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: "ops-signing-key", outboxStore: store,
     logger: { warn() {} },
     fetchImpl: async () => available ? { ok: true, status: 201 } : { ok: false, status: 503 },
   });
@@ -120,4 +158,44 @@ test("identity keeps failed Operations deliveries in a persistent outbox and flu
   const flushed = await report.flush();
   assert.deepEqual(flushed, { pending: 0, delivered: 1 });
   assert.equal(await report.pending(), 0);
+});
+
+test("identity exposes a minimized emergency trace and delivers the same action id after database recovery", async () => {
+  let databaseAvailable = false;
+  let operationsAvailable = false;
+  const delivered = [];
+  const store = {
+    load() { if (!databaseAvailable) throw new Error("ECONNREFUSED"); return { items: [] }; },
+    async save() { if (!databaseAvailable) throw new Error("ECONNREFUSED"); },
+  };
+  const report = createUserActionReporter({
+    baseUrl: "http://admin-tool:4600", internalApiSigningKey: "ops-signing-key", outboxStore: store,
+    logger: { warn() {} },
+    fetchImpl: async (_url, options) => {
+      if (!operationsAvailable) return { ok: false, status: 503 };
+      delivered.push(JSON.parse(options.body));
+      return { ok: true, status: 201 };
+    },
+  });
+  const event = normalizeUserActionEvent({
+    ...validInput,
+    action_type: "identity.login.passkey",
+    span_type: "auth.verify",
+    route_id: "/app/auth/",
+    reason_code: "identity_unreachable",
+    message: "private database detail",
+  });
+
+  assert.equal(await report(event), false);
+  const diagnostics = report.diagnostics();
+  assert.equal(diagnostics.pending, 1);
+  assert.equal(diagnostics.items[0].action_id, event.action_id);
+  assert.equal(diagnostics.items[0].delivery_state, "pending");
+  assert.equal("message" in diagnostics.items[0], false);
+
+  databaseAvailable = true;
+  operationsAvailable = true;
+  assert.deepEqual(await report.flush(), { pending: 0, delivered: 1 });
+  assert.equal(delivered[0].action_id, event.action_id);
+  assert.equal(report.diagnostics().items[0].delivery_state, "delivered");
 });

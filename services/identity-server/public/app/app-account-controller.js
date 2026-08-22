@@ -1,4 +1,7 @@
 // GerNetiX platform module extracted from app.js.
+import { deleteJson, escapeHtml, getJson, patchJson, postJson } from "@app/app-runtime-utils.js";
+import { state } from "@app/platform-state.js";
+
 function renderAccountSetup() {
   const button = document.querySelector("#createOfflineRecoverySetButton");
   const status = document.querySelector("#offlineRecoverySetStatus");
@@ -162,3 +165,8 @@ async function createOfflineRecoverySet() {
     button.disabled = false;
   }
 }
+
+export {
+  createOfflineRecoverySet,
+  renderAccountSetup,
+};

@@ -36,7 +36,13 @@ Eine Projektloeschung wirkt immer nur innerhalb der serverseitig geprueften Komb
 
 ## Interne API
 
-Alle Telemetry-Server-Endpunkte ausser `/health` liegen unter `/api/telemetry/internal/` und erfordern `X-GerNetiX-Telemetry-Token`. Der Token ist nur fuer interne Adapter und Identity bestimmt und wird nie an PWA oder Board ausgeliefert.
+Alle Telemetry-Server-Endpunkte ausser `/health` liegen unter
+`/api/telemetry/internal/` und erfordern einen kurzlebigen Bearer-Diensttoken
+mit Audience `telemetry-server` und aktionsbezogenem Scope. Konto- und
+Projektlese-, Retention- und Loeschzugriffe verlangen zusaetzlich eine
+signierte Delegation fuer genau dieses Konto und Projekt. Tokens und
+Delegationen bleiben bei internen Adaptern beziehungsweise Identity und werden
+nie an PWA oder Board ausgeliefert.
 
 - `POST /ingest`: Messwerte und Ereignisse eines bereits authentifizierten Boards annehmen.
 - `GET /accounts/{account}/projects/{project}/measurements`: accountgebundene Zeitreihe lesen.

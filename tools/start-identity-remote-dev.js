@@ -13,13 +13,21 @@ function loadRemoteDevConfig(environment = process.env, options = {}) {
   const fileValues = options.readFile === false ? {} : fs.existsSync(localPath)
     ? parseEnvFile(fs.readFileSync(localPath, "utf8"))
     : {};
-  const config = { ...fileValues, ...environment };
+  const config = normalizeIdentityInternalApiConfig(mergeRemoteDevConfiguration(fileValues, environment));
   if (!String(config.IDENTITY_POSTGRES_PASSWORD || "").trim()) {
     throw new Error("IDENTITY_POSTGRES_PASSWORD fehlt in .env.remote-dev.local.");
   }
   const runtimeStateKey = Buffer.from(String(config.RUNTIME_STATE_ENCRYPTION_KEY || ""), "base64");
   if (runtimeStateKey.length !== 32) {
     throw new Error("RUNTIME_STATE_ENCRYPTION_KEY muss als Base64-kodierter 32-Byte-Schluessel in .env.remote-dev.local stehen.");
+  }
+  const internalApiVariables = [
+    "INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON",
+    "INTERNAL_API_SIGNING_KEY_ID",
+    "INTERNAL_API_SIGNING_PRIVATE_KEY_B64",
+  ];
+  if (internalApiVariables.some((name) => !String(config[name] || "").trim())) {
+    throw new Error("Die Identity-Dienstidentitaet fehlt in .env.remote-dev.local. INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON, INTERNAL_API_SIGNING_KEY_ID und INTERNAL_API_SIGNING_PRIVATE_KEY_B64 muessen aus der geschuetzten Staging-Konfiguration hinterlegt sein.");
   }
   return {
     ...config,
@@ -47,6 +55,37 @@ function loadRemoteDevConfig(environment = process.env, options = {}) {
   };
 }
 
+function mergeRemoteDevConfiguration(fileValues = {}, environment = {}) {
+  const merged = { ...fileValues, ...environment };
+  // Die lokale Datei ist die bewusst eingerichtete Vertrauensgrenze fuer
+  // Remote-Dev. Vom aufrufenden Prozess geerbte Werte duerfen insbesondere
+  // keine andere Dienstidentitaet einschleusen oder die Datei ueberstimmen.
+  for (const name of [
+    "INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON",
+    "INTERNAL_API_SIGNING_KEY_ID",
+    "INTERNAL_API_SIGNING_PRIVATE_KEY_B64",
+    "IDENTITY_INTERNAL_API_SIGNING_KEY_ID",
+    "IDENTITY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64",
+  ]) {
+    if (String(fileValues[name] || "").trim()) merged[name] = fileValues[name];
+  }
+  return merged;
+}
+
+function normalizeIdentityInternalApiConfig(config) {
+  const normalized = { ...config };
+  const aliases = {
+    INTERNAL_API_SIGNING_KEY_ID: "IDENTITY_INTERNAL_API_SIGNING_KEY_ID",
+    INTERNAL_API_SIGNING_PRIVATE_KEY_B64: "IDENTITY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64",
+  };
+  for (const [target, source] of Object.entries(aliases)) {
+    if (!String(normalized[target] || "").trim() && String(normalized[source] || "").trim()) {
+      normalized[target] = normalized[source];
+    }
+  }
+  return normalized;
+}
+
 function main() {
   const env = loadRemoteDevConfig();
   const child = spawn(process.execPath, ["src/dev-server.js"], {
@@ -69,4 +108,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { loadRemoteDevConfig, main };
+module.exports = { loadRemoteDevConfig, main, mergeRemoteDevConfiguration, normalizeIdentityInternalApiConfig };

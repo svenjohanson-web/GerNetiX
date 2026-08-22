@@ -190,7 +190,11 @@ test("runs the complete SQLite CLI path twice with byte-identical private report
   assert.equal(await main(["--sqlite", sqlitePath, "--output", secondReport, "--assert-ready"], {}), 0);
   assert.equal(fs.readFileSync(firstReport, "utf8"), fs.readFileSync(secondReport, "utf8"));
   assert.equal(fileSha256(sqlitePath), sourceBefore);
-  assert.equal(fs.statSync(firstReport).mode & 0o777, 0o600);
+  // NTFS bildet POSIX-Modi nicht ab und meldet immer 0o666. Die Rechtezusage
+  // wird deshalb dort geprueft, wo sie gilt: Linux und macOS.
+  if (process.platform !== "win32") {
+    assert.equal(fs.statSync(firstReport).mode & 0o777, 0o600);
+  }
   await assert.rejects(
     main(["--sqlite", sqlitePath, "--output", firstReport], {}),
     (error) => error?.code === "EEXIST",

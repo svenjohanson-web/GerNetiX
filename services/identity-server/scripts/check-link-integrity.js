@@ -2,20 +2,23 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
-async function main(env = process.env, argv = process.argv.slice(2)) {
+async function main(env = process.env, argv = process.argv.slice(2), injected = {}) {
   const identityBaseUrl = stripTrailingSlash(env.IDENTITY_BASE_URL || "http://127.0.0.1:4300");
   const adminToolBaseUrl = stripTrailingSlash(env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600");
-  const identityAdminToken = required(env.IDENTITY_ADMIN_TOKEN, "IDENTITY_ADMIN_TOKEN");
-  const ingestToken = required(env.LINK_INTEGRITY_INGEST_TOKEN || env.SYSTEM_EVENT_INGEST_TOKEN, "LINK_INTEGRITY_INGEST_TOKEN");
+  const signingKey = injected.internalApiSigningKey || readOptionalInternalApiAuthConfig(env, "identity-server");
+  if (!signingKey) throw new Error("Interne API-Authentifizierung ist fuer den Link-Check nicht konfiguriert.");
+  const ingestToken = issueInternalToken({ iss: "identity-server", sub: "link-integrity-checker", aud: "admin-tool", scopes: ["operations.link_integrity.write"] }, signingKey);
   const includeExternal = argv.includes("--external");
 
   const inventory = await requestJson(`${identityBaseUrl}/api/internal/link-integrity/inventory`, {
-    headers: { "x-gernetix-admin-token": identityAdminToken },
+    headers: { Authorization: `Bearer ${issueInternalToken({ iss: "identity-server", sub: "link-integrity-checker", aud: "identity-server", scopes: ["identity.link_integrity.read"] }, signingKey)}` },
   });
   await requestJson(`${adminToolBaseUrl}/api/internal/link-integrity/inventory`, {
     method: "POST",
-    headers: { "x-gernetix-link-integrity-token": ingestToken },
+    headers: { Authorization: `Bearer ${ingestToken}` },
     body: inventory,
   });
 
@@ -35,7 +38,7 @@ async function main(env = process.env, argv = process.argv.slice(2)) {
   }));
   await requestJson(`${adminToolBaseUrl}/api/internal/link-integrity/checks`, {
     method: "POST",
-    headers: { "x-gernetix-link-integrity-token": ingestToken },
+    headers: { Authorization: `Bearer ${ingestToken}` },
     body: { checks },
   });
 

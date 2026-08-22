@@ -15,26 +15,34 @@ class CommunityPlatformClient {
 }
 
 class AiUsageClient {
-  constructor(baseUrl) {
+  constructor(baseUrl, signingKey = "") {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+    this.signingKey = signingKey;
   }
 
-  async preflight(payload) {
+  async preflight(payload, delegationContext) {
     const response = await fetch(`${this.baseUrl}/preflight`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...this.authHeaders(delegationContext) },
       body: JSON.stringify(payload),
     });
     return readResponse(response);
   }
 
-  async complete(eventId, payload) {
+  async complete(eventId, payload, delegationContext) {
     const response = await fetch(`${this.baseUrl}/events/${encodeURIComponent(eventId)}/complete`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...this.authHeaders(delegationContext) },
       body: JSON.stringify(payload),
     });
     return readResponse(response);
+  }
+
+  authHeaders(context = {}) {
+    const scopes = ["ai.usage.consume"];
+    const serviceToken = issueInternalToken({ iss: "community-ai-assistant", sub: "community-ai-assistant", aud: "ai-usage-server", scopes }, this.signingKey);
+    const delegation = issueInternalToken({ iss: "community-ai-assistant", sub: "community-ai-assistant", aud: "ai-usage-server", kind: "delegated_user_action", scopes, context }, this.signingKey);
+    return { Authorization: `Bearer ${serviceToken}`, "X-GerNetiX-Delegation": delegation };
   }
 }
 
@@ -50,3 +58,4 @@ async function readResponse(response) {
 }
 
 module.exports = { CommunityPlatformClient, AiUsageClient };
+const { issueInternalToken } = require("../../../shared/internal-api-auth");

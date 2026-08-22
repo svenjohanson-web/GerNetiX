@@ -19,5 +19,6 @@ test("admin monitoring exposes persisted read-only synthetic core preflights", (
     assert.match(service, new RegExp(checkId));
   }
   assert.match(scheduler, /\/api\/internal\/synthetic-checks\/run/);
-  assert.match(scheduler, /SYSTEM_EVENT_INGEST_TOKEN/);
+  assert.match(scheduler, /readOptionalInternalApiAuthConfig\(process\.env, "admin-tool"\)/);
+  assert.match(scheduler, /operations\.synthetic_checks\.run/);
 });

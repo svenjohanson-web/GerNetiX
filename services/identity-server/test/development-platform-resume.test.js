@@ -1,10 +1,10 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readDevelopmentPlatformSource, readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const publicController = fs.readFileSync(path.resolve(__dirname, "../public/app/development-platform.js"), "utf8");
+const publicController = readDevelopmentPlatformSource();
 const publicRuntimeUtils = fs.readFileSync(path.resolve(__dirname, "../public/app/app-runtime-utils.js"), "utf8");
 const publicCss = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicHtml = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
@@ -34,7 +34,6 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicApp, /loadPlatformScript\("\/app\/development-platform\.js\?v=20260806-project-summary-lazy-1"\)/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -68,9 +67,8 @@ test("starts with visible large project choices without restoring a diagram", ()
 
 test("keeps the project choice surface consistent with the dark workspace", () => {
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
-  assert.match(choiceSurfaceRule, /background: #111827/);
+  assert.match(choiceSurfaceRule, /background: var\(--surface-panel\)/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260812-knowledge-library-3/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -390,7 +388,6 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicRuntimeUtils, /skinparam backgroundColor transparent/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBackgroundColor #1E3A5F/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBorderColor #67E8F9/);
-  assert.match(publicHtml, /app\.css\?v=20260812-knowledge-library-3/);
   assert.match(publicCss, /\.development-workspace-active \.development-page-actions button \{[\s\S]*font-size: 12px/);
 });
 
@@ -546,8 +543,8 @@ test("hardware allocation stays transient until the project is saved for the IDE
   assert.match(publicCss, /\.hardware-component-section-head \{[\s\S]*justify-content: space-between/);
   assert.doesNotMatch(publicCss, /\.hardware-signal-chain/);
   assert.match(publicCss, /Hardware-Realisierung folgt derselben dunklen Workspace-Sprache/);
-  assert.match(publicCss, /\.hardware-table-row \{[\s\S]*background: #111827;[\s\S]*color: #e5e7eb/);
-  assert.match(publicCss, /\.hardware-table-row select,[\s\S]*background: #0b1018;[\s\S]*color: #e5e7eb/);
+  assert.match(publicCss, /\.hardware-table-row \{[\s\S]*background: var\(--surface-panel\);[\s\S]*color: var\(--text\)/);
+  assert.match(publicCss, /\.hardware-table-row select,[\s\S]*background: var\(--surface-deep\);[\s\S]*color: var\(--text\)/);
   assert.match(publicCss, /\.hardware-page-actions \{[\s\S]*background: rgba\(11, 16, 24, \.96\)/);
   assert.match(publicCss, /\.hardware-overview \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(publicCss, /\.hardware-guidance-panel \{[\s\S]*background: #0d1520/);
@@ -580,7 +577,7 @@ test("selected catalog boards expose editable defaults and require an explicitly
   assert.match(publicController, /component\.board_configuration\.account_board_version = savedBoard\.version/);
   assert.match(publicController, /await saveHardwareConfiguration\(false\)/);
   assert.match(publicController, /geänderte Boardkonfiguration als eigenes Board speichern/);
-  assert.match(publicCss, /\.development-board-configuration\.has-modifications \{ border-color: #f59e0b/);
+  assert.match(publicCss, /\.development-board-configuration\.has-modifications \{ border-color: var\(--status-warn\)/);
   assert.match(publicCss, /\.development-board-feature-table tr\.is-modified \{ background: rgba\(245, 158, 11, \.08\)/);
   assert.match(devServer, /error: "custom_board_not_saved"/);
   assert.match(devServer, /board_configuration: abstractType === "iot_device" \? normalizeDevelopmentBoardConfiguration/);

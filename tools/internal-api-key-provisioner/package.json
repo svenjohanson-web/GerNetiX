@@ -1,0 +1,14 @@
+{
+  "name": "@gernetix/internal-api-key-provisioner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "provision": "node index.js",
+    "check": "node --check index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

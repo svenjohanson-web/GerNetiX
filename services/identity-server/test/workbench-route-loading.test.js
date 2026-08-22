@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { scriptAbschnitt } = require("../test-support/platform-app-source");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 const read = (file) => fs.readFileSync(path.join(appRoot, file), "utf8");
@@ -27,7 +28,10 @@ const workbenchFiles = [
 ];
 
 test("keeps IDE, build, debug and provisioning packages out of the global shell", () => {
-  workbenchFiles.forEach((file) => assert.doesNotMatch(html, new RegExp(file.replaceAll(".", "\\."))));
+  // Ohne die Import Map: sie fuehrt jede Modul-Adresse als JSON auf, und der
+  // blosse Dateiname stuende dann im Dokument, ohne dort geladen zu werden.
+  const dokument = scriptAbschnitt(html);
+  workbenchFiles.forEach((file) => assert.doesNotMatch(dokument, new RegExp(file.replaceAll(".", "\\."))));
   assert.match(shell, /async function loadBuildWorkbenchAssets\(\)/);
   assert.match(shell, /async function loadIdeWorkbenchAssets\(\)/);
   assert.match(shell, /async function loadDeviceOnboardingAssets\(\)/);

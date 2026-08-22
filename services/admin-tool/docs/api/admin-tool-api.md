@@ -50,7 +50,8 @@ Ein Lauf prueft ausschliesslich vier fest konfigurierte GET-Vertraege:
 Beliebige Ziel-URLs, Credentials, Sessions, Projekte, Builds und Geraete werden
 nicht angenommen. Persistiert werden nur Lauf-ID, Pruef-ID, Zeitpunkt,
 Zieldienst, feste Route, Status, HTTP-Status, Antwortzeit und normalisierter
-Reason-Code. Der interne Start verlangt `X-GerNetiX-System-Event-Token`; der
+Reason-Code. Der interne Start verlangt einen Diensttoken mit Audience
+`admin-tool` und Scope `operations.synthetic_checks.run`; der
 Admin-Start laeuft ueber den geschuetzten Admin-Access-Proxy.
 
 ## Link-Integrität
@@ -66,7 +67,7 @@ POST /api/internal/link-integrity/checks
 
 `POST /api/admin/link-integrity/sync` liest das token-geschützte Identity-Inventar und ersetzt ausschließlich den aktuellen Identity-Inventarstand. Historische Prüfläufe bleiben erhalten.
 
-Die internen Ingest-Endpunkte verlangen `X-GerNetiX-Link-Integrity-Token`. Sie speichern keine Testkonto-Credentials, Cookies oder gelesenen Seiteninhalte. Das Inventar umfasst Referenz-ID, Ziel, Linktyp, Owner, Zugriffsklasse und Fundstellen; ein Prüfergebnis umfasst Status, HTTP-Status, Endziel, Dauer und technischen Fehlercode.
+Die internen Ingest-Endpunkte verlangen einen Diensttoken mit Audience `admin-tool` und Scope `operations.link_integrity.write`. Sie speichern keine Testkonto-Credentials, Cookies oder gelesenen Seiteninhalte. Das Inventar umfasst Referenz-ID, Ziel, Linktyp, Owner, Zugriffsklasse und Fundstellen; ein Prüfergebnis umfasst Status, HTTP-Status, Endziel, Dauer und technischen Fehlercode.
 
 ## Auffaelligkeiten / System Events
 
@@ -90,7 +91,7 @@ Zentrales leichtgewichtiges Betriebslog fuer auffaellige Runtime-Ereignisse, ohn
 
 Die Ereignisse werden im Admin Tool persistiert. Bei SQLite-Persistenz liegen sie in `admin_tool_system_events`.
 
-`POST /api/internal/system-events` ist der Dienstweg fuer Runtime- und Authentifizierungsereignisse. Er verlangt den Header `X-GerNetiX-System-Event-Token` mit dem nur fuer diesen Ingest vorgesehenen `SYSTEM_EVENT_INGEST_TOKEN`. Passkey-Loginfehler werden mit Phase, Fehlercode, Account-ID soweit bereits serverseitig bekannt und Korrelations-ID erfasst. Credential-ID, Public Key, Challenge, Signatur und Browser-Credential-Payload werden nicht protokolliert.
+`POST /api/internal/system-events` ist der Dienstweg fuer Runtime- und Authentifizierungsereignisse. Er verlangt einen Diensttoken mit Audience `admin-tool` und Scope `operations.system_events.write`. Passkey-Loginfehler werden mit Phase, Fehlercode, Account-ID soweit bereits serverseitig bekannt und Korrelations-ID erfasst. Credential-ID, Public Key, Challenge, Signatur und Browser-Credential-Payload werden nicht protokolliert.
 
 ## Nutzeraktions-Wirkketten
 
@@ -104,7 +105,7 @@ POST /api/admin/user-action-alerts/evaluate
 POST /api/internal/user-action-events
 ```
 
-Der interne Endpunkt verlangt `X-GerNetiX-System-Event-Token` und akzeptiert
+Der interne Endpunkt verlangt `operations.user_actions.write` und akzeptiert
 nur den serverseitig validierten Vertrag aus Action-Typ, Action-ID, Span,
 Phase, stabilem Reason-Code, Route, Release und grober Dauerklasse. Freie
 Fehlermeldungen, lokale Ports und Device-Pfade, USB-Kennungen, IP-Adressen,

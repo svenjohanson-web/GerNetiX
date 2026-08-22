@@ -1,10 +1,11 @@
 "use strict";
 
-const { requestJson } = require("./read-link-integrity");
+const { adminHeaders, requestJson } = require("./read-link-integrity");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 async function main() {
-  const accessToken = process.env.ADMIN_TOOL_ACCESS_TOKEN || "";
-  if (!accessToken) throw new Error("ADMIN_TOOL_ACCESS_TOKEN ist im Admin Tool nicht konfiguriert.");
+  const signingKey = readOptionalInternalApiAuthConfig(process.env, "admin-tool");
+  if (!signingKey) throw new Error("Interne API-Authentifizierung ist im Admin Tool nicht konfiguriert.");
   const actor = {
     actor_id: "desktop-process-monitor",
     role: "administrator",
@@ -13,10 +14,7 @@ async function main() {
   const result = await requestJson({
     baseUrl: process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600",
     pathname: "/api/admin/user-action-events?limit=200",
-    headers: {
-      "x-gernetix-admin-access-token": accessToken,
-      "x-gernetix-admin-actor": Buffer.from(JSON.stringify(actor)).toString("base64url"),
-    },
+    headers: adminHeaders(signingKey, actor),
   });
   process.stdout.write(`${JSON.stringify({ summary: result.summary || {} })}\n`);
 }

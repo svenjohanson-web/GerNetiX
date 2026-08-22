@@ -1,3 +1,7 @@
+import { BoardConfigurationPlugin } from "@app/board-configuration-plugin.js";
+import { GerNetiXFlashProgress } from "@app/flash-progress.js";
+import { GerNetiXFlashExecutor } from "@app/unified-flash-executor.js";
+
 const DeviceOnboardingController = (() => {
   function preferredSerialServicePorts(ports) {
     const selectedByDevice = new Map();
@@ -1578,7 +1582,7 @@ const DeviceOnboardingController = (() => {
           sourceVersion: artifact.source_version,
         };
         terminal?.setArtifact?.(displayArtifact);
-        await window.GerNetiXFlashExecutor.executeUsb({
+        await GerNetiXFlashExecutor.executeUsb({
           port: isDaemonPort(state.provisioningSerialPort)
             ? { ...state.provisioningSerialPort, source: "gernetix_serial_service" }
             : state.provisioningSerialPort,
@@ -1852,3 +1856,17 @@ const DeviceOnboardingController = (() => {
 
   return { create, preferredSerialServicePorts };
 })();
+
+export {
+  DeviceOnboardingController,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, app.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  DeviceOnboardingController,
+});
+/* ---- /Uebergangsbruecke ---- */

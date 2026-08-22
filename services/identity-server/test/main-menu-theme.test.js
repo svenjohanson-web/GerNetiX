@@ -13,9 +13,9 @@ const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
   .join("\n");
 
 test("main menu uses the shared dark typography and states", () => {
-  assert.match(css, /\.app-menu\s*\{[\s\S]*?background: #111827/);
+  assert.match(css, /\.app-menu\s*\{[\s\S]*?background: var\(--surface-panel\)/);
   assert.match(css, /\.app-menu a,[\s\S]*?font-family: inherit;[\s\S]*?font-size: 15px/);
-  assert.match(css, /\.app-menu a\.active[\s\S]*?background: #164e63/);
+  assert.match(css, /\.app-menu a\.active[\s\S]*?background: var\(--accent-soft\)/);
   assert.match(css, /\.app-menu \.menu-logout[\s\S]*?color: #fca5a5/);
 });
 
@@ -37,10 +37,6 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
 });
 
-test("invalidates cached route assets when guided learning changes", () => {
-  assert.match(html, /app-shell-controller\.js\?v=20260812-knowledge-library-3/);
-  assert.match(html, /app\.js\?v=20260808-reference-library-route-2/);
-});
 
 test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {
   const group = authenticatedGroup("platform.menu.learn_develop");
@@ -64,7 +60,7 @@ test("puts learning, development, quiz, knowledge, community and rebuild project
 test("keeps Help, Messages and the session action permanently outside collapsible hamburger groups", () => {
   const fixed = navigationModel.authenticated.fixed;
   assert.deepEqual(Array.from(fixed.filter((item) => !item.contexts || item.contexts.includes("app")), (item) => item.id), [
-    "helpMenuLink", "messagesMenuLink", "loginMenuLink", "logoutButton",
+    "helpMenuLink", "welcomeGuideMenuButton", "messagesMenuLink", "loginMenuLink", "logoutButton",
   ]);
   assert.equal(fixed.filter((item) => item.href === "/hilfe/").length, 1);
   assert.equal(authenticatedItem("helpMenuLink").className, "utility public-information-link menu-fixed-action");

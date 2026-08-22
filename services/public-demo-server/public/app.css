@@ -1,4 +1,8 @@
-:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; --bg:#07111e; --panel:#10233a; --line:#28516f; --text:#eef7ff; --muted:#aac1d3; --accent:#58e1ed; }
+:root { font-family: Inter, system-ui, sans-serif; }
+/* Helles Design kommt aus dem :root-Basiswert in landing.css. Dieser Block
+   setzt nur noch die markentypischen Farben fuer den dunklen Zustand, statt
+   sie bedingungslos zu erzwingen und den globalen Umschalter zu ueberschreiben. */
+html[data-public-theme="dark"] { color-scheme: dark; --bg:#07111e; --panel:#10233a; --line:#28516f; --text:#eef7ff; --muted:#aac1d3; --accent:#58e1ed; }
 * { box-sizing: border-box; } body { margin:0; min-height:100vh; color:var(--text); background:radial-gradient(circle at 80% 4%, #16486a 0, transparent 32rem), var(--bg); }
 .shell { width:calc(100% - 36px); margin:auto; }.topbar { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 16px; background:linear-gradient(105deg,#123d65,#10243b 72%); border:1px solid var(--line); border-top:0; border-radius:0 0 16px 16px; }
 .brand { display:inline-flex; align-items:center; text-decoration:none; }.brand-wordmark-image { display:block; width:min(270px,58vw); height:auto; border-radius:7px; }.eyebrow,em { color:var(--accent); }.topbar-context { color:#c6e8ff; font-size:.72rem; font-weight:800; letter-spacing:.17em; text-transform:uppercase; }.login-link { color:var(--text); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:10px 16px; }

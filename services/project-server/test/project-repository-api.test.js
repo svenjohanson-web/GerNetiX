@@ -4,11 +4,19 @@ const assert = require("node:assert/strict");
 const { PassThrough } = require("node:stream");
 const test = require("node:test");
 const { createHttpApp } = require("../src/http-app");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+
+const secret = "project-api-contract-secret";
+const serviceToken = issueInternalToken({ iss: "identity-server", sub: "identity-server", aud: "project-server", scopes: ["project.read", "project.write"] }, secret);
+const delegation = issueInternalToken({
+  iss: "identity-server", sub: "identity-server", aud: "project-server", kind: "delegated_user_action",
+  scopes: ["project.read", "project.write"], context: { account_id: "account-1", project_ids: ["p1"] },
+}, secret);
 
 test("routes fixed-commit reads rename delete history diff and restore through the Project Server API", async () => {
   const calls = [];
   const service = new Proxy({}, { get: (_target, method) => async (...args) => { calls.push({ method: String(method), args }); return { method: String(method) }; } });
-  const app = createHttpApp({ service });
+  const app = createHttpApp({ service, internalAuthSecret: secret });
   const sha = "a".repeat(40);
 
   await request(app, `/api/projects/p1/sources?commit_sha=${sha}`);
@@ -37,7 +45,11 @@ async function request(app, url, method = "GET", body = null) {
   const req = new PassThrough();
   req.method = method;
   req.url = url;
-  req.headers = { host: "project-server.test" };
+  req.headers = {
+    host: "project-server.test",
+    authorization: `Bearer ${serviceToken}`,
+    "x-gernetix-project-delegation": delegation,
+  };
   const response = await new Promise((resolve, reject) => {
     const res = {
       status: 0,

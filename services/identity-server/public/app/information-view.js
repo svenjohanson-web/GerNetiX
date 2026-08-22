@@ -1,3 +1,18 @@
+import { ApiClient } from "@app/api-client.js";
+import { DomUtils } from "@app/dom-utils.js";
+import { HelpChatService } from "@app/help-chat-service.js";
+import { HelpContent } from "@app/help-content.js";
+/*
+ * KnowledgeContent wird hier bewusst NICHT eingefuehrt.
+ *
+ * Diese Datei wird beim Start geladen; der Wissensinhalt erst, wenn das
+ * Wissensportal geoeffnet wird. Ein import waere eine feste Abhaengigkeit und
+ * zoege ihn auf jede Seite mit -- unsichtbar, weil dann alles weiter
+ * funktioniert, nur langsamer. Der Zugriff bleibt darum ueber den globalen
+ * Namensraum, den knowledge-content.js mit einer Bruecke bedient.
+ */
+import { navigate } from "@app/platform-routing.js";
+
 const InformationView = (() => {
   let selectedTopicId = "quick-start";
   let messages = [];
@@ -612,7 +627,7 @@ const InformationView = (() => {
         return;
       }
       const route = event.target.closest("[data-help-route]");
-      if (route) window.navigate(route.dataset.helpRoute);
+      if (route) navigate(route.dataset.helpRoute);
     });
     mount.addEventListener("submit", async (event) => {
       if (event.target.id !== "helpChatForm") return;
@@ -655,7 +670,7 @@ const InformationView = (() => {
     if (!topic?.articleId) return;
     const targetSurface = targetContent === KnowledgeContent ? "knowledge" : "help";
     if (targetSurface !== surface) {
-      window.navigate(`${targetSurface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
+      navigate(`${targetSurface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
       return;
     }
     selectedTopicId = topicId;
@@ -667,7 +682,7 @@ const InformationView = (() => {
     const content = findContentForTopic(topicId);
     const topic = content?.findTopic(topicId);
     if (content === KnowledgeContent && topic?.articleId) {
-      window.navigate(`/wissen/#${topicId}`);
+      navigate(`/wissen/#${topicId}`);
       return;
     }
     const article = topic?.articleId ? content.articles[topic.articleId] : null;
@@ -693,7 +708,7 @@ const InformationView = (() => {
     dialog.querySelectorAll("[data-help-route]").forEach((button) => {
       button.addEventListener("click", () => {
         dialog.close();
-        window.navigate(button.dataset.helpRoute);
+        navigate(button.dataset.helpRoute);
       });
     });
     if (!dialog.open) dialog.showModal();
@@ -719,3 +734,7 @@ const InformationView = (() => {
 
   return { render, selectTopic, openDialog };
 })();
+
+export {
+  InformationView,
+};

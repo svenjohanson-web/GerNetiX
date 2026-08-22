@@ -1,0 +1,71 @@
+# Ausschliesslich fuer den synthetischen Backup-/Restore-Nachweis der
+# Kundendaten-Sicherung. Die Dienstnamen entsprechen absichtlich denen aus
+# compose.vps.yaml, weil der backup-orchestrator sie so anspricht. Es werden
+# nur neue, projektgebundene Volumes verwendet; kein Bezug zu einer echten
+# GerNetiX-Umgebung.
+services:
+  runtime-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gernetix_runtime
+      POSTGRES_USER: gernetix_runtime
+      POSTGRES_PASSWORD: ${BACKUP_TEST_POSTGRES_PASSWORD:?synthetisches Testpasswort fehlt}
+      FORGEJO_POSTGRES_PASSWORD: ${BACKUP_TEST_FORGEJO_POSTGRES_PASSWORD:?synthetisches Testpasswort fehlt}
+    volumes:
+      - runtime_postgres_data:/var/lib/postgresql/data
+      - ./backup/e2e-init-databases.sh:/docker-entrypoint-initdb.d/10-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_runtime -d gernetix_runtime"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.6-rootless
+    user: "1000:1000"
+    read_only: true
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: runtime-postgres:5432
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: forgejo
+      FORGEJO__database__PASSWD: ${BACKUP_TEST_FORGEJO_POSTGRES_PASSWORD:?synthetisches Testpasswort fehlt}
+      FORGEJO__database__SSL_MODE: disable
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__security__SECRET_KEY: ${BACKUP_TEST_SECRET_KEY:?synthetischer Testschluessel fehlt}
+      FORGEJO__security__INTERNAL_TOKEN: ${BACKUP_TEST_INTERNAL_TOKEN:?synthetischer Testtoken fehlt}
+      FORGEJO__server__ROOT_URL: http://forgejo:3000/
+      FORGEJO__server__HTTP_PORT: 3000
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_USER: "false"
+      FORGEJO__actions__ENABLED: "false"
+    ports:
+      - "127.0.0.1::3000"
+    volumes:
+      - forgejo_data:/var/lib/gitea
+    tmpfs:
+      - /tmp
+    depends_on:
+      runtime-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/healthz"]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+
+  # Haelt das Volume mit dem Artifact Store. Der Orchestrator spricht diesen
+  # Dienst nur ueber `compose run` an; er muss dafuer nicht laufen.
+  public-demo-server:
+    image: alpine:3.20
+    command: ["sleep", "infinity"]
+    volumes:
+      - build_state:/var/lib/gernetix/build
+
+volumes:
+  runtime_postgres_data:
+  forgejo_data:
+  build_state:

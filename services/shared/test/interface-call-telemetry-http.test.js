@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createInterfaceCallTelemetry } = require("../persistence/interface-call-telemetry");
+const { verifyInternalToken } = require("../internal-api-auth");
 
 test("forwards interface telemetry to the central Operations endpoint", async () => {
   const originalFetch = global.fetch;
@@ -14,7 +15,7 @@ test("forwards interface telemetry to the central Operations endpoint", async ()
   try {
     createInterfaceCallTelemetry({
       endpoint: "http://admin-tool:4600/api/internal/interface-calls",
-      token: "secret",
+      internalApiSigningKey: "secret",
       sourceService: "identity-server",
     }).record({
       targetService: "project-server",
@@ -28,7 +29,7 @@ test("forwards interface telemetry to the central Operations endpoint", async ()
     });
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(request.url, "http://admin-tool:4600/api/internal/interface-calls");
-    assert.equal(request.options.headers["x-gernetix-system-event-token"], "secret");
+    verifyInternalToken(request.options.headers.Authorization.replace(/^Bearer\s+/, ""), "secret", { audience: "admin-tool", requiredScopes: ["operations.interface_calls.write"] });
     const body = JSON.parse(request.options.body);
     assert.equal(body.source_service, "identity-server");
     assert.equal(body.route, "/api/projects");

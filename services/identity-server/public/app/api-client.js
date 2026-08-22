@@ -83,3 +83,5 @@ const ApiClient = (() => {
     putJson,
   };
 })();
+
+export { ApiClient };

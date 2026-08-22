@@ -62,6 +62,7 @@ class SqliteOtaAcknowledgementStore {
       ON CONFLICT(deploy_id) DO UPDATE SET status=excluded.status, acknowledged_at=COALESCE(excluded.acknowledged_at,build_deploy_ota_acknowledgements.acknowledged_at), detail_json=excluded.detail_json`)
       .run(entry.deploy_id, entry.device_id, entry.status, entry.published_at || null, entry.acknowledged_at || null, JSON.stringify(entry));
   }
+  close() { this.db.close(); }
 }
 
 class PostgresOtaAcknowledgementStore {

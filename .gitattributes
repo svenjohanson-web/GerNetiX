@@ -1,0 +1,34 @@
+# Zeilenenden verbindlich fuer alle Arbeitsplaetze festlegen.
+#
+# Ohne diese Datei haengt die Normalisierung allein an core.autocrlf jedes
+# einzelnen Rechners. Ein Commit von einem Arbeitsplatz ohne diese Einstellung
+# schreibt CRLF ins Repository. Shell-Skripte und Docker-Entrypoints sind damit
+# auf Linux unbrauchbar: aus "#!/bin/bash" wird "#!/bin/bash\r" und der Kernel
+# meldet "bad interpreter". Betroffen waeren unter anderem
+# infra/vps/nginx/build-router-entrypoint.sh und tools/*.sh in der CI.
+#
+# Der Workspace wird auf Windows, macOS und Linux verwendet. LF ist deshalb die
+# einheitliche Norm, im Repository wie im Arbeitsverzeichnis.
+
+* text=auto eol=lf
+
+# Windows-Batch braucht CRLF, sonst brechen mehrzeilige Konstrukte.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binaerdateien nie umschreiben.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.pdf binary
+*.zip binary
+*.gz binary
+*.stl binary
+*.sqlite binary
+*.bin binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

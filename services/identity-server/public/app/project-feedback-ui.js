@@ -1,3 +1,5 @@
+import { escapeHtml, postJson } from "@app/app-runtime-utils.js";
+
 const ProjectFeedbackUI = (() => {
   function open({ subjectType, subjectId, title, kind = "rating" }) {
     document.querySelector("#projectFeedbackDialog")?.remove();
@@ -50,3 +52,17 @@ const ProjectFeedbackUI = (() => {
 
   return { open };
 })();
+
+export {
+  ProjectFeedbackUI,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, development-platform.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  ProjectFeedbackUI,
+});
+/* ---- /Uebergangsbruecke ---- */

@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 function createConfig(env = process.env) {
   return {
@@ -15,7 +16,8 @@ function createConfig(env = process.env) {
       password: env.ADMIN_ACCESS_POSTGRES_PASSWORD || "",
     },
     adminToolBaseUrl: env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600",
-    adminToolAccessToken: env.ADMIN_TOOL_ACCESS_TOKEN || "",
+    contextManagerBaseUrl: env.CONTEXT_MANAGER_BASE_URL || "http://127.0.0.1:5050",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "admin-access-server"),
     bootstrapUsername: env.ADMIN_BOOTSTRAP_USERNAME || "",
     bootstrapPassword: env.ADMIN_BOOTSTRAP_PASSWORD || "",
     sessionHours: Math.max(1, Math.min(24, Number(env.ADMIN_SESSION_HOURS || 8))),

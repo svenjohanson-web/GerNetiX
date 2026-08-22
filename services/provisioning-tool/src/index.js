@@ -34,6 +34,7 @@ function createDefaultProvisioningTool(config = createConfig()) {
     firmwareArtifactStore,
     hardwareCatalog: new HardwareCatalogClient({ baseUrl: config.hardwareCatalogBaseUrl }),
     deviceManagementBaseUrl: config.deviceManagementBaseUrl,
+    internalApiSigningKey: config.internalApiSigningKey,
     registerDeviceOnComplete: config.registerDeviceOnComplete,
     allowFirmwareArtifactAdminWrite: config.allowFirmwareArtifactAdminWrite,
     generatedProvisioningHeaderPath: config.generatedProvisioningHeaderPath,

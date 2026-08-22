@@ -1,4 +1,20 @@
 // GerNetiX platform module extracted from app.js.
+import { renderAiRating } from "@app/app-billing-controller.js";
+import { accountDevelopmentProjects, personalApplications, renderLearn } from "@app/app-project-controller.js";
+import { escapeAttribute, escapeHtml, getJson, summaryItem } from "@app/app-runtime-utils.js";
+import { DASHBOARD_STALE_EVENT, developmentPlatform, learningProject } from "@app/platform-components.js";
+import { routeName } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+
+/*
+ * Die beiden laufenden Katalogabrufe. Sie lagen kurzzeitig im gemeinsamen
+ * Zustand, weil sie urspruenglich aus app.js stammten. Gelesen und geschrieben
+ * werden sie aber nur hier, also sind sie kein geteilter Zustand, sondern die
+ * Entprellung dieser Datei.
+ */
+let boardFeatureCatalogLoadPromise = null;
+let processorBoardCatalogLoadPromise = null;
+
 async function loadDevicePageTools() {
   await loadProcessorBoardCatalog();
   await loadBoardFeatureCatalog();
@@ -99,7 +115,7 @@ function renderDashboard() {
   const applications = personalApplications();
   const applicationsText = document.querySelector("#dashboardApplicationsText");
   if (applicationsText) {
-    applicationsText.textContent = platformI18n?.t(
+    applicationsText.textContent = state.i18n?.t(
       applications.length === 0 ? "dashboard.applications.zero" : applications.length === 1 ? "dashboard.applications.one" : "dashboard.applications.count",
       { count: applications.length },
       applications.length === 0 ? "Noch keine persönliche Anwendung eingerichtet." : applications.length === 1 ? "1 persönliche Anwendung öffnen." : `${applications.length} persönliche Anwendungen öffnen.`,
@@ -113,7 +129,9 @@ function renderDashboard() {
     pushProjectSelect.value = developmentProjects.some((project) => project.id === state.activeProjectId) ? state.activeProjectId : developmentProjects[0]?.id || "";
   }
   document.querySelector("#dashboardSummary").innerHTML = [
-    ["Account", state.account.username],
+    // Ohne geladene Plattformdaten bleibt account leer. Seit die Oberflaeche
+    // einen Fehlstart ueberlebt, wird hier auch dann gerendert.
+    ["Account", state.account?.username || "—"],
     ["Entwicklungsprojekte", developmentProjects.length],
     ["Anwendungen", applications.length],
     ["Geräte", state.devices.length],
@@ -133,14 +151,14 @@ function renderKnowledgeUpdates() {
     const badgeKey = updates.length === 1 ? "platform.nav.new" : "platform.nav.new_count";
     const badgeFallback = updates.length === 1 ? "Neu" : `Neu · ${updates.length}`;
     menuBadge.textContent = updates.length
-      ? (platformI18n?.t(badgeKey, { count: updates.length }, badgeFallback) || badgeFallback)
+      ? (state.i18n?.t(badgeKey, { count: updates.length }, badgeFallback) || badgeFallback)
       : "";
   }
   renderDashboardNews();
 }
 
 function dashboardNewsItems() {
-  const translate = (key, variables, fallback) => platformI18n?.t(key, variables, fallback) || fallback;
+  const translate = (key, variables, fallback) => state.i18n?.t(key, variables, fallback) || fallback;
   return (state.knowledgeUpdates || []).map((update) => ({
     id: `knowledge:${update.chapter_id}:${update.version}`,
     category: translate("dashboard.news.knowledge.category", {}, "Wissensspeicher"),
@@ -154,7 +172,7 @@ function dashboardNewsItems() {
 function renderDashboardNews() {
   const target = document.querySelector("#dashboardNewsList");
   if (!target) return;
-  const emptyText = platformI18n?.t(
+  const emptyText = state.i18n?.t(
     "dashboard.news.empty",
     {},
     "Aktuell gibt es keine ungelesenen Neuigkeiten. Neue Veröffentlichungen erscheinen künftig an dieser Stelle.",
@@ -243,3 +261,15 @@ function renderDashboardMessageOverview(summary) {
       <button type="button" data-dashboard-community-route="/app/messages/">Nachrichten öffnen →</button>
     </section>`;
 }
+
+// Gegenstueck zur Meldung aus dem Build-Controller.
+window.addEventListener(DASHBOARD_STALE_EVENT, () => renderDashboard());
+
+export {
+  loadBoardFeatureCatalog,
+  loadDevicePageTools,
+  loadProcessorBoardCatalog,
+  loadSensorCatalog,
+  renderDashboard,
+  renderKnowledgeUpdates,
+};

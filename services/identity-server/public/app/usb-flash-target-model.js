@@ -24,3 +24,17 @@ const UsbFlashTargetModel = (() => {
 
 globalThis.UsbFlashTargetModel = UsbFlashTargetModel;
 if (typeof module !== "undefined") module.exports = UsbFlashTargetModel;
+
+export {
+  UsbFlashTargetModel,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-device-build-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  UsbFlashTargetModel,
+});
+/* ---- /Uebergangsbruecke ---- */

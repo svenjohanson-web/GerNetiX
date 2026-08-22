@@ -10,7 +10,7 @@ async function bootstrap() {
     service.cleanupExpiredDebugSessions().catch((error) => console.error("Debug-Session-Bereinigung fehlgeschlagen:", error.message));
   }, 15 * 60 * 1000);
   debugSessionCleanupTimer.unref();
-  const app = createHttpApp({ service, adminReadToken: config.adminReadToken });
+  const app = createHttpApp({ service, internalAuthSecret: config.internalAuthSecret });
 
   const server = http.createServer((req, res) => {
     app(req, res).catch((error) => {

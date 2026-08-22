@@ -40,13 +40,17 @@ test("loads the hardware assistant AI rating without waiting for the platform su
   const response = await dispatch(createService(), {
     method: "GET",
     pathname: "/api/platform/hardware-lab/ai-usage",
-    aiUsageJson: async (path) => {
-      requested.push(path);
+    aiUsageJson: async (path, options) => {
+      requested.push({ path, options });
       return { used_percent: 12, sources: [{ source_id: "openai_gpt", month_tokens: 120 }] };
     },
   });
   assert.equal(response.status, 200);
-  assert.deepEqual(requested, ["/api/ai-usage/accounts/acct-owner/rating"]);
+  assert.equal(requested[0].path, "/api/ai-usage/accounts/acct-owner/rating");
+  assert.deepEqual(requested[0].options.internalAuth, {
+    scopes: ["ai.usage.read"],
+    delegation: { account_id: "acct-owner", project_ids: [], entitlements: [] },
+  });
   assert.equal(response.payload.rating.used_percent, 12);
 });
 

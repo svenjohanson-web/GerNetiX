@@ -26,38 +26,99 @@ ensure_staging_secret() {
   echo "    $secret_name: fehlenden Staging-Wert sicher erzeugt"
 }
 
-repair_concatenated_hex_secret() {
-  secret_name=$1
-  repair_file="${env_file}.repair.$$"
-  awk -v secret_name="$secret_name" '
-    {
-      marker = secret_name "="
-      marker_position = index($0, marker)
-      if (marker_position > 1) {
-        secret_value = substr($0, marker_position + length(marker))
-        if (length(secret_value) == 64 && secret_value ~ /^[0-9a-f]+$/) {
-          print substr($0, 1, marker_position - 1)
-          print substr($0, marker_position)
-          repaired = 1
-          next
-        }
-      }
-      print
-    }
-    END { exit repaired ? 0 : 3 }
-  ' "$env_file" > "$repair_file" || repair_status=$?
-  repair_status=${repair_status:-0}
-  if [ "$repair_status" -eq 0 ]; then
-    chmod 600 "$repair_file"
-    mv "$repair_file" "$env_file"
-    echo "    $secret_name: zusammengefuehrte Staging-Zeile repariert"
-  else
-    rm -f "$repair_file"
-    if [ "$repair_status" -ne 3 ]; then
-      echo "Staging-Env konnte fuer $secret_name nicht geprueft werden." >&2
-      exit "$repair_status"
-    fi
+append_staging_value() {
+  value_name=$1
+  value=$2
+  if [ -s "$env_file" ] && [ -n "$(tail -c 1 "$env_file")" ]; then
+    printf '\n' >> "$env_file"
   fi
+  printf '%s=%s\n' "$value_name" "$value" >> "$env_file"
+}
+
+# Prueft eine bereits verteilte Schluesselkonfiguration kryptografisch. Ein
+# Deployment darf einen ungueltigen Bestand weder akzeptieren noch selbst
+# ersetzen: eine Rotation bleibt ein ausdruecklicher, getrennter Vorgang.
+verify_internal_api_keyset() {
+  env_path=$(cd "$(dirname "$env_file")" && pwd)/$(basename "$env_file")
+  if docker run --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    -v "$repo_dir:/app:ro" \
+    -v "$env_path:/verify/env:ro" \
+    -w /app \
+    node:24-bookworm-slim \
+    node tools/internal-api-key-provisioner/index.js --verify-env /verify/env; then
+    return
+  fi
+  echo "Die vorhandene interne API-Schluesselkonfiguration ist ungueltig." >&2
+  echo "Ein Deployment rotiert grundsaetzlich keine Schluessel. Erzeuge einen neuen," >&2
+  echo "zusammengehoerigen Satz ausdruecklich mit tools/internal-api-key-provisioner" >&2
+  echo "und verteile ihn kontrolliert, bevor erneut deployed wird." >&2
+  exit 1
+}
+
+ensure_internal_api_keyset() {
+  key_version=${INTERNAL_API_KEY_VERSION:-2026-08}
+  key_dir=${GERNETIX_INTERNAL_API_KEY_DIR:-/var/lib/gernetix/internal-api-keys/$key_version}
+  required_names="INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON IDENTITY_INTERNAL_API_SIGNING_KEY_ID IDENTITY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 ADMIN_TOOL_INTERNAL_API_SIGNING_KEY_ID ADMIN_TOOL_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 ADMIN_ACCESS_INTERNAL_API_SIGNING_KEY_ID ADMIN_ACCESS_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 BUILD_DEPLOY_INTERNAL_API_SIGNING_KEY_ID BUILD_DEPLOY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 TELEMETRY_INTERNAL_API_SIGNING_KEY_ID TELEMETRY_INTERNAL_API_SIGNING_PRIVATE_KEY_B64 DEVICE_VOICE_INTERNAL_API_SIGNING_KEY_ID DEVICE_VOICE_INTERNAL_API_SIGNING_PRIVATE_KEY_B64"
+  configured_count=0
+  required_count=0
+  for value_name in $required_names; do
+    required_count=$((required_count + 1))
+    if grep -q "^${value_name}=." "$env_file"; then configured_count=$((configured_count + 1)); fi
+  done
+  if [ "$configured_count" -eq "$required_count" ]; then
+    verify_internal_api_keyset
+    return
+  fi
+  if [ "$configured_count" -ne 0 ]; then
+    echo "Interne API-Schluessel sind nur teilweise konfiguriert; automatische Vermischung wird abgebrochen." >&2
+    exit 1
+  fi
+
+  if [ ! -d "$key_dir" ]; then
+    install -d -m 0700 "$(dirname "$key_dir")"
+    key_parent=$(dirname "$key_dir")
+    docker run --rm \
+      --network none \
+      --read-only \
+      --cap-drop ALL \
+      --security-opt no-new-privileges:true \
+      -v "$repo_dir:/app:ro" \
+      -v "$key_parent:/keys" \
+      -w /app \
+      node:24-bookworm-slim \
+      node tools/internal-api-key-provisioner/index.js --output "/keys/$key_version" --version "$key_version"
+  fi
+  [ -s "$key_dir/public-trust-ring.json" ] || {
+    echo "Fehlender oeffentlicher interner API-Trust-Ring" >&2
+    exit 1
+  }
+  for issuer in identity-server admin-tool admin-access-server build-deploy-server telemetry-server device-voice-orchestrator; do
+    [ -s "$key_dir/private/$issuer.pkcs8.der.b64" ] || {
+      echo "Fehlender privater interner API-Schluessel fuer $issuer" >&2
+      exit 1
+    }
+  done
+  trust_ring=$(tr -d '\r\n' < "$key_dir/public-trust-ring.json")
+  append_staging_value INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON "$trust_ring"
+  for mapping in \
+    "IDENTITY:identity-server" \
+    "ADMIN_TOOL:admin-tool" \
+    "ADMIN_ACCESS:admin-access-server" \
+    "BUILD_DEPLOY:build-deploy-server" \
+    "TELEMETRY:telemetry-server" \
+    "DEVICE_VOICE:device-voice-orchestrator"; do
+    prefix=${mapping%%:*}
+    issuer=${mapping#*:}
+    private_file="$key_dir/private/$issuer.pkcs8.der.b64"
+    append_staging_value "${prefix}_INTERNAL_API_SIGNING_KEY_ID" "${issuer}-${key_version}"
+    append_staging_value "${prefix}_INTERNAL_API_SIGNING_PRIVATE_KEY_B64" "$(tr -d '\r\n' < "$private_file")"
+  done
+  chmod 600 "$env_file"
+  echo "    Interne API-Schluessel: getrennte Ed25519-Aussteller sicher provisioniert"
 }
 
 compose() {
@@ -120,16 +181,18 @@ wait_for_private_pwa() {
 }
 
 reload_edge() {
+  # Git ersetzt bind-gemountete Konfigurationsdateien atomar. Ein nginx reload
+  # im bestehenden Container wuerde deshalb weiterhin den alten Inode sehen.
+  # Nur die beiden zustandslosen Edge-Container werden gezielt neu erstellt.
+  compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls
   nginx_container=$(compose ps -q nginx)
   nginx_tls_container=$(compose --profile tls ps -q nginx-tls)
   if [ -z "$nginx_container" ] || [ -z "$nginx_tls_container" ]; then
-    echo "Nginx oder Nginx-TLS laeuft nicht; gezieltes Reload wird sicher abgebrochen." >&2
+    echo "Nginx oder Nginx-TLS wurde nicht neu erstellt; Edge-Aktualisierung wird sicher abgebrochen." >&2
     return 1
   fi
   docker exec "$nginx_container" nginx -t >/dev/null
   docker exec "$nginx_tls_container" nginx -t >/dev/null
-  docker exec "$nginx_container" nginx -s reload
-  docker exec "$nginx_tls_container" nginx -s reload
   wait_for_private_pwa
 }
 
@@ -167,9 +230,21 @@ else
 '
   for changed_file in $changed_files; do
     case "$changed_file" in
-      docs/*|data/*|model/*|tools/architecture-docs/*|tools/yaml-graph-sqlite/out/*|.github/*|README.md|AGENTS.md)
+      docs/*|data/*|model/*|tools/architecture-docs/*|tools/code-dependency-graph/*|tools/yaml-graph-sqlite/out/*|.github/*|.claude/*|README.md|AGENTS.md)
         ;;
       services/*/test/*|*.test.js)
+        ;;
+      # Naehte zwischen Diensten. Diese Muster muessen vor den allgemeinen
+      # Verzeichniszeilen stehen, sonst greift zuerst die weniger genaue.
+      # Sie entsprechen additionalServicesByFile in tools/staging-deploy.js;
+      # staging-deploy.test.js vergleicht beide Listen miteinander.
+      services/identity-server/public/app/development-component-metamodel.js)
+        add_incremental_service identity-server
+        add_incremental_service admin-tool
+        ;;
+      services/build-deploy-server/src/modules/mqtt-transport.js)
+        add_incremental_service build-deploy-server
+        add_incremental_service telemetry-server
         ;;
       services/identity-server/*) add_incremental_service identity-server ;;
       services/project-server/*) add_incremental_service project-server ;;
@@ -178,7 +253,13 @@ else
       services/public-demo-server/*) add_incremental_service public-demo-server ;;
       services/device-management-server/*) add_incremental_service device-management-server ;;
       services/telemetry-server/*) add_incremental_service telemetry-server ;;
-      services/hardware-catalog/*) add_incremental_service hardware-catalog ;;
+      # hardware-shop bindet den Einstiegspunkt von hardware-catalog ein und
+      # haengt damit an dessen ganzem Baum -- entspricht
+      # additionalServicesByDirectory in tools/staging-deploy.js.
+      services/hardware-catalog/*)
+        add_incremental_service hardware-catalog
+        add_incremental_service hardware-shop
+        ;;
       services/hardware-shop/*) add_incremental_service hardware-shop ;;
       services/ai-usage-server/*) add_incremental_service ai-usage-server ;;
       services/device-voice-orchestrator/*) add_incremental_service device-voice-orchestrator ;;
@@ -287,14 +368,12 @@ fi
 
 begin_phase "Fehlende Staging-Secrets provisionieren"
 chmod 600 "$env_file"
-repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN
-ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
+ensure_internal_api_keyset
 ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
 ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
 ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex
 ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex
 ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64
-ensure_staging_secret PROJECT_ADMIN_READ_TOKEN hex
 ensure_staging_secret FORGEJO_POSTGRES_PASSWORD hex
 ensure_staging_secret FORGEJO_SECRET_KEY hex
 ensure_staging_secret FORGEJO_INTERNAL_TOKEN hex
@@ -347,7 +426,7 @@ if [ "$deploy_mode" = "incremental" ]; then
       ;;
   esac
   if [ "$edge_changed" -eq 1 ]; then
-    begin_phase "HTTP- und HTTPS-Nginx validieren und ohne Containerwechsel neu laden"
+    begin_phase "HTTP- und HTTPS-Nginx mit aktuellen Bind-Mounts neu erstellen"
     reload_edge
   fi
 
@@ -365,7 +444,7 @@ if [ "$deploy_mode" = "targeted-infrastructure" ]; then
     apply_host_firewall
   fi
   if [ "$edge_changed" -eq 1 ]; then
-    begin_phase "HTTP- und HTTPS-Nginx validieren und ohne Containerwechsel neu laden"
+    begin_phase "HTTP- und HTTPS-Nginx mit aktuellen Bind-Mounts neu erstellen"
     reload_edge
   fi
   exit 0

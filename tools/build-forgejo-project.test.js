@@ -5,13 +5,33 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
-const { configureDirectEnvironment, createBuildPackageFiles, loadBuildManifest, normalizeUploadPort, selectTargets, validatePackage } = require("./build-forgejo-project");
+const { configureDirectEnvironment, createBuildPackageFiles, loadBuildManifest, normalizeUploadPort, resolveBuildCacheRoot, resolvePlatformioCoreDir, selectTargets, validatePackage } = require("./build-forgejo-project");
 
 test("accepts one worker-style PlatformIO build package", () => {
   assert.doesNotThrow(() => validatePackage({ id: "camera_sender" }, {
     "platformio.ini": "[env:camera]\nplatform = espressif32\n",
     "src/main.cpp": "void app_main() {}\n",
   }));
+});
+
+test("allows a short external cache root for Windows toolchain path limits", () => {
+  const repositoryRoot = path.resolve("deep", "forgejo", "checkout", "nexi");
+  const configured = path.resolve(".runtime", "nexi-build");
+  assert.equal(resolveBuildCacheRoot(repositoryRoot, { cliValue: configured }), configured);
+  assert.equal(resolveBuildCacheRoot(repositoryRoot, { envValue: configured }), configured);
+  if (process.platform === "win32") {
+    const repositoryName = path.basename(repositoryRoot).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 16) || "nexi";
+    const driveRoot = path.parse(repositoryRoot).root;
+    assert.equal(resolveBuildCacheRoot(repositoryRoot), path.join(driveRoot, "g", "gernetix-build", repositoryName));
+  } else {
+    assert.equal(resolveBuildCacheRoot(repositoryRoot), path.join(repositoryRoot, ".gernetix-build"));
+  }
+});
+
+test("reuses the existing PlatformIO tool cache independently from the short build cache", () => {
+  const buildCache = path.resolve("short", "build-cache");
+  const configuredCore = path.resolve("shared", "platformio-core");
+  assert.equal(resolvePlatformioCoreDir(buildCache, { envValue: configuredCore }), configuredCore);
 });
 
 test("rejects historical source paths outside the materialized worker package", () => {
@@ -59,6 +79,7 @@ test("isolates a direct Arduino target below its component source root", async (
   await fs.mkdir(path.join(root, "Komponenten", "ESP32", "src"), { recursive: true });
   await fs.writeFile(path.join(root, "Komponenten", "Arduino", "platformio.ini"), "[env:nanoatmega328]\nplatform = atmelavr\n");
   await fs.writeFile(path.join(root, "Komponenten", "Arduino", "src", "main.cpp"), "void setup() {}\nvoid loop() {}\n");
+  await fs.writeFile(path.join(root, "Komponenten", "Arduino", "src", "prompt.pcm8"), Buffer.from([0, 127, 255]));
   await fs.writeFile(path.join(root, "Komponenten", "ESP32", "platformio.ini"), "[env:esp32dev]\nplatform = espressif32\n");
   await fs.writeFile(path.join(root, "Komponenten", "ESP32", "src", "main.cpp"), "#error wrong target\n");
 
@@ -69,7 +90,9 @@ test("isolates a direct Arduino target below its component source root", async (
     environment: "nanoatmega328",
   });
 
-  assert.deepEqual(Object.keys(files).sort(), ["platformio.ini", "src/main.cpp"]);
+  assert.deepEqual(Object.keys(files).sort(), ["platformio.ini", "src/main.cpp", "src/prompt.pcm8"]);
+  assert.equal(typeof files["src/main.cpp"], "string");
+  assert.deepEqual(files["src/prompt.pcm8"], { base64: Buffer.from([0, 127, 255]).toString("base64") });
   assert.match(String(files["platformio.ini"]), /default_envs = nanoatmega328/);
   await fs.rm(root, { recursive: true, force: true });
 });

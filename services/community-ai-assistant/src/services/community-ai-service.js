@@ -19,6 +19,7 @@ class CommunityAiService {
     const model = input.model || this.defaultModel;
     const estimatedInputTokens = estimateTokens(question) + 900;
     const estimatedOutputTokens = Number(input.estimated_output_tokens || 500);
+    const delegationContext = input._internal_auth_context || {};
     const preflight = await this.aiUsageClient.preflight({
       account_id: required(input.account_id, "account_id"),
       user_id: input.user_id || input.account_id,
@@ -28,7 +29,7 @@ class CommunityAiService {
       estimated_input_tokens: estimatedInputTokens,
       estimated_output_tokens: estimatedOutputTokens,
       system_capabilities: input.system_capabilities || ["system_capability.community_ai_assistant"],
-    });
+    }, delegationContext);
     if (!preflight.allowed) return this.recordBlocked(input, { reason: preflight.rejection_reason, protection_action: preflight.protection_action }, preflight);
 
     const sources = await this.retrieveSources(question, config);
@@ -40,7 +41,7 @@ class CommunityAiService {
     const completed = await this.aiUsageClient.complete(preflight.event_id, {
       input_tokens: estimatedInputTokens,
       output_tokens: estimateTokens(answer),
-    });
+    }, delegationContext);
     const query = {
       query_id: createId("community_ai_query"),
       account_id: input.account_id,

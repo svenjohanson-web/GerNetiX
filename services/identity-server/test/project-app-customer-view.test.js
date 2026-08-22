@@ -14,9 +14,11 @@ function read(relativePath) {
 
 test("wires the generic Project-App into the authenticated platform shell", () => {
   const app = read("public/app/app.js");
+  // routeMap liegt seit der Entflechtung bei den Routing-Primitiven.
+  const routing = read("public/app/platform-routing.js");
   const shell = read("public/app/app-shell-controller.js");
   const html = read("public/app/index.html");
-  assert.match(app, /"project-app": "projectAppView"/);
+  assert.match(routing, /"project-app": "projectAppView"/);
   assert.match(shell, /projectApp\(\)\.render/);
   assert.match(html, /id="projectAppView"/);
   assert.doesNotMatch(html, /<script[^>]+project-app-renderer\.js/);
@@ -45,10 +47,12 @@ test("offers the Project-App only for personal projects that contain its manifes
 
 test("presents personal application instances as their own main area", () => {
   const app = read("public/app/app.js");
+  // routeMap liegt seit der Entflechtung bei den Routing-Primitiven.
+  const routing = read("public/app/platform-routing.js");
   const html = read("public/app/index.html");
   const controller = read("public/app/app-project-controller.js");
   const shell = read("public/app/app-shell-controller.js");
-  assert.match(app, /applications: "applicationsView"/);
+  assert.match(routing, /applications: "applicationsView"/);
   assert.equal(authenticatedItem("/app/applications/").label, "Meine Anwendungen");
   assert.match(html, /id="applicationsView"[\s\S]*id="applicationList"/);
   assert.match(html, /data-open-route="\/app\/applications\/"[\s\S]*Meine Anwendungen/);
@@ -66,7 +70,6 @@ test("keeps every project application widget readable in the shared dark theme",
   assert.match(css, /\.project-app-widget \{[^}]*background: var\(--panel\);[^}]*color: var\(--text\);/);
   assert.doesNotMatch(css, /\.project-app-widget \{[^}]*var\(--surface, #fff\)/);
   assert.match(css, /\.project-app-widget p,[\s\S]*\.project-app-page > header p \{ color: var\(--muted\); \}/);
-  assert.match(html, /app\.css\?v=20260812-knowledge-library-3/);
 });
 
 test("lets one application manage several account devices without duplicating shared settings", () => {
@@ -89,5 +92,4 @@ test("shows and enforces Nexi hardware minimum requirements", () => {
   assert.match(controller, /Hardware-Mindestanforderungen/);
   assert.match(controller, /device\.compatible === false[\s\S]*disabled/);
   assert.match(controller, /Nicht geeignet:/);
-  assert.match(shell, /project-app-controller\.js\?v=20260807-action-observability-1/);
 });

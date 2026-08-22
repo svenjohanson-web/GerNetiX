@@ -41,3 +41,29 @@ test("standalone GerNetiX tools no longer impose different outer maximum widths"
   assert.match(styles[2], /\.shell \{ width: 100%/);
   assert.match(styles[3], /\.shell \{ width: 100%/);
 });
+
+test("only the shared token file may declare the theme colours unconditionally", () => {
+  // Ein bedingungsloser :root-Block mit diesen Namen wird nach der Token-Datei
+  // geladen und ueberschreibt sie unabhaengig vom gewaehlten Modus. Genau so
+  // blieb die Spielesammlung dauerhaft dunkel, obwohl ihr Umschalter sichtbar
+  // war und das Attribut korrekt gesetzt wurde.
+  const geteilteNamen = /--(?:surface|surface-deep|surface-panel|surface-raised|surface-overlay|border|border-subtle|border-strong|text|text-secondary|text-muted|text-dim|text-bright|accent|accent-bright|accent-strong|accent-soft|accent-text|bg|panel|panel-soft|line|muted)\s*:/;
+  const stylesheets = [
+    ["landing.css", read("services", "identity-server", "public", "landing.css")],
+    ["public-header.css", read("services", "identity-server", "public", "public-header.css")],
+    ["flashbox-einrichten/styles.css", read("services", "identity-server", "public", "flashbox-einrichten", "styles.css")],
+    ["app/unified-flash-dialog.css", read("services", "identity-server", "public", "app", "unified-flash-dialog.css")],
+    ["public-demo-server/app.css", read("services", "public-demo-server", "public", "app.css")],
+  ];
+
+  for (const [name, css] of stylesheets) {
+    for (const block of css.matchAll(/(^|\})\s*:root\s*\{([^}]*)\}/g)) {
+      assert.doesNotMatch(block[2], geteilteNamen, `${name} deklariert Theme-Farben in einem bedingungslosen :root-Block`);
+    }
+  }
+
+  // Die Token-Datei selbst bleibt die eine erlaubte Quelle.
+  const tokens = read("services", "shared", "public", "theme-tokens.css");
+  assert.match(tokens, /:root \{[\s\S]*--surface:/);
+  assert.match(tokens, /html\[data-public-theme="dark"\] \{[\s\S]*--surface:/);
+});

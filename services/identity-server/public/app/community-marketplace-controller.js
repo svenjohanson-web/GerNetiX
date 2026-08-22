@@ -1,3 +1,6 @@
+import { escapeAttribute, escapeHtml, getJson, patchJson, postJson } from "@app/app-runtime-utils.js";
+import { state } from "@app/platform-state.js";
+
 let communityMarketplaceEventsBound = false;
 
 function bindCommunityMarketplaceEvents() {
@@ -141,3 +144,19 @@ function marketplaceCategoryLabel(value) {
 function marketplaceConditionLabel(value) {
   return ({ like_new: "Wie neu", very_good: "Sehr gut", good: "Gut", acceptable: "Gebraucht", for_parts: "Defekt / Ersatzteile" })[value] || "Nicht angegeben";
 }
+
+export {
+  bindCommunityMarketplaceEvents,
+  loadCommunityMarketplace,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  bindCommunityMarketplaceEvents,
+  loadCommunityMarketplace,
+});
+/* ---- /Uebergangsbruecke ---- */

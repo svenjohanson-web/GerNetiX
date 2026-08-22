@@ -15,7 +15,6 @@ const platform = read("public/app/development-platform.js");
 test("development area contains the read-only Git repository card and all required views", () => {
   assert.match(html, /id="projectRepositoryCard"[^>]*aria-label="Git-Repository"/);
   assert.doesNotMatch(html, /<script[^>]+project-repository-card\.js/);
-  assert.match(app, /loadPlatformScript\("\/app\/project-repository-card\.js\?v=20260803-forgejo-contract-v1"\)/);
   for (const label of ["Git-Repository", "Status", "Branch", "Head", "Dateibaum", "Datei", "Historie", "Commit-Diff"]) {
     assert.match(card, new RegExp(label));
   }

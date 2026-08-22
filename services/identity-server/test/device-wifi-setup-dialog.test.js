@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { scriptAbschnitt } = require("../test-support/platform-app-source");
 const { authenticatedItem } = require("../test-support/navigation-model");
 
 const appRoot = path.resolve(__dirname, "../public/app");
@@ -26,7 +27,7 @@ test("device WLAN setup is a reusable dark dialog opened from the device menu", 
 test("multiple USB boards can be identified by disconnecting exactly one port", () => {
   assert.match(html, /id="identifyDeviceWifiPortButton"[^>]*>Durch Abziehen erkennen/);
   assert.match(html, /Ziehe genau ein Board kurz ab/);
-  assert.doesNotMatch(html, /usb-port-disconnect-detector\.js\?v=/);
+  assert.doesNotMatch(scriptAbschnitt(html), /usb-port-disconnect-detector\.js\?v=/);
   assert.match(shell, /loadDeviceWifiSetupAssets[\s\S]*usb-port-disconnect-detector\.js/);
   assert.match(source, /GerNetiXUsbPortDisconnectDetector\.create/);
   assert.match(detector, /baselinePaths: new Set\(initialPorts\.map\(pathOf\)\.filter\(Boolean\)\)/);

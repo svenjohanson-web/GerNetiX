@@ -324,3 +324,7 @@ const GerNetiXSerialService = (() => {
 })();
 
 window.GerNetiXSerialService = GerNetiXSerialService;
+
+export {
+  GerNetiXSerialService,
+};

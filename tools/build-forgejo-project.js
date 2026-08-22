@@ -30,7 +30,13 @@ async function main(argv = process.argv.slice(2)) {
   const targets = selectTargets(configuredTargets, option(argv, "--target"), flashRequested);
 
   const platformioCommand = findPlatformio();
-  const cacheRoot = path.join(repositoryRoot, ".gernetix-build");
+  const cacheRoot = resolveBuildCacheRoot(repositoryRoot, {
+    cliValue: option(argv, "--cache-dir"),
+    envValue: process.env.GERNETIX_LOCAL_BUILD_CACHE_DIR,
+  });
+  const platformioCoreDir = resolvePlatformioCoreDir(cacheRoot, {
+    envValue: process.env.GERNETIX_LOCAL_PLATFORMIO_CORE_DIR,
+  });
   const packageStore = new BuildPackageStore({
     tempDir: path.join(cacheRoot, "jobs"),
     incrementalCacheDir: path.join(cacheRoot, "cache"),
@@ -38,7 +44,7 @@ async function main(argv = process.argv.slice(2)) {
   const runner = new FirmwareBuildJobRunner({
     runner: "platformio",
     platformioCommand,
-    cacheDir: path.join(cacheRoot, "platformio-core"),
+    cacheDir: platformioCoreDir,
   });
 
   const results = [];
@@ -64,7 +70,7 @@ async function main(argv = process.argv.slice(2)) {
       onProgress: (line) => process.stdout.write(`${line}\n`),
     });
     if (flashRequested) {
-      const env = createPlatformioEnv(path.join(cacheRoot, "platformio-core"), workspace.packageDir, workspace.buildDir);
+      const env = createPlatformioEnv(platformioCoreDir, workspace.packageDir, workspace.buildDir);
       const upload = await spawnAndCapture(platformioCommand, ["run", "-t", "upload", "--upload-port", uploadPort], {
         cwd: workspace.packageDir,
         env,
@@ -147,7 +153,7 @@ function normalizeUploadPort(value, platform = process.platform) {
 async function createBuildPackageFiles(repositoryRoot, manifest, target) {
   if (target.type === "direct") {
     const files = target.source_root
-      ? Object.fromEntries((await productProjectSources(repositoryRoot, target)).map((file) => [file.path, file.content]))
+      ? Object.fromEntries((await productProjectSources(repositoryRoot, target)).map((file) => [file.path, buildPackageValue(file)]))
       : await readRepositoryFiles(repositoryRoot);
     configureDirectEnvironment(files, target);
     if (target.inject_runtime_core) await injectRuntimeCore(files);
@@ -161,10 +167,7 @@ async function createBuildPackageFiles(repositoryRoot, manifest, target) {
       projectSources,
       buildConfig: target.build_config,
     });
-    return Object.fromEntries(composed.map((file) => [
-      file.path,
-      file.content_base64 ? { base64: file.content_base64 } : file.content,
-    ]));
+    return Object.fromEntries(composed.map((file) => [file.path, buildPackageValue(file)]));
   }
   if (target.type === "esp8266-product") {
     const basisRoot = resolveSiblingRepository(repositoryRoot, target.basis_repository || "basissoftware-esp8266");
@@ -239,12 +242,19 @@ async function productProjectSources(repositoryRoot, target) {
       const relative = prefix ? file.path.slice(prefix.length) : file.path;
       const mapped = mappings[relative] || relative;
       const projectPath = materializeRoot ? `${materializeRoot}/${mapped}` : mapped;
-      return { path: projectPath, content: file.content, content_type: contentType(projectPath) };
+      return {
+        path: projectPath,
+        ...repositoryFileContent(projectPath, file.content),
+        content_type: contentType(projectPath),
+      };
     });
 }
 
 async function readRepositoryFiles(repositoryRoot) {
-  return Object.fromEntries((await readRepositorySourceEntries(repositoryRoot)).map((file) => [file.path, file.content]));
+  return Object.fromEntries((await readRepositorySourceEntries(repositoryRoot)).map((file) => {
+    const content = repositoryFileContent(file.path, file.content);
+    return [file.path, content.content_base64 ? { base64: content.content_base64 } : content.content];
+  }));
 }
 
 async function readRepositorySourceEntries(repositoryRoot) {
@@ -297,6 +307,40 @@ function findPlatformio() {
   return fs.existsSync(candidate) ? candidate : executable;
 }
 
+function resolveBuildCacheRoot(repositoryRoot, options = {}) {
+  const configured = String(options.cliValue || options.envValue || "").trim();
+  return configured
+    ? path.resolve(configured)
+    : resolveDefaultBuildCacheRoot(repositoryRoot);
+}
+
+function resolveDefaultBuildCacheRoot(repositoryRoot) {
+  if (process.platform !== "win32") {
+    return path.join(repositoryRoot, ".gernetix-build");
+  }
+  const repositoryName = path.basename(path.resolve(repositoryRoot)) || "nexi";
+  const safeRepositoryName = repositoryName.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 16);
+  const repositorySuffix = safeRepositoryName || "nexi";
+  const driveRoot = path.parse(repositoryRoot).root;
+  if (driveRoot) {
+    return path.join(driveRoot, "g", "gernetix-build", repositorySuffix);
+  }
+  const fallback = process.env.TEMP || process.env.TMP;
+  if (fallback) {
+    return path.join(fallback, "gernetix-build", repositorySuffix);
+  }
+  return path.join(repositoryRoot, ".gernetix-build");
+}
+
+function resolvePlatformioCoreDir(cacheRoot, options = {}) {
+  const configured = String(options.envValue || process.env.PLATFORMIO_CORE_DIR || "").trim();
+  if (configured) return path.resolve(configured);
+  const userHome = process.env.USERPROFILE || process.env.HOME || "";
+  const globalCoreDir = userHome ? path.join(userHome, ".platformio") : "";
+  if (globalCoreDir && fs.existsSync(globalCoreDir)) return globalCoreDir;
+  return path.join(cacheRoot, "platformio-core");
+}
+
 function normalizeRelativePath(value) {
   const normalized = String(value || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
   if (normalized.split("/").some((part) => part === "." || part === "..")) throw new Error(`Unsicherer relativer Pfad: ${value}`);
@@ -307,6 +351,29 @@ function contentType(filePath) {
   if (/\.(?:c|cc|cpp|cxx)$/i.test(filePath)) return "text/x-c++src";
   if (/\.(?:h|hh|hpp|hxx)$/i.test(filePath)) return "text/x-c++hdr";
   return "text/plain";
+}
+
+function repositoryFileContent(filePath, content) {
+  const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+  if (isBinaryRepositoryFile(filePath, buffer)) {
+    return { content_base64: buffer.toString("base64"), binary: true };
+  }
+  return { content: buffer.toString("utf8") };
+}
+
+function buildPackageValue(file) {
+  return file.content_base64 ? { base64: file.content_base64 } : file.content;
+}
+
+function isBinaryRepositoryFile(filePath, content) {
+  if (/\.(?:bin|bmp|gif|ico|jpe?g|mp3|ogg|opus|pcm|pcm8|png|webp|wav|zip)$/i.test(filePath)) return true;
+  if (content.includes(0)) return true;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(content);
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 function option(args, name) {
@@ -321,4 +388,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { configureDirectEnvironment, createBuildPackageFiles, loadBuildManifest, main, normalizeUploadPort, productProjectSources, selectTargets, validatePackage };
+module.exports = { configureDirectEnvironment, createBuildPackageFiles, loadBuildManifest, main, normalizeUploadPort, productProjectSources, resolveBuildCacheRoot, resolvePlatformioCoreDir, selectTargets, validatePackage };

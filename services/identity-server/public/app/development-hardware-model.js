@@ -196,3 +196,17 @@ const DevelopmentHardwareModel = (() => {
 })();
 
 if (typeof module !== "undefined") module.exports = DevelopmentHardwareModel;
+
+export {
+  DevelopmentHardwareModel,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, development-platform.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  DevelopmentHardwareModel,
+});
+/* ---- /Uebergangsbruecke ---- */

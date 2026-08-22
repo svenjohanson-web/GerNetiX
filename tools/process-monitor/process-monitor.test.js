@@ -99,16 +99,41 @@ test("build worker start reports a clear Docker Desktop readiness timeout", asyn
 test("monitor starts local Identity only in PostgreSQL Remote-Dev mode", () => {
   assert.match(html, /Prozess-Monitor/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
-  assert.match(html, /Identity-Prozess läuft lokal auf Port 4300/);
-  assert.match(html, /<h2>Lokale Prozesse<\/h2>/);
+  assert.equal(control.services.find((item) => item.id === "identity-server").name, "Identity Dev-Server");
+  assert.match(html, /Identity Dev-Server wird hier immer als eigener Prozess auf Port 4300 angezeigt/);
+  assert.match(html, /<h2>Identity Dev-Server<\/h2>/);
   assert.match(html, /Build-Worker läuft bei Bedarf isoliert in Docker Desktop/);
   assert.match(html, /eine lokale Identity-SQLite wird nicht verwendet/);
-  assert.match(html, />Identity starten<\/button>/);
+  assert.match(html, />Dev-Server starten<\/button>/);
   assert.match(html, /Backend und Infrastruktur/);
-  assert.match(client, /Läuft lokal mit PostgreSQL/);
+  assert.match(client, /Dev-Server läuft mit PostgreSQL/);
+  assert.match(client, /startLabel=worker\?"Worker starten":"Dev-Server starten"/);
+  assert.match(client, /vpnToggle\.disabled=vpnBusy\|\|!vpnAvailable/);
+  assert.match(client, /tunnelToggle\.disabled=tunnelBusy\|\|!tunnelAvailable/);
+  assert.doesNotMatch(client, /vpnToggle\.disabled=busy\|\|/);
+  assert.doesNotMatch(client, /tunnelToggle\.disabled=busy\|\|/);
   assert.match(desktopPreload, /processes:start-all/);
   assert.match(desktopMain, /processes:start-all/);
   assert.doesNotMatch(html, /Plattform öffnen/);
+});
+
+test("monitor exposes failed Identity dependencies as concrete degraded causes", () => {
+  const health = {
+    service: "identity-server",
+    persistence_backend: "postgres",
+    remote_dev: true,
+    identity_db: { reachable: true },
+    dependencies: {
+      status: "degraded",
+      unreachable: 1,
+      items: [{ id: "project-server", name: "Project Server", reachable: false, error_code: "econnrefused", health_url: "http://127.0.0.1:4800/health", latency_ms: 12 }],
+    },
+  };
+  assert.equal(control.isIdentityRemoteDevHealth(health), false);
+  assert.match(control.identityHealthError(health), /Project Server/);
+  assert.match(control.identityHealthError(health), /econnrefused/);
+  assert.match(client, /Dev-Server läuft mit Abhängigkeitsfehlern/);
+  assert.match(client, /Gestört/);
 });
 
 test("monitor reads VPS compose state through the established staging SSH configuration", async () => {
@@ -281,6 +306,39 @@ test("monitor controls only the configured GerNetiX WireGuard tunnel", async () 
   assert.deepEqual(calls.find((call) => call[1] === "start"), ["sc.exe", "start", "WireGuardTunnel$gernetix-vps"]);
 });
 
+test("monitor can restore PostgreSQL access by restoring VPN and SSH tunnel", async () => {
+  const calls = [];
+  let dbState = 0;
+  // Der DB-Zustand wird einmal vor und einmal nach der Reparatur gelesen; den
+  // Tunnel dazwischen beurteilt stagingTunnelState.
+  const identityDbTunnelState = async () => {
+    dbState += 1;
+    if (dbState === 1) return { configured:true,identityDbConnected:false,vpnConnected:false,error:"VPN nicht verbunden." };
+    return { configured:true,identityDbConnected:true,vpnConnected:true,error:"",identityDbPort:25432 };
+  };
+  const result = await control.restoreIdentityDbAccess({
+    identityDbTunnelState,
+    stagingTunnelState: async () => ({ configured:true,active:dbState > 1 }),
+    setVpnConnected: async () => { calls.push("vpn"); return { connected:true }; },
+    startStagingTunnel: async () => { calls.push("tunnel"); return { active:true }; },
+  });
+  assert.equal(result.identityDbConnected, true);
+  assert.deepEqual(calls, ["vpn","tunnel"]);
+  assert.equal(result.restored, true);
+});
+
+test("monitor skips PostgreSQL restore when access is already available", async () => {
+  const calls = [];
+  const result = await control.restoreIdentityDbAccess({
+    identityDbTunnelState: async () => ({ configured:true,identityDbConnected:true,vpnConnected:true,error:"",identityDbPort:25432 }),
+    setVpnConnected: async () => { calls.push("vpn"); },
+    startStagingTunnel: async () => { calls.push("tunnel"); },
+  });
+  assert.equal(result.identityDbConnected, true);
+  assert.equal(result.restored, false);
+  assert.deepEqual(calls, []);
+});
+
 test("monitor controls only the configured macOS WireGuard network extension", async () => {
   const disconnected='* (Disconnected)   example-id VPN (com.wireguard.macos) "gernetix-vps-mac"';
   const connected='* (Connected)   example-id VPN (com.wireguard.macos) "gernetix-vps-mac"';
@@ -298,6 +356,17 @@ test("monitor controls only the configured macOS WireGuard network extension", a
   assert.deepEqual(calls.find((call)=>call[1]==="--nc"&&call[2]==="start"),["scutil","--nc","start","gernetix-vps-mac"]);
 });
 
+test("desktop monitor exposes PostgreSQL restore IPC and monitor action", () => {
+  assert.match(desktopPreload, /postgresDbRestore/);
+  assert.match(desktopMain, /postgres-db:restore/);
+  assert.match(html, /id="fixPostgresAccess"/);
+  assert.match(html, /id="postgresBanner"/);
+  assert.match(html, /group-warning/);
+  assert.match(client, /postgresDbRestore/);
+  assert.match(client, /fixPostgresAccess/);
+  assert.match(client, /renderPostgresAccessBanner/);
+});
+
 test("monitor defines a fixed SSH diagnostic tunnel from the staging configuration", () => {
   const definition=control.stagingTunnelDefinition({
     GERNETIX_STAGING_SSH:"root@gernetix-vps",
@@ -309,6 +378,7 @@ test("monitor defines a fixed SSH diagnostic tunnel from the staging configurati
     GERNETIX_STAGING_REMOTE_IDENTITY_DB_HOST:"10.77.0.1",
     GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
   });
+  assert.ok(definition.args.includes("127.0.0.1:4600:127.0.0.1:4600"));
   assert.deepEqual(definition.args.slice(0,7),["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30"]);
   assert.ok(definition.args.includes("127.0.0.1:14600:127.0.0.1:4610"));
   assert.ok(definition.args.includes("127.0.0.1:14300:127.0.0.1:8080"));
@@ -413,6 +483,25 @@ test("Identity start restores VPN and PostgreSQL tunnel automatically", async ()
   assert.deepEqual(actions,["vpn","tunnel"]);
 });
 
+test("Identity start waits out a slow bootstrap instead of killing it", async () => {
+  // Ein Bootstrap ueber den VPS-Tunnel kann deutlich laenger als zehn Sekunden
+  // brauchen. Wird er abgeschnitten, bleibt der Rueckstau, der ihn verlangsamt.
+  let checks=0;
+  const result=await control.startService("identity-server",{
+    checkService:async()=>checks++>60
+      ? {id:"identity-server",healthy:true,pid:222,persistenceBackend:"postgres",remoteDev:true}
+      : {id:"identity-server",healthy:false,pid:null,identityModeMismatch:false},
+    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
+    pidForPort:async()=>111,
+    vpnState:async()=>({supported:true,configured:true,connected:true}),
+    startStagingTunnel:async()=>({active:true}),
+    remoteIdentityEnvironment:()=>({IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
+    launchLoggedService:()=>({exitCode:null,killed:false,unref(){},kill(){throw new Error("Der Start wurde abgeschnitten.");}}),
+    delay:async()=>{},
+  });
+  assert.equal(result.healthy,true);
+});
+
 test("failed Identity start does not leave an orphan process", async () => {
   let killed=false;
   await assert.rejects(control.startService("identity-server",{
@@ -471,6 +560,34 @@ test("monitor reads central user action failures through the fixed read-only dia
   assert.equal(remote.items[0].target_service, "nexi.flash.usb.start");
   assert.equal(remote.items[0].message, "local_dependency_unreachable · Action 12345678-1234…");
   assert.doesNotMatch(JSON.stringify(remote), /device_path|usb_id|hostname|raw_log/);
+});
+
+test("monitor reads the local Identity emergency trace with the full action id", async () => {
+  let requestedUrl = "";
+  const actionId = "2b303207-5483-4763-8cd6-b5799a1678a1";
+  const result = await control.localUserActionDiagnostics({
+    hours: 24,
+    health: async (url) => {
+      requestedUrl = url;
+      return { statusCode: 200, body: { items: [{
+        event_id: "11111111-1111-4111-8111-111111111111",
+        occurred_at: new Date().toISOString(), action_id: actionId,
+        action_type: "identity.login.passkey", span_type: "auth.verify",
+        phase: "failed", reason_code: "identity_unreachable", delivery_state: "pending",
+      }] } };
+    },
+  });
+  assert.equal(requestedUrl, "http://127.0.0.1:4300/api/dev/local-action-diagnostics");
+  assert.equal(result.items[0].action_id, actionId);
+  assert.match(result.items[0].message, new RegExp(actionId));
+  assert.match(client, /Vorgangs-ID/);
+  assert.doesNotMatch(JSON.stringify(result), /account|message_detail|hostname|raw_log/);
+
+  const merged = control.mergeRuntimeAlerts(result, {
+    hours: 24,
+    items: [{ ...result.items[0], event_id: "", source_service: "user_action" }],
+  });
+  assert.equal(merged.items.length, 1);
 });
 
 test("monitor shows all VPS protection rules with status and recommended action", async () => {

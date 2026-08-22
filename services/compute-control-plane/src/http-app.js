@@ -2,10 +2,12 @@
 
 const { ComputeError } = require("./errors");
 const { safeEqual } = require("./worker-token-service");
+const { readBearerToken, verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const prefix = "/api/compute";
 
-function createHttpApp({ service, tokenService, internalToken, workerBootstrapToken, providers, projectRuntimeGrants = null, projectPatchWriter = null }) {
+function createHttpApp({ service, tokenService, internalApiSigningKey, internalToken, workerBootstrapToken, providers, projectRuntimeGrants = null, projectPatchWriter = null }) {
+  const signingKey = internalApiSigningKey || internalToken || "";
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const path = url.pathname;
@@ -37,7 +39,10 @@ function createHttpApp({ service, tokenService, internalToken, workerBootstrapTo
     }
 
     if (!path.startsWith(`${prefix}/internal/`)) return sendJson(res, 404, { error: "not_found" });
-    requireToken(req.headers["x-gernetix-compute-token"], internalToken, "compute_internal");
+    verifyInternalToken(readBearerToken(req), signingKey, {
+      audience: "compute-control-plane",
+      requiredScopes: [internalScope(req.method, path)],
+    });
     if (req.method === "POST" && path === `${prefix}/internal/jobs`) return sendJson(res, 201, await service.submitJob(await readJsonBody(req)));
     if (req.method === "GET" && path === `${prefix}/internal/jobs`) return sendJson(res, 200, { items: await service.listJobs({ status: url.searchParams.get("status") || "" }) });
     const job = path.match(/^\/api\/compute\/internal\/jobs\/([^/]+)$/);
@@ -55,6 +60,17 @@ function createHttpApp({ service, tokenService, internalToken, workerBootstrapTo
     if (provider && req.method === "POST") { const body = await readJsonBody(req); const storedPolicy = await service.getPolicy(); return sendJson(res, 200, providers.plan(decodeURIComponent(provider[1]), body.recommendation || {}, { ...(body.policy || {}), ...storedPolicy, region: body.policy?.region })); }
     return sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function internalScope(method, path) {
+  if (path === `${prefix}/internal/jobs`) return method === "POST" ? "compute.job.submit" : "compute.job.list";
+  if (/^\/api\/compute\/internal\/jobs\/[^/]+$/.test(path)) return method === "DELETE" ? "compute.job.cancel" : "compute.job.read";
+  if (path === `${prefix}/internal/policy`) return method === "PUT" ? "compute.policy.write" : "compute.policy.read";
+  if (path === `${prefix}/internal/operations-summary`) return "compute.operations.read";
+  if (path === `${prefix}/internal/project-runtime/grants`) return "compute.runtime_grant.issue";
+  if (path === `${prefix}/internal/capacity/providers`) return "compute.capacity.read";
+  if (/^\/api\/compute\/internal\/capacity\/providers\/[^/]+\/plan$/.test(path)) return "compute.capacity.plan";
+  return "compute.route.unknown";
 }
 
 function bearer(req) { const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i); return match?.[1] || ""; }

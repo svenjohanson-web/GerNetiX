@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
 
-const { ContextService, InMemoryContextRepository, LocalProjectAnalyzer, SqliteBackedContextRepository } = require("../src");
+const { ContextService, InMemoryContextRepository, LocalProjectAnalyzer, PostgresBackedContextRepository, SqliteBackedContextRepository } = require("../src");
 
 test("builds current context from requirement slices and runtime references", () => {
   const service = new ContextService({ repository: new InMemoryContextRepository() });
@@ -96,6 +96,24 @@ test("persists context manager state in sqlite normalized tables", () => {
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM context_suggestions").get().count, 1);
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM service_documents WHERE service_key = 'context-manager'").get().count >= 3, true);
   db.close();
+});
+
+test("waits for central PostgreSQL persistence before completing a mutation", async () => {
+  let persisted = null;
+  const store = {
+    load: () => ({
+      scopes: [], requirementSlices: [], artifactReferences: [], runtimeReferences: [],
+      decisions: [], events: [], contextPacks: [], redactionPolicies: [], suggestions: [],
+    }),
+    save: async (state) => { persisted = structuredClone(state); },
+    close: async () => {},
+  };
+  const repository = new PostgresBackedContextRepository(store);
+  const service = new ContextService({ repository });
+  service.upsertScope({ account_id: "acct-pg", project_id: "project-pg" });
+  await repository.flush();
+  assert.equal(persisted.scopes[0].account_id, "acct-pg");
+  assert.equal(persisted.scopes[0].project_id, "project-pg");
 });
 
 test("analyzes project context into reviewable suggestions", () => {

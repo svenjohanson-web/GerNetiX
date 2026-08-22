@@ -12,27 +12,58 @@
     return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
   }
 
-  async function downloadAndVerify(files, options = {}) {
+  /*
+   * Die Pruefung selbst ist fuer jede Herkunft dieselbe: geladene Groesse und
+   * SHA-256 muessen zu dem passen, was der Server angekuendigt hat. Verschieden
+   * ist nur, woran die Bytes haengen -- eine veroeffentlichte Firmware nennt
+   * Quellpfad und Version, ein frischer Build seinen Auftrag.
+   */
+  async function fetchAndVerify(file, { fetchRef, write, cryptoRef, sizeBytes, origin }) {
+    const name = required(file.name, "Eine Flash-Datei besitzt keinen Namen.");
+    const expectedSize = Number(required(sizeBytes, `${name} besitzt keine erwartete Größe.`));
+    const expectedSha256 = String(required(file.sha256, `${name} besitzt keine SHA-256-Prüfsumme.`)).toLowerCase();
+    write("running", `${name} wird geladen und geprüft …`);
+    const response = await fetchRef(file.url, { credentials: file.credentials || "same-origin", cache: "no-store" });
+    if (!response.ok) throw new Error(`${name} konnte nicht geladen werden (${response.status}).`);
+    const data = new Uint8Array(await response.arrayBuffer());
+    if (data.byteLength !== expectedSize) throw new Error(`${name} hat eine unerwartete Größe (${data.byteLength} statt ${expectedSize} Byte).`);
+    const actualSha256 = await sha256(data, cryptoRef);
+    if (actualSha256 !== expectedSha256) throw new Error(`${name} hat nicht die veröffentlichte SHA-256-Prüfsumme.`);
+    write("ok", `${name}: Größe und SHA-256 geprüft · ${origin}.`);
+    return { name, address: Number(file.address || 0), data };
+  }
+
+  function verificationContext(options) {
     const fetchRef = options.fetch || globalScope.fetch?.bind(globalScope);
-    const write = options.write || (() => {});
     if (!fetchRef) throw new Error("Firmware-Download ist in dieser Umgebung nicht verfügbar.");
+    return { fetchRef, write: options.write || (() => {}), cryptoRef: options.crypto };
+  }
+
+  async function downloadAndVerify(files, options = {}) {
+    const context = verificationContext(options);
     if (!Array.isArray(files) || !files.length) throw new Error("Der Flash-Auftrag enthält keine Binärdatei.");
-    return Promise.all(files.map(async (file) => {
-      const name = required(file.name, "Eine Flash-Datei besitzt keinen Namen.");
-      const sizeBytes = Number(required(file.sizeBytes, `${name} besitzt keine erwartete Größe.`));
-      const expectedSha256 = String(required(file.sha256, `${name} besitzt keine SHA-256-Prüfsumme.`)).toLowerCase();
-      required(file.sourcePath, `${name} besitzt keinen Quellpfad.`);
-      required(file.sourceVersion, `${name} besitzt keine Quellversion.`);
-      write("running", `${name} wird geladen und geprüft …`);
-      const response = await fetchRef(file.url, { credentials: file.credentials || "same-origin", cache: "no-store" });
-      if (!response.ok) throw new Error(`${name} konnte nicht geladen werden (${response.status}).`);
-      const data = new Uint8Array(await response.arrayBuffer());
-      if (data.byteLength !== sizeBytes) throw new Error(`${name} hat eine unerwartete Größe (${data.byteLength} statt ${sizeBytes} Byte).`);
-      const actualSha256 = await sha256(data, options.crypto);
-      if (actualSha256 !== expectedSha256) throw new Error(`${name} hat nicht die veröffentlichte SHA-256-Prüfsumme.`);
-      write("ok", `${name}: Größe und SHA-256 geprüft · Quelle ${file.sourcePath}@${file.sourceVersion}.`);
-      return { name, address: Number(file.address || 0), data };
-    }));
+    return Promise.all(files.map((file) => fetchAndVerify(file, {
+      ...context,
+      sizeBytes: file.sizeBytes,
+      origin: `Quelle ${required(file.sourcePath, `${file.name} besitzt keinen Quellpfad.`)}`
+        + `@${required(file.sourceVersion, `${file.name} besitzt keine Quellversion.`)}`,
+    })));
+  }
+
+  /*
+   * Frische Buildartefakte tragen keinen Quellpfad, weil sie noch nicht
+   * veroeffentlicht sind. Ihre Herkunft ist der Bauauftrag, und das Manifest
+   * kommt in der Schreibweise des Servers an.
+   */
+  async function downloadAndVerifyBuild(manifest, options = {}) {
+    const context = verificationContext(options);
+    const buildJobId = required(options.buildJobId, "Dem Flash-Auftrag fehlt die Kennung des Builds.");
+    if (!Array.isArray(manifest) || !manifest.length) throw new Error("Der Build meldet kein Flash-Manifest.");
+    return Promise.all(manifest.map((file) => fetchAndVerify(file, {
+      ...context,
+      sizeBytes: file.size_bytes,
+      origin: `Build ${buildJobId}`,
+    })));
   }
 
   async function resetWebSerial({ loader, transport, strategy = "hard-reset", delay = defaultDelay }) {
@@ -125,7 +156,18 @@
     return new Promise((resolve) => globalScope.setTimeout(resolve, milliseconds));
   }
 
-  const api = { downloadAndVerify, executeUsb, resetWebSerial, sha256 };
+  const api = { downloadAndVerify, downloadAndVerifyBuild, executeUsb, resetWebSerial, sha256 };
   globalScope.GerNetiXFlashExecutor = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
+
+/*
+ * Diese Datei veroeffentlicht ihre Schnittstelle nach UMD-Art durch Zuweisung
+ * an das globale Objekt. Es gibt keine gleichnamige Bindung, also wird sie hier
+ * angelegt: derselbe Wert, nur ansprechbar fuer den export.
+ */
+const GerNetiXFlashExecutor = globalThis.GerNetiXFlashExecutor;
+
+export {
+  GerNetiXFlashExecutor,
+};

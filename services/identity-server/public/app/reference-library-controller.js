@@ -119,3 +119,17 @@ const GerNetiXReferenceLibrary = (() => {
 
   return { bind, enter, render };
 })();
+
+export {
+  GerNetiXReferenceLibrary,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  GerNetiXReferenceLibrary,
+});
+/* ---- /Uebergangsbruecke ---- */

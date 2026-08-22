@@ -21,6 +21,21 @@ test("uses the one public GerNetiX header and burger menu on the authentication 
   assert.match(html, /src="\/landing\.js/);
   assert.match(publicHeaderCss, /\.site-header/);
   assert.match(publicHeaderCss, /\.menu-button/);
+  assert.match(publicHeaderCss, /\.public-theme-toggle/);
+  assert.match(publicHeaderCss, /html\[data-public-theme="light"\] \.site-header/);
+  assert.match(publicHeaderCss, /html\[data-public-theme="dark"\] \.site-header/);
+  assert.match(publicHeaderCss, /html\[data-public-theme="light"\] \.brand img \{ filter: invert\(1\)/);
+  assert.match(publicHeaderScript, /gernetix-public-theme/);
+  assert.match(publicHeaderScript, /root\.dataset\.publicTheme = theme/);
+  assert.match(publicHeaderScript, /button\.id = "publicThemeToggle"/);
+  // Hell ist der Auslieferungszustand: nur eine gespeicherte eigene Wahl weicht
+  // davon ab. Die Systemeinstellung darf den ersten Eindruck nicht bestimmen.
+  assert.match(publicHeaderScript, /savedTheme === "dark" \|\| savedTheme === "light" \? savedTheme : "light"/);
+  assert.doesNotMatch(publicHeaderScript, /prefers-color-scheme/);
+  assert.match(css, /html\[data-public-theme="light"\] body/);
+  assert.match(css, /html\[data-public-theme="light"\] \.login-panel/);
+  assert.match(css, /html\[data-public-theme="light"\] input/);
+  assert.match(css, /html\[data-public-theme="light"\] \.auth-site-footer/);
   assert.match(css, /\[hidden\]\s*\{\s*display:\s*none !important;/);
   assert.match(publicHeaderScript, /menuButton\?\.addEventListener/);
   assert.doesNotMatch(script, /authMenuButton|authMenu|closeAuthMenu/);
@@ -44,7 +59,10 @@ test("uses the one public GerNetiX header and burger menu on the authentication 
   assert.match(publicHeaderScript, /id="publicLanguage"[\s\S]*Deutsch[\s\S]*English[\s\S]*Nederlands/);
   assert.match(publicHeaderScript, /DE · EN · NL/);
   assert.match(html, /\/app\/i18n\/i18n\.js/);
-  assert.match(publicHeaderScript, /window\.GerNetiXI18n\.create\(\)/);
+  // Das Modul wird erst geholt, wenn die Uebersetzung gebraucht wird, und
+  // ueber die Import Map aufgeloest -- nicht mehr aus dem globalen Objekt.
+  assert.match(publicHeaderScript, /return import\("@app\/i18n\/i18n\.js"\)/);
+  assert.match(publicHeaderScript, /GerNetiXI18n\.create\(\)/);
   assert.match(script, /locale: currentLocale\(\)/);
   assert.doesNotMatch(script, /sessionStorage/);
   assert.doesNotMatch(script, /localStorage/);

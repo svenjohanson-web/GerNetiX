@@ -8,8 +8,14 @@ const { authenticatedGroup, authenticatedItem, navigationModel } = require("../t
 
 const serviceRoot = path.join(__dirname, "..");
 const publicRoot = path.join(serviceRoot, "public");
-const version = "20260816-unified-navigation-1";
-const sharedScripts = `<script src="/navigation-model.js?v=${version}"></script><script src="/landing.js?v=${version}"></script>`;
+/*
+ * Das Modell bleibt ein klassisches Skript, landing.js ist seit der
+ * ESM-Umstellung ein Modul. Die Reihenfolge traegt die Zusicherung: Module
+ * laufen wie defer erst nach dem Dokument, das globale Modell steht also
+ * sicher bereit. Versionen werden hier nicht festgenagelt -- die pflegt
+ * scripts/update-asset-versions.js.
+ */
+const sharedScripts = /<script src="\/navigation-model\.js\?v=[^"]+"><\/script>\s*<script type="module" src="\/landing\.js\?v=[^"]+"><\/script>/;
 
 function htmlFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -30,7 +36,7 @@ test("all customer-facing public headers use one versioned navigation model", ()
     const html = fs.readFileSync(file, "utf8");
     assert.match(html, /id="publicMenuButton"/, file);
     assert.match(html, /id="publicMenu"/, file);
-    assert.ok(html.includes(sharedScripts), `${file} must load the shared model directly before landing.js`);
+    assert.match(html, sharedScripts, `${file} must load the shared model directly before landing.js`);
   }
 });
 
@@ -43,8 +49,10 @@ test("authenticated app and public pages derive every group from the same model"
   assert.match(landing, /authenticated\.groups\.map/);
   assert.match(appRenderer, /window\.GerNetiXNavigationModel\?\.authenticated/);
   assert.match(appRenderer, /model\.groups\.map/);
-  assert.match(appHtml, new RegExp(`/navigation-model\\.js\\?v=${version}`));
-  assert.match(appHtml, new RegExp(`/app/app-navigation\\.js\\?v=${version}`));
+  assert.match(appHtml, /\/navigation-model\.js\?v=/);
+  assert.match(appHtml, /\/app\/app-navigation\.js\?v=/);
+  // Das Modell muss vor dem Zeichner stehen, sonst bleibt das Menue leer.
+  assert.ok(appHtml.indexOf("/navigation-model.js?v=") < appHtml.indexOf("/app/app-navigation.js?v="));
   assert.match(appHtml, /<nav id="mainMenu"[^>]*><\/nav>/);
 });
 

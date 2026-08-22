@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createProjectRepositoryRead } = require("../src/dev/project-repository-read");
 
-const project = { project_server_id: "project-owned" };
+const project = { project_server_id: "project-owned", owner_user_id: "account-owned" };
 const headSha = "a".repeat(40);
 const parentSha = "b".repeat(40);
 

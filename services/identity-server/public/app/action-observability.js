@@ -160,3 +160,17 @@
   root.GerNetiXActionOps = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
+
+/*
+ * Diese Datei veroeffentlicht ihre Schnittstelle nach UMD-Art durch Zuweisung
+ * an das globale Objekt. Es gibt keine gleichnamige Bindung, also wird sie hier
+ * angelegt: derselbe Wert, nur ansprechbar fuer den export.
+ *
+ * Eine Uebergangsbruecke braucht diese Datei deshalb auch nicht -- die
+ * Zuweisung oben ist bereits eine, und sie war es immer schon.
+ */
+const GerNetiXActionOps = globalThis.GerNetiXActionOps;
+
+export {
+  GerNetiXActionOps,
+};

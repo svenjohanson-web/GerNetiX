@@ -25,26 +25,33 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  border: 1px solid #263241;
+  border: 1px solid var(--border-subtle, #263241);
   border-radius: 10px;
   padding: 10px 12px;
   background: rgba(17, 24, 39, .88);
   box-shadow: var(--operator-shadow);
 }
 
+/*
+ * Die folgenden Farben nennen einen Token mit dem bisherigen Hex-Wert als
+ * Rueckfall. Die Plattform unter /app/ definiert diese Token und folgt damit
+ * dem Hell-/Dunkel-Umschalter; das eigenstaendige Admin Tool kennt sie nicht
+ * und erhaelt weiterhin exakt den Rueckfallwert. Nur Werte, die in beiden
+ * Faellen identisch sind, wurden auf diese Weise umgestellt.
+ */
 .operator-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .operator-brand-copy { display: grid; gap: 2px; min-width: 0; }
-.operator-brand-name { margin: 0; color: #e5e7eb; font-size: 20px; line-height: 1.1; }
-.operator-eyebrow { margin: 0; color: #67e8f9; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.operator-surface-badge { display: inline-flex; width: fit-content; border: 1px solid #0e7490; border-radius: 999px; padding: 3px 8px; background: #164e63; color: #cffafe; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.operator-brand-name { margin: 0; color: var(--text, #e5e7eb); font-size: 20px; line-height: 1.1; }
+.operator-eyebrow { margin: 0; color: var(--accent-bright, #67e8f9); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.operator-surface-badge { display: inline-flex; width: fit-content; border: 1px solid var(--accent-strong, #0e7490); border-radius: 999px; padding: 3px 8px; background: var(--accent-soft, #164e63); color: var(--accent-text, #cffafe); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .operator-nav { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
 .operator-nav button, .operator-nav a {
   min-height: 36px;
   border: 1px solid #3c4a5d;
   border-radius: 7px;
   padding: 8px 10px;
-  background: #1b2430;
-  color: #cbd5e1;
+  background: var(--surface-raised, #1b2430);
+  color: var(--text-secondary, #cbd5e1);
   font: inherit;
   font-size: 13px;
   font-weight: 750;
@@ -81,3 +88,26 @@
 .operator-surface .admin-shell button.primary { border-color: #0891b2; background: var(--operator-accent-strong); color: #ecfeff; }
 .operator-surface .admin-shell button.active-method { border-color: #0891b2; background: var(--operator-accent-soft); color: #cffafe; }
 .operator-surface .admin-shell button:disabled { border-color: #263241; background: #111827; color: #64748b; }
+
+/*
+ * Hellmodus der Plattform. Diese Regeln greifen nur, wenn ein Dokument das
+ * Attribut setzt -- das tut ausschliesslich /app/. Das Admin Tool setzt es
+ * nicht und bleibt deshalb unberuehrt, obwohl es dieselbe Datei laedt.
+ *
+ * Hier stehen genau die Werte, die sich NICHT eins zu eins auf einen Token
+ * abbilden liessen. Haetten sie einen Token mit Rueckfall bekommen, waere der
+ * Dunkelmodus geringfuegig verrutscht; so bleibt er unveraendert.
+ */
+/* Die beiden Farbschleier des Untergrunds sind fuer eine fast schwarze
+   Flaeche abgestimmt. Auf hellem Grund wirken sie schmutzig, deshalb hier
+   deutlich zurueckgenommen. */
+html[data-public-theme="light"] .operator-surface {
+  background: radial-gradient(circle at 12% 0%, rgba(14, 116, 144, .07), transparent 28rem), radial-gradient(circle at 88% 18%, rgba(37, 99, 235, .05), transparent 32rem), var(--operator-bg);
+}
+html[data-public-theme="light"] .operator-header { background: var(--surface-overlay); }
+html[data-public-theme="light"] .operator-nav button,
+html[data-public-theme="light"] .operator-nav a { border-color: var(--border); }
+html[data-public-theme="light"] .operator-nav button:hover,
+html[data-public-theme="light"] .operator-nav a:hover { background: var(--accent-soft); color: var(--accent-text); }
+html[data-public-theme="light"] .operator-nav button.is-active,
+html[data-public-theme="light"] .operator-nav a.is-active { border-color: var(--accent); color: var(--accent-text); }

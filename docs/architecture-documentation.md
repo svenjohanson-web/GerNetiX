@@ -87,6 +87,10 @@ Die einheitliche technische Default-Deny-Grenze für Browserinhalte, Hilfe,
 Quiz, Wissenskapitel und den Produktionsbuild beschreibt der
 [Schutzvertrag für Browserinhalte](browser-content-protection.md).
 
+Der dienstuebergreifende Default-Deny-Vertrag fuer interne APIs, kurzlebige
+Dienstidentitaeten und nutzergebundene Delegationen steht unter
+[Interne API-Zugriffssteuerung](internal-api-access-control.md).
+
 Die verbindliche Trennung zwischen wiederverwendbaren Lernprojekten, Courses,
 Learning Paths und kaufbaren Bundles sowie die Bestandsordnung stehen im
 [Katalogvertrag fuer Lernangebote](learning-catalog-governance.md).
@@ -113,6 +117,9 @@ die Modulgrenzen von Nexi sind in der
 Die wiederholbare, jeweils auf einen vollstaendigen Funktionsdurchstich
 begrenzte Umsetzung wird in der
 [Nexi Bottom-up-Test-Roadmap](nexi-bottom-up-test-roadmap.md) fortgeschrieben.
+Der geraetegefuehrte Acht-Satz-Ablauf und sein versionierter Statusvertrag zur
+oeffentlichen Inbetriebnahmeseite stehen in der
+[gefuehrten Nexi-Spracheinrichtung ueber UART](nexi-guided-voice-setup-uart.md).
 
 Das öffentliche [Virtuelle Elektroniklabor](virtual-electronics-lab.md)
 grenzt anonyme, hardwarefreie Messsimulationen bewusst von Nachbauprojekten,

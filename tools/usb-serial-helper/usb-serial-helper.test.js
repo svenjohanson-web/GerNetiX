@@ -9,6 +9,12 @@ const { buildNativeService } = require("./scripts/build-native-service");
 
 const root = __dirname;
 
+// Nur der Build braucht macOS und dessen Swift-Toolchain. Die uebrigen Zusagen
+// lesen Quelldateien und gelten auf jedem Arbeitsplatz.
+const macOnly = process.platform === "darwin"
+  ? false
+  : "Baut den nativen macOS-Dienst und laeuft deshalb nur auf macOS.";
+
 test("webhelper is a native UI-less service without Electron or Chromium", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const swift = fs.readFileSync(path.join(root, "native", "main.swift"), "utf8");
@@ -46,7 +52,7 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   );
 });
 
-test("native service builds and passes its contract self-test", { timeout: 120_000 }, () => {
+test("native service builds and passes its contract self-test", { timeout: 120_000, skip: macOnly }, () => {
   const built = buildNativeService();
   const output = execFileSync(built.executable, ["--self-test"], { encoding: "utf8" });
   const serviceSize = fs.statSync(built.executable).size;

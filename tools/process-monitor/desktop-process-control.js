@@ -7,7 +7,8 @@ const fs = require("node:fs");
 const execFileAsync = promisify(execFile);
 const VPN_SERVICE_NAME = "WireGuardTunnel$gernetix-vps";
 const MACOS_VPN_SERVICE_NAME = "gernetix-vps-mac";
-const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4700,4700],[4800,4800],[4900,4900],[4920,4920],[5001,5000],[5200,5200],[5500,5500],[5600,5600],[5800,5800]];
+const IDENTITY_START_ATTEMPTS = 120;
+const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4600,4600],[4700,4700],[4800,4800],[4900,4900],[4920,4920],[5001,5000],[5200,5200],[5500,5500],[5600,5600],[5800,5800]];
 const SECURITY_CACHE_MS = 60000;
 const VPS_SERVICE_PORTS = Object.freeze({
   "runtime-postgres": "5432 intern · lokal 25432 per Tunnel",
@@ -55,7 +56,7 @@ let stagingTunnelError = "";
 let lastRemoteProcessItems = [];
 let lastRemoteProcessSuccessAt = "";
 const services = [
-  service("identity-server", "Identity Server", 4300, {}, {local:true}),
+  service("identity-server", "Identity Dev-Server", 4300, {}, {local:true}),
   service("build-worker", "Lokaler Build-Worker", 4400, {}, {local:true,autoStart:false,kind:"docker-build-worker"}),
 ];
 
@@ -63,17 +64,55 @@ function service(id, name, port, environment={}, options={}) { const local=optio
 function monitorSshTarget(config) { return assertSafeSshTarget(config.GERNETIX_STAGING_MONITOR_SSH || config.GERNETIX_STAGING_SSH || ""); }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
-function isIdentityRemoteDevHealth(body){return body?.service==="identity-server"&&body?.persistence_backend==="postgres"&&body?.remote_dev===true;}
+function isIdentityRemoteDevHealth(body) {
+  if (!body || body.service !== "identity-server") return false;
+  if (body?.identity_db?.reachable === false) return false;
+  if (body?.dependencies?.status === "degraded" || Number(body?.dependencies?.unreachable || 0) > 0) return false;
+  return body.persistence_backend === "postgres" && body.remote_dev === true;
+}
+function identityHealthError(body) {
+  if (!body) return "Identity-Service meldet keine Health-Daten.";
+  if (body.identity_db?.reachable === false) {
+    const details = [body.identity_db.error_code, body.identity_db.message, body.identity_db.error]
+      .filter(Boolean)
+      .join(" · ");
+    return `Identity-DB nicht erreichbar.${details ? ` ${details}` : ""}`;
+  }
+  const failedDependencies = Array.isArray(body.dependencies?.items)
+    ? body.dependencies.items.filter((item) => item?.reachable === false)
+    : [];
+  if (failedDependencies.length) {
+    const details = failedDependencies.map((item) => {
+      const reason = [item.error_code, item.status_code ? `HTTP ${item.status_code}` : "", item.message, item.health_url, Number.isFinite(item.latency_ms) ? `${item.latency_ms}ms` : ""]
+        .filter(Boolean)
+        .join(" · ");
+      return `${item.name || item.id || "Unbekannter Dienst"}${reason ? ` (${reason})` : ""}`;
+    });
+    return `Identity läuft, aber ${failedDependencies.length} Abhängigkeit(en) sind nicht erreichbar: ${details.join(" | ")}`;
+  }
+  if (body.service !== "identity-server") return "Unbekannter Service in Health-Response.";
+  if (body.persistence_backend !== "postgres") return `Falscher Persistence-Backend: ${body.persistence_backend || "unbekannt"}.`;
+  if (body.remote_dev !== true) return "Identity ist nicht im Remote-Dev-Modus mit PostgreSQL.";
+  return "Identity-Health-Response unvollständig oder inkonsistent.";
+}
 async function check(item) {
   try {
     const workerConfig=item.kind==="docker-build-worker"?loadBuildWorkerConfig():null;
     const response=workerConfig?await dockerBuildWorkerHealth():await health(item.healthUrl),statusCode=response.statusCode,pid=item.kind==="docker-build-worker"?null:await pidForPort(item.port);
     const statusHealthy=statusCode>=200&&statusCode<300;
     const identityModeMismatch=item.id==="identity-server"&&statusHealthy&&!isIdentityRemoteDevHealth(response.body);
+    /*
+     * Zwei verschiedene Stoerungen, zwei verschiedene Meldungen: eine tote
+     * Kontodatenbank macht die Anmeldung unmoeglich und hat Vorrang; ein
+     * ausgefallener Nachbardienst laesst den Prozess laufen und wird als
+     * "degraded" gezeigt statt als gestoppt.
+     */
     const persistenceUnavailable=item.id==="identity-server"&&response.body?.dependencies?.postgres?.status==="unavailable";
-    return {...item,healthy:statusHealthy&&!identityModeMismatch,statusCode,pid,
+    const identityDegraded=item.id==="identity-server"&&statusHealthy&&!persistenceUnavailable&&response.body?.dependencies?.status==="degraded";
+    return {...item,healthy:statusHealthy&&!identityModeMismatch,degraded:identityDegraded,statusCode,pid,
       persistenceBackend:response.body?.persistence_backend||"",remoteDev:response.body?.remote_dev===true,
-      identityModeMismatch,persistenceUnavailable,error:persistenceUnavailable?"Zentrale PostgreSQL-Kontodatenbank nicht erreichbar. Anmeldung ist nicht verfuegbar.":identityModeMismatch?"Falscher Identity-Modus: Port 4300 verwendet nicht Remote-Dev mit PostgreSQL.":"",
+      identityModeMismatch,persistenceUnavailable,
+      error:persistenceUnavailable?"Zentrale PostgreSQL-Kontodatenbank nicht erreichbar. Anmeldung ist nicht verfuegbar.":identityModeMismatch?`Identity-Healthprüfung fehlgeschlagen: ${identityHealthError(response.body)}`:"",
       ...(workerConfig?{workerId:workerConfig.BUILD_WORKER_ID,bindAddress:workerConfig.BUILD_WORKER_BIND_ADDRESS,coordinationBackend:response.body?.coordination?.backend||response.body?.coordination_backend||"postgres"}:{})};
   }
   catch(error){ return {...item,healthy:false,statusCode:0,pid:item.kind==="docker-build-worker"?null:await pidForPort(item.port),error:error.message}; }
@@ -123,7 +162,25 @@ async function interfaceStatistics(hours=24,options={}){
   return remoteInterfaceStatistics({...options,hours});
 }
 async function operationsAlerts(hours=24,options={}){
-  return remoteUserActionAlerts({...options,hours});
+  /*
+   * Die lokale Runtime-SQLite ist keine Betriebsquelle mehr: die Domaenendienste
+   * laufen auf dem VPS. Geblieben sind die lokale Identity-Diagnose ueber den
+   * Loopback-Endpunkt und die Fernabfrage der Operations-Datenbank.
+   */
+  const [identity,remote]=await Promise.all([localUserActionDiagnostics({...options,hours}),remoteUserActionAlerts({...options,hours})]);
+  return mergeRuntimeAlerts(identity,remote);
+}
+async function localUserActionDiagnostics(options={}){
+  const hours=Math.max(1,Number(options.hours)||24),readHealth=options.health||health;
+  try{
+    const response=await readHealth("http://127.0.0.1:4300/api/dev/local-action-diagnostics");
+    if(response.statusCode<200||response.statusCode>=300)throw new Error(`HTTP ${response.statusCode}`);
+    const since=Date.now()-hours*3600000;
+    const items=(response.body?.items||[]).filter((item)=>new Date(item.occurred_at).getTime()>=since).map((item)=>userActionDiagnosticAlert(item,"identity-local"));
+    return {hours,items,summary:alertSummary(items)};
+  }catch(error){
+    return {hours,items:[],summary:alertSummary([]),error:`Lokale Identity-Diagnose nicht lesbar: ${error.message || error}`};
+  }
 }
 async function remoteInterfaceStatistics(options={}){
   if(!options.force&&!options.execFileAsync&&interfaceStatisticsCache?.expiresAt>Date.now())return interfaceStatisticsCache.value;
@@ -159,6 +216,8 @@ async function remoteUserActionAlerts(options={}){
     const payload=JSON.parse(String(stdout||"{}")),since=Date.now()-hours*3600000;
     const items=(payload?.summary?.recent_failures||[]).filter((item)=>new Date(item.last_seen_at).getTime()>=since).map((item)=>({
       occurred_at:item.last_seen_at,severity:item.phase==="timed_out"?"warning":"error",kind:"user_action",
+      event_id:String(item.event_id||""),action_id:String(item.action_id||""),action_type:String(item.action_type||""),
+      phase:String(item.phase||"failed"),reason_code:String(item.reason_code||"unknown_client_failure"),
       source_service:"user_action",target_service:String(item.action_type||""),route:String(item.failed_span||"action"),
       event_type:`user_action_${item.phase||"failed"}`,
       message:`${String(item.reason_code||"unknown_client_failure")} · Action ${String(item.action_id||"").slice(0,13)}…`,
@@ -167,6 +226,29 @@ async function remoteUserActionAlerts(options={}){
   }catch(error){value={hours,host,items:[],summary:{total:0,errors:0,warnings:0},error:`Nutzeraktions-Operations nicht lesbar: ${remoteError(error)}`};}
   if(!options.execFileAsync)userActionAlertsCache={expiresAt:Date.now()+SECURITY_CACHE_MS,value};
   return value;
+}
+function userActionDiagnosticAlert(item,sourceService){
+  return {
+    occurred_at:item.occurred_at,severity:item.phase==="timed_out"?"warning":"error",kind:"user_action",
+    event_id:String(item.event_id||""),action_id:String(item.action_id||""),action_type:String(item.action_type||""),
+    phase:String(item.phase||"failed"),reason_code:String(item.reason_code||"unknown_client_failure"),
+    source_service:sourceService,target_service:String(item.action_type||""),route:String(item.span_type||"action"),
+    event_type:`user_action_${item.phase||"failed"}`,delivery_state:String(item.delivery_state||""),
+    message:`${String(item.reason_code||"unknown_client_failure")} · Vorgang ${String(item.action_id||"")}`,
+  };
+}
+function alertSummary(items){return {total:items.length,errors:items.filter((item)=>["error","critical"].includes(item.severity)).length,warnings:items.filter((item)=>item.severity==="warning").length};}
+function mergeRuntimeAlerts(...sources){
+  const seen=new Set(),merged=[];
+  for(const item of sources.flatMap((source)=>source?.items||[])){
+    const key=item.action_id
+      ? [item.action_id,item.phase,item.route].join("|")
+      : item.event_id||[item.occurred_at,item.target_service,item.message].join("|");
+    if(seen.has(key))continue;
+    seen.add(key);merged.push(item);
+  }
+  const items=merged.sort((left,right)=>String(right.occurred_at).localeCompare(String(left.occurred_at))).slice(0,20);
+  return {hours:sources.find((source)=>source?.hours)?.hours||24,items,summary:alertSummary(items),error:sources.map((source)=>source?.error).filter(Boolean).join(" · ")};
 }
 async function remoteProcessStates(options={}) {
   const config=options.config||loadStagingConfig();
@@ -374,6 +456,71 @@ async function startStagingTunnel(options={}) {
   throw new Error("SSH-Diagnosetunnel wurde nicht rechtzeitig aufgebaut.");
 }
 
+async function identityDbTunnelState(options={}) {
+  const readTunnelState=options.stagingTunnelState||stagingTunnelState;
+  const readVpnState=options.vpnState||vpnState;
+  const staged=await readTunnelState(options);
+  const vpn=await readVpnState(options);
+  if(!staged.configured)return {
+    ...staged,
+    identityDbPort:staged.identityDbPort || null,
+    identityDbConnected:false,
+    vpnConnected:Boolean(vpn.connected),
+    error:staged.error || "PostgreSQL-Tunnel nicht konfiguriert."
+  };
+  if(!vpn.configured)return {
+    ...staged,
+    identityDbConnected:false,
+    vpnConnected:Boolean(vpn.connected),
+    error:vpn.error || "Der GerNetiX-VPN-Tunnel ist nicht eingerichtet."
+  };
+  if(!vpn.connected)return {
+    ...staged,
+    identityDbConnected:false,
+    vpnConnected:false,
+    error:"PostgreSQL erreicht keine Verbindung ohne VPN. Bitte zuerst den GerNetiX-VPN aktivieren."
+  };
+  return {
+    ...staged,
+    identityDbConnected:Boolean(staged.active),
+    vpnConnected:Boolean(vpn.connected),
+    error:staged.error || (staged.active ? "" : "PostgreSQL-Tunnel ist nicht aktiv. VPN ist verbunden, aber der SSH-Tunnel muss gestartet werden.")
+  };
+}
+
+async function restoreIdentityDbAccess(options={}) {
+  const readDbState=options.identityDbTunnelState||identityDbTunnelState;
+  const readTunnelState=options.stagingTunnelState||stagingTunnelState;
+  const connectVpn=options.setVpnConnected||setVpnConnected;
+  const startTunnel=options.startStagingTunnel||startStagingTunnel;
+  let state=await readDbState(options);
+  if(!state.configured){
+    throw new Error(state.error || "PostgreSQL-Tunnel nicht konfiguriert.");
+  }
+  if(state.identityDbConnected) {
+    return { ...state, restored: false, repaired: false };
+  }
+  if(!state.vpnConnected) {
+    await connectVpn(true, options);
+  }
+  const tunnelState=await readTunnelState(options);
+  if(!tunnelState.configured){
+    throw new Error(tunnelState.error || "VPS-SSH-Tunnel nicht konfiguriert.");
+  }
+  if(!tunnelState.active){
+    await startTunnel(options);
+  }
+  state=await readDbState({
+    ...options,
+    vpnState: options.vpnState || vpnState,
+    stagingTunnelState: readTunnelState
+  });
+  if(!state.identityDbConnected){
+    throw new Error(state.error || "PostgreSQL-Tunnel konnte nicht aufgebaut werden.");
+  }
+  return { ...state, restored: true, repaired: true };
+}
+
 async function stopStagingTunnel(options={}) {
   const current=await stagingTunnelState(options);
   if(!current.active)return current;
@@ -550,7 +697,10 @@ async function startIdentityRemoteDev(options={}){
   const child=launch(item,env);
   child.unref?.();
   const wait=options.delay||delay;
-  for(let i=0;i<40;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null||child.gernetixSpawnError)break;await wait(250);}
+  // 30s statt 10s: Der Bootstrap laeuft ueber den VPS-Tunnel und darf bei
+  // langsamer Verbindung nicht abgeschnitten werden. Ein abgestuerzter Start
+  // oder ein gescheiterter Spawn bricht ohnehin sofort ab.
+  for(let i=0;i<IDENTITY_START_ATTEMPTS;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null||child.gernetixSpawnError)break;await wait(250);}
   const detail=child.gernetixSpawnError?.message||recentServiceLog(item.id);
   if(child.exitCode===null&&!child.killed)child.kill?.("SIGTERM");
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
@@ -690,4 +840,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={applyAccountDatabaseState,completeVpsServiceStates,configureWorkspace,dockerBuildWorkerHealth,dockerDaemonReady,dockerExecutable,ensureDockerReady,interfaceStatistics,loadBuildWorkerConfig,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteAccountDatabaseState,remoteIdentityEnvironment,remoteInterfaceStatistics,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,runBuildWorkerAction,securityRuleStates,serviceNodeExecutable,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startRemoteAccountDatabase,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={applyAccountDatabaseState,completeVpsServiceStates,configureWorkspace,dockerBuildWorkerHealth,dockerDaemonReady,dockerExecutable,ensureDockerReady,identityDbTunnelState,identityHealthError,interfaceStatistics,isIdentityRemoteDevHealth,loadBuildWorkerConfig,localUserActionDiagnostics,mergeRuntimeAlerts,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteAccountDatabaseState,remoteIdentityEnvironment,remoteInterfaceStatistics,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,restoreIdentityDbAccess,runBuildWorkerAction,securityRuleStates,serviceNodeExecutable,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startRemoteAccountDatabase,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

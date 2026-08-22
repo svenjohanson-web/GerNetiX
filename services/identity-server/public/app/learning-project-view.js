@@ -152,3 +152,7 @@ const LearningProjectView = (() => {
 
   return { lessonStructure, render };
 })();
+
+export {
+  LearningProjectView,
+};

@@ -171,6 +171,39 @@ weder Fragen, Threadlisten, Nachrichtentexte noch technische Account-IDs an
 Identity. Eine kleine Antwort darf nicht erst nach dem Transfer vollständiger
 Fachlisten im aufrufenden Service entstehen.
 
+## Modulgrenze
+
+Die Browserdateien der Plattform sind ES-Module. Sie führen ein, was sie
+brauchen, statt es aus einem gemeinsamen globalen Namensraum aufzulesen. Von 28
+Skript-Tags im Plattformdokument ist genau eines klassisch:
+`initial-view-router.js` wählt die Ansicht vor dem ersten Zeichnen und würde als
+Modul aufgeschoben.
+
+Für das routenbezogene Laden ist dabei eine Richtung entscheidend. Ein `import`
+ist eine feste Abhängigkeit: der Browser holt das Modul, bevor der einführende
+Code läuft. **Eine beim Start geladene Datei darf deshalb keine nachgeladene
+einführen.** Täte sie es, käme das betroffene Routenpaket bei jedem Seitenaufruf
+mit -- ohne sichtbaren Fehler, denn alles funktioniert weiter, nur langsamer.
+Genau das ist die Grenze, die dieses Dokument schützt.
+
+Für diese Richtung bleibt der Zugriff über den globalen Namensraum bestehen. Die
+nachgeladenen Dateien stellen ihre Namen dafür mit einer ausdrücklich
+gekennzeichneten Übergangsbrücke bereit. Eine solche Brücke ist keine Altlast,
+sondern die Gegenrichtung der Aufteilung; aufgelöst wird sie nicht durch einen
+`import`, sondern durch die Registratur in `platform-components.js`, die eine
+Fabrik entgegennimmt und sie erst beim tatsächlichen Bedarf ruft.
+
+Kurze Namen wie `@app/api-client.js` werden über eine erzeugte Import Map
+aufgelöst. Sie leitet sich aus denselben Cache-Versionen ab wie die
+Skript-Tags, wird von `npm run assets:sync` geschrieben und steht auf jeder
+Seite, die ein Modul lädt oder sich eines nachträglich holt. Ein `import` ohne
+Version würde eine zweite, unversionierte Kopie laden und dasselbe Modul ein
+zweites Mal anlegen.
+
+`test/module-boundary.test.js` hält alle drei Punkte fest: keine
+Start-Datei führt eine nachgeladene ein, jede verbliebene Brücke gehört zu einer
+nachgeladenen Datei, und nur der Initialrouter ist klassisch.
+
 ## Verbindliche Regeln
 
 - Ein `include`-Abschnitt ist eine serverseitige Ausführungsgrenze, nicht nur
@@ -206,6 +239,11 @@ Fachlisten im aufrufenden Service entstehen.
 - Ein geöffnetes Lernprojekt lädt nur seinen eigenen Fortschritt. Reine
   Browserprojekte dürfen den Projektstart nicht von Build-, Board-, USB- oder
   Flashmodulen abhängig machen.
+- Eine beim Start geladene Browserdatei führt keine nachgeladene ein. Der
+  `import` ist eine feste Abhängigkeit und hebt die Aufteilung stillschweigend
+  auf.
+- Eine Übergangsbrücke an `globalThis` ist nur an einer nachgeladenen Datei
+  zulässig. An einer beim Start geladenen ist sie Rest und gehört entfernt.
 
 ## Nachweis
 

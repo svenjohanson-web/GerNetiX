@@ -35,6 +35,7 @@ test("shares concurrent project loads and keeps synchronization behind the learn
 });
 
 test("rejects project access across account boundaries", async () => {
+  const requests = [];
   const service = createProjectRuntimeService({
     ensureAccountResourcePlan: async () => {},
     getLearningProjects: () => ({}),
@@ -42,8 +43,16 @@ test("rejects project access across account boundaries", async () => {
     mapProjectServerProject: (_session, project) => project,
     mapUserIdeProjectSummaries: () => [],
     mapUserIdeProjects: () => [],
-    projectServerJson: async () => ({ project_id: "p1", user_id: "another-account" }),
+    projectServerJson: async (...args) => {
+      requests.push(args);
+      return { items: [{ project_id: "p1", user_id: "another-account" }] };
+    },
     projectServerUserId: () => "account-1",
   });
   await assert.rejects(() => service.requireSessionProject({}, "p1"), { status: 404 });
+  assert.equal(requests[0][0], "/api/projects?user_id=account-1");
+  assert.deepEqual(requests[0][1].internalAuth, {
+    scopes: ["project.read"],
+    delegation: { account_id: "account-1", project_ids: [] },
+  });
 });

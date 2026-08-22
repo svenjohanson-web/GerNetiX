@@ -1,14 +1,14 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const test = require("node:test");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "public", "app", "learning-project-locales.js"), "utf8");
+const source = readForSandbox("learning-project-locales.js");
 const app = readPlatformAppSource();
-const view = fs.readFileSync(path.join(__dirname, "..", "public", "app", "learning-project-view.js"), "utf8");
-const controller = fs.readFileSync(path.join(__dirname, "..", "public", "app", "learning-project-controller.js"), "utf8");
+const view = readForSandbox("learning-project-view.js");
+const controller = readForSandbox("learning-project-controller.js");
 const context = {};
 vm.runInNewContext(`${source}\nthis.locales = LearningProjectLocales;`, context);
 
@@ -54,7 +54,7 @@ test("learning interface labels follow the selected locale", () => {
 
 test("language changes rerender catalog, personal projects and active learning views", () => {
   assert.match(app, /if \(route === "learn"\) \{[\s\S]*renderProjects\(\);[\s\S]*renderLearn\(\);/);
-  assert.match(app, /await platformI18n\.setLocale\(nextLocale\)[\s\S]*renderRoute\(\)/);
+  assert.match(app, /await state\.i18n\.setLocale\(nextLocale\)[\s\S]*renderRoute\(\)/);
   assert.match(app, /personalLearningProjects\(\)[\s\S]*LearningProjectLocales\.project\(project, currentLearningLocale\(\)\)/);
   assert.match(controller, /localizeProject\(project\)[\s\S]*LearningProjectView\.render/);
   assert.match(view, /learningText\("allProjects", "Alle Lernprojekte"\)/);

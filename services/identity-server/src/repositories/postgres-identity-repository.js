@@ -138,6 +138,7 @@ class PostgresIdentityRepository {
     passkeyCredentialId = null, passkeyPublicKey = null, passkeyCounter = 0,
     passkeyTransports = [], offlineRecoverySetConfirmedAt = null,
     offlineRecoverySetHash = null, recoveryBoardIds = [], preferredLocale = "de",
+    welcomeGuideDisabled = false,
     subscriptionPlan = "free", planValidUntil = null, lifecycleState = "active",
     emailVerifiedAt = null,
   }) {
@@ -164,6 +165,7 @@ class PostgresIdentityRepository {
       offline_recovery_set_hash: offlineRecoverySetHash,
       recovery_board_ids: [...recoveryBoardIds],
       preferred_locale: preferredLocale,
+      welcome_guide_disabled: Boolean(welcomeGuideDisabled),
       subscription_plan: subscriptionPlan,
       plan_valid_until: planValidUntil,
       last_meaningful_activity_at: now,

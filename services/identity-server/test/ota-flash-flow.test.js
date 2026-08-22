@@ -15,15 +15,15 @@ const server = [
 ].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
 
-test("OTA flow waits for the build and accepts only confirmed deploy states", () => {
-  const otaFlow = app.slice(app.indexOf("async function startOtaFlash"), app.indexOf("async function refreshRecoveryDevices"));
-  assert.match(otaFlow, /await waitForCompletedBuild\(build\)/);
-  assert.match(otaFlow, /device\.connectivity_status !== "online"/);
-  assert.match(otaFlow, /completed\.status !== "succeeded"/);
-  assert.match(otaFlow, /\["rebooting", "confirmed", "delivered", "succeeded"\]\.includes\(completed\.flash_status\)/);
-  assert.doesNotMatch(otaFlow, /queued_for_mqtt/);
-  assert.doesNotMatch(otaFlow, /build\.status === "succeeded" \? "ok"/);
-});
+/*
+ * Dass der OTA-Weg auf das Board wartet und nur bestaetigte Zustaende als
+ * Erfolg meldet, stand hier frueher als Vergleich auf dem Quelltext. Geprueft
+ * wird es jetzt am laufenden Ablauf in ota-flash-behaviour.test.js -- ein
+ * Wortlautvergleich haelt auch dann, wenn die Bedeutung kippt.
+ *
+ * Was hier bleibt, ist alles, was der Ablauf selbst nicht zeigen kann: die
+ * Verdrahtung im Dokument und die Kette auf der Serverseite.
+ */
 
 test("IDE can actively probe the allocated board and refresh OTA readiness", () => {
   assert.match(html, /id="checkOtaConnectivityButton"[^>]*>Online prüfen</);

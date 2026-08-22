@@ -182,8 +182,8 @@ Der Service sollte fuer Kollegen nur ueber VPN oder Tunnel erreichbar sein, nich
 - Ports und externe Basis-URLs werden konfigurierbar gehalten.
 - `/health` liefert einen einfachen Healthcheck.
 - Persistenz, E-Mail-Versand und OAuth-Provider sind ueber Adapter gekapselt, damit spaeter Linux-Homeserver, Container oder Cloud-Betrieb moeglich bleiben.
-- Lokale Browserseiten werden fuer WebAuthn von `127.0.0.1` auf die gueltige RP-ID `localhost` umgeleitet. Fehlgeschlagene Passkey-Vorgaenge werden sowohl im Browser vor der Serververifikation als auch in Vorbereitung und Verifikation ohne Credential-Daten protokolliert und ueber `SYSTEM_EVENT_INGEST_TOKEN` als persistentes Admin-Tool-Systemereignis gemeldet.
-- Das maschinenlesbare Linkinventar und der authentifizierte Prüflauf verwenden den getrennten `LINK_INTEGRITY_INGEST_TOKEN`; Testkonto-Credentials werden nur als Runtime-Secrets an den Prüflauf übergeben und nicht persistiert.
+- Lokale Browserseiten werden fuer WebAuthn von `127.0.0.1` auf die gueltige RP-ID `localhost` umgeleitet. Fehlgeschlagene Passkey-Vorgaenge werden ohne Credential-Daten protokolliert und mit einem kurzlebigen `operations.system_events.write`-Diensttoken als persistentes Admin-Tool-Systemereignis gemeldet.
+- Das maschinenlesbare Linkinventar und der authentifizierte Prüflauf verwenden einen kurzlebigen `operations.link_integrity.write`-Diensttoken; Testkonto-Credentials werden nur als Runtime-Secrets an den Prüflauf übergeben und nicht persistiert.
 - Nach der Passkey-Registrierung melden Browser und API den fachlichen Ausgang eindeutig: `Konto wurde angelegt.` erst nach erfolgreicher SQLite-Persistenz oder `Konto wurde nicht angelegt. Grund: ...` bei jedem vorherigen Abbruch.
 
 ## IONOS E-Mail-Versand

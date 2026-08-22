@@ -71,6 +71,7 @@
       ],
       fixed: [
         { href: "/hilfe/", label: "Hilfe", i18n: "nav.help", id: "helpMenuLink", className: "utility public-information-link menu-fixed-action" },
+        { type: "button", label: "Willkommen bei GerNetiX", id: "welcomeGuideMenuButton", className: "utility menu-tool-action menu-fixed-action", contexts: ["app"] },
         { href: "/app/messages/", label: "Nachrichten", route: "messages", id: "messagesMenuLink", className: "utility menu-fixed-action" },
         { href: "/app/auth/", label: "Anmelden", i18n: "nav.login", id: "loginMenuLink", className: "utility public-information-link menu-session-action", contexts: ["app"] },
         { type: "button", label: "Abmelden", i18n: "platform.nav.logout", id: "logoutButton", className: "menu-logout menu-session-action", contexts: ["app"] },

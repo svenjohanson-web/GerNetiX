@@ -8,12 +8,84 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <script src="/navigation-model.js?v=20260816-unified-navigation-1"></script>
+    <!-- import-map: erzeugt von scripts/update-asset-versions.js -->
+    <script type="importmap">
+    {
+          "imports": {
+                "@app/action-observability.js": "/app/action-observability.js?v=20260820-esm-blatt-2",
+                "@app/api-client.js": "/app/api-client.js?v=20260820-esm-abschluss-1",
+                "@app/app-account-controller.js": "/app/app-account-controller.js?v=20260822-merge-main-3",
+                "@app/app-billing-controller.js": "/app/app-billing-controller.js?v=20260822-merge-main-3",
+                "@app/app-dashboard-controller.js": "/app/app-dashboard-controller.js?v=20260822-merge-main-3",
+                "@app/app-project-controller.js": "/app/app-project-controller.js?v=20260822-merge-main-3",
+                "@app/app-push-controller.js": "/app/app-push-controller.js?v=20260822-merge-main-3",
+                "@app/app-runtime-utils.js": "/app/app-runtime-utils.js?v=20260822-merge-main-3",
+                "@app/app-shell-controller.js": "/app/app-shell-controller.js?v=20260822-merge-main-3",
+                "@app/app-shell-early.js": "/app/app-shell-early.js?v=20260822-merge-main-3",
+                "@app/board-configuration-plugin.js": "/app/board-configuration-plugin.js?v=20260820-esm-blatt-6",
+                "@app/development-hardware-model.js": "/app/development-hardware-model.js?v=20260820-esm-blatt-6",
+                "@app/development-plantuml.js": "/app/development-plantuml.js?v=20260820-entflechtung-2",
+                "@app/device-onboarding-model.js": "/app/device-onboarding-model.js?v=20260820-esm-blatt-6",
+                "@app/dom-utils.js": "/app/dom-utils.js?v=20260820-esm-abschluss-1",
+                "@app/flash-progress.js": "/app/flash-progress.js?v=20260820-esm-blatt-6",
+                "@app/hardware-configuration-model.js": "/app/hardware-configuration-model.js?v=20260820-entflechtung-3",
+                "@app/help-chat-service.js": "/app/help-chat-service.js?v=20260820-esm-abschluss-1",
+                "@app/help-content.js": "/app/help-content.js?v=20260822-merge-main-3",
+                "@app/home-automation-model.js": "/app/home-automation-model.js?v=20260820-entflechtung-2",
+                "@app/i18n/i18n.js": "/app/i18n/i18n.js?v=20260820-esm-i18n-1",
+                "@app/ide-project-model.js": "/app/ide-project-model.js?v=20260820-entflechtung-7",
+                "@app/information-view.js": "/app/information-view.js?v=20260822-merge-main-3",
+                "@app/knowledge-chapter-index.js": "/app/knowledge-chapter-index.js?v=20260822-merge-main-3",
+                "@app/learning-project-controller.js": "/app/learning-project-controller.js?v=20260822-merge-main-3",
+                "@app/learning-project-locales.js": "/app/learning-project-locales.js?v=20260822-merge-main-3",
+                "@app/learning-project-view.js": "/app/learning-project-view.js?v=20260822-merge-main-3",
+                "@app/platform-components.js": "/app/platform-components.js?v=20260822-merge-main-3",
+                "@app/platform-routing.js": "/app/platform-routing.js?v=20260822-merge-main-3",
+                "@app/platform-state.js": "/app/platform-state.js?v=20260822-merge-main-3",
+                "@app/project-feedback-ui.js": "/app/project-feedback-ui.js?v=20260820-esm-mitte-1",
+                "@app/quiz-data.js": "/app/quiz-data.js?v=20260820-esm-blatt-6",
+                "@app/requirements-analysis.js": "/app/requirements-analysis.js?v=20260820-entflechtung-5",
+                "@app/serial-service-client.js": "/app/serial-service-client.js?v=20260822-merge-main-3",
+                "@app/unified-flash-dialog.js": "/app/unified-flash-dialog.js?v=20260820-esm-blatt-3",
+                "@app/unified-flash-executor.js": "/app/unified-flash-executor.js?v=20260820-flash-pruefsumme-1",
+                "@app/usb-port-disconnect-detector.js": "/app/usb-port-disconnect-detector.js?v=20260820-esm-blatt-6",
+                "@app/welcome-guide.js": "/app/welcome-guide.js?v=20260822-merge-main-3",
+                "@app/workbench-output-view.js": "/app/workbench-output-view.js?v=20260820-statuskanal-1",
+                "/landing.js": "/landing.js?v=20260822-merge-main-1"
+          }
+    }
+    </script>
+    <!-- /import-map -->
+    <!-- Das Navigationsmodell setzt das globale GerNetiXNavigationModel und
+         muss vor app-navigation.js geladen sein, das daraus das Menue baut. -->
+    <script src="/navigation-model.js?v=20260822-merge-main-1"></script>
     <script src="/app/initial-view-router.js?v=20260805-hardware-lab-route-1"></script>
-    <script defer src="/app/app-shell-early.js?v=20260805-shell-menu-1"></script>
-    <link rel="stylesheet" href="/app/app.css?v=20260812-knowledge-library-3" />
-    <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260807-helper-progress-2" />
-    <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
+    <script>
+      /*
+       * Die Farbwahl muss vor dem ersten Zeichnen feststehen. Eine Datei mit
+       * defer liefe erst nach dem Aufbau des Dokuments, sodass die dunkle
+       * Auslieferungsfarbe kurz aufblitzen wuerde. Deshalb steht das hier
+       * eingebettet und vor den Stylesheets.
+       *
+       * Der Schluessel ist derselbe wie auf den oeffentlichen Seiten: Wer dort
+       * dunkel gewaehlt hat, findet die Plattform ebenso vor und umgekehrt.
+       */
+      (function () {
+        var gewaehlt = null;
+        try {
+          gewaehlt = window.localStorage.getItem("gernetix-public-theme");
+        } catch (fehler) {
+          /* Speicher gesperrt, etwa im privaten Fenster: dann gilt der Standard. */
+        }
+        document.documentElement.dataset.publicTheme =
+          gewaehlt === "dark" || gewaehlt === "light" ? gewaehlt : "light";
+      })();
+    </script>
+    <script type="module" src="/app/app-shell-early.js?v=20260822-merge-main-3"></script>
+    <link rel="stylesheet" href="/app/app.css?v=20260822-merge-main-1" />
+    <link rel="stylesheet" href="/app/welcome-guide.css?v=20260819-app-theme-toggle-3" />
+    <link rel="stylesheet" href="/app/unified-flash-dialog.css?v=20260819-theme-tokens-2" />
+    <link rel="stylesheet" href="/app/operator-shell.css?v=20260819-app-theme-toggle-3" />
   </head>
   <body class="operator-surface">
     <main class="app-shell">
@@ -43,6 +115,7 @@
             </select>
           </label>
           <span id="accountBadge" class="account-badge"></span>
+          <button id="platformThemeToggle" class="platform-theme-toggle" type="button" aria-pressed="false" aria-label="Dunkles Design einschalten" title="Dunkles Design einschalten">◐</button>
           <button id="mainMenuButton" class="menu-button" type="button" aria-label="Menue oeffnen" aria-expanded="false" aria-controls="mainMenu">
             <span></span>
             <span></span>
@@ -52,7 +125,7 @@
       </header>
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche"></nav>
-      <script src="/app/app-navigation.js?v=20260816-unified-navigation-1"></script>
+      <script src="/app/app-navigation.js?v=20260822-merge-main-1"></script>
 
       <section id="dashboardView" class="view">
         <section class="dashboard-hero" aria-labelledby="dashboardTitle">
@@ -1527,6 +1600,139 @@
           </footer>
         </form>
       </dialog>
+      <dialog id="welcomeGuideDialog" class="welcome-guide-dialog" aria-labelledby="welcomeGuideTitle">
+        <div class="welcome-guide-shell">
+          <header class="welcome-guide-header">
+            <div>
+              <p class="eyebrow">Willkommen</p>
+              <h1 id="welcomeGuideTitle">GerNetiX kennenlernen</h1>
+            </div>
+            <button class="welcome-guide-x" type="button" aria-label="Willkommensführung schließen" data-welcome-dismiss>×</button>
+          </header>
+
+          <div class="welcome-guide-scroll">
+            <section class="welcome-guide-step" data-welcome-step="0">
+              <h2 tabindex="-1">Verstehen. Entwickeln. Erschaffen.</h2>
+              <p class="welcome-guide-lead">GerNetiX verbindet Wissen, praktische Projekte, Entwicklung und echte Hardware. Du kannst etwas nachbauen, Embedded-Systeme Schritt für Schritt lernen oder mit dem Bot aus deiner eigenen Idee ein Projekt entwickeln.</p>
+              <div class="welcome-portfolio-grid">
+                <article class="welcome-portfolio-card">
+                  <span aria-hidden="true">01</span>
+                  <h3>Nachbauprojekte</h3>
+                  <p>Vollständige Projekte mit Aufbau, Komponenten, Firmware und Inbetriebnahme nachvollziehen.</p>
+                  <a href="/nachbauprojekte/" data-welcome-destination>Nachbauprojekte entdecken →</a>
+                </article>
+                <article class="welcome-portfolio-card">
+                  <span aria-hidden="true">02</span>
+                  <h3>Entwicklungsplattform &amp; Bot</h3>
+                  <p>Eine eigene Idee beschreiben und daraus gemeinsam eine begründete technische Lösung entwickeln.</p>
+                  <a href="/app/development-platform/" data-welcome-destination>Mit einer Idee starten →</a>
+                </article>
+                <article class="welcome-portfolio-card">
+                  <span aria-hidden="true">03</span>
+                  <h3>Wissensportal &amp; Bücher</h3>
+                  <p>Grundlagen, Fachbegriffe und größere technische Zusammenhänge in Ruhe nachlesen.</p>
+                  <a href="/wissen/" data-welcome-destination>Wissensportal öffnen →</a>
+                </article>
+                <article class="welcome-portfolio-card">
+                  <span aria-hidden="true">04</span>
+                  <h3>Lernprojekte</h3>
+                  <p>Neues Wissen anhand geführter Aufgaben direkt verstehen, ausprobieren und anwenden.</p>
+                  <a href="/app/learn/" data-welcome-destination>Lernprojekte ansehen →</a>
+                </article>
+              </div>
+            </section>
+
+            <section class="welcome-guide-step" data-welcome-step="1" hidden>
+              <h2 tabindex="-1">Du bestimmst deinen Einstieg</h2>
+              <p class="welcome-guide-lead">Es gibt keine vorgeschriebene Reihenfolge. Wähle den Weg, der zu deinem Vorhaben und deinem aktuellen Wissen passt.</p>
+              <ol class="welcome-path-list">
+                <li><div><strong>Ich möchte etwas nachbauen.</strong>Beginne mit einem Nachbauprojekt und folge dem erprobten Aufbau.</div></li>
+                <li><div><strong>Ich möchte Embedded lernen.</strong>Starte ein Lernprojekt und arbeite dich von den Grundlagen zur echten Hardware vor.</div></li>
+                <li><div><strong>Ich möchte ein Thema verstehen.</strong>Nutze das Wissensportal, die Bücher und die Nachschlagewerke.</div></li>
+                <li><div><strong>Ich habe eine eigene Idee.</strong>Beschreibe sie dem Bot und entwickle sie in der Entwicklungsplattform weiter.</div></li>
+              </ol>
+              <p class="welcome-guide-note">Quiz, Community und KI-Hardware-Assistent ergänzen diese Wege: zum Prüfen deines Wissens, für Austausch und zur Untersuchung noch unbekannter Boards.</p>
+            </section>
+
+            <section class="welcome-guide-step" data-welcome-step="2" hidden>
+              <h2 tabindex="-1">Vom Lernen zur laufenden Firmware</h2>
+              <p class="welcome-guide-lead">Bei einem Embedded-Projekt läuft deine Software als Firmware auf einem Mikrocontroller-Board. GerNetiX begleitet den gesamten Zusammenhang – nicht nur den einzelnen Flashvorgang.</p>
+              <div class="welcome-flow" aria-label="Ablauf eines Embedded-Projekts">
+                <div><strong>Verstehen</strong><small>Grundlagen und Zusammenhänge lernen.</small></div>
+                <div><strong>Entwickeln</strong><small>Projekt und Firmware erstellen.</small></div>
+                <div><strong>Übertragen</strong><small>Firmware auf das Board flashen.</small></div>
+                <div><strong>Ausprobieren</strong><small>Ergebnis testen und weiterentwickeln.</small></div>
+              </div>
+              <p class="welcome-guide-note">Du kannst zunächst auch ohne eigenes Board lernen oder mit dem Bot planen. Die Hardware kommt dann hinzu, wenn dein Projekt sie benötigt.</p>
+            </section>
+
+            <section class="welcome-guide-step" data-welcome-step="3" hidden>
+              <h2 tabindex="-1">Drei Wege auf dein Board</h2>
+              <p class="welcome-guide-lead">Welche Übertragung am besten passt, hängt von deinem Board und der jeweiligen Situation ab.</p>
+              <div class="welcome-flash-grid">
+                <article class="welcome-flash-card">
+                  <span aria-hidden="true">OTA</span>
+                  <h3>Über das Netzwerk</h3>
+                  <p>Für den komfortablen Alltag: Die Firmware wird drahtlos auf ein eingerichtetes, erreichbares Board übertragen.</p>
+                </article>
+                <article class="welcome-flash-card">
+                  <span aria-hidden="true">USB</span>
+                  <h3>Direkt per Kabel</h3>
+                  <p>Für die erste Einrichtung, die lokale Entwicklung oder wenn das Board noch nicht über das Netzwerk erreichbar ist.</p>
+                </article>
+                <article class="welcome-flash-card">
+                  <span aria-hidden="true">FB</span>
+                  <h3>Mit der FlashBox</h3>
+                  <p>Für einen geführten Flashvorgang, bei dem GerNetiX die technischen Einzelschritte übernimmt.</p>
+                </article>
+                <article class="welcome-flash-card">
+                  <span aria-hidden="true">↻</span>
+                  <h3>Je nach Situation wechseln</h3>
+                  <p>Die Wege ergänzen sich: USB für den direkten Zugang, OTA für Komfort und die FlashBox für den geführten Ablauf.</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="welcome-guide-step" data-welcome-step="4" hidden>
+              <h2 tabindex="-1">Warum Boards inventarisieren?</h2>
+              <p class="welcome-guide-lead">Ein inventarisiertes Board kann eindeutig deinem Konto und dem passenden Projekt zugeordnet werden. Das macht besonders OTA-Updates sicherer und bequemer.</p>
+              <ul class="welcome-inventory-benefits">
+                <li>Boards und Hardware übersichtlich verwalten</li>
+                <li>Projekt, Firmware und Zielgerät eindeutig zuordnen</li>
+                <li>Das richtige Board für OTA automatisch erkennen</li>
+                <li>Rückfragen vermeiden, wenn mehrere Boards im Netzwerk sind</li>
+                <li>Verwechslungen beim Flashen reduzieren</li>
+                <li>Ein Board später gezielt aktualisieren und betreuen</li>
+              </ul>
+              <p class="welcome-guide-note">Du musst nicht mit der Inventarisierung anfangen. Starte mit einem Lernprojekt, einem Nachbauprojekt oder deiner Idee – und füge dein Board hinzu, sobald du es brauchst.</p>
+              <div class="welcome-guide-actions-inline">
+                <a class="button-link primary" href="/app/development-platform/" data-welcome-destination>Mit dem Bot starten</a>
+                <a class="button-link" href="/app/device-management/inventory/" data-welcome-destination>Board inventarisieren</a>
+              </div>
+            </section>
+          </div>
+
+          <footer class="welcome-guide-footer">
+            <nav class="welcome-guide-progress" aria-label="Schritte der Willkommensführung">
+              <button class="active" type="button" aria-label="Portfolio" data-welcome-step-button="0"></button>
+              <button type="button" aria-label="Einstieg" data-welcome-step-button="1"></button>
+              <button type="button" aria-label="Embedded-Ablauf" data-welcome-step-button="2"></button>
+              <button type="button" aria-label="Flashwege" data-welcome-step-button="3"></button>
+              <button type="button" aria-label="Inventarisierung" data-welcome-step-button="4"></button>
+            </nav>
+            <div class="welcome-guide-controls">
+              <button type="button" data-welcome-back>Zurück</button>
+              <button class="primary" type="button" data-welcome-next>Weiter</button>
+              <button class="primary" type="button" data-welcome-close hidden>GerNetiX starten</button>
+            </div>
+            <label class="welcome-guide-preference">
+              <input id="welcomeGuideDisabled" type="checkbox" />
+              Diese Einführung nach dem Login nicht mehr anzeigen
+            </label>
+            <p id="welcomeGuideStatus" class="welcome-guide-status" role="status" aria-live="polite"></p>
+          </footer>
+        </div>
+      </dialog>
       <dialog id="sessionRevokedDialog" class="runtime-dialog session-revoked-dialog" aria-labelledby="sessionRevokedTitle" aria-describedby="sessionRevokedDescription">
         <div class="runtime-dialog-header">
           <div>
@@ -1547,27 +1753,44 @@
       </footer>
     </main>
 
-    <script defer src="/app/i18n/i18n.js?v=20260726-01"></script>
-    <script defer src="/app/action-observability.js?v=20260807-four-action-chains-1"></script>
-    <script defer src="/app/api-client.js?v=20260814-single-session-1"></script>
-    <script defer src="/app/session-state.js?v=20260814-single-session-1"></script>
-    <script defer src="/app/dom-utils.js?v=20260803-performance-1"></script>
-    <script defer src="/app/ai-chat-pattern.js?v=20260805-standard-ai-chat-4"></script>
-    <script defer src="/app/serial-service-client.js?v=20260807-helper-progress-1"></script>
-    <script defer src="/app/learning-project-view.js?v=20260808-learning-entry-choice"></script>
-    <script defer src="/app/learning-project-controller.js?v=20260808-learning-entry-choice"></script>
-    <script defer src="/app/learning-project-locales.js?v=20260808-learning-entry-choice"></script>
-    <script defer src="/app/help-content.js?v=20260730-content-separation-1"></script>
-    <script defer src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script defer src="/app/information-view.js?v=20260812-knowledge-library-3"></script>
-    <script defer src="/app/app-shell-controller.js?v=20260812-knowledge-library-3"></script>
-    <script defer src="/app/app-dashboard-controller.js?v=20260805-applications-1"></script>
-    <script defer src="/app/app-account-controller.js?v=20260818-multi-passkey-1"></script>
-    <script defer src="/app/app-project-controller.js?v=20260808-learning-access-sales-1"></script>
-    <script defer src="/app/app-billing-controller.js?v=20260803-storage-policy-1"></script>
-    <script defer src="/app/app-runtime-utils.js?v=20260807-flat-guided-learning-2"></script>
-    <script defer src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
-    <script defer src="/app/app.js?v=20260808-reference-library-route-2"></script>
-    <script defer src="/app/app-event-bindings.js?v=20260805-shell-menu-1"></script>
+    <script type="module" src="/app/i18n/i18n.js?v=20260820-esm-i18n-1"></script>
+    <script type="module" src="/app/action-observability.js?v=20260820-esm-blatt-2"></script>
+    <script type="module" src="/app/api-client.js?v=20260820-esm-abschluss-1"></script>
+    <!--
+      Als Modul geladen: die Datei deklariert nichts, was andere Skripte
+      brauchen, und laeuft damit gefahrlos im eigenen Namensraum. Module
+      werden wie defer erst nach dem Aufbau des Dokuments und in
+      Dokumentreihenfolge ausgefuehrt, die Ladefolge bleibt also erhalten.
+    -->
+    <script type="module" src="/app/session-state.js?v=20260819-esm-schritt-1"></script>
+    <script type="module" src="/app/welcome-guide.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/dom-utils.js?v=20260820-esm-abschluss-1"></script>
+    <script type="module" src="/app/ai-chat-pattern.js?v=20260819-esm-schritt-1"></script>
+    <script type="module" src="/app/serial-service-client.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/platform-state.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/platform-routing.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/platform-components.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/learning-project-view.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/learning-project-controller.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/learning-project-locales.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/help-content.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/help-chat-service.js?v=20260820-esm-abschluss-1"></script>
+    <script type="module" src="/app/information-view.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-shell-controller.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-dashboard-controller.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-account-controller.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-project-controller.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-billing-controller.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-runtime-utils.js?v=20260822-merge-main-3"></script>
+    <script type="module" src="/app/app-push-controller.js?v=20260822-merge-main-3"></script>
+    <!--
+      Die Verdrahtung als Modul. Moeglich geworden durch die Entflechtung:
+      app.js stellt nur noch projectRepositoryCard und dessen Haltevariable
+      bereit, und beide benutzt keine andere Datei. Ihre eigenen Namen duerfen
+      also im Modulbereich verschwinden. Sie liest weiterhin Globale der
+      klassischen Skripte davor -- das ist erlaubt und bleibt unveraendert.
+    -->
+    <script type="module" src="/app/app.js?v=20260820-esm-kopf-1"></script>
+    <script type="module" src="/app/app-event-bindings.js?v=20260820-statuskanal-1"></script>
   </body>
 </html>

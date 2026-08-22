@@ -370,7 +370,7 @@ test("build artifact routes retain account ownership checks", async () => {
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
     projectServerJson: async () => ({ user_id: "another-user" }),
     loadBuildDeployJob: async () => ({}),
@@ -395,9 +395,9 @@ test("owned builds expose firmware but deny symbol and diagnostic artifact downl
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
-    projectServerJson: async () => ({ user_id: "user-1", result: { build: { artifacts } } }),
+    projectServerJson: async () => ({ project_id: "project-1", user_id: "user-1", result: { build: { artifacts } } }),
     loadBuildDeployJob: async () => ({}),
     recordCompletedBuildJob: async () => {},
     browserFlashManifest: () => ({}),
@@ -424,10 +424,10 @@ test("basissoftware build status never returns raw compiler logs", async () => {
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
     projectServerJson: async () => ({
-      user_id: "user-1",
+      project_id: "project-1", user_id: "user-1",
       build_config: { firmware_basis_id: "gernetix-runtime-basissoftware" },
       error: { details: { build_log: "secret basis source path" } },
     }),
@@ -462,12 +462,12 @@ test("build cancellation keeps account ownership and targets the central coordin
     readJsonBody: async () => ({}),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async (path, options) => {
       forwarded.push([path, options]);
       return { job_id: "job 42", status: "cancelling" };
     },
-    projectServerJson: async () => ({ user_id: "user-1" }),
+    projectServerJson: async () => ({ project_id: "project-1", user_id: "user-1" }),
     loadBuildDeployJob: async () => ({}),
     recordCompletedBuildJob: async () => {},
     browserFlashManifest: () => ({}),
@@ -480,7 +480,10 @@ test("build cancellation keeps account ownership and targets the central coordin
     res: {},
     url: new URL("http://localhost/api/user-ide/build-jobs/job%2042/cancel"),
   }), true);
-  assert.deepEqual(forwarded, [["/api/build-jobs/job%2042/cancel", { method: "POST" }]]);
+  assert.deepEqual(forwarded, [["/api/build-jobs/job%2042/cancel", {
+    method: "POST",
+    internalAuth: { scopes: ["build.job.cancel"], delegation: { account_id: "user-1", project_ids: ["project-1"] } },
+  }]]);
   assert.deepEqual(responses, [[202, { job_id: "job 42", status: "cancelling" }]]);
 });
 
@@ -495,7 +498,7 @@ test("crash symbolization is account-bound and requires the exact persisted buil
     readJsonBody: async () => ({ build_id: buildId, addresses: ["0x40001234", "0x40005678"] }),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async (path, options) => {
       forwarded.push([path, options]);
       return { status: "symbolized", build_id: buildId, frames: [
@@ -504,7 +507,7 @@ test("crash symbolization is account-bound and requires the exact persisted buil
       ] };
     },
     projectServerJson: async () => ({
-      user_id: "user-1",
+      project_id: "project-1", user_id: "user-1",
       customer_debug_source_paths: ["src/user/user_app.cpp"],
       result: { build: { build_id: buildId } },
     }),
@@ -520,6 +523,7 @@ test("crash symbolization is account-bound and requires the exact persisted buil
   }), true);
   assert.deepEqual(forwarded, [["/api/build-jobs/job-1/symbolize", {
     method: "POST", body: { build_id: buildId, addresses: ["0x40001234", "0x40005678"] },
+    internalAuth: { scopes: ["build.job.symbolize"], delegation: { account_id: "user-1", project_ids: ["project-1"] } },
   }]]);
   assert.deepEqual(responses, [[200, { status: "symbolized", build_id: buildId, frames: [
     { address: "0x40001234", resolved: true, function: "userMain", file: "/build/src/user/user_app.cpp", line: 5 },
@@ -536,7 +540,7 @@ test("USB flash reuses an owned successful build only after the Project Server c
     readJsonBody: async () => ({ software_unit_id: "camera" }),
     sendJson: (res, status, body) => responses.push([status, body]),
     handleUserIdeBuildJob: async () => {},
-    loadUserIdeProjects: async () => [],
+    loadUserIdeProjects: async () => [{ project_server_id: "project-1" }],
     buildDeployJson: async () => ({}),
     projectServerJson: async (path) => path.endsWith("/reuse-status")
       ? { reusable: true, reason: "build_snapshot_matches" }
@@ -597,7 +601,8 @@ test("system health exposes runtime identity without requiring a session", async
     persistence_backend: "postgres",
     runtime_location: "server",
     remote_dev: false,
-    dependencies: { postgres:{ status:"healthy" } },
+    identity_db: { status: "unknown" },
+    dependencies: { status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [], postgres: { status: "healthy" } },
   }]]);
 });
 
@@ -627,6 +632,24 @@ test("system routes forward same-origin user action events to the ingest boundar
     req, res, url: new URL("http://localhost/api/operations/user-actions"),
   }), true);
   assert.deepEqual(calls, [[req, res]]);
+});
+
+test("local action diagnostics are readable only in controlled remote-dev mode", async () => {
+  const expected = { pending: 1, items: [{ action_id: "action-1", reason_code: "identity_unreachable" }] };
+  for (const [identityRemoteDev, status, body] of [[true, 200, expected], [false, 404, { error: "not_found" }]]) {
+    const registry = createRouteRegistry();
+    const responses = [];
+    registerSystemRoutes({
+      registry,
+      identityRemoteDev,
+      userActionDiagnostics: () => expected,
+      sendJson: (_res, responseStatus, responseBody) => responses.push([responseStatus, responseBody]),
+    });
+    assert.equal(await registry.dispatch({
+      req: { method: "GET" }, res: {}, url: new URL("http://localhost/api/dev/local-action-diagnostics"),
+    }), true);
+    assert.deepEqual(responses, [[status, body]]);
+  }
 });
 
 test("the internal operator alert uses the configured operator mail and push channel", async () => {
@@ -725,6 +748,10 @@ test("web routes never expose legacy knowledge article scripts", async () => {
 test("public app assets use an explicit allowlist and all other files require a session", async () => {
   assert.equal(isPublicAppAsset("/api-client.js"), true);
   assert.equal(isPublicAppAsset("/i18n/locales/de.json"), true);
+  // Die oeffentlichen Nachbau- und Demoseiten flashen ausdruecklich ohne Konto.
+  // Fehlt eines dieser Skripte, bleibt ihr Flash-Dialog dauerhaft deaktiviert.
+  assert.equal(isPublicAppAsset("/unified-flash-dialog.js"), true);
+  assert.equal(isPublicAppAsset("/unified-flash-executor.js"), true);
   assert.equal(isPublicAppAsset("/quiz-data.js"), false);
 
   const registry = createRouteRegistry();

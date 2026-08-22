@@ -31,7 +31,6 @@ test("templates and development projects expose ratings and improvement suggesti
   assert.match(development, /data-rate-development-project/);
   assert.match(development, /data-suggest-development-project/);
   assert.doesNotMatch(html, /<script[^>]+project-feedback-ui\.js/);
-  assert.match(app, /loadPlatformScript\("\/app\/project-feedback-ui\.js\?v=20260802-project-feedback"\)/);
 });
 
 test("community contains a separate project ideas workshop with discussion", () => {

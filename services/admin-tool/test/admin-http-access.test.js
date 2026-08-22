@@ -2,6 +2,16 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const test = require("node:test");
 const { createHttpApp, sendJson } = require("../src/http-app");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+const signingKey = "admin-operations-test-key";
+const auth = (scope, audience = "admin-tool") => ({ Authorization: `Bearer ${issueInternalToken({ iss: "test-producer", sub: "test-producer", aud: audience, scopes: [scope] }, signingKey)}` });
+const adminHeaders = (actor) => {
+  const scopes = ["admin.gateway.proxy"];
+  return {
+    Authorization: `Bearer ${issueInternalToken({ iss: "admin-access-server", sub: "admin-access-server", aud: "admin-tool", scopes }, signingKey)}`,
+    "X-GerNetiX-Admin-Delegation": issueInternalToken({ iss: "admin-access-server", sub: actor.actor_id, aud: "admin-tool", kind: "delegated_admin_action", scopes, context: { role: actor.role, capabilities: actor.capabilities } }, signingKey),
+  };
+};
 
 async function withServer(handler, run) {
   const server = http.createServer((req, res) => handler(req, res).catch((error) => sendJson(res, error.status || 500, { error: error.code || "internal" })));
@@ -10,26 +20,26 @@ async function withServer(handler, run) {
 }
 
 test("Admin API akzeptiert im geschuetzten Betrieb nur den Admin-Access-Proxy", async () => {
-  const service = { serviceClients: { adminToolAccessToken: "internal-test-token" }, overview: async () => ({ ok: true }) };
+  const service = { serviceClients: { requireInternalAuth: true, internalApiSigningKey: signingKey }, overview: async () => ({ ok: true }) };
   const app = createHttpApp({ service });
   await withServer(app, async (baseUrl) => {
     const denied = await fetch(`${baseUrl}/api/admin/overview`);
     assert.equal(denied.status, 403);
-    const actor = Buffer.from(JSON.stringify({ actor_id: "admin_1", role: "administrator", capabilities: [] })).toString("base64url");
-    const allowed = await fetch(`${baseUrl}/api/admin/overview`, { headers: { "x-gernetix-admin-access-token": "internal-test-token", "x-gernetix-admin-actor": actor } });
+    const actor = { actor_id: "admin_1", role: "administrator", capabilities: [] };
+    const allowed = await fetch(`${baseUrl}/api/admin/overview`, { headers: adminHeaders(actor) });
     assert.equal(allowed.status, 200);
     assert.deepEqual(await allowed.json(), { ok: true });
   });
 });
 
 test("Admin API stellt das Projekt-Komponentenmetamodell nur ueber den geschuetzten Zugang bereit", async () => {
-  const service = { serviceClients: { adminToolAccessToken: "internal-test-token" } };
+  const service = { serviceClients: { requireInternalAuth: true, internalApiSigningKey: signingKey } };
   const app = createHttpApp({ service });
   await withServer(app, async (baseUrl) => {
     const denied = await fetch(`${baseUrl}/api/admin/component-metamodel`);
     assert.equal(denied.status, 403);
-    const actor = Buffer.from(JSON.stringify({ actor_id: "admin_1", role: "administrator", capabilities: [] })).toString("base64url");
-    const allowed = await fetch(`${baseUrl}/api/admin/component-metamodel`, { headers: { "x-gernetix-admin-access-token": "internal-test-token", "x-gernetix-admin-actor": actor } });
+    const actor = { actor_id: "admin_1", role: "administrator", capabilities: [] };
+    const allowed = await fetch(`${baseUrl}/api/admin/component-metamodel`, { headers: adminHeaders(actor) });
     assert.equal(allowed.status, 200);
     const body = await allowed.json();
     assert.ok(body.component_types.some((item) => item.id === "iot_device"));
@@ -40,7 +50,7 @@ test("Admin API stellt das Projekt-Komponentenmetamodell nur ueber den geschuetz
 test("interner System-Event-Eingang akzeptiert nur den eigenen Ingest-Token", async () => {
   const recorded = [];
   const service = {
-    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    serviceClients: { internalApiSigningKey: signingKey },
     recordSystemEvent(event) { recorded.push(event); return { event_id: "evt-1", ...event }; },
   };
   const app = createHttpApp({ service });
@@ -52,28 +62,49 @@ test("interner System-Event-Eingang akzeptiert nur den eigenen Ingest-Token", as
     });
     assert.equal(denied.status, 403);
 
+    const replayableHeaders = { "Content-Type": "application/json", ...auth("operations.system_events.write") };
     const allowed = await fetch(`${baseUrl}/api/internal/system-events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      headers: replayableHeaders,
       body: JSON.stringify({ source_service: "identity_server", event_type: "passkey_login_failed", message: "Login fehlgeschlagen." }),
     });
     assert.equal(allowed.status, 201);
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0].event_type, "passkey_login_failed");
+    const replayed = await fetch(`${baseUrl}/api/internal/system-events`, {
+      method: "POST",
+      headers: replayableHeaders,
+      body: JSON.stringify({ source_service: "identity_server", event_type: "passkey_login_failed", message: "Wiederholung" }),
+    });
+    assert.equal(replayed.status, 403);
+    assert.equal(recorded.length, 1);
+  });
+});
+
+test("Operations-Ingest trennt Security- und System-Scopes", async () => {
+  const recorded = [];
+  const service = { serviceClients: { internalApiSigningKey: signingKey }, async recordSecurityEvent(event) { recorded.push(event); return { accepted: true }; } };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const wrong = await fetch(`${baseUrl}/api/internal/security-events`, { method: "POST", headers: { "Content-Type": "application/json", ...auth("operations.system_events.write") }, body: "{}" });
+    assert.equal(wrong.status, 403);
+    const accepted = await fetch(`${baseUrl}/api/internal/security-events`, { method: "POST", headers: { "Content-Type": "application/json", ...auth("operations.security_events.write") }, body: "{}" });
+    assert.equal(accepted.status, 202);
+    assert.equal(recorded.length, 1);
   });
 });
 
 test("interner Schnittstellen-Eingang verwendet denselben geschuetzten Ingest-Kanal", async () => {
   const recorded = [];
   const service = {
-    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    serviceClients: { internalApiSigningKey: signingKey },
     async recordInterfaceCall(call) { recorded.push(call); return { accepted: true }; },
   };
   const app = createHttpApp({ service });
   await withServer(app, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/internal/interface-calls`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      headers: { "Content-Type": "application/json", ...auth("operations.interface_calls.write") },
       body: JSON.stringify({
         source_service: "identity-server", target_service: "project-server",
         method: "GET", route: "/api/projects", status_code: 200,
@@ -88,7 +119,7 @@ test("interner Schnittstellen-Eingang verwendet denselben geschuetzten Ingest-Ka
 test("interner Nutzeraktions-Eingang verwendet den geschuetzten Operations-Ingest", async () => {
   const recorded = [];
   const service = {
-    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    serviceClients: { internalApiSigningKey: signingKey },
     async recordUserActionEvent(event) { recorded.push(event); return event; },
   };
   const app = createHttpApp({ service });
@@ -97,7 +128,7 @@ test("interner Nutzeraktions-Eingang verwendet den geschuetzten Operations-Inges
     assert.equal(denied.status, 403);
     const allowed = await fetch(`${baseUrl}/api/internal/user-action-events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      headers: { "Content-Type": "application/json", ...auth("operations.user_actions.write") },
       body: JSON.stringify({ action_type: "nexi.flash.usb.start", action_id: "action-1" }),
     });
     assert.equal(allowed.status, 201);
@@ -166,7 +197,7 @@ test("Admin API exposes the audited user action incident lifecycle", async () =>
 test("synthetic checks can be read by admins and run by the protected scheduler", async () => {
   const calls = [];
   const service = {
-    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    serviceClients: { internalApiSigningKey: signingKey },
     async syntheticChecks(filter) { calls.push(["list", filter]); return { items: [] }; },
     async runSyntheticChecks(body, context) { calls.push(["run", body, context]); return { summary: { total: 4, passed: 4 } }; },
   };
@@ -176,7 +207,7 @@ test("synthetic checks can be read by admins and run by the protected scheduler"
     assert.equal((await fetch(`${baseUrl}/api/internal/synthetic-checks/run`, { method: "POST", body: "{}" })).status, 403);
     const run = await fetch(`${baseUrl}/api/internal/synthetic-checks/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      headers: { "Content-Type": "application/json", ...auth("operations.synthetic_checks.run") },
       body: JSON.stringify({ timeout_ms: 1000 }),
     });
     assert.equal(run.status, 200);
@@ -189,7 +220,7 @@ test("synthetic checks can be read by admins and run by the protected scheduler"
 test("Linkinventar und Prüfergebnisse verwenden einen getrennten Ingest-Token", async () => {
   const received = [];
   const service = {
-    serviceClients: { linkIntegrityIngestToken: "link-ingest-token" },
+    serviceClients: { internalApiSigningKey: signingKey },
     async registerLinkInventory(value) { received.push(["inventory", value]); return { targets: 1 }; },
     async recordLinkChecks(value) { received.push(["checks", value]); return { accepted: 1 }; },
   };
@@ -208,7 +239,7 @@ test("Linkinventar und Prüfergebnisse verwenden einen getrennten Ingest-Token",
     ]) {
       const allowed = await fetch(`${baseUrl}/api/internal/link-integrity/${resource}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-GerNetiX-Link-Integrity-Token": "link-ingest-token" },
+        headers: { "Content-Type": "application/json", ...auth("operations.link_integrity.write") },
         body: JSON.stringify(payload),
       });
       assert.equal(allowed.status, 202);

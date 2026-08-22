@@ -1,0 +1,14 @@
+{
+  "name": "@gernetix/internal-api-route-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "routes:check": "node index.js",
+    "routes:accept": "node index.js --update-reviewed",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

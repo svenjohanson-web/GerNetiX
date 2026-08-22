@@ -78,7 +78,7 @@ class PostgresPublicDemoRepository {
         ON CONFLICT (demo_id) DO UPDATE SET title=EXCLUDED.title,description=EXCLUDED.description,
         board_hardware_item_id=EXCLUDED.board_hardware_item_id,category=EXCLUDED.category,games_json=EXCLUDED.games_json,
         status='published',updated_at=EXCLUDED.updated_at,published_at=EXCLUDED.published_at`,
-      [demo.demo_id,demo.title,demo.description,demo.board_hardware_item_id,demo.category,demo.games,now]);
+      [demo.demo_id,demo.title,demo.description,demo.board_hardware_item_id,demo.category,JSON.stringify(demo.games),now]);
       await client.query(`INSERT INTO public_demo_releases
         (demo_id,version,firmware_file_name,firmware_size_bytes,firmware_sha256,source_build_sha256,source_commit_sha,source_path,source_version,created_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,

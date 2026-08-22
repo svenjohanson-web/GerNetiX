@@ -9,5 +9,7 @@ test("identity proxies telemetry only after its session-bound project check", ()
   assert.match(server, /platform\\\/telemetry\\\/projects/);
   assert.match(server, /await requireSessionProject\(session, projectId\)/);
   assert.match(server, /accounts\/\$\{encodeURIComponent\(accountId\)\}\/projects/);
-  assert.match(clients, /X-GerNetiX-Telemetry-Token/);
+  assert.match(clients, /targetService === "telemetry-server"/);
+  assert.match(clients, /telemetry\.read/);
+  assert.match(clients, /project_ids: \[decodeURIComponent\(match\[2\]\)\]/);
 });

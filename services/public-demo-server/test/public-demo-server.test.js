@@ -6,6 +6,7 @@ const { createHttpApp } = require("../src/http-app");
 const { createConfig } = require("../src/config");
 const { PublicDemoService } = require("../src/services/public-demo-service");
 const { InMemoryPublicDemoRepository } = require("./support/in-memory-public-demo-repository");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
 const path = require("node:path");
 const browserApp = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
 const browserPage = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
@@ -95,7 +96,8 @@ test("ein Nexi-Release bewahrt die vier ESP-IDF-Images und ihre Board-Offsets", 
 test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen", async () => {
   const repository = createRepository();
   const service = new PublicDemoService({ repository });
-  const server = http.createServer((request, response) => createHttpApp({ service, publisherToken: "only-for-publisher" })(request, response)
+  const internalApiSigningKey = "public-demo-test-signing-key";
+  const server = http.createServer((request, response) => createHttpApp({ service, internalApiSigningKey })(request, response)
     .catch((error) => {
       response.writeHead(error.status || 500, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ error: error.code }));
@@ -129,9 +131,28 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
   });
   assert.equal(forbidden.status, 403);
 
+  const wrongScope = issueInternalToken({
+    iss: "test-publisher",
+    sub: "test-publisher",
+    aud: "public-demo-server",
+    scopes: ["public_demo.read"],
+  }, internalApiSigningKey);
+  const scopeDenied = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${wrongScope}` },
+    body: JSON.stringify(release()),
+  });
+  assert.equal(scopeDenied.status, 403);
+
+  const publisherToken = issueInternalToken({
+    iss: "test-publisher",
+    sub: "test-publisher",
+    aud: "public-demo-server",
+    scopes: ["public_demo.publish"],
+  }, internalApiSigningKey);
   const published = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Public-Demo-Publisher-Token": "only-for-publisher" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${publisherToken}` },
     body: JSON.stringify(release()),
   });
   assert.equal(published.status, 201);
@@ -180,4 +201,17 @@ test("unsupported browsers use the Serial Helper adapter from the same dialog", 
   assert.match(browserApp, /GerNetiXFlashExecutor\.executeUsb\(/);
   assert.doesNotMatch(browserApp, /serialService\.flash\(/);
   assert.match(browserApp, /if \(ports\.length > 1\)/);
+});
+
+test("the page follows the shared light/dark toggle instead of forcing dark mode", () => {
+  // landing.css treats light as the :root baseline and only overrides colours
+  // inside html[data-public-theme="dark"]. A bare, unconditional :root block
+  // here would redeclare the same custom properties and load after
+  // landing.css, permanently locking this page to dark regardless of the
+  // toggle the page itself renders (see #publicMenuButton / landing.js).
+  assert.doesNotMatch(browserStyles, /:root\s*\{[^}]*--(?:bg|panel|text|muted|line|accent)\s*:/);
+  assert.match(browserStyles, /html\[data-public-theme="dark"\]\s*\{[^}]*--bg\s*:\s*#07111e/);
+  assert.match(browserPage, /\/landing\.js/);
+  const landingJs = fs.readFileSync(path.join(__dirname, "..", "..", "identity-server", "public", "landing.js"), "utf8");
+  assert.match(landingJs, /initializePublicTheme/);
 });

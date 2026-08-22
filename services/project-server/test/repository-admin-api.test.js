@@ -4,17 +4,21 @@ const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
 const test = require("node:test");
 const { createHttpApp } = require("../src/http-app");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
 const { InMemoryProjectRepository } = require("../src/repositories/in-memory-project-repository");
 const { ProjectService } = require("../src/services/project-service");
 
 test("protects the repository administration summary with a dedicated service token", async () => {
   const app = createHttpApp({
-    adminReadToken: "project-admin-test-token",
+    internalAuthSecret: "project-admin-test-token",
     service: { repositoryAdministrationSummary: async () => ({ summary: { project_repositories: 2 } }) },
   });
-  const denied = await invoke(app, {});
-  assert.equal(denied.statusCode, 403);
-  const allowed = await invoke(app, { "x-gernetix-project-admin-token": "project-admin-test-token" });
+  assert.equal((await invoke(app, {})).statusCode, 403);
+  // Ein Dienst-Token ohne den Verwaltungs-Scope reicht ausdruecklich nicht.
+  const readOnly = issueInternalToken({ iss: "admin-tool", sub: "admin-tool", aud: "project-server", scopes: ["project.read"] }, "project-admin-test-token");
+  assert.equal((await invoke(app, { authorization: `Bearer ${readOnly}` })).statusCode, 403);
+  const token = issueInternalToken({ iss: "admin-tool", sub: "admin-tool", aud: "project-server", scopes: ["project.admin"] }, "project-admin-test-token");
+  const allowed = await invoke(app, { authorization: `Bearer ${token}` });
   assert.equal(allowed.statusCode, 200);
   assert.equal(JSON.parse(allowed.body).summary.project_repositories, 2);
 });

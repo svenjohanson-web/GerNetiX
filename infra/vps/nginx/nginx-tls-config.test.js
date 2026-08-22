@@ -52,6 +52,8 @@ test("private build and PWA hosts are WireGuard-only", () => {
   assert.match(tls, /proxy_pass http:\/\/build-deploy-server:4400/);
   assert.match(tls, /proxy_pass http:\/\/identity-server:4300/);
   assert.match(tls, /proxy_pass http:\/\/admin-access-server:4610/);
+  assert.match(tls, /location \^~ \/context-manager\/ \{[\s\S]*proxy_pass http:\/\/admin-access-server:4610/);
+  assert.match(tls, /location \^~ \/api\/context\/ \{[\s\S]*proxy_pass http:\/\/admin-access-server:4610/);
   assert.match(tls, /live\/gernetix-services\.com\/fullchain\.pem/);
   assert.match(tls, /allow 10\.77\.0\.0\/24;[\s\S]*deny all;/);
   assert.match(deploy, /-d build\.gernetix\.com -d mqtt\.gernetix\.com -d pwa\.gernetix\.com/);
@@ -69,8 +71,9 @@ test("compose binds application traffic to WireGuard and keeps ACME separate", (
   assert.match(compose, /ACME_HTTP_PORT:-80\}:8080/);
   assert.match(deploy, /certonly --webroot/);
   assert.match(deploy, /--profile tls up -d/);
+  assert.match(deploy, /compose --profile tls up -d --no-deps --force-recreate nginx nginx-tls/);
   assert.match(deploy, /docker exec "\$nginx_tls_container" nginx -t/);
-  assert.match(deploy, /docker exec "\$nginx_tls_container" nginx -s reload/);
+  assert.doesNotMatch(deploy, /docker exec "\$nginx_tls_container" nginx -s reload/);
   assert.doesNotMatch(deploy, /--force-recreate nginx-tls mqtt-broker certbot/);
   assert.match(deploy, /--no-deps --force-recreate mqtt-broker/);
   assert.doesNotMatch(deploy, /docker compose --env-file "\$env_file" -f compose\.vps\.yaml port nginx 8081/);

@@ -1,6 +1,7 @@
 const test = require("node:test");
+const { requireForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
-const metamodel = require("../public/app/development-component-metamodel");
+const metamodel = requireForSandbox("development-component-metamodel.js");
 
 test("allows only defined architecture relationships and derives sensor and actuator control units", () => {
   assert.equal(metamodel.validatesRelation("sensor", "iot_device"), true);

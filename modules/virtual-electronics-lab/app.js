@@ -5,6 +5,7 @@ import { createRadioLab } from "./labs/radio-lab.js?v=20260814-radio-rc-range-1"
 import { createSpectrumAnalyzerLab } from "./labs/spectrum-analyzer.js";
 import { createNetworkAnalyzerLab } from "./labs/network-analyzer.js";
 import { createLogicAnalyzerLab } from "./labs/logic-analyzer.js";
+import { createPinMultiplexingLab } from "./labs/pin-multiplexing.js?v=20260814-pinmux-1";
 import { createPowerSupplyLab } from "./labs/power-supply.js";
 import { createLcrMeterLab } from "./labs/lcr-meter.js";
 import { createGpioLedThroughputLab } from "./labs/gpio-led-throughput.js";
@@ -24,6 +25,7 @@ const labs = [
   createPt1000ThroughputLab(),
   createButtonDigitalInputThroughputLab({ assistantClient: troubleshootingAssistantClient }),
   createFreeCircuitSimulationLab(),
+  createPinMultiplexingLab(),
   createOscilloscopeLab(),
   createFilterLab(),
   createRadioLab(),
@@ -42,6 +44,8 @@ const templateLoadButton = document.querySelector("#labTemplateLoad");
 const templateStatus = document.querySelector("#labTemplateStatus");
 const themeStorageKey = "gernetix-public-theme";
 let activeLab = null;
+const pageParameters = new URLSearchParams(window.location.search);
+if (pageParameters.get("embedded") === "1") document.documentElement.classList.add("lab-embedded");
 
 function applyTheme(theme) {
   document.documentElement.dataset.publicTheme = theme;
@@ -53,8 +57,9 @@ function applyTheme(theme) {
 }
 
 const savedTheme = window.localStorage.getItem(themeStorageKey);
-const preferredTheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-applyTheme(savedTheme === "dark" || savedTheme === "light" ? savedTheme : preferredTheme);
+// Wie auf den uebrigen oeffentlichen Seiten ist hell der Auslieferungszustand.
+// Nur eine eigene Wahl des Nutzers weicht davon ab.
+applyTheme(savedTheme === "dark" || savedTheme === "light" ? savedTheme : "light");
 themeToggle.addEventListener("click", () => {
   const nextTheme = document.documentElement.dataset.publicTheme === "dark" ? "light" : "dark";
   window.localStorage.setItem(themeStorageKey, nextTheme);
@@ -120,7 +125,7 @@ for (const lab of labs) {
   navigation.append(button);
 }
 
-const requestedLab = new URLSearchParams(window.location.search).get("lab");
-const requestedTemplate = new URLSearchParams(window.location.search).get("template");
+const requestedLab = pageParameters.get("lab");
+const requestedTemplate = pageParameters.get("template");
 if (!loadSelectedTemplate(requestedTemplate)) showLab(labs.find((lab) => lab.id === requestedLab) || labs[0]);
 window.addEventListener("beforeunload", () => activeLab?.dispose?.());

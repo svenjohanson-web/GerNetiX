@@ -4,9 +4,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const vm = require("node:vm");
 
-const clientSource = fs.readFileSync(path.resolve(__dirname, "../public/app/serial-service-client.js"), "utf8");
+const clientSource = readForSandbox("serial-service-client.js");
 
 test("uses TLS for both localhost helper addresses", async () => {
   const requests = [];

@@ -7,20 +7,61 @@ function registerSystemRoutes({
   smtpConfigStore, smtpEmailService, createIdentityLinkInventory, publicDir,
   webPushService, securityAlertPushAccountIds, requireSessionProject, projectServerUserId,
   handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleUserActionIngest,
-  handleProjectRuntimeStream, telemetryJson,
+  userActionDiagnostics, handleProjectRuntimeStream, telemetryJson,
   auth, recordSystemEvent,
+  checkIdentityDbHealth = async () => ({ status: "unknown" }),
+  checkIdentityDependencies = async () => ({ status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [] }),
 }) {
   registry.register({ method: "OPTIONS", path: "/api/dev/lesson-preview-migration", handler: ({ res }) => sendDevJson(res, 204, {}) });
-  registry.register({ method: "POST", path: "/api/dev/lesson-preview-migration", handler: ({ req, res }) => handleDevLessonPreviewMigration(req, res) });
+  registry.register({
+    method: "POST",
+    path: "/api/dev/lesson-preview-migration",
+    handler({ req, res }) {
+      requireInternalAdmin(req, "identity.dev.migration");
+      return handleDevLessonPreviewMigration(req, res);
+    },
+  });
   registry.register({
     method: "*",
     path: "/health",
     async handler({ res }) {
-      const persistence = identityPersistenceHealth ? await identityPersistenceHealth() : { ready:true };
-      sendJson(res, persistence.ready ? 200 : 503, {
-        status: persistence.ready ? "ok" : "degraded", service: "identity-server", persistence_backend: identityPersistenceBackend,
+      const persistence = identityPersistenceHealth ? await identityPersistenceHealth() : { ready: true };
+      const identityDb = await checkIdentityDbHealth().catch((error) => ({
+        backend: "postgres",
+        reachable: false,
+        checked_at: new Date().toISOString(),
+        error_code: error.code || "health_check_failed",
+        error: error.message || String(error),
+        message: "PostgreSQL-Healthcheck fehlgeschlagen.",
+      }));
+      const dependencies = await checkIdentityDependencies().catch((error) => ({
+        status: "degraded",
+        checked_at: new Date().toISOString(),
+        total: 0,
+        reachable: 0,
+        unreachable: 1,
+        items: [{ id: "dependency-health", name: "Dependency-Healthcheck", reachable: false, error_code: error.code || "health_check_failed", message: error.message || String(error) }],
+      }));
+      /*
+       * Die Kontodatenbank entscheidet ueber die Erreichbarkeit des Dienstes:
+       * ohne sie ist keine Anmeldung moeglich, gleich was die uebrige
+       * Nachbarschaft meldet. Deshalb faellt bei ihr der Statuscode auf 503,
+       * waehrend ein ausgefallener Nachbar nur "degraded" bei 200 ergibt.
+       */
+      const persistenceReachable = persistence.ready !== false && identityDb.reachable !== false;
+      const status = !persistenceReachable ? "degraded" : dependencies.status === "degraded" ? "degraded" : "ok";
+      sendJson(res, persistenceReachable ? 200 : 503, {
+        status, service: "identity-server", persistence_backend: identityPersistenceBackend,
         runtime_location: identityRuntimeLocation, remote_dev: identityRemoteDev,
-        dependencies: identityPersistenceBackend === "postgres" ? { postgres:{ status:persistence.ready ? "healthy" : "unavailable" } } : {},
+        identity_db: identityDb,
+        /*
+         * postgres steht neben der Nachbarschaftsuebersicht, nicht statt ihrer:
+         * die Anmeldeseite unterscheidet daran ihre Fehlermeldung, der
+         * Prozess-Monitor liest zusaetzlich status, unreachable und items.
+         */
+        dependencies: identityPersistenceBackend === "postgres"
+          ? { ...dependencies, postgres: { status: persistenceReachable ? "healthy" : "unavailable" } }
+          : dependencies,
       });
     },
   });
@@ -28,7 +69,7 @@ function registerSystemRoutes({
     method: "*",
     path: "/api/internal/email-config",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, req.method === "GET" ? "identity.email.read" : "identity.email.write");
       if (req.method === "GET") { sendJson(res, 200, { config: smtpConfigStore.publicConfig() }); return; }
       if (req.method === "PUT") { sendJson(res, 200, { config: await smtpConfigStore.update(await readJsonBody(req)) }); return; }
       sendJson(res, 405, { error: "method_not_allowed" });
@@ -57,7 +98,7 @@ function registerSystemRoutes({
     method: "GET",
     path: "/api/internal/link-integrity/inventory",
     handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.link_integrity.read");
       sendJson(res, 200, createIdentityLinkInventory({ publicDir }));
     },
   });
@@ -65,7 +106,7 @@ function registerSystemRoutes({
     method: "POST",
     path: "/api/internal/email-config/test",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.email.test");
       await smtpEmailService.testConnection();
       sendJson(res, 200, { ok: true, config: smtpConfigStore.publicConfig() });
     },
@@ -89,7 +130,7 @@ function registerSystemRoutes({
     method: "POST",
     path: "/api/internal/security-alert",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.alert.security");
       const alert = await readJsonBody(req);
       const config = smtpConfigStore.deliveryConfig();
       const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;
@@ -105,7 +146,7 @@ function registerSystemRoutes({
     method: "POST",
     path: "/api/internal/operator-alert",
     async handler({ req, res }) {
-      requireInternalAdmin(req);
+      requireInternalAdmin(req, "identity.alert.operator");
       const alert = await readJsonBody(req);
       const config = smtpConfigStore.deliveryConfig();
       const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;
@@ -147,6 +188,14 @@ function registerSystemRoutes({
   registry.register({ method: "POST", path: "/api/internal/push/device-event", handler: ({ req, res }) => handleInternalDevicePushEvent(req, res) });
   registry.register({ method: "POST", path: "/api/internal/runtime/device-event", handler: ({ req, res }) => handleInternalDeviceRuntimeEvent(req, res) });
   registry.register({ method: "POST", path: "/api/operations/user-actions", handler: ({ req, res }) => handleUserActionIngest(req, res) });
+  registry.register({
+    method: "GET",
+    path: "/api/dev/local-action-diagnostics",
+    handler({ res }) {
+      if (!identityRemoteDev) { sendJson(res, 404, { error: "not_found" }); return; }
+      sendJson(res, 200, userActionDiagnostics());
+    },
+  });
   registry.register({
     method: "GET",
     pattern: /^\/api\/platform\/projects\/([^/]+)\/runtime-stream$/,

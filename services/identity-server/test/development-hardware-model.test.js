@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const model = require("../public/app/development-hardware-model");
+const { requireForSandbox } = require("../test-support/platform-app-source");
+const model = requireForSandbox("development-hardware-model.js");
 
 test("missing board feature profiles inherit catalog defaults without becoming edits", () => {
   const defaults = {

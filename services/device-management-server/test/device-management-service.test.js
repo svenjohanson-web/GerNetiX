@@ -144,7 +144,7 @@ test("rejects a challenge signature from another device key", async () => {
 
   const result = await service.verifyChallenge(device.device_id, { challenge_id: challenge.challenge_id, signature });
   assert.equal(result.verification_state, "failed");
-  assert.equal(result.authenticity_status, "community_unverified");
+  assert.equal(result.authenticity_status, "gernetix_verified");
 });
 
 test("pairing creates account device and OTA target discovery marks selectable device", async () => {

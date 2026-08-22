@@ -1,31 +1,35 @@
 const { RecoveryToolError } = require("../errors");
+const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
 class BuildDeployClient {
   constructor(options = {}) {
     this.baseUrl = String(options.baseUrl || "http://127.0.0.1:4400").replace(/\/$/, "");
     this.fetchImpl = options.fetchImpl || fetch;
     this.timeoutMs = Number(options.timeoutMs || 15000);
+    // Der Schluesselbund bleibt ein Objekt; String() wuerde ein kid-loses
+    // Legacy-Token erzwingen, das der Empfaenger ablehnt.
+    this.signingKey = options.signingKey || "";
   }
 
   async submit(buildRequest) {
-    return this.callJson("POST", "/api/build-jobs", buildRequest);
+    return this.callJson("POST", "/api/build-jobs", buildRequest, "build.job.request", contextFor(buildRequest));
   }
 
-  async get(jobId) {
-    return this.callJson("GET", `/api/build-jobs/${encodeURIComponent(jobId)}`);
+  async get(jobId, context) {
+    return this.callJson("GET", `/api/build-jobs/${encodeURIComponent(jobId)}`, undefined, "build.job.read", context);
   }
 
   artifactUrl(jobId, fileName) {
     return `${this.baseUrl}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`;
   }
 
-  async callJson(method, pathname, body) {
+  async callJson(method, pathname, body, scope, context) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const response = await this.fetchImpl(`${this.baseUrl}${pathname}`, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...this.authHeaders(scope, context) },
         signal: controller.signal,
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
@@ -40,6 +44,23 @@ class BuildDeployClient {
       clearTimeout(timer);
     }
   }
+
+  authHeaders(scope, context) {
+    const scopes = [scope];
+    const common = { iss: "recovery-tool", sub: "recovery-tool", aud: "build-deploy-server", scopes };
+    return {
+      Authorization: `Bearer ${issueInternalToken(common, this.signingKey)}`,
+      "X-GerNetiX-Delegation": issueInternalToken({ ...common, kind: "delegated_user_action", context }, this.signingKey),
+    };
+  }
+}
+
+function contextFor(input = {}) {
+  return {
+    account_id: String(input.account_id || ""),
+    project_ids: input.project_id ? [String(input.project_id)] : [],
+    entitlements: [],
+  };
 }
 
 module.exports = { BuildDeployClient };

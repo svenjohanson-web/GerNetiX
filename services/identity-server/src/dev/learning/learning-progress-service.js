@@ -5,7 +5,7 @@ function createLearningProgressService({ projectServerJson, projectServerUserId,
     return Promise.all(projects.map(async (project) => {
       const fallback = empty(userId, project);
       if (project.project_origin !== "account_project" || !project.learning_project_id?.startsWith("learning_project.")) return fallback;
-      return projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/learning-progress?user_id=${encodeURIComponent(userId)}`)
+      return projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/learning-progress?user_id=${encodeURIComponent(userId)}`, projectAccess(userId, project.project_server_id))
         .then((progress) => toPlatform(progress, project))
         .catch((error) => {
           if ([403, 404].includes(error.status)) return fallback;
@@ -15,7 +15,7 @@ function createLearningProgressService({ projectServerJson, projectServerUserId,
   }
 
   async function hasSubmittedFeedback(userId, projectId) {
-    const response = await projectServerJson(`/api/learning-feedback?${new URLSearchParams({ project_id: projectId, user_id: userId })}`);
+    const response = await projectServerJson(`/api/learning-feedback?${new URLSearchParams({ project_id: projectId, user_id: userId })}`, projectAccess(userId, projectId, "project.admin"));
     return (response.items || []).some((feedback) => feedback.category === "learning_experience_rating");
   }
 
@@ -31,6 +31,7 @@ function createLearningProgressService({ projectServerJson, projectServerUserId,
     const courseId = requiredField(project.course_id || input.courseId || input.course_id, "courseId");
     const persisted = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/learning-progress`, {
       method: "PUT",
+      ...projectAccess(userId, project.project_server_id, "project.write"),
       body: {
         user_id: userId,
         course_id: courseId,
@@ -44,6 +45,15 @@ function createLearningProgressService({ projectServerJson, projectServerUserId,
     });
     touchWorkspace(session, projectId, "learn", `/app/learn/?project=${encodeURIComponent(projectId)}`);
     return toPlatform(persisted, project);
+  }
+
+  function projectAccess(accountId, projectId, scope = "project.read") {
+    return {
+      internalAuth: {
+        scopes: [scope],
+        delegation: { account_id: String(accountId), project_ids: [String(projectId)] },
+      },
+    };
   }
 
   function empty(userId, project) {

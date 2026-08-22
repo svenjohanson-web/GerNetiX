@@ -49,6 +49,7 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
   addRuntimeCore(byPath);
   rewriteRuntimeCorePaths(byPath);
   applyBasissoftwareProfile(byPath, effectiveBuildConfig);
+  configureEspIdfSdkconfigDefaults(byPath, effectiveBuildConfig);
   applyBoardConfiguration(byPath, effectiveBuildConfig.board_configuration);
   applyBasissoftwareConfiguration(byPath, effectiveBuildConfig.basissoftware_configuration);
   byPath.set("platformio.ini", {
@@ -66,6 +67,7 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
   const usesSourceManifest = projectSources.some((source) => source.path === `${componentPrefix}sources.cmake`);
   if (usesSourceManifest) {
     packageProjectSourceTree(byPath, projectSources, componentPrefix, userSourcePath);
+    materializePackagedEmbeddedAssets(byPath);
     configureExternalProjectSourceTree(byPath);
     return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
   }
@@ -120,9 +122,12 @@ function packageProjectSourceTree(byPath, projectSources, componentPrefix, userS
     const relative = projectSource.path.slice(componentPrefix.length);
     if (!relative || relative.includes("..")) continue;
     const targetPath = `src/user_project/${relative}`;
+    const content = relative === "sources.cmake" && !projectSource.content_base64
+      ? normalizePackagedSourceManifest(projectSource.content)
+      : projectSource.content;
     byPath.set(targetPath, {
       path: targetPath,
-      ...(projectSource.content_base64 ? { content_base64: projectSource.content_base64 } : { content: projectSource.content }),
+      ...(projectSource.content_base64 ? { content_base64: projectSource.content_base64 } : { content }),
       content_type: projectSource.content_type || "text/plain",
       source_project_path: projectSource.path,
     });
@@ -140,14 +145,78 @@ function packageProjectSourceTree(byPath, projectSources, componentPrefix, userS
   }
 }
 
+function normalizePackagedSourceManifest(content) {
+  return String(content || "").replaceAll(
+    "${CMAKE_CURRENT_LIST_DIR}/assets/",
+    "user_project/assets/",
+  );
+}
+
+function materializePackagedEmbeddedAssets(byPath) {
+  const manifestPath = "src/user_project/sources.cmake";
+  const manifest = byPath.get(manifestPath);
+  if (!manifest || typeof manifest.content !== "string") return 0;
+  const generatedPaths = [];
+  const content = manifest.content.replace(/set\(GERNETIX_PROJECT_EMBED_FILES([\s\S]*?)\)/g, (_block, body) => {
+    for (const match of body.matchAll(/"([^"]+)"/g)) {
+      let assetPath = match[1].replace(/^\$\{CMAKE_CURRENT_LIST_DIR\}\//, "user_project/");
+      if (!assetPath.startsWith("src/")) assetPath = `src/${assetPath}`;
+      const asset = byPath.get(assetPath);
+      if (!asset?.content_base64) continue;
+      const fileName = path.posix.basename(assetPath);
+      const generatedPath = `src/user_project/generated/${fileName}.S`;
+      byPath.set(generatedPath, {
+        path: generatedPath,
+        content: renderEmbeddedAssembly(fileName, Buffer.from(asset.content_base64, "base64")),
+        content_type: "text/x-asm",
+        source_project_path: asset.source_project_path,
+      });
+      generatedPaths.push(`  "\${CMAKE_CURRENT_LIST_DIR}/generated/${fileName}.S"`);
+    }
+    return generatedPaths.length
+      ? `list(APPEND GERNETIX_PROJECT_SOURCES\n${generatedPaths.join("\n")}\n)\nset(GERNETIX_PROJECT_EMBED_FILES)`
+      : "set(GERNETIX_PROJECT_EMBED_FILES)";
+  });
+  manifest.content = content;
+  return generatedPaths.length;
+}
+
+function renderEmbeddedAssembly(fileName, content) {
+  const symbolName = String(fileName).replace(/[^A-Za-z0-9_]/g, "_");
+  const dataLines = [];
+  for (let offset = 0; offset < content.length; offset += 16) {
+    dataLines.push(`.byte ${Array.from(content.subarray(offset, offset + 16), (byte) => `0x${byte.toString(16).padStart(2, "0")}`).join(", ")}`);
+  }
+  return [
+    `/* Data converted from ${fileName} by the GerNetiX build package. */`,
+    ".data",
+    ".section .rodata.embedded",
+    `.global ${symbolName}`,
+    `${symbolName}:`,
+    `.global _binary_${symbolName}_start`,
+    `_binary_${symbolName}_start:`,
+    ...dataLines,
+    `.global _binary_${symbolName}_end`,
+    `_binary_${symbolName}_end:`,
+    `.global ${symbolName}_length`,
+    `${symbolName}_length:`,
+    `.long ${content.length}`,
+    "",
+  ].join("\n");
+}
+
 function configureExternalProjectSourceTree(byPath) {
   const cmake = byPath.get("src/CMakeLists.txt");
   if (!cmake) return;
-  const marker = 'set(GERNETIX_PROJECT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/user_project")';
+  const marker = 'set(GERNETIX_PROJECT_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/user_project")';
   if (String(cmake.content || "").includes(marker)) return;
+  const sourceTreeBlock = "if(DEFINED GERNETIX_PROJECT_SOURCE_DIR)";
+  const insertionPoint = String(cmake.content || "").includes(sourceTreeBlock)
+    ? sourceTreeBlock
+    : "idf_component_register(";
   byPath.set("src/CMakeLists.txt", {
     ...cmake,
-    content: String(cmake.content || "").replace("idf_component_register(", `${marker}\n\nidf_component_register(`),
+    content: String(cmake.content || "").replace(insertionPoint, `${marker}\n\n${insertionPoint}`),
   });
 }
 
@@ -336,6 +405,26 @@ function applyBasissoftwareProfile(byPath, buildConfig = {}) {
   }
 }
 
+function configureEspIdfSdkconfigDefaults(byPath, buildConfig = {}) {
+  if (String(buildConfig.framework || "").trim().toLowerCase() !== "espidf") return;
+  const flashSizeMb = normalizeFlashSize(buildConfig.flash_size_mb);
+  const sdkconfigFile = flashSizeMb === 16 && byPath.has("sdkconfig.esp32-s3-n16r8")
+    ? "sdkconfig.esp32-s3-n16r8"
+    : byPath.has("sdkconfig.esp32dev") ? "sdkconfig.esp32dev" : "";
+  if (!sdkconfigFile) return;
+  const platformioOptions = buildConfig.platformio_options && typeof buildConfig.platformio_options === "object"
+    && !Array.isArray(buildConfig.platformio_options)
+    ? { ...buildConfig.platformio_options }
+    : {};
+  const currentArgs = String(platformioOptions["board_build.cmake_extra_args"] || "").trim();
+  if (/(?:^|\s)(?:-D)?SDKCONFIG_DEFAULTS=/.test(currentArgs)) return;
+  platformioOptions["board_build.cmake_extra_args"] = [
+    `-DSDKCONFIG_DEFAULTS="${sdkconfigFile}"`,
+    currentArgs,
+  ].filter(Boolean).join(" ");
+  buildConfig.platformio_options = platformioOptions;
+}
+
 function normalizeProfile(value) {
   const normalized = String(value || "full").trim().toLowerCase();
   if (normalized === "comfort") return "full";
@@ -358,4 +447,4 @@ function contentType(filePath) {
   return "text/plain";
 }
 
-module.exports = { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles, renderBoardConfigurationHeader, renderBasissoftwareConfigurationHeader };
+module.exports = { composeEsp32BasissoftwarePackage, configureEspIdfSdkconfigDefaults, configureExternalProjectSourceTree, loadEsp32BasissoftwareFiles, materializePackagedEmbeddedAssets, normalizePackagedSourceManifest, renderBoardConfigurationHeader, renderBasissoftwareConfigurationHeader };

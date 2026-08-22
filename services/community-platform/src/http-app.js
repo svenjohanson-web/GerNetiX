@@ -1,4 +1,5 @@
 const { CommunityPlatformError } = require("./errors");
+const { readBearerToken, verifyDelegation, verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const prefix = "/api/community";
 const adminPrefix = "/api/community/admin";
@@ -16,7 +17,7 @@ function createHttpApp(options) {
     }
 
     if (path.startsWith(`${adminPrefix}/`) || path === adminPrefix) {
-      const adminActor = trustedAdminActor(req, service);
+      const adminActor = trustedAdminActor(req, service.internalApiSigningKey);
       if (!adminActor) {
         sendJson(res, 401, { error: "community_admin_access_denied", message: "Dieser Verwaltungszugang ist nicht freigegeben." });
         return;
@@ -25,17 +26,15 @@ function createHttpApp(options) {
       return;
     }
 
-    if (service.internalToken && req.headers["x-gernetix-community-token"] !== service.internalToken) {
-      sendJson(res, 401, { error: "community_access_denied", message: "Dieser Dienst ist nur ueber die GerNetiX Plattform erreichbar." });
-      return;
-    }
-    const actor = {
-      user_id: String(req.headers["x-gernetix-community-actor"] || ""),
-      is_operator: req.headers["x-gernetix-community-operator"] === "true",
-    };
-
     if (path.startsWith(`${prefix}/notification-outbox`)) {
-      if (actor.user_id || actor.is_operator) {
+      /*
+       * Nur Dienst zu Dienst: hier holt sich der Benachrichtigungs-Worker des
+       * Identity-Servers seine Auftraege. Ein Delegations-Token hiesse, dass
+       * jemand im Namen eines Kontos anfragt -- dafuer ist die Warteschlange
+       * nicht da.
+       */
+      requireService(req, service.internalApiSigningKey, "community.write");
+      if (req.headers["x-gernetix-delegation"]) {
         sendJson(res, 403, { error: "notification_outbox_internal_only" });
         return;
       }
@@ -57,9 +56,12 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && path === `${prefix}/operations-summary`) {
+      requireService(req, service.internalApiSigningKey, "community.operations.read");
       sendJson(res, 200, await service.operationsSummary());
       return;
     }
+
+    const actor = communityActor(req, service.internalApiSigningKey, isPublicRead(req.method, path));
 
     if (req.method === "GET" && path === `${prefix}/dashboard-summary`) {
       sendJson(res, 200, await service.dashboardSummary(actor));
@@ -334,20 +336,58 @@ async function routeAdminRequest({ req, res, path, url, service, actor }) {
   sendJson(res, 404, { error: "not_found" });
 }
 
-function trustedAdminActor(req, service) {
-  if (!service.adminToken || req.headers["x-gernetix-community-admin-token"] !== service.adminToken) return null;
+function trustedAdminActor(req, signingKey) {
   try {
-    const actor = JSON.parse(Buffer.from(String(req.headers["x-gernetix-community-admin-actor"] || ""), "base64url").toString("utf8"));
-    if (!actor?.actor_id || !actor?.role || !Array.isArray(actor.capabilities)) return null;
+    requireService(req, signingKey, "community.admin");
+    const claims = verifyInternalToken(req.headers["x-gernetix-admin-delegation"], signingKey, {
+      audience: "community-platform", requiredScopes: ["community.admin"],
+    });
+    if (claims.kind !== "delegated_admin_action" || !claims.context?.account_id || !claims.context?.role || !Array.isArray(claims.context.capabilities)) return null;
     return {
-      actor_id: String(actor.actor_id),
-      role: String(actor.role),
-      capabilities: actor.capabilities.map(String),
+      actor_id: String(claims.context.account_id),
+      role: String(claims.context.role),
+      capabilities: claims.context.capabilities.map(String),
       is_admin: true,
     };
   } catch {
     return null;
   }
+}
+
+function communityActor(req, signingKey, publicRead) {
+  const authorization = String(req.headers.authorization || "");
+  if (!authorization && publicRead) return { user_id: "", is_operator: false };
+  const scope = req.method === "GET" ? "community.read" : "community.write";
+  requireService(req, signingKey, scope);
+  if (publicRead && !req.headers["x-gernetix-delegation"]) return { user_id: "", is_operator: false };
+  const delegation = verifyDelegation(req.headers["x-gernetix-delegation"], signingKey, {
+    audience: "community-platform", requiredScopes: [scope],
+  });
+  const accountId = String(delegation.context?.account_id || "");
+  if (!accountId) throw new CommunityPlatformError("community_account_required", "Community-Zugriff ist nicht an ein Konto gebunden.", 403);
+  return { user_id: accountId, is_operator: false };
+}
+
+function requireService(req, signingKey, scope) {
+  return verifyInternalToken(readBearerToken(req), signingKey, {
+    audience: "community-platform", requiredScopes: [scope],
+  });
+}
+
+function isPublicRead(method, path) {
+  if (method !== "GET") return false;
+  return path === `${prefix}/capabilities`
+    || path === `${prefix}/questions`
+    || /^\/api\/community\/questions\/[^/]+$/.test(path)
+    || /^\/api\/community\/questions\/[^/]+\/answers$/.test(path)
+    || path === `${prefix}/search`
+    || path === `${prefix}/knowledge-documents`
+    || path === `${prefix}/marketplace/listings`
+    || /^\/api\/community\/marketplace\/listings\/[^/]+$/.test(path)
+    || path === `${prefix}/ideas`
+    || /^\/api\/community\/ideas\/[^/]+$/.test(path)
+    || path === `${prefix}/showcases`
+    || /^\/api\/community\/showcases\/[^/]+$/.test(path);
 }
 
 function readJsonBody(req) {

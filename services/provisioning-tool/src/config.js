@@ -1,5 +1,6 @@
 const path = require("node:path");
 const fs = require("node:fs");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 function createConfig(env = process.env) {
   const repoRoot = path.resolve(__dirname, "..", "..", "..");
@@ -44,6 +45,7 @@ function createConfig(env = process.env) {
     runtimeRoot,
     manifestDir: path.join(runtimeRoot, "manifests"),
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700/api/device-management",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "provisioning-tool"),
     hardwareCatalogBaseUrl: env.HARDWARE_CATALOG_BASE_URL || env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900/api/hardware-shop",
     registerDeviceOnComplete: env.REGISTER_DEVICE_ON_COMPLETE !== "false",
     deviceCaCertificatePath: env.DEVICE_CA_CERTIFICATE_PATH ? path.resolve(env.DEVICE_CA_CERTIFICATE_PATH) : "",

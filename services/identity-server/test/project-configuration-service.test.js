@@ -18,6 +18,7 @@ test("project dialog derives the stored architecture through its injected hardwa
     view_manifest: { template_id: "empty" },
   };
   const service = createProjectConfigurationService({
+    projectServerUserId: () => "account-1",
     requireSessionProject: async () => project,
     readJsonBody: async () => ({}),
     developmentProjectViewManifest: () => project.view_manifest,

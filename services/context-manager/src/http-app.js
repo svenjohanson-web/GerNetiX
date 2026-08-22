@@ -1,8 +1,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { ContextManagerError } = require("./errors");
+const {
+  readBearerToken,
+  verifyInternalToken,
+} = require("../../shared/internal-api-auth");
 
 const prefix = "/api/context";
+const audience = "context-manager";
+const scopes = Object.freeze({
+  read: "context_manager.read",
+  write: "context_manager.write",
+  analyze: "context_manager.analyze",
+});
 const publicDir = path.resolve(__dirname, "..", "public");
 const docsDir = path.resolve(__dirname, "..", "..", "..", "docs");
 const architectureFiles = new Set([
@@ -12,6 +22,7 @@ const architectureFiles = new Set([
 
 function createHttpApp(options) {
   const service = options.service;
+  const internalApiSigningKey = options.internalApiSigningKey;
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -23,55 +34,65 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && path === `${prefix}/current`) {
+      requireInternalAccess(req, internalApiSigningKey, scopes.read);
       sendJson(res, 200, service.currentContext(Object.fromEntries(url.searchParams.entries())));
       return;
     }
 
     if (req.method === "PUT" && path === `${prefix}/current`) {
-      sendJson(res, 200, service.upsertScope(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 200, service, service.upsertScope(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/requirement-slices`) {
-      sendJson(res, 201, service.upsertRequirementSlice(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 201, service, service.upsertRequirementSlice(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/artifact-references`) {
-      sendJson(res, 201, service.upsertArtifactReference(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 201, service, service.upsertArtifactReference(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/runtime-references`) {
-      sendJson(res, 201, service.upsertRuntimeReference(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 201, service, service.upsertRuntimeReference(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/decisions`) {
-      sendJson(res, 201, service.recordDecision(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 201, service, service.recordDecision(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/events`) {
-      sendJson(res, 201, service.recordEvent(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 201, service, service.recordEvent(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/analyze`) {
-      sendJson(res, 201, service.analyzeScope(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.analyze);
+      await sendPersistedJson(res, 201, service, service.analyzeScope(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/suggestions`) {
+      requireInternalAccess(req, internalApiSigningKey, scopes.read);
       sendJson(res, 200, service.listSuggestions(Object.fromEntries(url.searchParams.entries())));
       return;
     }
 
     const suggestionAction = path.match(new RegExp(`^${prefix}/suggestions/([^/]+)/(accept|reject)$`));
     if (req.method === "POST" && suggestionAction) {
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
       const id = decodeURIComponent(suggestionAction[1]);
       const action = suggestionAction[2];
-      sendJson(res, action === "accept" ? 201 : 200, action === "accept"
+      await sendPersistedJson(res, action === "accept" ? 201 : 200, service, action === "accept"
         ? service.acceptSuggestion(id, await readJsonBody(req))
         : service.rejectSuggestion(id));
       return;
@@ -79,38 +100,69 @@ function createHttpApp(options) {
 
     const suggestion = path.match(new RegExp(`^${prefix}/suggestions/([^/]+)$`));
     if (req.method === "PATCH" && suggestion) {
-      sendJson(res, 200, service.updateSuggestion(decodeURIComponent(suggestion[1]), await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.write);
+      await sendPersistedJson(res, 200, service, service.updateSuggestion(decodeURIComponent(suggestion[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/packs`) {
-      sendJson(res, 201, service.createContextPack(await readJsonBody(req)));
+      requireInternalAccess(req, internalApiSigningKey, scopes.analyze);
+      await sendPersistedJson(res, 201, service, service.createContextPack(await readJsonBody(req)));
       return;
     }
 
     const pack = path.match(new RegExp(`^${prefix}/packs/([^/]+)$`));
     if (req.method === "GET" && pack) {
+      requireInternalAccess(req, internalApiSigningKey, scopes.read);
       sendJson(res, 200, service.getContextPack(decodeURIComponent(pack[1])));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/redact`) {
+      requireInternalAccess(req, internalApiSigningKey, scopes.analyze);
       sendJson(res, 200, service.redact(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path.startsWith("/context-manager/architecture/")) {
+      requireOperatorUiAccess(req, internalApiSigningKey);
       serveArchitecture(path, res);
       return;
     }
 
     if (req.method === "GET" && (path === "/" || path === "/context-manager" || path.startsWith("/context-manager/"))) {
+      requireOperatorUiAccess(req, internalApiSigningKey);
       serveStatic(path, res);
       return;
     }
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function requireInternalAccess(req, internalApiSigningKey, requiredScope) {
+  return verifyInternalToken(readBearerToken(req), internalApiSigningKey, {
+    audience,
+    requiredScopes: [requiredScope],
+  });
+}
+
+function requireLoopbackOperator(req) {
+  const remoteAddress = String(req.socket?.remoteAddress || "");
+  if (remoteAddress !== "127.0.0.1" && remoteAddress !== "::1" && remoteAddress !== "::ffff:127.0.0.1") {
+    const error = new ContextManagerError("operator_access_denied", "Context Manager HMI ist nur lokal erreichbar.", 403);
+    throw error;
+  }
+}
+
+function requireOperatorUiAccess(req, internalApiSigningKey) {
+  const remoteAddress = String(req.socket?.remoteAddress || "");
+  if (remoteAddress === "127.0.0.1" || remoteAddress === "::1" || remoteAddress === "::ffff:127.0.0.1") return;
+  try {
+    requireInternalAccess(req, internalApiSigningKey, scopes.read);
+  } catch {
+    requireLoopbackOperator(req);
+  }
 }
 
 function serveArchitecture(requestPath, res) {
@@ -202,4 +254,9 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-module.exports = { createHttpApp, sendJson };
+async function sendPersistedJson(res, status, service, payload) {
+  await service.repository?.flush?.();
+  sendJson(res, status, payload);
+}
+
+module.exports = { createHttpApp, sendJson, scopes };

@@ -2,9 +2,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const vm = require("node:vm");
 
-const source = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+const source = readForSandbox("guided-project-view.js");
 const styles = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const courseModel = require("../src/dev/project-models/programming-fundamentals-course")
   .createProgrammingFundamentalsCourseModel();
@@ -271,6 +272,14 @@ test("guided learning requires simulation without hardware and a physical check 
   state.devices = [];
   view.renderProjectViewManifest(project, "#mount");
   assert.match(nextButton(target.innerHTML), /disabled/);
+
+  state.activeIdeStep = 44;
+  view.renderProjectViewManifest(project, "#mount");
+  assert.match(target.innerHTML, /data-guided-embedded-lab/);
+  assert.match(target.innerHTML, /Virtuelles Pin-Multiplexing-Projektlabor/);
+  assert.match(target.innerHTML, /src="\/technik-labs\/\?lab=pinmux&amp;embedded=1"/);
+  assert.match(target.innerHTML, /erkennt und flasht keine reale Hardware/);
+  assert.match(target.innerHTML, /Abschlussprotokoll/);
 });
 
 function createTarget() {

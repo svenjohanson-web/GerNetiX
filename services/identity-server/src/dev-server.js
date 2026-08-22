@@ -17,12 +17,15 @@ const { SqliteAccountAssetRepository } = require("./repositories/sqlite-account-
 const { PostgresPlatformDownloadRepository } = require("./repositories/postgres-platform-download-repository");
 const { PostgresAccountAssetRepository } = require("./repositories/postgres-account-asset-repository");
 const { ContentAddressedArtifactStore } = require("../../shared");
+const { createInMemoryReplayGuard, readBearerToken, verifyInternalToken } = require("../../shared/internal-api-auth");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
 const { passkeyClientError } = require("./services/passkey-client-errors");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
 const { createUserActionReporter } = require("./services/user-action-reporter");
 const { createUserActionIngestHandler, readUserActionContext } = require("./services/user-action-events");
+const { createDependencyHealthChecker } = require("./services/dependency-health");
 const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
 const { createCommunityNotificationOutboxWorker } = require("./services/community-notification-outbox-worker");
 const { createIdentityRetentionCleanup, createIdentityRetentionWorker } = require("./services/identity-retention-worker");
@@ -195,8 +198,63 @@ const identityHardwareLabStateStore = identityAuxiliaryPool
 const identityUserActionOutboxStore = identityAuxiliaryPool
   ? new PostgresStateStore(identityAuxiliaryPool, "identity-user-action-outbox", { items: [] })
   : null;
+const identityDbHealthTimeoutMs = (() => {
+  const requested = Number(process.env.IDENTITY_DB_HEALTH_TIMEOUT_MS || 500);
+  return Math.max(200, Number.isFinite(requested) ? requested : 500);
+})();
+const checkIdentityDbHealth = async () => {
+  if (identityPersistenceBackend === "sqlite") {
+    return {
+      backend: "sqlite",
+      reachable: true,
+      checked_at: new Date().toISOString(),
+      message: "Lokaler sqlite-Speichermodus aktiv.",
+    };
+  }
+  if (!identityAuxiliaryPool) {
+    return {
+      backend: "postgres",
+      reachable: false,
+      checked_at: new Date().toISOString(),
+      error_code: "identity_db_pool_missing",
+      error: "postgres_pool_uninitialized",
+      message: "PostgreSQL-Pool wurde nicht initialisiert.",
+    };
+  }
+  const startedAt = Date.now();
+  let timer;
+  try {
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("PostgreSQL-Healthcheck timed out.")), identityDbHealthTimeoutMs);
+      timer?.unref?.();
+    });
+    await Promise.race([identityAuxiliaryPool.query("SELECT 1"), timeout]);
+    if (timer) clearTimeout(timer);
+    return {
+      backend: "postgres",
+      reachable: true,
+      checked_at: new Date().toISOString(),
+      backend_host: `${identityPostgres.host}:${identityPostgres.port}`,
+      latency_ms: Date.now() - startedAt,
+    };
+  } catch (error) {
+    if (timer) clearTimeout(timer);
+    if (error instanceof Error) {
+      if (error.message === "PostgreSQL-Healthcheck timed out.") error.code = "timeout";
+    }
+    return {
+      backend: "postgres",
+      reachable: false,
+      checked_at: new Date().toISOString(),
+      backend_host: `${identityPostgres.host}:${identityPostgres.port}`,
+      latency_ms: Date.now() - startedAt,
+      error_code: error.code || "identity_db_unavailable",
+      error: error.message || "PostgreSQL nicht erreichbar.",
+      message: "Die zentrale Datenbank ist momentan nicht erreichbar.",
+    };
+  }
+};
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
-const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
 const webPushService = createWebPushService({ sqlitePath: identityAuxiliarySqlitePath, stateStore: identityPushStateStore, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
 const securityAlertPushAccountIds = String(process.env.WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean);
@@ -219,12 +277,10 @@ const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium
 const runtimeStreamHub = createRuntimeStreamHub();
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
-const telemetryInternalToken = process.env.TELEMETRY_INTERNAL_TOKEN || "";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
 const buildWorkerPoolBaseUrl = process.env.BUILD_WORKER_POOL_BASE_URL || buildDeployBaseUrl;
 const publicDemoBaseUrl = process.env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920";
 const communityPlatformBaseUrl = process.env.COMMUNITY_PLATFORM_BASE_URL || "http://127.0.0.1:5200";
-const communityInternalToken = process.env.COMMUNITY_INTERNAL_TOKEN || "";
 const communityNotificationEmailRecipient = process.env.COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT || "";
 const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
@@ -235,15 +291,34 @@ const hardwareLabAiUsageBaseUrl = /\/api\/ai-usage\/?$/.test(aiUsageBaseUrl)
   ? aiUsageBaseUrl.replace(/\/$/, "")
   : `${aiUsageBaseUrl.replace(/\/$/, "")}/api/ai-usage`;
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
+const checkIdentityDependencies = createDependencyHealthChecker({
+  timeoutMs: Math.max(200, Number(process.env.IDENTITY_DEPENDENCY_HEALTH_TIMEOUT_MS || 800)),
+  cacheTtlMs: Math.max(1000, Number(process.env.IDENTITY_DEPENDENCY_HEALTH_CACHE_MS || 5000)),
+  dependencies: [
+    { id: "project-server", name: "Project Server", baseUrl: projectServerBaseUrl },
+    { id: "telemetry-server", name: "Telemetry Server", baseUrl: telemetryServerBaseUrl },
+    { id: "build-deploy-server", name: "Build & Deploy", baseUrl: buildDeployBaseUrl },
+    { id: "public-demo-server", name: "Public Demo", baseUrl: publicDemoBaseUrl },
+    { id: "community-platform", name: "Community Platform", baseUrl: communityPlatformBaseUrl },
+    { id: "ota-build-deploy", name: "OTA Build & Deploy", baseUrl: otaBuildDeployBaseUrl },
+    { id: "hardware-shop", name: "Hardware Shop", baseUrl: hardwareShopBaseUrl },
+    { id: "hardware-catalog", name: "Hardware Catalog", baseUrl: hardwareCatalogBaseUrl },
+    { id: "device-management", name: "Device Management", baseUrl: deviceManagementBaseUrl },
+    { id: "ai-usage", name: "AI Usage", baseUrl: aiUsageBaseUrl },
+    { id: "ai-context", name: "AI Context", baseUrl: aiContextBaseUrl },
+    { id: "operations", name: "Operations / Admin Tool", baseUrl: process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600" },
+  ],
+});
+const internalApiSigningKey = readOptionalInternalApiAuthConfig(process.env, "identity-server");
+const internalApiReplayGuard = createInMemoryReplayGuard();
 const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
-const systemEventIngestToken = process.env.SYSTEM_EVENT_INGEST_TOKEN || "";
 const recordSystemEvent = createSystemEventReporter({
   baseUrl: adminToolBaseUrl,
-  ingestToken: systemEventIngestToken,
+  internalApiSigningKey,
 });
 const recordUserActionEvent = createUserActionReporter({
   baseUrl: adminToolBaseUrl,
-  ingestToken: systemEventIngestToken,
+  internalApiSigningKey,
   outboxStore: identityUserActionOutboxStore,
 });
 const handleUserActionIngest = createUserActionIngestHandler({
@@ -259,7 +334,7 @@ const execFileAsync = promisify(execFile);
 const interfaceTelemetry = createInterfaceCallTelemetry({
   dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
   endpoint: process.env.INTERFACE_TELEMETRY_ENDPOINT,
-  token: process.env.INTERFACE_TELEMETRY_TOKEN,
+  internalApiSigningKey,
   sourceService: "identity-server",
 });
 const {
@@ -279,13 +354,12 @@ const {
   buildDeployBaseUrl,
   buildWorkerPoolBaseUrl,
   communityPlatformBaseUrl,
-  communityInternalToken,
   deviceManagementBaseUrl,
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
   telemetryBaseUrl: telemetryServerBaseUrl,
-  telemetryInternalToken,
+  internalApiSigningKey,
   interfaceTelemetry,
 });
 const projectRepositoryRead = createProjectRepositoryRead({ projectServerJson });
@@ -297,6 +371,7 @@ const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
+  internalApiSigningKey,
   interfaceTelemetry,
 });
 const {
@@ -345,9 +420,9 @@ const hardwareLabService = new RecoveryService({
   sourceReader: new HardwareSourceReader(),
   hardwareLabAi: new HardwareLabAi({
     llmConfigStore,
-    aiUsageClient: new AiUsageClient({ baseUrl: hardwareLabAiUsageBaseUrl }),
+    aiUsageClient: new AiUsageClient({ baseUrl: hardwareLabAiUsageBaseUrl, signingKey: internalApiSigningKey }),
   }),
-  buildDeployClient: new BuildDeployClient({ baseUrl: buildDeployBaseUrl }),
+  buildDeployClient: new BuildDeployClient({ baseUrl: buildDeployBaseUrl, signingKey: internalApiSigningKey }),
 });
 const { discoverNetworkDevices } = createDeviceDiscoveryService({
   deviceDiscoveryUrls,
@@ -363,12 +438,13 @@ const developmentAssistant = createDevelopmentAssistant({
   llmConfigStore,
   projectServerJson,
   projectServerUserId,
+  accountSubscription: (session) => accountSubscription(session),
   readJsonBody,
   requireProjectAccess: (...args) => requireSessionProject(...args),
   sendJson,
 });
-const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
-const requirementsWorkshopAssistant = createRequirementsWorkshopAssistant({ aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson });
+const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, accountSubscription: (session) => accountSubscription(session), readJsonBody, sendJson });
+const requirementsWorkshopAssistant = createRequirementsWorkshopAssistant({ aiUsageJson, llmConfigStore, projectServerUserId, accountSubscription: (session) => accountSubscription(session), readJsonBody, sendJson });
 const electronicsLabAssistant = createElectronicsLabAssistant({
   aiUsageJson,
   llmConfigStore,
@@ -758,6 +834,7 @@ const buildService = createBuildService({
   resolveBuildConfig,
   touchscreenGameBuildConfigurationProblems,
   projectServerJson,
+  projectServerUserId,
   renderPlatformioIni,
   sendJson,
   otaBuildDeployJson,
@@ -771,6 +848,7 @@ const buildService = createBuildService({
   customerArtifactList,
   buildDeployBaseUrl,
   otaBuildDeployBaseUrl,
+  internalApiSigningKey,
   userIdeState,
   touchWorkspace,
 });
@@ -931,6 +1009,7 @@ registerHardwareLabRoutes({
   hardwareLabRepository,
   buildDeployBaseUrl,
   aiUsageJson,
+  internalApiSigningKey,
 });
 registerRequirementsWorkshopRoutes({
   registry: routeRegistry,
@@ -1005,10 +1084,13 @@ registerSystemRoutes({
   handleInternalDevicePushEvent,
   handleInternalDeviceRuntimeEvent,
   handleUserActionIngest,
+  userActionDiagnostics: () => recordUserActionEvent.diagnostics(),
   handleProjectRuntimeStream,
   telemetryJson,
   auth: () => auth,
   recordSystemEvent,
+  checkIdentityDbHealth,
+  checkIdentityDependencies,
 });
 registerDownloadRoutes({
   registry: routeRegistry,
@@ -1046,57 +1128,112 @@ registerWebRoutes({
 });
 
 async function bootstrap() {
-  if (identityPushStateStore) await identityPushStateStore.initialize();
-  if (identitySmtpStateStore) await identitySmtpStateStore.initialize();
-  if (identityLlmStateStore) await identityLlmStateStore.initialize();
-  if (identityUserActionOutboxStore) {
-    await identityUserActionOutboxStore.initialize();
-    const outboxResult = await recordUserActionEvent.flush();
-    if (outboxResult.pending) console.warn(`User action outbox: ${outboxResult.pending} Ereignisse warten auf Operations.`);
+  const bootstrapStartedAt = Date.now();
+  const startupMeasurements = [];
+  const measureBootstrapStep = async (label, action) => {
+    const startedAt = Date.now();
+    try {
+      const result = await action();
+      const durationMs = Date.now() - startedAt;
+      startupMeasurements.push({ label, status: "ok", duration_ms: durationMs });
+      console.log(`[identity-bootstrap] ${label} abgeschlossen in ${durationMs}ms`);
+      return result;
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      const message = String(error?.message || error);
+      startupMeasurements.push({ label, status: "error", duration_ms: durationMs, error: message });
+      console.error(`[identity-bootstrap] ${label} fehlgeschlagen nach ${durationMs}ms: ${message}`);
+      throw error;
+    }
+  };
+  const dbHealth = await measureBootstrapStep("identity-db-health", async () => checkIdentityDbHealth());
+  if (dbHealth.reachable) {
+    const dbEndpoint = `${identityPostgres.host}:${identityPostgres.port}`;
+    console.log(`Identity DB-Check: verbunden (${dbHealth.backend}, ${dbEndpoint}).`);
+  } else {
+    const details = [dbHealth.error_code, dbHealth.message, dbHealth.error].filter(Boolean).join(" · ");
+    console.error(`Identity DB-Check fehlgeschlagen.${details ? ` ${details}` : ""}`);
   }
+  const dependencyHealth = await measureBootstrapStep("identity-dependencies", async () => checkIdentityDependencies({ force: true }));
+  if (dependencyHealth.status === "ok") {
+    console.log(`Identity Dependency-Check: ${dependencyHealth.reachable}/${dependencyHealth.total} Dienste erreichbar.`);
+  } else {
+    console.error(`Identity Dependency-Check: ${dependencyHealth.unreachable}/${dependencyHealth.total} Dienste nicht erreichbar.`);
+    for (const item of dependencyHealth.items.filter((entry) => !entry.reachable)) {
+      console.error(`[identity-dependency] ${item.name}: ${item.error_code} · ${item.message} · ${item.health_url} · ${item.latency_ms}ms`);
+    }
+  }
+  if (identityPushStateStore) await measureBootstrapStep("identity-push-state-store-init", async () => identityPushStateStore.initialize());
+  if (identitySmtpStateStore) await measureBootstrapStep("identity-smtp-state-store-init", async () => identitySmtpStateStore.initialize());
+  if (identityLlmStateStore) await measureBootstrapStep("identity-llm-state-store-init", async () => identityLlmStateStore.initialize());
+  if (identityUserActionOutboxStore) {
+    await measureBootstrapStep("identity-user-action-outbox-init", async () => {
+      await identityUserActionOutboxStore.initialize();
+      const pending = await recordUserActionEvent.pending();
+      if (pending) console.warn(`User action outbox: ${pending} Ereignisse warten auf Operations.`);
+    });
+  }
+  const userActionFlushTimer = setInterval(() => {
+    recordUserActionEvent.flush().catch((error) => console.warn(`User action outbox flush failed: ${error.message || error}`));
+  }, Math.max(1000, Number(process.env.USER_ACTION_OUTBOX_FLUSH_MS || 5000)));
+  userActionFlushTimer.unref?.();
+  // Ein Rueckstau darf den Start nicht aufhalten: je groesser er ist, desto
+  // laenger braeuchte der Bootstrap und desto sicherer liefe er in die
+  // Startfrist des Prozess-Monitors, wodurch der Rueckstau erst recht bliebe.
+  recordUserActionEvent.flush().catch((error) => console.warn(`User action outbox flush failed: ${error.message || error}`));
   if (identityHardwareLabStateStore) {
-    await identityHardwareLabStateStore.initialize();
-    hardwareLabRepository.hydrate();
+    await measureBootstrapStep("identity-hardware-lab-store-init", async () => {
+      await identityHardwareLabStateStore.initialize();
+      hardwareLabRepository.hydrate();
+    });
   }
   if (identityPersistenceBackend === "postgres") {
-    const artifactStore = new ContentAddressedArtifactStore(process.env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts"));
-    platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres, artifactStore });
-    accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres, artifactStore });
+    await measureBootstrapStep("identity-postgres-repositories", async () => {
+      const artifactStore = new ContentAddressedArtifactStore(process.env.ARTIFACT_STORE_DIR || path.join(workspaceRoot, ".runtime", "artifacts"));
+      platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres, artifactStore });
+      accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres, artifactStore });
+    });
   }
-  auth = await createDefaultIdentityModule({
+  auth = await measureBootstrapStep("identity-default-module", async () => createDefaultIdentityModule({
     emailService,
     persistenceBackend: identityPersistenceBackend,
     postgres: identityPostgres,
     appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
-  });
+  }));
   communityNotificationOutboxWorker.start();
   identityRetentionWorker.start();
-  await seedDemoAccount();
+  await measureBootstrapStep("identity-seed-demo-account", async () => seedDemoAccount());
 
-  const requestHandler = createRequestHandler({
+  const requestHandler = await measureBootstrapStep("identity-request-handler", async () => createRequestHandler({
     routeRequest,
     sendJson,
     reportError: (error) => console.error(error),
     reportSlowRequest: (measurement) => console.warn(`[identity-http] slow request ${JSON.stringify(measurement)}`),
     slowRequestMs: Number(process.env.IDENTITY_SLOW_REQUEST_MS || 1500),
-  });
+  }));
   const server = http.createServer(requestHandler);
 
   server.listen(port, host, () => {
-  console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
-  console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
-  console.log(`Project Server adapter: ${projectServerBaseUrl}`);
-  console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
-  console.log(`Build Worker Pool adapter: ${buildWorkerPoolBaseUrl}`);
-  console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
-  console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
-  console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
-  console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
-  console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
-  console.log(`AI Context adapter: ${aiContextBaseUrl}`);
-  console.log(`Identity persistence: ${identityPersistenceBackend} (${identityRuntimeLocation})`);
-  const llmConfig = llmConfigStore.publicConfig();
-  console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
+    console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
+    console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
+    console.log(`Project Server adapter: ${projectServerBaseUrl}`);
+    console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
+    console.log(`Build Worker Pool adapter: ${buildWorkerPoolBaseUrl}`);
+    console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
+    console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
+    console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
+    console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
+    console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
+    console.log(`AI Context adapter: ${aiContextBaseUrl}`);
+    console.log(`Identity persistence: ${identityPersistenceBackend} (${identityRuntimeLocation})`);
+    const llmConfig = llmConfigStore.publicConfig();
+    console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
+    const totalDurationMs = Date.now() - bootstrapStartedAt;
+    const slowSteps = startupMeasurements.filter((entry) => entry.duration_ms >= 250).map((entry) => `${entry.label}=${entry.duration_ms}ms`);
+    console.log(`[identity-bootstrap] abgeschlossen in ${totalDurationMs}ms`);
+    if (slowSteps.length) console.log(`[identity-bootstrap] langsame Schritte: ${slowSteps.join(", ")}`);
+    const failed = startupMeasurements.filter((entry) => entry.status === "error");
+    if (failed.length) console.error(`[identity-bootstrap] fehlgeschlagene Schritte: ${failed.map((entry) => `${entry.label}=${entry.error}`).join(" | ")}`);
   });
 }
 
@@ -1127,26 +1264,16 @@ async function seedDemoAccount() {
   }
 }
 
-function requireInternalAdmin(req) {
-  if (!identityAdminToken) {
-    const error = new Error("Interne Admin-Authentifizierung ist nicht konfiguriert.");
-    error.status = 503;
-    error.code = "identity_admin_token_missing";
-    throw error;
-  }
-  const provided = String(req.headers["x-gernetix-admin-token"] || "");
-  const expectedBuffer = Buffer.from(identityAdminToken);
-  const providedBuffer = Buffer.from(provided);
-  if (expectedBuffer.length !== providedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
-    const error = new Error("Interne Admin-Authentifizierung fehlgeschlagen.");
-    error.status = 403;
-    error.code = "internal_admin_access_denied";
-    throw error;
-  }
+function requireInternalAdmin(req, scope) {
+  return verifyInternalToken(readBearerToken(req), internalApiSigningKey, {
+    audience: "identity-server",
+    requiredScopes: [scope],
+    replayGuard: internalApiReplayGuard,
+  });
 }
 
 async function handleInternalDevicePushEvent(req, res) {
-  requireInternalAdmin(req);
+  requireInternalAdmin(req, "identity.push.device");
   const event = await readJsonBody(req);
   const accountId = String(event.account_id || "").trim();
   const projectId = String(event.project_id || "").trim();
@@ -1161,7 +1288,7 @@ async function handleInternalDevicePushEvent(req, res) {
 }
 
 async function handleInternalDeviceRuntimeEvent(req, res) {
-  requireInternalAdmin(req);
+  requireInternalAdmin(req, "identity.runtime.device");
   const event = await readJsonBody(req);
   const accountId = String(event.account_id || "").trim();
   const projectId = String(event.project_id || "").trim();
@@ -1229,15 +1356,16 @@ function recordDeviceInventoryFailure(session, eventType, error, context = {}) {
 
 async function createCommunityProjectSnapshot(session, projectId) {
   const project = await requireSessionProject(session, String(projectId || ""));
+  const projectAuth = internalProjectAccess(session, project);
   const [storedProject, sourcePayload] = await Promise.all([
-    projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`),
-    projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`),
+    projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, projectAuth),
+    projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, projectAuth),
   ]);
   const safeSources = [];
   let totalBytes = 0;
   for (const sourceInfo of (sourcePayload.items || []).slice(0, 60)) {
     if (isCommunityExcludedSource(sourceInfo)) continue;
-    const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(sourceInfo.path)}`);
+    const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(sourceInfo.path)}`, projectAuth);
     if (isCommunityExcludedSource(source)) continue;
     const content = redactCommunitySource(String(source.content || "")).slice(0, 48 * 1024);
     const nextBytes = Buffer.byteLength(content, "utf8");
@@ -1282,9 +1410,10 @@ async function loadProjectBuilds(projects, session) {
   const devices = await loadUserIdeDevices(session);
   const result = [];
   for (const project of projects) {
+    const projectAuth = internalProjectAccess(session, project);
     const [response, artifactResponse] = await Promise.all([
-      projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`).catch(() => ({ items: [] })),
-      projectServerJson(`/api/firmware-artifacts?project_id=${encodeURIComponent(project.project_server_id)}`).catch(() => ({ items: [] })),
+      projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, projectAuth).catch(() => ({ items: [] })),
+      projectServerJson(`/api/firmware-artifacts?project_id=${encodeURIComponent(project.project_server_id)}`, projectAuth).catch(() => ({ items: [] })),
     ]);
     for (const job of response.items) {
       const device = devices.find((item) => item.device_id === job.device_id);
@@ -1313,6 +1442,20 @@ async function loadProjectBuilds(projects, session) {
     }
   }
   return result.sort((left, right) => right.created_at.localeCompare(left.created_at));
+}
+
+function internalProjectAccess(session, project, scope = "project.read") {
+  const accountId = projectServerUserId(session);
+  return {
+    internalAuth: {
+      scopes: [scope],
+      delegation: {
+        account_id: accountId,
+        project_ids: [String(project.project_server_id || project.project_id || "")].filter(Boolean),
+        entitlements: [],
+      },
+    },
+  };
 }
 
 function catalogProjectIdForDefinition(definition) {

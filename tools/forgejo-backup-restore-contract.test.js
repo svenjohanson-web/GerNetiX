@@ -14,6 +14,13 @@ const encryptionScript = fs.readFileSync(path.join(root, "tools", "encrypt-forge
 const upgradeScript = fs.readFileSync(path.join(root, "tools", "verify-forgejo-upgrade.sh"), "utf8");
 const reportingScript = fs.readFileSync(path.join(root, "tools", "report-forgejo-operation.sh"), "utf8");
 
+// Der Preflight ruft tar mit /dev/null, sha256sum und eine POSIX-Shell auf.
+// Auf Windows gibt es diese nicht; die uebrigen Zusagen dieser Datei lesen nur
+// Dateien und laufen dort weiter.
+const posixOnly = process.platform === "win32"
+  ? "Braucht tar, sha256sum und eine POSIX-Shell. Laeuft auf Linux und macOS."
+  : false;
+
 function createBackupSet(directory) {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(directory, "forgejo-database.dump"), "synthetic-database\n");
@@ -50,7 +57,7 @@ function runPreflight(backupDirectory) {
   return { ...result, dockerCalled: fs.existsSync(dockerLog) };
 }
 
-test("aborts before Docker when a required backup member is missing", () => {
+test("aborts before Docker when a required backup member is missing", { skip: posixOnly }, () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-incomplete-backup-"));
   createBackupSet(directory);
   fs.unlinkSync(path.join(directory, "forgejo-data.tar.gz"));
@@ -60,7 +67,7 @@ test("aborts before Docker when a required backup member is missing", () => {
   assert.match(result.stderr, /Unvollstaendiger/);
 });
 
-test("aborts before Docker when a checksum is wrong", () => {
+test("aborts before Docker when a checksum is wrong", { skip: posixOnly }, () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-corrupt-backup-"));
   createBackupSet(directory);
   fs.appendFileSync(path.join(directory, "forgejo-database.dump"), "tampered\n");

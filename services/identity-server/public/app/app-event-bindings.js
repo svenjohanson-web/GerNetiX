@@ -1,4 +1,13 @@
 // GerNetiX platform module extracted from app.js.
+import { createOfflineRecoverySet } from "@app/app-account-controller.js";
+import { enablePushNotifications, sendPushTestNotification } from "@app/app-push-controller.js";
+import { projectById } from "@app/app-runtime-utils.js";
+import { activateCurrentRoute, bootstrap, changePlatformLocale, claimFlashboxFromCode, createFlashboxMockOrder, loadDeviceWifiSetupAssets, preferredSerialServiceDownload, renderShopConfiguration } from "@app/app-shell-controller.js";
+import { closeMainMenu } from "@app/app-shell-early.js";
+import { navigate } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+import { GerNetiXWelcomeGuide } from "@app/welcome-guide.js";
+
 bootstrap();
 
 document.querySelector("#logoutButton").addEventListener("click", async () => {
@@ -6,6 +15,13 @@ document.querySelector("#logoutButton").addEventListener("click", async () => {
   window.location.href = "/app/auth/";
 });
 document.querySelector("#platformLanguage")?.addEventListener("change", (event) => changePlatformLocale(event));
+document.querySelector("#welcomeGuideMenuButton")?.addEventListener("click", () => {
+  closeMainMenu();
+  GerNetiXWelcomeGuide.open({ account: state.account });
+});
+window.addEventListener("gernetix:account-preferences-updated", (event) => {
+  if (event.detail && state.account) state.account = { ...state.account, ...event.detail };
+});
 document.querySelector("#deviceWifiSetupMenuButton")?.addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
@@ -120,10 +136,10 @@ document.querySelector("#ideBuildProfileSelect")?.addEventListener("change", asy
   try {
     await persistCurrentSource(project);
     await GerNetiXDeviceDebug.startSession(project);
-    setFlashStatus("running", "Debug-Session gestartet. Baue jetzt alle Software-Einheiten und flashe anschließend die betroffenen IoT-Devices.");
+    showStatus("running", "Debug-Session gestartet. Baue jetzt alle Software-Einheiten und flashe anschließend die betroffenen IoT-Devices.");
   } catch (error) {
     event.currentTarget.value = "standard";
-    setFlashStatus("error", error.message);
+    showStatus("error", error.message);
   }
 });
 document.querySelector("#dashboardCommunitySummary")?.addEventListener("click", (event) => {
@@ -219,7 +235,7 @@ document.querySelector("#ideSoftwareUnitSelect").addEventListener("change", (eve
 });
 document.querySelector("#flashButton").addEventListener("click", (event) => openIdeFlashDialog(event));
 document.querySelector("#checkOtaConnectivityButton").addEventListener("click", (event) => checkAllocatedDeviceConnectivity(event));
-document.querySelector("#clearIdeTerminalButton").addEventListener("click", (event) => clearIdeTerminal(event));
+document.querySelector("#clearIdeTerminalButton").addEventListener("click", (event) => resetTerminal(event));
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
 document.querySelector("#showIdeProjectInformationButton").addEventListener("click", () => setIdeConsoleView("project-information"));
 document.querySelector("#showIdeBuildResultsButton").addEventListener("click", () => setIdeConsoleView("build-results"));

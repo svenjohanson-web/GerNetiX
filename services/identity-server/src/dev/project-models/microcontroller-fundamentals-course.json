@@ -13,6 +13,7 @@
     "access_model": "free",
     "source_files": [
       { "path": "src/mikrocontroller.cpp", "role": "user_code" },
+      { "path": "PIN-MULTIPLEXING.md", "role": "learning_guide" },
       { "path": "README.md", "role": "learning_guide" }
     ]
   },
@@ -1086,21 +1087,25 @@
     },
     {
       "id": "45-final-pins-and-resources",
-      "title": "Abschlussprojekt: Pins und Ressourcen planen",
-      "summary": "Vor dem Verdrahten werden ADC-fähiger Eingang, digitaler Tastereingang, PWM-Ausgang, UART und gemeinsam genutzte Timer gegen das konkrete Board geprüft.",
-      "insight": "Ein Pin kann elektrisch vorhanden und trotzdem durch Bootfunktion, Flash, Debugging oder eine andere Peripherie ungeeignet sein.",
-      "code": "// Ergänze die geprüften Ressourcen:\nconst int SENSOR_PIN = ;\nconst int TASTER_PIN = ;\nconst int LED_PIN = ;\n// ADC-Einheit:\n// PWM-Timer/Kanal:\n// UART:",
-      "task": "Trage nur dokumentierte Pins und die benötigten Peripherieressourcen ein; im Simulator verwendest du die vorgegebenen virtuellen Pins.",
-      "expected_result": "Kein Pin und keine Timer- oder Kommunikationsressource ist doppelt oder ungeprüft belegt.",
+      "title": "Abschlussprojekt: Pin-Multiplexing und Ressourcen planen",
+      "summary": "Ein Browser-Simulator verbindet GPIO, ADC, PWM, UART und SPI auf einem virtuellen Arduino Nano oder ESP32 mit Oszilloskop und Logikanalysator; der abschließende Ressourcenplan hält feste, flexible und konfliktbehaftete Zuordnungen fest.",
+      "insight": "Nicht der Schnittstellenname allein entscheidet über die Pins: Mikrocontroller, Boardrevision, interne Pin-Matrix, feste Alternativfunktionen und bereits belegte Ressourcen bestimmen gemeinsam, was möglich ist.",
+      "lab_url": "/technik-labs/?lab=pinmux&embedded=1",
+      "lab_title": "Virtuelles Pin-Multiplexing-Projektlabor",
+      "code": "// Ergänze den Plan ausschließlich mit Angaben aus Datenblatt, Schaltplan und Pinout.\n// Controller: <eintragen>\n// Board/Revision: <eintragen>\n// Quellen: <eintragen>\n\nconst int SENSOR_PIN = ;\nconst int TASTER_PIN = ;\nconst int LED_PIN = ;\n\n// ADC-Einheit/Kanal: <eintragen>\n// PWM-Timer/Kanal: <eintragen>\n// UART TX/RX: <eintragen>\n// SPI SCLK/MOSI/MISO/CS: <eintragen>\n// SPI-Routing fest oder flexibel: <eintragen>\n// Alternative SPI-Belegung: <eintragen oder nicht unterstützt>\n// Reservierte oder eingeschränkte Pins: <eintragen>\n// Bewusster Ressourcenkonflikt: <eintragen>\n// Konfliktlösung: <eintragen>",
+      "task": "Bearbeite zuerst beide virtuellen Projekte im eingebetteten Simulator: Arduino Nano mit festen Peripheriepins und ESP32 mit flexibler GPIO-Matrix. Ordne ADC, PWM, UART und die vier klassischen SPI-Signale zu, kennzeichne feste oder flexible Routings, erzeuge und löse einen absichtlichen Konflikt und schließe Oszilloskop sowie Logikanalysator an. Übertrage danach eine erlaubte sowie eine alternative oder nachweislich unmögliche SPI-Belegung in den Ressourcenplan, ohne Boot-, Flash-, PSRAM-, USB-, Debug- oder bereits verwendete Board-Pins zu übersehen.",
+      "expected_result": "Der Plan unterscheidet Board-Anschluss, GPIO und interne Peripheriefunktion, belegt jede Zuordnung mit einer Quelle und zeigt, warum die gewählte SPI-Belegung funktioniert, eine Alternative möglich oder unmöglich ist und wie ein Ressourcenkonflikt behoben wird.",
       "concepts": [
         { "label": "Pin-Multiplexing", "text": "Ein physischer Pin kann mehreren internen Funktionen zugeordnet werden, aber nicht beliebig gleichzeitig." },
-        { "label": "Ressourcenplan", "text": "Dokumentiert Pins, Kanäle, Timer und Schnittstellen vor der Implementierung." }
+        { "label": "GPIO-Matrix und Alternativfunktion", "text": "Manche Controller routen viele Peripheriesignale flexibel, andere verbinden Funktionen fest oder nur über wenige Alternativen mit bestimmten Pins." },
+        { "label": "Boardgrenze", "text": "Ein Chip-Pin kann intern nutzbar sein, aber auf dem Modul oder Board reserviert, fest verdrahtet oder gar nicht herausgeführt sein." },
+        { "label": "Ressourcenplan", "text": "Dokumentiert Pins, Kanäle, Timer, Schnittstellen, Quellen und Konflikte vor der Implementierung." }
       ],
       "completion": {
         "type": "code",
-        "must_contain": ["SENSOR_PIN =", "TASTER_PIN =", "LED_PIN =", "ADC-Einheit:", "PWM-Timer/Kanal:", "UART:"],
-        "must_not_contain": ["SENSOR_PIN = ;", "TASTER_PIN = ;", "LED_PIN = ;"],
-        "success": "Pins und Peripherieressourcen sind konkret geplant."
+        "must_contain": ["Controller:", "Board/Revision:", "Quellen:", "SENSOR_PIN =", "TASTER_PIN =", "LED_PIN =", "ADC-Einheit/Kanal:", "PWM-Timer/Kanal:", "UART TX/RX:", "SPI SCLK/MOSI/MISO/CS:", "SPI-Routing fest oder flexibel:", "Alternative SPI-Belegung:", "Reservierte oder eingeschränkte Pins:", "Bewusster Ressourcenkonflikt:", "Konfliktlösung:"],
+        "must_not_contain": ["<eintragen>", "SENSOR_PIN = ;", "TASTER_PIN = ;", "LED_PIN = ;"],
+        "success": "Pin-Multiplexing, SPI-Zuordnung und Peripherieressourcen sind boardspezifisch, quellenbasiert und konfliktfrei geplant."
       }
     },
     {
@@ -1239,6 +1244,11 @@
       "path": "src/mikrocontroller.cpp",
       "role": "user_code",
       "content": "#include <Arduino.h>\n#include <stdint.h>\n\n// Dieses Gerüst wächst in den Abschlusslektionen.\n// Die folgenden Pins gehören nur zum virtuellen ESP32-Beispiel.\n// Ersetze sie für reale Hardware erst nach Prüfung von Pinout und Datenblatt.\nconst int SENSOR_PIN = 34;\nconst int TASTER_PIN = 27;\nconst int LED_PIN = 25;\n\nuint16_t adcRohwert = 0;\nuint8_t pwmWert = 0;\nuint32_t letzteMessungMs = 0;\nbool fehlerAktiv = false;\n\nvoid setup() {\n  Serial.begin(115200);\n  pinMode(TASTER_PIN, INPUT_PULLUP);\n  pinMode(LED_PIN, OUTPUT);\n}\n\nvoid loop() {\n  // Baue hier schrittweise den nicht blockierenden Ablauf auf.\n}\n"
+    },
+    {
+      "path": "PIN-MULTIPLEXING.md",
+      "role": "learning_guide",
+      "content": "# Abschlussaufgabe: Pin-Multiplexing und Ressourcenplanung\n\n## Lernziel\n\nDu unterscheidest den Anschluss auf dem Entwicklungsboard, den GPIO des Mikrocontrollers und die interne Peripheriefunktion. Anschließend weist du ADC, PWM, UART und SPI nur solchen Pins zu, die für das konkrete Board dokumentiert und nicht anderweitig belegt sind.\n\n## Virtuelle Projekte\n\nDas eingebettete Browserlabor enthält ein Arduino-Nano-Projekt mit ATmega328P und festen UART-/SPI-Funktionen sowie ein ESP32-Projekt mit flexibel routbarer GPIO-Matrix und modellierten Einschränkungen. Beide Projekte laufen ausschließlich simuliert. Es wird keine reale Hardware erkannt oder geflasht. Oszilloskop und Logikanalysator lassen sich virtuell an die zugeordneten Signale anschließen.\n\n## Arbeitsauftrag\n\n1. Bearbeite im Simulator zuerst das Arduino-Nano- und danach das ESP32-Projekt.\n2. Kennzeichne feste, alternativ wählbare und über eine GPIO-Matrix flexibel routbare Funktionen.\n3. Plane SCLK, MOSI, MISO und CS für eine erlaubte SPI-Belegung.\n4. Dokumentiere eine alternative SPI-Belegung. Unterstützt der Controller keine freie Umlegung, begründe die feste Zuordnung mit dem Datenblatt.\n5. Prüfe Boot- und Strapping-Funktionen, Flash, PSRAM, USB, Debug, reine Eingänge und bereits fest verdrahtete Boardkomponenten.\n6. Erzeuge absichtlich eine Doppelbelegung, zum Beispiel SPI und PWM auf demselben Pin, und löse den Konflikt.\n7. Schließe das virtuelle Oszilloskop an PWM und SCLK sowie den Logikanalysator an CS, SCLK, MOSI und MISO an und starte beide Erfassungen.\n\n## Abgrenzung\n\nDiese Aufgabe lehrt, wie interne Peripherie und physische Pins zusammengeführt werden. SPI dient als anschauliches Routing-Beispiel. Taktmodi, Transfers, Chip-Select-Verhalten und Busdiagnose gehören in das Lernprojekt Grundlagen Gerätekommunikation.\n\n## Abgabe\n\nDer fertige Plan nennt Boardmodell, Revision und verwendete Dokumentationsquelle. Er enthält außerdem für jede Zuordnung die Pinrolle, die interne Ressource, bekannte Einschränkungen und die Begründung, warum keine unzulässige Doppelbelegung vorliegt. Die Aussage `SPI kann auf jeden Pin` ist keine zulässige Begründung.\n"
     },
     {
       "path": "README.md",

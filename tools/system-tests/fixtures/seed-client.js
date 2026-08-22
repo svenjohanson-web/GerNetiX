@@ -1,5 +1,7 @@
 "use strict";
 
+const { issueInternalToken } = require("../../../services/shared/internal-api-auth");
+
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const FIXTURE_SERVICE_PORTS = Object.freeze({ identity: "14300", project: "14800", device: "14700" });
 
@@ -12,6 +14,7 @@ function createSeedClient(options = {}) {
     device: safeBaseUrl(options.deviceBaseUrl, "deviceBaseUrl", FIXTURE_SERVICE_PORTS.device),
   });
   const writeConfirmed = options.writeConfirmed === true;
+  const internalApiAuth = options.internalApiAuth || options.internalApiSigningKey || "";
   const timeoutMs = integer(options.timeoutMs || 5_000, "timeoutMs", 100, 60_000);
 
   async function seed(manifest, password) {
@@ -62,7 +65,8 @@ function createSeedClient(options = {}) {
 
   async function ensureProject(fixture, account) {
     requireAccount(account, fixture.account_fixture_id);
-    const found = await request("project", "GET", `/api/projects/${encodeURIComponent(fixture.project_id)}`, undefined, [200, 404]);
+    const projectAuth = projectHeaders(internalApiAuth, account.user_id, fixture.project_id, "project.read");
+    const found = await request("project", "GET", `/api/projects/${encodeURIComponent(fixture.project_id)}`, undefined, [200, 404], projectAuth);
     if (found.status === 200) {
       if (found.body.user_id !== account.user_id) throw new Error(`Project ownership mismatch: ${fixture.project_id}`);
       return false;
@@ -74,12 +78,13 @@ function createSeedClient(options = {}) {
       title: fixture.title,
       description: fixture.description,
       hardware_profile_id: fixture.hardware_profile_id,
-    }, [201]);
+    }, [201], projectHeaders(internalApiAuth, account.user_id, fixture.project_id, "project.write"));
     return true;
   }
 
   async function ensureDevice(fixture) {
-    const found = await request("device", "GET", `/api/device-management/devices/${encodeURIComponent(fixture.device_id)}/status`, undefined, [200, 404]);
+    const found = await request("device", "GET", `/api/device-management/devices/${encodeURIComponent(fixture.device_id)}/status`, undefined, [200, 404],
+      serviceHeaders(internalApiAuth, "device-management-server", "device.status.read"));
     if (found.status === 200) {
       if (found.body.serial_number !== fixture.serial_number) throw new Error(`Device serial mismatch: ${fixture.device_id}`);
       return false;
@@ -93,25 +98,26 @@ function createSeedClient(options = {}) {
       connectivity_status: fixture.connectivity_status,
       ota_status: fixture.ota_status,
       authenticity_status: "community_unverified",
-    }, [201]);
+    }, [201], serviceHeaders(internalApiAuth, "device-management-server", "device.register"));
     return true;
   }
 
   async function ensureAssignment(fixture, account) {
     requireAccount(account, fixture.account_fixture_id);
     const path = `/api/device-management/accounts/${encodeURIComponent(account.user_id)}/devices`;
-    const listed = await request("device", "GET", path, undefined, [200]);
+    const listed = await request("device", "GET", path, undefined, [200],
+      accountHeaders(internalApiAuth, "device-management-server", account.user_id, "device.account.read"));
     if ((listed.body.items || []).some((item) => item.device_id === fixture.device_id)) return false;
     await request("device", "POST", path, {
       device_id: fixture.device_id,
       display_name: fixture.display_name,
       board_short_name: fixture.board_short_name,
       node_name: fixture.node_name,
-    }, [201]);
+    }, [201], accountHeaders(internalApiAuth, "device-management-server", account.user_id, "device.account.write"));
     return true;
   }
 
-  async function request(targetName, method, pathname, body, expectedStatuses) {
+  async function request(targetName, method, pathname, body, expectedStatuses, extraHeaders = {}) {
     const url = new URL(pathname, targets[targetName]);
     assertLoopback(url);
     const controller = new AbortController();
@@ -122,7 +128,9 @@ function createSeedClient(options = {}) {
         method,
         redirect: "error",
         signal: controller.signal,
-        headers: body === undefined ? { Accept: "application/json" } : { Accept: "application/json", "Content-Type": "application/json" },
+        headers: body === undefined
+          ? { Accept: "application/json", ...extraHeaders }
+          : { Accept: "application/json", "Content-Type": "application/json", ...extraHeaders },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } finally {
@@ -138,6 +146,38 @@ function createSeedClient(options = {}) {
   }
 
   return { seed, targets };
+}
+
+function projectHeaders(secret, accountId, projectId, scope) {
+  const common = { iss: "system-test-seed", sub: "system-test-seed", aud: "project-server", scopes: [scope] };
+  return {
+    Authorization: `Bearer ${issueInternalToken(common, secret)}`,
+    "X-GerNetiX-Project-Delegation": issueInternalToken({
+      ...common,
+      kind: "delegated_user_action",
+      context: { account_id: accountId, project_ids: [projectId], entitlements: [] },
+    }, secret),
+  };
+}
+
+function serviceHeaders(secret, audience, scope) {
+  return {
+    Authorization: `Bearer ${issueInternalToken({
+      iss: "system-test-seed", sub: "system-test-seed", aud: audience, scopes: [scope],
+    }, secret)}`,
+  };
+}
+
+function accountHeaders(secret, audience, accountId, scope) {
+  const common = { iss: "system-test-seed", sub: "system-test-seed", aud: audience, scopes: [scope] };
+  return {
+    Authorization: `Bearer ${issueInternalToken(common, secret)}`,
+    "X-GerNetiX-Delegation": issueInternalToken({
+      ...common,
+      kind: "delegated_user_action",
+      context: { account_id: accountId, project_ids: [], entitlements: [] },
+    }, secret),
+  };
 }
 
 function safeBaseUrl(value, field, expectedPort) {

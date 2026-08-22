@@ -9,6 +9,8 @@ const homepage = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const rebuildPage = fs.readFileSync(path.join(publicRoot, "nachbauprojekte/nexi-sprachassistent/index.html"), "utf8");
 const appHtml = fs.readFileSync(path.join(publicRoot, "app/index.html"), "utf8");
 const appJs = fs.readFileSync(path.join(publicRoot, "app/app.js"), "utf8");
+// routeMap liegt seit der Entflechtung bei den Routing-Primitiven.
+const routingJs = fs.readFileSync(path.join(publicRoot, "app/platform-routing.js"), "utf8");
 const shell = fs.readFileSync(path.join(publicRoot, "app/app-shell-controller.js"), "utf8");
 
 test("routes the public Nexi call to the rebuild entry", () => {
@@ -22,7 +24,7 @@ test("routes the public Nexi call to the rebuild entry", () => {
 
 test("keeps the Nexi product entry independent from the learning product", () => {
   const view = appHtml.match(/<section id="nexiView"[\s\S]*?<\/section>\s*<\/section>/)?.[0] || "";
-  assert.match(appJs, /nexi: "nexiView"/);
+  assert.match(routingJs, /nexi: "nexiView"/);
   assert.match(view, /Nexi einrichten/);
   assert.match(view, /unabhängig von Lernprojekten/);
   assert.match(view, /href="\/app\/learn\/\?catalog=nexi-voice-assistant"/);

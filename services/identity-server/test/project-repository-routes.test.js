@@ -94,7 +94,15 @@ test("debug-session proxy authorizes the session project and forwards the server
   const forwarded = harness.calls.filter((call) => call[0] === "projectServerJson");
   assert.equal(forwarded[0][1], "/api/projects/stored-project-1/debug-session");
   assert.deepEqual(forwarded[0][2].body, { device_ids: ["device-1"] });
+  assert.deepEqual(forwarded[0][2].internalAuth, {
+    scopes: ["project.write"],
+    delegation: { account_id: "account-1", project_ids: ["stored-project-1"] },
+  });
   assert.equal(forwarded[1][1], "/api/projects/stored-project-1/debug-session/activity");
+  assert.deepEqual(forwarded[1][2].internalAuth, {
+    scopes: ["project.write"],
+    delegation: { account_id: "account-1", project_ids: ["stored-project-1"] },
+  });
   assert.equal(harness.responses[0][0], 201);
   assert.equal(harness.responses[1][0], 200);
 });

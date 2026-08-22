@@ -1,9 +1,11 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 function createConfig(env = process.env) {
   return {
     host: env.HOST || env.AI_CONTEXT_HOST || "127.0.0.1",
     port: Number(env.PORT || env.AI_CONTEXT_PORT || 5500),
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "ai-context-server"),
     persistenceBackend: env.PERSISTENCE_BACKEND || env.AI_CONTEXT_PERSISTENCE_BACKEND || "sqlite",
     sqlitePath: env.AI_CONTEXT_SQLITE_PATH || path.join(__dirname, "..", "..", "..", ".runtime", "gernetix-ai-context.sqlite"),
     postgres: {

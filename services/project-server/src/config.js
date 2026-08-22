@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { createSystemRepositoryCatalog } = require("./system-repository-catalog");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -27,6 +28,7 @@ function createConfig(env = process.env) {
     repositoryStoreBackend,
     requireForgejoForNewProjects: env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS === "true" || (postgresRuntime && env.PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS !== "false"),
     adminReadToken: env.PROJECT_ADMIN_READ_TOKEN || "",
+    internalAuthSecret: readOptionalInternalApiAuthConfig(env, "project-server"),
     systemRepositories: createSystemRepositoryCatalog(env),
     forgejo: {
       baseUrl: env.FORGEJO_INTERNAL_URL || "",

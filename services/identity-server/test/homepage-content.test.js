@@ -8,6 +8,7 @@ const publicRoot = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(publicRoot, "landing.css"), "utf8");
 const headerCss = fs.readFileSync(path.join(publicRoot, "public-header.css"), "utf8");
+const themeTokens = fs.readFileSync(path.join(__dirname, "..", "..", "shared", "public", "theme-tokens.css"), "utf8");
 const client = fs.readFileSync(path.join(publicRoot, "landing.js"), "utf8");
 const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
   .map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8"))
@@ -16,7 +17,6 @@ const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
 test("serves the GerNetiX homepage publicly before authentication", () => {
   assert.match(server, /path: "\/", handler: \(\{ res \}\) => serveStatic\(res, publicDir, "\/index\.html"\)/);
   assert.match(html, /id="publicLoginLink" class="header-login-link" href="\/app\/auth\/"[\s\S]*Anmelden/);
-  assert.match(html, /landing\.js\?v=20260816-unified-navigation-1/);
   assert.match(css, /\.header-login-link, \.menu-button, \.public-language-switcher, \.public-theme-toggle \{[\s\S]*background: linear-gradient\(180deg, #f0ece5 0%, #e6ded2 100%\);[\s\S]*box-shadow:/);
   assert.match(client, /publicLoginLink\.href = "\/app\/dashboard\/";[\s\S]*publicLoginLink\.textContent = "Zum Dashboard";/);
   assert.doesNotMatch(html, /Jetzt starten/);
@@ -61,7 +61,6 @@ test("switches homepage images and their background surfaces with the public rea
 });
 
 test("adapts the header wordmark to the light reading theme", () => {
-  assert.match(html, /landing\.css\?v=20260813-light-contrast-1/);
   assert.match(css, /html\[data-public-theme="light"\] \.brand img \{[\s\S]*filter: invert\(1\) hue-rotate\(180deg\);[\s\S]*\}/);
 });
 
@@ -73,7 +72,11 @@ test("keeps highlighted homepage copy readable in the light theme", () => {
 });
 
 test("uses the GerNetiX corporate design and responsive homepage grids", () => {
-  assert.match(css, /--accent: #22d3ee/);
+  // Die Farben kommen aus der gemeinsamen Token-Datei. Frueher stand hier die
+  // Zusicherung auf #22d3ee: ein Wert aus einem toten :root-Block, der nie
+  // sichtbar war, weil ein spaeterer Block ihn ueberschrieb.
+  assert.match(css, /@import url\("\/theme-tokens\.css/);
+  assert.match(themeTokens, /--accent: #8b3a2b/);
   assert.match(css, /body \{[\s\S]*padding-top: 78px;/);
   assert.match(headerCss, /\.site-header \{[\s\S]*position: fixed;[\s\S]*top: 0;[\s\S]*left: 16px;[\s\S]*right: 16px;/);
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);

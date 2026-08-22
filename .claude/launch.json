@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "//": "Nicht 'npm run dev': die Identity-Runtime verweigert den Start, wenn IDENTITY_RUNTIME_LOCATION und IDENTITY_REMOTE_DEV fehlen. Dieser Starter setzt sie aus .env.remote-dev.local und braucht den laufenden Staging-Tunnel (PostgreSQL auf 25432, Dienste auf 4400/4700/4800 ...).",
+      "name": "identity-remote-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/start-identity-remote-dev.js"],
+      "port": 4300,
+      "autoPort": false
+    }
+  ]
+}

@@ -10,7 +10,7 @@ const {
   validatePath,
 } = require("../src/dev/project-repository-contract-stub");
 
-const project = { project_server_id: "project-owned" };
+const project = { project_server_id: "project-owned", owner_user_id: "account-owned" };
 const currentSources = [
   { path: "README.md", content: "Hallo 🌍\n", content_type: "text/markdown" },
   { path: "src/main.cpp", content: "int main() { return 0; }\n", content_type: "text/x-c++src" },

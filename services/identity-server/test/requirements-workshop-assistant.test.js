@@ -36,6 +36,7 @@ test("requirements workshop returns a structured understanding mirror with usage
       return { provider: "api", apiProvider: "openai-responses", apiBaseUrl: "https://api.openai.test/v1", apiModel: "gpt-5-nano", apiKey: "test-key", costPolicy: "external_costs_with_preflight" };
     } },
     projectServerUserId: () => "acct-secret-42",
+    accountSubscription: () => ({ entitlements: ["ai_assistant"] }),
     readJsonBody: async () => ({ proposal: "Mitarbeitende öffnen den Raum schnell und sicher mit ihrer Firmenkarte.", account_id: "forged" }),
     sendJson: (_res, status, body) => sent.push({ status, body }),
     fetchImpl: async (url, options) => {
@@ -55,8 +56,13 @@ test("requirements workshop returns a structured understanding mirror with usage
   assert.match(providerRequest.options.headers.Authorization, /test-key/);
   assert.equal(usageCalls[0].options.body.account_id, "acct-secret-42");
   assert.equal(usageCalls[0].options.body.feature, "requirements_workshop_feedback");
+  assert.deepEqual(usageCalls[0].options.internalAuth, {
+    scopes: ["ai.usage.consume"],
+    delegation: { account_id: "acct-secret-42", project_ids: [], entitlements: ["ai_assistant"] },
+  });
   assert.equal(usageCalls[1].path, "/api/ai-usage/events/usage-req-1/complete");
   assert.deepEqual(usageCalls[1].options.body, { input_tokens: 300, output_tokens: 160 });
+  assert.deepEqual(usageCalls[1].options.internalAuth, usageCalls[0].options.internalAuth);
   assert.equal(sent[0].status, 200);
   assert.equal(sent[0].body.feedback.follow_up_questions.length, 1);
   assert.equal(sent[0].body.routing.routeTask, "requirements_workshop");

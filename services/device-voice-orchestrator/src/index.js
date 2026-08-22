@@ -13,8 +13,8 @@ function createDefaultDeviceVoiceService(config = createConfig()) {
   }
   return new DeviceVoiceService({
     repository: new EphemeralVoiceSessionRepository(),
-    deviceManagementClient: new DeviceManagementClient(config.deviceManagementBaseUrl),
-    aiUsageClient: new AiUsageClient(config.aiUsageBaseUrl),
+    deviceManagementClient: new DeviceManagementClient(config.deviceManagementBaseUrl, config.internalApiSigningKey),
+    aiUsageClient: new AiUsageClient(config.aiUsageBaseUrl, config.internalApiSigningKey),
     provider: config.provider === "fake" ? new DeterministicFakeVoiceProvider() : new DisabledVoiceProvider(),
     model: config.model,
     sessionTtlSeconds: config.sessionTtlSeconds,

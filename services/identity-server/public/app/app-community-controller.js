@@ -1,4 +1,7 @@
 // GerNetiX platform module extracted from app.js.
+import { deleteJson, escapeAttribute, escapeHtml, getJson, postJson } from "@app/app-runtime-utils.js";
+import { state } from "@app/platform-state.js";
+
 let communityCoreEventsBound = false;
 let communityMessageEventsBound = false;
 
@@ -235,3 +238,27 @@ async function submitCommunityAnswer(event) {
   event.preventDefault(); const form = event.target; const data = new FormData(form); const questionId = data.get("question_id");
   try { await postJson(`/api/community/questions/${encodeURIComponent(questionId)}/answers`, { body: data.get("body") }); await openCommunityQuestion(questionId); } catch (error) { window.alert(error.message || "Antwort konnte nicht gesendet werden."); }
 }
+
+export {
+  bindCommunityCoreEvents,
+  bindCommunityMessageEvents,
+  configureSupportRequestMode,
+  loadMessages,
+  openCommunityQuestion,
+  renderCommunity,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, community-portal-controller.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  bindCommunityCoreEvents,
+  bindCommunityMessageEvents,
+  configureSupportRequestMode,
+  loadMessages,
+  openCommunityQuestion,
+  renderCommunity,
+});
+/* ---- /Uebergangsbruecke ---- */

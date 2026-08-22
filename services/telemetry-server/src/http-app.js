@@ -1,22 +1,36 @@
-const crypto = require("node:crypto");
 const { TelemetryError } = require("./errors");
+const { assertDelegatedResource, readBearerToken, verifyDelegation, verifyInternalToken } = require("../../shared/internal-api-auth");
 
 const prefix = "/api/telemetry";
 
-function createHttpApp({ service, internalToken }) {
+function createHttpApp({ service, internalApiSigningKey }) {
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const path = url.pathname;
     if (req.method === "GET" && path === "/health") return sendJson(res, 200, { status: "ok", service: "telemetry-server" });
     if (!path.startsWith(`${prefix}/internal/`)) return sendJson(res, 404, { error: "not_found" });
-    requireInternalToken(req, internalToken);
 
-    if (req.method === "POST" && path === `${prefix}/internal/ingest`) return sendJson(res, 202, await service.ingest(await readJsonBody(req)));
-    if (req.method === "POST" && path === `${prefix}/internal/retention/run`) return sendJson(res, 200, await service.prune());
+    if (req.method === "POST" && path === `${prefix}/internal/ingest`) {
+      requireServiceToken(req, internalApiSigningKey, "telemetry.ingest");
+      return sendJson(res, 202, await service.ingest(await readJsonBody(req)));
+    }
+    if (req.method === "POST" && path === `${prefix}/internal/retention/run`) {
+      requireServiceToken(req, internalApiSigningKey, "telemetry.retention.run");
+      return sendJson(res, 200, await service.prune());
+    }
 
     const project = path.match(/^\/api\/telemetry\/internal\/accounts\/([^/]+)\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
     if (!project) return sendJson(res, 404, { error: "not_found" });
     const [, accountId, projectId, resource] = project.map(decodeURIComponent);
+    const scope = req.method === "PUT" ? "telemetry.retention.write"
+      : req.method === "DELETE" ? "telemetry.data.delete"
+        : "telemetry.read";
+    requireServiceToken(req, internalApiSigningKey, scope);
+    const delegation = verifyDelegation(req.headers["x-gernetix-delegation"], internalApiSigningKey, {
+      audience: "telemetry-server",
+      requiredScopes: [scope],
+    });
+    assertDelegatedResource(delegation, { accountId, projectId });
     const query = Object.fromEntries(url.searchParams.entries());
     if (req.method === "GET" && resource === "measurements") return sendJson(res, 200, { items: await service.listMeasurements(accountId, projectId, query) });
     if (req.method === "GET" && resource === "events") return sendJson(res, 200, { items: await service.listEvents(accountId, projectId, query) });
@@ -27,11 +41,11 @@ function createHttpApp({ service, internalToken }) {
   };
 }
 
-function requireInternalToken(req, token) {
-  if (!token) throw new TelemetryError("telemetry_internal_token_missing", "Interne Telemetrie-Authentifizierung ist nicht konfiguriert.", 503);
-  const actual = Buffer.from(String(req.headers["x-gernetix-telemetry-token"] || ""));
-  const expected = Buffer.from(token);
-  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) throw new TelemetryError("internal_access_denied", "Interne Telemetrie-Authentifizierung fehlgeschlagen.", 403);
+function requireServiceToken(req, secret, scope) {
+  return verifyInternalToken(readBearerToken(req), secret, {
+    audience: "telemetry-server",
+    requiredScopes: [scope],
+  });
 }
 
 function readJsonBody(req) {

@@ -1,0 +1,337 @@
+{
+  "hinweis": "Erzeugt von scripts/update-asset-versions.js. Nicht von Hand bearbeiten.",
+  "dateien": {
+    "/app/action-observability.js": {
+      "version": "20260820-esm-blatt-2",
+      "pruefsumme": "d0f45d15d6b6304f"
+    },
+    "/app/ai-chat-pattern.js": {
+      "version": "20260819-esm-schritt-1",
+      "pruefsumme": "6856a8f311afad2f"
+    },
+    "/app/api-client.js": {
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "fb4bbaa4af5b2a13"
+    },
+    "/app/app-account-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "dceb3a0b7f3b647e"
+    },
+    "/app/app-billing-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "1c328477314de2be"
+    },
+    "/app/app-community-controller.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "7624d44d88e40cf2"
+    },
+    "/app/app-dashboard-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "4e0192e4a4729327"
+    },
+    "/app/app-device-build-controller.js": {
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "e3f41fa8bac922e7"
+    },
+    "/app/app-event-bindings.js": {
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "38d07d5afe55de8e"
+    },
+    "/app/app-ide-controller.js": {
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "59c2e43eaf1216d6"
+    },
+    "/app/app-navigation.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "7a820163d932d2e9"
+    },
+    "/app/app-project-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "aeedae38c30c3e00"
+    },
+    "/app/app-push-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "7f6c3147adafdf90"
+    },
+    "/app/app-runtime-utils.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "63bc04f2a7cd5f60"
+    },
+    "/app/app-shell-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "46843cb0403d8688"
+    },
+    "/app/app-shell-early.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "58d9b59666d426e3"
+    },
+    "/app/app.css": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "f93a3ef04097ed0d"
+    },
+    "/app/app.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "e7505f31352613e6"
+    },
+    "/app/auth/auth.css": {
+      "version": "20260815-public-theme-1",
+      "pruefsumme": "6e3ca8ad32c47a83"
+    },
+    "/app/auth/auth.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "65aa5ca559e37062"
+    },
+    "/app/board-configuration-plugin.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "8c0b6df2e8f2a2d5"
+    },
+    "/app/community-ideas-controller.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "3fa614204c181ed9"
+    },
+    "/app/community-marketplace-controller.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "30f565c99ae0369b"
+    },
+    "/app/community-portal-controller.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "3bddba3fdcb5bf50"
+    },
+    "/app/community-routes.css": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "4e7c5223fa78d071"
+    },
+    "/app/development-component-metamodel.js": {
+      "version": "20260820-metamodell-1",
+      "pruefsumme": "35b3eebae8ac6df8"
+    },
+    "/app/development-hardware-model.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "00c00e6121b449fc"
+    },
+    "/app/development-plantuml.js": {
+      "version": "20260820-entflechtung-2",
+      "pruefsumme": "0af66624ffdc6a64"
+    },
+    "/app/development-platform.js": {
+      "version": "20260820-entflechtung-5",
+      "pruefsumme": "9ff8c179b5a1fc96"
+    },
+    "/app/device-debug-controller.js": {
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "b57141e905210044"
+    },
+    "/app/device-onboarding-controller.js": {
+      "version": "20260820-flash-pruefsumme-1",
+      "pruefsumme": "6c345de50e2f2ad6"
+    },
+    "/app/device-onboarding-model.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "9bc5badb7e487c20"
+    },
+    "/app/device-wifi-setup-dialog.js": {
+      "version": "20260820-esm-mitte-2",
+      "pruefsumme": "33f520184c9dfa62"
+    },
+    "/app/dom-utils.js": {
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "f7e52774e9b6761b"
+    },
+    "/app/flash-progress.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "2569880a6685df65"
+    },
+    "/app/guided-project-view.js": {
+      "version": "20260820-esm-kopf-2",
+      "pruefsumme": "ebbb1789b66b3914"
+    },
+    "/app/hardware-configuration-model.js": {
+      "version": "20260820-entflechtung-3",
+      "pruefsumme": "44f8360dba86bed0"
+    },
+    "/app/hardware-lab-controller.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "6218f459dead5de3"
+    },
+    "/app/hardware-lab-route.css": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "bbc3e666a1981d19"
+    },
+    "/app/help-chat-service.js": {
+      "version": "20260820-esm-abschluss-1",
+      "pruefsumme": "2b1388594f3d31c1"
+    },
+    "/app/help-content.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "d931ee7d7d4e00f3"
+    },
+    "/app/home-automation-model.js": {
+      "version": "20260820-entflechtung-2",
+      "pruefsumme": "36057fff5526790d"
+    },
+    "/app/i18n/i18n.js": {
+      "version": "20260820-esm-i18n-1",
+      "pruefsumme": "5ebc24db139191d0"
+    },
+    "/app/ide-project-model.js": {
+      "version": "20260820-entflechtung-7",
+      "pruefsumme": "1cf14221ba34368e"
+    },
+    "/app/information-view.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "b53e2997e5bfae23"
+    },
+    "/app/initial-view-router.js": {
+      "version": "20260805-hardware-lab-route-1",
+      "pruefsumme": "dd1d3286b92e68d4"
+    },
+    "/app/knowledge-chapter-index.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "2c70bb367dc90e24"
+    },
+    "/app/knowledge-content.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "f0d34c8027706d80"
+    },
+    "/app/learning-project-controller.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "710b284d2c21f8cb"
+    },
+    "/app/learning-project-locales.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "aa3af389942fadf5"
+    },
+    "/app/learning-project-view.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "f4edd0c07a5a7c09"
+    },
+    "/app/operator-shell.css": {
+      "version": "20260819-app-theme-toggle-3",
+      "pruefsumme": "d94ec124f0f328b3"
+    },
+    "/app/platform-components.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "be582ba923f47609"
+    },
+    "/app/platform-routing.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "78a35cb44c9c4a8f"
+    },
+    "/app/platform-state.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "cb9b24fc67379652"
+    },
+    "/app/project-app-controller.js": {
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "55bf1dd8da0b8337"
+    },
+    "/app/project-app-renderer.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "0826466e69e9061f"
+    },
+    "/app/project-feedback-ui.js": {
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "d6b6a7d2da3822e0"
+    },
+    "/app/project-repository-card.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "b8d1c76c244d55c7"
+    },
+    "/app/quiz-data.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "0759f19be9e8b2d9"
+    },
+    "/app/quiz.js": {
+      "version": "20260820-esm-mitte-1",
+      "pruefsumme": "35352b3afb719400"
+    },
+    "/app/reference-library-controller.js": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "1fbfa18256e9dd69"
+    },
+    "/app/reference-library-route.css": {
+      "version": "20260820-esm-kopf-1",
+      "pruefsumme": "da212a86414b3f94"
+    },
+    "/app/requirements-analysis.js": {
+      "version": "20260820-entflechtung-5",
+      "pruefsumme": "ee10670cf20f7652"
+    },
+    "/app/serial-service-client.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "e92546ca6370d7ca"
+    },
+    "/app/session-state.js": {
+      "version": "20260819-esm-schritt-1",
+      "pruefsumme": "3e6e5552ddb5bf64"
+    },
+    "/app/unified-flash-dialog.css": {
+      "version": "20260819-theme-tokens-2",
+      "pruefsumme": "2b9d28e6467c4d2a"
+    },
+    "/app/unified-flash-dialog.js": {
+      "version": "20260820-esm-blatt-3",
+      "pruefsumme": "247ad83a0350ceb1"
+    },
+    "/app/unified-flash-executor.js": {
+      "version": "20260820-flash-pruefsumme-1",
+      "pruefsumme": "50b742386e1562d6"
+    },
+    "/app/usb-flash-target-model.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "8bdf4ece3965476e"
+    },
+    "/app/usb-port-disconnect-detector.js": {
+      "version": "20260820-esm-blatt-6",
+      "pruefsumme": "65dc42ff1258040e"
+    },
+    "/app/welcome-guide.css": {
+      "version": "20260819-app-theme-toggle-3",
+      "pruefsumme": "f580bf434befb0ff"
+    },
+    "/app/welcome-guide.js": {
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "87a37df34c3950e7"
+    },
+    "/app/workbench-output-view.js": {
+      "version": "20260820-statuskanal-1",
+      "pruefsumme": "3cefe6bb9435307f"
+    },
+    "/community/app.js": {
+      "version": "20260819-asset-manifest-1",
+      "pruefsumme": "2eea66d0b91c5746"
+    },
+    "/community/question.js": {
+      "version": "20260819-asset-manifest-1",
+      "pruefsumme": "8ececca39973d262"
+    },
+    "/course-sales.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "ebda1893ae0e9a36"
+    },
+    "/flashbox-einrichten/app.js": {
+      "version": "20260820-esm-seiten-1",
+      "pruefsumme": "adc6b292d24105f9"
+    },
+    "/flashbox-einrichten/styles.css": {
+      "version": "20260726-responsive-1",
+      "pruefsumme": "1f157968d319585a"
+    },
+    "/landing.css": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "98a499d6af9cd955"
+    },
+    "/landing.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "031966be208c3574"
+    },
+    "/navigation-model.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "e4d98af55eaa73e0"
+    },
+    "/public-header.css": {
+      "version": "20260814-auth-theme-1",
+      "pruefsumme": "a62c56b7dc3f7c57"
+    }
+  }
+}

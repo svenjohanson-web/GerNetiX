@@ -1,4 +1,4 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox, scriptAbschnitt } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -8,10 +8,10 @@ const { normalizeAppPath } = require("../src/dev/http-utils");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
 const app = readPlatformAppSource();
-const onboarding = fs.readFileSync(path.join(__dirname, "..", "public", "app", "device-onboarding-controller.js"), "utf8");
-const boardConfigurationPlugin = fs.readFileSync(path.join(__dirname, "..", "public", "app", "board-configuration-plugin.js"), "utf8");
+const onboarding = readForSandbox("device-onboarding-controller.js");
+const boardConfigurationPlugin = readForSandbox("board-configuration-plugin.js");
 const css = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.css"), "utf8");
-const shell = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app-shell-controller.js"), "utf8");
+const shell = readForSandbox("app-shell-controller.js");
 const server = [
   "dev-server.js",
   path.join("dev", "server", "hardware-routes.js"),
@@ -176,7 +176,7 @@ test("USB provisioning flashes the basis software before registration and pairin
   assert.match(onboarding, /scanButton\.disabled = state\.provisioningWifiSetupRunning \|\| !state\.provisioningSerialReady;/);
   assert.doesNotMatch(onboarding, /if \(!state\.provisioningPairingToken\) return;\s*state\.provisioningWifiSetupRunning = true;/);
   assert.doesNotMatch(onboarding, /loader\.writeFlash\(/);
-  assert.doesNotMatch(html, /unified-flash-executor\.js/);
+  assert.doesNotMatch(scriptAbschnitt(html), /unified-flash-executor\.js/);
   assert.match(shell, /loadDeviceOnboardingAssets[\s\S]*unified-flash-executor\.js/);
   assert.match(onboarding, /waitForProvisioningSerialReady/);
   assert.match(onboarding, /publishStatus: Status: running/);

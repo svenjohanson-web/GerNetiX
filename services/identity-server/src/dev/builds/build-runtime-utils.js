@@ -8,7 +8,15 @@ function createBuildRuntimeUtils({ projectServerJson, otaBuildDeployJson, buildD
   async function loadBuildDeployJob(jobId, options = {}) {
     const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`, options).catch(() => null);
     const client = projectJob?.mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
-    return client(`/api/build-jobs/${encodeURIComponent(jobId)}`, options);
+    const buildOptions = {
+      ...options,
+      internalAuth: options.buildInternalAuth || {
+        scopes: ["build.job.read"],
+        delegation: options.internalAuth?.delegation,
+      },
+    };
+    delete buildOptions.buildInternalAuth;
+    return client(`/api/build-jobs/${encodeURIComponent(jobId)}`, buildOptions);
   }
 
   function toBuildDeployPackage(buildPackage, device = {}, project = {}) {

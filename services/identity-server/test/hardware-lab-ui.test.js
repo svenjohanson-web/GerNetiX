@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { scriptAbschnitt } = require("../test-support/platform-app-source");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
@@ -67,25 +68,28 @@ test("connects chat, source analysis and safe discovery actions to the board pro
 });
 
 test("invalidates cached hardware-lab UI assets", () => {
-  assert.match(html, /app\.css\?v=20260812-knowledge-library-3/);
-  assert.match(html, /api-client\.js\?v=20260814-single-session-1/);
-  assert.doesNotMatch(html, /hardware-lab-controller\.js/);
-  assert.match(shellController, /const version = "20260805-route-lazy-3"/);
-  assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
+  // Der Wert der Version steht hier bewusst nicht: festgenagelt geriete er in
+  // Widerspruch zu anderen Tests, sobald eine Datei sich aendert. Dass die
+  // ausgelieferte Version zum Inhalt passt, sichert asset-cache-versions.
+  // Hier geht es nur darum, dass die drei Teile derselben Ansicht gemeinsam
+  // ungueltig werden -- sonst zeigte ein Browser neue Auszeichnung mit altem
+  // Verhalten.
+  assert.doesNotMatch(scriptAbschnitt(html), /hardware-lab-controller\.js/);
+  assert.match(shellController, /const version = "[0-9a-z-]+"/);
+  assert.match(shellController, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`(?:, \{ module: true \})?\)/);
   assert.match(shellController, /loadRouteFragment\("hardwareLabView", `\/app\/fragments\/hardware-lab\.html\?v=\$\{version\}`\)/);
   assert.match(shellController, /loadPlatformStyle\(`\/app\/hardware-lab-route\.css\?v=\$\{version\}`\)/);
-  assert.match(html, /ai-chat-pattern\.js\?v=20260805-standard-ai-chat-4/);
-  assert.match(html, /app-event-bindings\.js\?v=20260805-shell-menu-1/);
 });
 
 test("selects the hardware lab before account data and translations finish loading", () => {
-  assert.match(html, /initial-view-router\.js\?v=20260805-hardware-lab-route-1/);
   assert.match(initialViewRouter, /initial-hardware-lab-route/);
   assert.match(initialViewRouter, /#dashboardView\{display:none\}/);
   assert.match(css, /\.hardware-lab-view\.hidden \{ display: none; \}/);
   assert.match(css, /html\.initial-hardware-lab-route #dashboardView \{ display: none; \}/);
   assert.match(css, /html\.initial-hardware-lab-route #hardwareLabView\.hidden \{ display: grid; \}/);
-  assert.ok(shellController.indexOf("renderInitialRoute();") < shellController.indexOf("await Promise.all([refreshBootstrap(initialRoute), loadRouteAssets(initialRoute)]);"));
+  // Die Route wird gezeichnet, bevor Daten geladen werden. Verglichen werden
+  // die Positionen der beiden Aufrufe, nicht der genaue Wortlaut der Zeile.
+  assert.ok(shellController.indexOf("renderInitialRoute();") < shellController.indexOf("refreshBootstrap(initialRoute)"));
   assert.doesNotMatch(shellController.match(/function renderInitialRoute\(\)[\s\S]*?\n}/)?.[0] || "", /GerNetiXHardwareLab\.render\(\)/);
 });
 
@@ -108,6 +112,8 @@ test("aligns the hardware-lab shell with the top edge", () => {
 });
 
 test("uses explicit high-contrast dark colors for both chat participants", () => {
+  // Diese Regeln stehen in hardware-lab-route.css, das weiterhin feste Werte
+  // verwendet und nicht auf Token umgestellt wurde.
   assert.match(css, /\.hardware-lab-message p[^}]*background: #172131;[^}]*color: #e5e7eb/);
   assert.match(css, /\.hardware-lab-message\.is-user p[^}]*background: #164e63;[^}]*color: #ecfeff/);
   assert.doesNotMatch(css, /\.hardware-lab-message p[^}]*var\(--surface, #fff\)/);

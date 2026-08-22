@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles } = require("../test-support/platform-app-source");
+const { platformAppFiles, readPlatformAppSource, routeLazyPlatformAppFiles, scriptAbschnitt, scriptPosition } = require("../test-support/platform-app-source");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 
@@ -13,21 +13,38 @@ test("platform app keeps state composition separate from domain behavior and sta
   const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
   const source = readPlatformAppSource();
 
+  // Der Zustand steht seit der Entflechtung in einer eigenen Datei ohne
+  // eigene Abhaengigkeiten. Die Kompositionswurzel verdrahtet nur noch --
+  // das ist genau die Trennung, die dieser Test im Namen fuehrt.
+  const zustand = fs.readFileSync(path.join(appRoot, "platform-state.js"), "utf8");
+  assert.match(zustand, /const state = \{/);
+  assert.doesNotMatch(compositionRoot, /const state = \{/);
+
   assert.ok(compositionRoot.split("\n").length < 250);
-  assert.match(compositionRoot, /const state = \{/);
-  assert.match(compositionRoot, /function deviceOnboarding\(\)/);
+
+  // Die Verdrahtung meldet ihre Bausteine bei der Registratur an, statt sie
+  // selbst herauszureichen. Die Namen liegen dadurch eine Schicht tiefer und
+  // die Controller greifen nicht mehr nach oben.
+  const registratur = fs.readFileSync(path.join(appRoot, "platform-components.js"), "utf8");
+  assert.match(compositionRoot, /registerPlatformComponent\("deviceOnboarding"/);
+  assert.match(registratur, /function deviceOnboarding\(\)/);
+  assert.doesNotMatch(compositionRoot, /function deviceOnboarding\(\)/);
   assert.doesNotMatch(compositionRoot, /bootstrap\(\);/);
   assert.match(source, /async function bootstrap\(\)/);
   assert.match(source, /function renderIdeShell\(\)/);
   assert.match(source, /async function startBuild\(\)/);
 
+  // Ohne die Import Map: sie fuehrt jede eingefuehrte Modul-Adresse als JSON
+  // auf, und eine nachgeladene Datei stuende dann im Dokument, ohne dort
+  // geladen zu werden.
+  const dokument = scriptAbschnitt(html);
   let previousIndex = -1;
   for (const file of platformAppFiles) {
     if (routeLazyPlatformAppFiles.has(file)) {
-      assert.doesNotMatch(html, new RegExp(`/app/${file.replaceAll(".", "\\.")}\\?v=`));
+      assert.doesNotMatch(dokument, new RegExp(`/app/${file.replaceAll(".", "\\.")}\\?v=`));
       continue;
     }
-    const currentIndex = html.indexOf(`/app/${file}?v=`);
+    const currentIndex = scriptPosition(html, file);
     assert.ok(currentIndex > previousIndex, `${file} must be loaded in module order`);
     previousIndex = currentIndex;
   }

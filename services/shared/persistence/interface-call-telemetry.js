@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { issueInternalToken } = require("../internal-api-auth");
 
 const connections = new Map();
 
@@ -60,11 +61,16 @@ function createHttpTelemetry(options) {
   const sourceService = String(options.sourceService || "unknown");
   return {
     record(input = {}) {
+      if (!options.internalApiSigningKey) return;
+      const token = issueInternalToken({
+        iss: sourceService, sub: sourceService, aud: "admin-tool",
+        scopes: ["operations.interface_calls.write"],
+      }, options.internalApiSigningKey);
       fetch(endpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          ...(options.token ? { "x-gernetix-system-event-token": options.token } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           occurred_at: new Date().toISOString(),

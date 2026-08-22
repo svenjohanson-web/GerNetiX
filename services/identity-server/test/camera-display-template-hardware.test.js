@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readDevelopmentPlatformSource } = require("../test-support/platform-app-source");
 
 const root = path.resolve(__dirname, "..");
 const readServer = () => ["src/dev-server.js", "src/dev/projects/project-configuration-service.js", "src/dev/projects/project-hardware-model.js"]
@@ -34,7 +35,7 @@ test("never migrates an existing camera template project while loading or openin
 });
 
 test("shows the catalog camera while keeping its board-supplied connection", () => {
-  const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
+  const platform = readDevelopmentPlatformSource();
   const server = readServer();
 
   assert.match(platform, /!String\(merged\.concrete_type \|\| ""\)\.startsWith\("integrated_"\)/);
@@ -54,7 +55,7 @@ test("shows the catalog camera while keeping its board-supplied connection", () 
 });
 
 test("keeps non-editable catalog features in the board snapshot without false modification warnings", () => {
-  const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
+  const platform = readDevelopmentPlatformSource();
 
   assert.match(platform, /DevelopmentHardwareModel\.catalogBoardFeatureSelections\(board, catalog\)/);
   assert.match(platform, /DevelopmentHardwareModel\.hiddenBoardFeatureSelections\([\s\S]*previous\?\.board_features,[\s\S]*defaults,[\s\S]*visibleFeatureIds/);

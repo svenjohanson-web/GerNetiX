@@ -113,7 +113,8 @@ class DeviceManagementService {
 
     const next = {
       ...device,
-      authenticity_status: verified ? "gernetix_verified" : "community_unverified",
+      // A forged or malformed proof must not be able to downgrade a device.
+      authenticity_status: verified ? "gernetix_verified" : device.authenticity_status,
       last_authenticity_proof: {
         proof_type: "ECDSA_P256_SHA256",
         credential_id: credential.credential_id,

@@ -9,7 +9,7 @@ function createDefaultCommunityAiAssistant(config = createConfig()) {
   return new CommunityAiService({
     repository: createRepository(config),
     communityClient: new CommunityPlatformClient(config.communityBaseUrl),
-    aiUsageClient: new AiUsageClient(config.aiUsageBaseUrl),
+    aiUsageClient: new AiUsageClient(config.aiUsageBaseUrl, config.internalApiSigningKey),
     defaultModel: config.defaultModel,
   });
 }

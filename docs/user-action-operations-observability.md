@@ -16,6 +16,11 @@ neustartfeste Zustell-Outbox und deduplizierte Alarmkandidaten im
 Beobachtungsmodus sind lokal umgesetzt. Vier feste, nicht mutierende
 synthetische Vorpruefungen decken Login-HTML, Project Server, Build-Koordination
 und Flash-Katalog ab und speichern ihre Ergebnisse in Operations-PostgreSQL.
+Wenn die zentrale PostgreSQL-Verbindung waehrend des lokalen Remote-Dev-Betriebs
+ausfaellt, haelt Identity angenommene minimierte Ereignisse zusaetzlich in
+einer begrenzten prozesslokalen Notfallwarteschlange. Das Prozess-Tool zeigt
+die vollstaendige Vorgangs-ID sofort; nach Wiederherstellung wird dieselbe ID
+automatisch an die Admin-Sicht nachgeliefert.
 Produktiver Alarmversand, Retention-Abnahme, vollstaendige
 Schaltflaechen-Inventur und authentifizierte Browser-E2E-Kernablaeufe bleiben
 offen.
@@ -225,15 +230,22 @@ Korrelation und niemals Authentisierung, Autorisierung oder Besitzpruefung.
 Wenn der Browser offline ist oder bereits der Plattformendpunkt nicht
 erreichbar ist, wird kein lokaler dauerhafter Ereignisspeicher aufgebaut. Hat
 Identity ein validiertes Ereignis angenommen, speichert es dieses vor dem
-Operations-Versand in einer PostgreSQL-State-Outbox. Erfolgreich zugestellte
-Eintraege werden entfernt; fehlgeschlagene Zustellungen werden begrenzt nach
-Neustart oder Wiedererreichbarkeit nachgesendet. Die verbleibende Luecke vor
+Operations-Versand in einer PostgreSQL-State-Outbox. Ist genau diese zentrale
+Datenbank voruebergehend nicht erreichbar, ueberbrueckt eine auf 200
+allowlist-validierte Ereignisse begrenzte Speicherwarteschlange den Ausfall.
+Der feste, nur im kontrollierten Remote-Dev-Modus aktive Loopback-Endpunkt
+`GET /api/dev/local-action-diagnostics` gibt daraus ausschliesslich minimierte
+Fehlerereignisse an das Prozess-Tool. Identity versucht die Zustellung alle
+fuenf Sekunden erneut; nach Erfolg ist dieselbe Action-ID im Admin Tool
+suchbar. Ein Prozessabsturz waehrend eines gleichzeitigen Datenbankausfalls
+kann diese fluechtige Notfallspur verlieren. Die verbleibende Luecke vor
 Identity wird durch serverseitige Schnittstellenmessung und synthetische
 Kernablauf-Pruefungen abgedeckt.
 
 ## Admin-Sicht
 
-Die lokale Sicht zeigt Kennzahlen und letzte Versuche. Ein Operator
+Das Desktop-Prozess-Tool zeigt lokale und bereits zentral eingegangene
+Fehlversuche dedupliziert mit vollstaendiger, kopierbarer Vorgangs-ID. Ein Operator
 kann eine vollstaendige validierte Action-ID suchen, einen Versuch direkt aus
 der Liste oeffnen, die ID kopieren und die chronologische Action-/Span-Timeline
 einschliesslich korrelierter Serviceaufrufe mit Release, Route, Dauerklasse

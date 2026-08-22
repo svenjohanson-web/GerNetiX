@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { requireForSandbox } = require("../test-support/platform-app-source");
 const {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
@@ -13,7 +14,7 @@ const {
   templateSoftwareUnits,
 } = require("../src/dev/development-project-templates");
 const { developmentFirmwareStarterSources } = require("../src/dev/projects/project-configuration-service");
-const developmentComponentMetamodel = require("../public/app/development-component-metamodel");
+const developmentComponentMetamodel = requireForSandbox("development-component-metamodel.js");
 
 test("separates semantic template models from rendered views", () => {
   const template = developmentProjectTemplate("esp32_datalogger_local_web");

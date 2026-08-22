@@ -1,4 +1,4 @@
-const { readPlatformAppSource } = require("../test-support/platform-app-source");
+const { readPlatformAppSource, readForSandbox } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -12,7 +12,7 @@ const generatedKnowledgeRoot = path.join(__dirname, "..", "src", "knowledge", "g
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
 const app = readPlatformAppSource();
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
-const helpLoaderContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
+const helpLoaderContent = readForSandbox("help-content.js");
 const helpOnlyContent = fs.readFileSync(path.join(__dirname, "..", "src", "help", "help-content.js"), "utf8");
 const knowledgeArticleFiles = [
   "knowledge-articles-engineering.js",
@@ -26,8 +26,8 @@ const knowledgeArticleFiles = [
   "knowledge-articles-cross-cutting.js",
   "knowledge-articles-glossary.js",
 ];
-const knowledgeCatalogContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
-const knowledgeChapterIndex = fs.readFileSync(path.join(appRoot, "knowledge-chapter-index.js"), "utf8");
+const knowledgeCatalogContent = readForSandbox("knowledge-content.js");
+const knowledgeChapterIndex = readForSandbox("knowledge-chapter-index.js");
 const generatedKnowledgeChapterFiles = fs.readdirSync(generatedKnowledgeRoot).filter((file) => file.endsWith(".js"));
 const generatedKnowledgeContent = generatedKnowledgeChapterFiles
   .map((file) => fs.readFileSync(path.join(generatedKnowledgeRoot, file), "utf8"))
@@ -56,8 +56,8 @@ const chapterTitles = Object.fromEntries(Object.entries(chapterIndexData).map(([
 const normalizedHelpContent = restoreNavigationTitles(helpOnlyContent.replace(/,\r?\n\s*/g, ", "), helpTitles);
 const normalizedKnowledgeContent = restoreNavigationTitles(knowledgeContent.replace(/,\r?\n\s*/g, ", "), chapterTitles);
 const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}\n${knowledgeChapterIndex}\n${generatedKnowledgeContent}`;
-const informationView = fs.readFileSync(path.join(appRoot, "information-view.js"), "utf8");
-const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
+const informationView = readForSandbox("information-view.js");
+const helpChatService = readForSandbox("help-chat-service.js");
 const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "..", "..", "docs", "webshop-account-separation.md"), "utf8");
 const synchronousMotorPhaseB = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-2-phase-b.svg"), "utf8");
 const synchronousMotorPhaseC = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-3-phase-c.svg"), "utf8");
@@ -97,8 +97,11 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(app, /"knowledge-chapter-index\.js", "knowledge-content\.js"/);
   assert.doesNotMatch(app, /knowledge-chapters\/from-problem-to-system\.js/);
   assert.match(app, /const urls = knowledgeContentAssetUrls\(\)/);
-  assert.match(app, /await Promise\.all\(urls\.slice\(0, -1\)\.map\(loadPlatformScript\)\)/);
-  assert.match(app, /await loadPlatformScript\(urls\.at\(-1\)\)/);
+  // Der Index wird zuerst und gemeinsam geladen, der Inhalt zuletzt und
+  // einzeln -- er baut darauf auf. Beide sind Module, also muss die Angabe an
+  // beiden Aufrufstellen stehen; ohne sie waere die Datei ein Syntaxfehler.
+  assert.match(app, /await Promise\.all\(urls\.slice\(0, -1\)\.map\(\(url\) => loadPlatformScript\(url, \{ module: true \}\)\)\)/);
+  assert.match(app, /await loadPlatformScript\(urls\.at\(-1\), \{ module: true \}\)/);
   assert.match(html, /help-chat-service\.js/);
   assert.match(html, /information-view\.js/);
   assert.match(helpContent, /const topics = \[/);
@@ -195,7 +198,7 @@ test("explains browser apps, PWA mode and native mobile apps at the component ch
   assert.match(helpContent, /nur im lokalen Netzwerk beziehungsweise Intranet oder über das Internet erreichbar/);
   assert.match(helpContent, /Die Internet-Auswahl veröffentlicht noch keinen Dienst/);
   assert.match(helpContent, /Mobile App \(iOS & Android\)[\s\S]*Eigene Builds, Signierung, Store-Prozesse/);
-  const developmentPlatform = fs.readFileSync(path.join(appRoot, "development-platform.js"), "utf8");
+  const developmentPlatform = readForSandbox("development-platform.js");
   assert.match(developmentPlatform, /data-component-type-help/);
   assert.match(developmentPlatform, /openHelpTopic\?\.\("browser-pwa-mobile-app"\)/);
 });
@@ -499,7 +502,7 @@ test("keeps sensors and actuators as a cross-cutting system topic and connects m
   assert.match(informationView, /function renderExpertKnowledge[\s\S]*knowledge-expert-note[\s\S]*Expertenwissen[\s\S]*Technischer Hintergrund/);
   assert.match(css, /\.knowledge-expert-note[\s\S]*#8b5cf6/);
   assert.match(informationView, /section\.illustration[\s\S]*knowledge-section-illustration[\s\S]*loading="lazy" decoding="async"/);
-  assert.match(css, /\.knowledge-section-illustration \{[\s\S]*background: #0b1018[\s\S]*\.knowledge-section-illustration figcaption \{[\s\S]*background: #0f172a; color: #cbd5e1/);
+  assert.match(css, /\.knowledge-section-illustration \{[\s\S]*background: var\(--surface-deep\)[\s\S]*\.knowledge-section-illustration figcaption \{[\s\S]*background: #0f172a; color: var\(--text-secondary\)/);
   assert.match(helpContent, /id: "actuator-motors-and-drives", heading: "Motoren und Antriebe auswählen"[\s\S]*id: "actuator-motor-control", heading: "Motoransteuerung: Leistungsteil und Firmware"[\s\S]*id: "actuator-safe-motion", heading: "Sicher bewegen: Rückmeldung und Fehlerfälle"/);
   assert.match(helpContent, /id: "actuator-motor-theory", heading: "Zwei Motorfamilien: Wechselstrom und Gleichstrom"[\s\S]*id: "actuator-synchronous-machines", heading: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen"[\s\S]*id: "actuator-asynchronous-machines"[\s\S]*id: "actuator-dc-motors", heading: "Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt"[\s\S]*id: "actuator-bldc-basics"[\s\S]*B6-Brücke[\s\S]*sinusförmige Phasenströme/);
   assert.match(helpContent, /\/app\/learn\/\?catalog=motor-control-basics/);

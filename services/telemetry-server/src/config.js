@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -11,11 +12,10 @@ function createConfig(env = process.env) {
     sqlitePath: env.TELEMETRY_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH
       ? path.resolve(env.TELEMETRY_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH)
       : path.join(runtimeRoot, "gernetix-telemetry.sqlite"),
-    internalToken: String(env.TELEMETRY_INTERNAL_TOKEN || ""),
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "telemetry-server"),
     projectServerBaseUrl: String(env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800").replace(/\/$/, ""),
     deviceManagementBaseUrl: String(env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700").replace(/\/$/, ""),
     identityBaseUrl: String(env.IDENTITY_BASE_URL || "http://127.0.0.1:4300").replace(/\/$/, ""),
-    identityAdminToken: String(env.IDENTITY_ADMIN_TOKEN || ""),
     mqttBrokerUrl: String(env.MQTT_BROKER_URL || ""),
     defaultMeasurementRetentionDays: boundedDays(env.TELEMETRY_MEASUREMENT_RETENTION_DAYS, 90),
     defaultEventRetentionDays: boundedDays(env.TELEMETRY_EVENT_RETENTION_DAYS, 365),

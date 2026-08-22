@@ -4,11 +4,12 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readForSandbox } = require("../test-support/platform-app-source");
 const vm = require("node:vm");
 
-const viewSource = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-view.js"), "utf8");
-const catalogSource = fs.readFileSync(path.resolve(__dirname, "../public/app/app-project-controller.js"), "utf8");
-const controllerSource = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-controller.js"), "utf8");
+const viewSource = readForSandbox("learning-project-view.js");
+const catalogSource = readForSandbox("app-project-controller.js");
+const controllerSource = readForSandbox("learning-project-controller.js");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 
 function learningProjectView() {

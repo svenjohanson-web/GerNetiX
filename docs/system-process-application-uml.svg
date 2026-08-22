@@ -26,7 +26,7 @@
 
   <rect class="bg" width="1680" height="1140"/>
   <text x="40" y="42" class="titleText" style="font-size:24px">GerNetiX Serverprozesse und Applikationen</text>
-  <text x="40" y="67" class="smallText">PostgreSQL fuer Fachzustand · Forgejo/Git fuer Projektdateien · Artifact Store fuer Builds · providerneutrale Worker</text>
+  <text x="40" y="67" class="smallText">PostgreSQL fuer Fachzustand · Forgejo/Git fuer Projektdateien · interne APIs: Ed25519 je Aussteller, Public-Key-Trust-Ring, Audience und Minimal-Scope</text>
 
   <g id="actors">
     <rect class="node actor" x="40" y="110" width="150" height="62" rx="10"/>
@@ -82,7 +82,7 @@
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="256" text-anchor="middle">Admin Access Server</text>
-    <text class="smallText" x="745" y="276" text-anchor="middle">eigene Logins + Rollen :4610</text>
+    <text class="smallText" x="745" y="276" text-anchor="middle">Logins + Rollen + Context-BFF :4610</text>
 
     <rect class="node edge" x="635" y="310" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="336" text-anchor="middle">Admin Tool</text>
@@ -295,6 +295,8 @@
   <text class="label" x="1540" y="650">Project Hook API v2</text>
   <path class="line dashed" d="M 1445 614 L 1360 177"/>
   <text class="label" x="1368" y="380">Firmware HTTPS</text>
+  <path class="line" d="M 855 259 C 905 259, 905 410, 855 410"/>
+  <text class="label" x="866" y="385">HttpOnly + Capability + CSRF</text>
 
   <path class="line dashed" d="M 1055 204 L 745 795"/>
   <path class="line dashed" d="M 1265 204 L 745 795"/>

@@ -28,7 +28,7 @@ Das Tool deployt exakt den aktuellen, bereits gepushten Git-Commit auf den Stagi
 | Identity-UI, Route, Browserlogik oder Hardware-Assistent entwickeln | gezielte Tests; bei interaktiver Pruefung lokaler Identity-Remote-Dev-Modus | nicht automatisch; nur bei ausdruecklichem Staging-Auftrag oder notwendigem VPS-Nachweis |
 | Servicecode ohne VPS-spezifische Abhaengigkeit | Unit-/Contract-Tests des betroffenen Dienstes | nur fuer Integration, gemeinsamen Datenstand oder ausdrueckliche Abnahme |
 | Zusammenspiel mit zentraler PostgreSQL, Passkeys, privatem DNS, TLS oder mehreren VPS-Diensten | lokale Tests, danach Deployment-Plan | Staging ist fuer den Endnachweis erforderlich |
-| Nginx- oder Edge-Assets | lokale Konfigurations-/Contract-Tests | gezieltes Edge-Reload, kein pauschaler Full-Deploy |
+| Nginx- oder Edge-Assets | lokale Konfigurations-/Contract-Tests | gezieltes Neuerstellen der zustandslosen Edge-Container, kein pauschaler Full-Deploy |
 | Host-Firewall | lokaler Syntax-/Contract-Test | gezielte validierte Firewall-Aktualisierung |
 | Compose, Docker-Basis, Persistenz, Migration oder unbekannte Runtime-Datei | passende lokale Tests und bewusste Risikoabnahme | vollstaendiger Sicherheitslauf |
 | Nur Doku, Modelle, Graph oder Tests | lokale Pruefung | kein Container-Neustart |
@@ -131,6 +131,8 @@ Der lokale PostgreSQL-Port wird durch den SSH-Tunnel auf die WireGuard-gebundene
 ## Lokale Identity-Runtime ohne lokale Persistenz
 
 Die kanonischen Identity-Daten liegen ausschliesslich in `gernetix_runtime` auf PostgreSQL. Fuer schnelle Entwicklungszyklen darf Identity lokal auf `127.0.0.1:4300` laufen. `tools/start-identity-remote-dev.js` erzwingt dabei PostgreSQL und verbindet die Datenbank sowie die Domaenendienste ueber den beschriebenen SSH-/WireGuard-Tunnel. Eine lokale Identity-SQLite oder lokale Account-/Session-Persistenz ist nicht zulaessig.
+
+Die lokale Datei `.env.remote-dev.local` benoetigt ausser Datenbankpasswort und `RUNTIME_STATE_ENCRYPTION_KEY` auch die freigegebene Identity-Dienstidentitaet aus der geschuetzten Staging-Konfiguration: `INTERNAL_API_TRUSTED_PUBLIC_KEYS_JSON` sowie `INTERNAL_API_SIGNING_KEY_ID` und `INTERNAL_API_SIGNING_PRIVATE_KEY_B64`. Die beiden Schluesselwerte duerfen alternativ mit dem Deployment-Praefix `IDENTITY_INTERNAL_API_SIGNING_*` hinterlegt werden. Sie werden nicht aus dem VPS ausgelesen und nicht in Logs ausgegeben.
 
 Verbindlicher lokaler Identity-Ablauf:
 
@@ -303,11 +305,13 @@ mit dem neuen Ziel-Commit und waehlt den kleinsten sicheren Ablauf:
   wegen des direkten Imports dem Identity Server zugeordnet. Identity besitzt
   fuer den haeufigen UI-/API-Pfad ein eigenes schlankes Image ohne PlatformIO,
   die Abhaengigkeiten der anderen Domaenendienste oder Migrationswerkzeuge. Bei
-  Identity-Aenderungen werden HTTP- und HTTPS-Nginx syntaktisch geprueft und
-  ohne Containerwechsel neu geladen, damit die neue Identity-Adresse sicher
-  aufgeloest wird; danach wird der private PWA-Endpunkt getestet.
+  Identity-Aenderungen erstellen HTTP- und HTTPS-Nginx gezielt neu und pruefen
+  beide Konfigurationen syntaktisch, damit neue Upstream-Adressen und atomar
+  durch Git ersetzte Bind-Mount-Dateien sicher uebernommen werden; danach wird
+  der private PWA-Endpunkt getestet.
 - Aenderungen unter `infra/vps/nginx/` verwenden ein gezieltes validiertes
-  Edge-Reload. Aenderungen unter `infra/vps/security/` verwenden eine gezielte
+  Neuerstellen der beiden zustandslosen Edge-Container. Aenderungen unter
+  `infra/vps/security/` verwenden eine gezielte
   validierte Firewall-Aktualisierung. Beide erzwingen allein keinen Full-Deploy.
 - Infrastruktur-, Compose-, Dockerfile-, Migrations- oder nicht eindeutig
   zuordenbare Aenderungen verwenden immer den vollstaendigen Sicherheitslauf.
@@ -360,4 +364,7 @@ einmal gebaut.
 - Niemals `docker compose down -v`, Volume-Loeschungen oder SQLite-Kopien ausfuehren.
 - Ein fehlgeschlagenes Deployment anhand der ersten konkreten Fehlerausgabe diagnostizieren; keine wiederholten Startvarianten ausprobieren.
 - Nach einem Fehler nicht blind erneut deployen. Erst die benannte Phase und die bereits ausgegebenen Logs auswerten; derselbe unveraenderte Befehl wird erst nach behobener Ursache wiederholt.
+- Hat ein abgebrochener Lauf den VPS bereits auf den Zielcommit gestellt, den Wiederanlauf zuerst mit `node tools/staging-deploy.js --force-full --plan` ausweisen und danach genau einmal mit `node tools/staging-deploy.js --force-full` ausfuehren. So wird der vollstaendige Sicherheitslauf nicht wegen einer nun leeren Commit-Differenz uebersprungen. Der Schalter nennt dem Server dafuer keinen Vergleichspunkt; ohne einen solchen hat er nichts abzuleiten und erstellt alle Container neu. Er begruendet das mit „Vorheriger Commit fehlt" — das ist hier Absicht.
+- Der angezeigte Plan und die Entscheidung auf dem Server stammen aus zwei Fassungen derselben Regeln: `tools/staging-deploy.js` zeigt an, `scripts/staging/remote-deploy.sh` entscheidet. Eine Regel gehoert deshalb immer in beide. `staging-deploy.test.js` vergleicht sie; eine nur lokal gepflegte Aenderung wuerde sonst die Anzeige veraendern und die Auslieferung nicht.
+- Liest ein Dienst Code eines anderen mit, gehoert diese Naht in beide Fassungen. Ein Blatt darf als Datei eingetragen werden, wer am Einstiegspunkt eines Dienstes haengt, braucht dessen Verzeichnis. Sonst erreicht ihn eine Aenderung nicht, und er laeuft ohne Fehlermeldung mit einer veralteten Kopie weiter.
 - Production ist nicht Staging. Dieses Tool darf nicht fuer Production-Ziele verwendet werden.

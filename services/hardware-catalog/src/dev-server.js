@@ -5,7 +5,7 @@ const { sendJson } = require("./http-app");
 async function main() {
   const config = createConfig();
   const service = await createDefaultHardwareCatalog(config);
-  const app = createHttpApp({ service });
+  const app = createHttpApp({ service, internalApiSigningKey: config.internalApiSigningKey });
 
   const server = http.createServer((req, res) => {
     app(req, res).catch((error) => {

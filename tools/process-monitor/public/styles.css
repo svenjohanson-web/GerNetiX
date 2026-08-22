@@ -65,6 +65,7 @@ h1 { font-size:30px; }
 .process-card.remote .status::before { width:7px; height:7px; }
 .process-card.local .message:empty { display:none; }
 .group-error { margin:10px 0 0; color:#fca5a5; font-size:12px; }
+.group-warning { margin:10px 0 0; color:#fbbf24; font-size:12px; }
 .facts div { border:1px solid #2b3748; border-radius:8px; padding:8px; }
 .facts span { display:block; font-size:10px; text-transform:uppercase; }
 .facts strong { display:block; margin-top:3px; color:#e5e7eb; font-size:13px; overflow-wrap:anywhere; }
@@ -99,6 +100,7 @@ td:first-child span { margin-top:2px; color:#94a3b8; }
 .runtime-alert > div { display:flex; justify-content:space-between; gap:12px; }
 .runtime-alert span,.runtime-alert small { color:#94a3b8; font-size:11px; }
 .runtime-alert p { margin:0; color:#fecaca; font-size:13px; }
+.runtime-action-id { color:#cbd5e1; font-size:11px; overflow-wrap:anywhere; user-select:text; }
 .runtime-alert.warning p { color:#fde68a; }
 .empty-alerts { margin:0; padding:12px; color:#64748b; text-align:center; }
 .security-description { margin:-2px 0 14px; color:#94a3b8; font-size:13px; }

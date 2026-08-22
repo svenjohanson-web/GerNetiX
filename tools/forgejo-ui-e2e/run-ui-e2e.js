@@ -12,6 +12,7 @@ const { ForgejoClient } = require("../../services/project-server/src/repository-
 const { ForgejoProjectRepositoryStore } = require("../../services/project-server/src/repository-store/forgejo-project-repository-store");
 const { GitProjectRepositoryStore } = require("../../services/project-server/src/repository-store/git-project-repository-store");
 const { ProjectService } = require("../../services/project-server/src/services/project-service");
+const { issueInternalToken } = require("../../services/shared/internal-api-auth");
 const { createProjectRepositoryRead } = require("../../services/identity-server/src/dev/project-repository-read");
 const { createRouteRegistry } = require("../../services/identity-server/src/dev/server/route-registry");
 const { registerProjectRoutes } = require("../../services/identity-server/src/dev/server/project-routes");
@@ -25,6 +26,14 @@ const uiProjectId = "ui-e2e-project";
 const projectId = "ui-e2e-project-server-id";
 const projectServerOrigin = "http://127.0.0.1:4800";
 const identityOrigin = "http://127.0.0.1:4300";
+/*
+ * Der Project Server ist eine interne API und weist einen Aufruf ohne
+ * Dienstidentitaet ab -- ohne Schluessel faellt er absichtlich zu. Der Lauf
+ * bringt darum sein eigenes Geheimnis mit und signiert wie Identity im Betrieb:
+ * ein Dienst-Token fuer die Identitaet, ein Delegations-Token fuer den Zugriff
+ * auf die Daten genau eines Kontos und Projekts.
+ */
+const internalAuthSecret = "ui-e2e-internal-api-secret";
 
 async function main() {
   await ensureOrganization();
@@ -38,7 +47,7 @@ async function main() {
   await service.ready;
   await seedProject({ repository, service, projectRepositoryStore });
 
-  const projectApp = createHttpApp({ service });
+  const projectApp = createHttpApp({ service, internalAuthSecret });
   const projectServer = http.createServer((req, res) => projectApp(req, res).catch((error) => sendError(res, error)));
   await listen(projectServer, 4800);
 
@@ -120,7 +129,13 @@ async function createIdentityFixtureServer({ service, publicResponses }) {
       if (requestedProjectId !== uiProjectId || session.account.user_id !== accountId) throw httpError(404, "project_not_found", "Projekt wurde nicht gefunden.");
       const project = await service.getProject(projectId);
       if (project.user_id !== session.account.user_id) throw httpError(404, "project_not_found", "Projekt wurde nicht gefunden.");
-      return { id: uiProjectId, project_server_id: projectId };
+      /*
+       * Der Besitzer gehoert mit in die Antwort. projectAccess() im
+       * Repository-Zugriff leitet daraus die Delegation ab und weist einen
+       * Aufruf ohne serverseitig bestaetigten Besitzer zurueck -- der Test
+       * bekaeme sonst eine leere Karte und keinen Hinweis auf den Grund.
+       */
+      return { id: uiProjectId, project_server_id: projectId, user_id: project.user_id };
     },
   });
 
@@ -169,7 +184,30 @@ async function verifyRepositoryCard(browser, publicResponses) {
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("request", (request) => requestUrls.push(request.url()));
   await page.goto(identityOrigin, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.querySelector(".repository-state")?.textContent === "Aktiv");
+  /*
+   * Beim Warten auf die Karte sagt ein blosser Timeout nichts darueber, warum
+   * sie ausbleibt. Die Fehler der Seite werden oben schon gesammelt; hier
+   * werden sie samt dem tatsaechlichen Zustand der Karte ausgegeben, sonst
+   * bleibt als Befund nur "30000ms exceeded".
+   */
+  try {
+    await page.waitForFunction(() => document.querySelector(".repository-state")?.textContent === "Aktiv");
+  } catch (error) {
+    const zustand = await page.evaluate(() => {
+      const card = document.querySelector("#projectRepositoryCard");
+      return {
+        karteVorhanden: Boolean(card),
+        klassen: card?.className || "",
+        zustand: document.querySelector(".repository-state")?.textContent ?? null,
+        inhalt: (card?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 300),
+      };
+    }).catch(() => null);
+    console.error("Repository-Karte blieb aus.");
+    console.error(`  Seitenfehler: ${browserErrors.length ? browserErrors.join(" | ") : "keine"}`);
+    console.error(`  Zustand: ${JSON.stringify(zustand)}`);
+    console.error(`  Angefragte Adressen: ${requestUrls.join(", ")}`);
+    throw error;
+  }
 
   assert.equal((await page.locator("#projectRepositoryCard h2").textContent()).trim(), "Git-Repository");
   assert.equal((await page.locator(".repository-state").textContent()).trim(), "Aktiv");
@@ -199,13 +237,36 @@ async function verifyRepositoryCard(browser, publicResponses) {
 }
 
 async function projectServerJson(pathname, options = {}) {
+  /*
+   * projectAccess() im Repository-Zugriff reicht Scopes und Delegation als
+   * options.internalAuth durch. Der Aufbau des Laufs ruft ohne diese Angabe
+   * auf; er arbeitet auf demselben Konto und Projekt, also gilt dieselbe
+   * Delegation.
+   */
+  const scopes = options.internalAuth?.scopes || ["project.read", "project.write"];
+  const delegation = options.internalAuth?.delegation
+    || { account_id: accountId, project_ids: [projectId] };
+  const claims = { iss: "identity-server", sub: "identity-server", aud: "project-server", scopes };
   const response = await fetch(`${projectServerOrigin}${pathname}`, {
     method: options.method || "GET",
-    headers: { Accept: "application/json", ...(options.body ? { "Content-Type": "application/json" } : {}) },
+    headers: {
+      Accept: "application/json",
+      authorization: `Bearer ${issueInternalToken(claims, internalAuthSecret)}`,
+      "x-gernetix-project-delegation": issueInternalToken(
+        { ...claims, kind: "delegated_user_action", context: delegation },
+        internalAuthSecret,
+      ),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+    },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
   const body = await response.json();
-  if (!response.ok) throw httpError(response.status, body.error || "project_server_error", body.message || "Project Server error");
+  if (!response.ok) {
+    // Ohne diese Zeile bleibt vom Fehlschlag nur der Ersatztext uebrig, und
+    // weder Adresse noch Code des Project Servers sind im Lauf nachlesbar.
+    console.error(`Project Server ${response.status} bei ${options.method || "GET"} ${pathname}: ${JSON.stringify(body)}`);
+    throw httpError(response.status, body.error || "project_server_error", body.message || "Project Server error");
+  }
   return body;
 }
 
@@ -224,7 +285,18 @@ async function ensureOrganization() {
 }
 
 function fixtureHtml() {
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Forgejo UI E2E</title><link rel="stylesheet" href="/app/app.css"></head><body><main style="max-width:1100px;margin:24px auto;padding:0 16px"><article id="projectRepositoryCard" class="panel project-repository-card hidden" aria-label="Git-Repository"></article></main><script src="/app/project-repository-card.js"></script><script>
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Forgejo UI E2E</title><link rel="stylesheet" href="/app/app.css"></head><body><main style="max-width:1100px;margin:24px auto;padding:0 16px"><article id="projectRepositoryCard" class="panel project-repository-card hidden" aria-label="Git-Repository"></article></main><script type="module">
+  /*
+   * project-repository-card.js ist ein ES-Modul. Als klassisches Skript
+   * geladen scheitert es am export-Schluesselwort, der Controller bleibt
+   * undefiniert und die Karte erscheint nie -- der Test lief dann in seinen
+   * Timeout, ohne die Ursache zu nennen.
+   *
+   * Eingefuehrt wird direkt statt ueber die Uebergangsbruecke der Datei: die
+   * setzt den Namen zwar global, aber Module werden verzoegert ausgefuehrt,
+   * und ein klassisches Skript daneben liefe vorher.
+   */
+  import { ProjectRepositoryCard } from "/app/project-repository-card.js";
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   const getJson = async (url) => { const response = await fetch(url, { headers: { Accept: "application/json" } }); const body = await response.json(); if (!response.ok) { const error = new Error(body.message || "Request failed"); error.status = response.status; error.code = body.error; throw error; } return body; };
   const controller = ProjectRepositoryCard.create({ getJson, escapeHtml, escapeAttribute: escapeHtml });
@@ -241,6 +313,13 @@ function sendAsset(res, contentType, content) {
 function sendError(res, error) {
   if (res.headersSent) return res.end();
   const status = Number(error.status || 500);
+  /*
+   * Ein 500er ist ein Fehler des Testaufbaus, nicht der geprueften Sache. Der
+   * Browser bekommt weiterhin nur "Interner Testfehler", damit der Test keine
+   * Interna spiegelt -- im Lauf selbst muss die Ursache aber lesbar sein,
+   * sonst bleibt als Befund nur eine leere Karte.
+   */
+  if (status >= 500) console.error(`Testserver-Fehler bei ${res.req?.url || "unbekannt"}: ${error?.stack || error?.message || error}`);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   res.end(JSON.stringify({ error: error.code || "internal_error", message: status >= 500 ? "Interner Testfehler." : error.message }));
 }

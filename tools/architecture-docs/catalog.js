@@ -125,7 +125,15 @@ function discoverMarkdownDocuments(repoRoot) {
   ];
   return files.map((file) => {
     const sourcePath = toPosix(path.relative(repoRoot, file));
-    const content = fs.readFileSync(file, "utf8");
+    /*
+     * Zeilenenden normalisieren.
+     *
+     * Der Inhalt wandert unveraendert in dist/content.js. Ohne diesen Schritt
+     * enthaelt die erzeugte Datei unter Windows \r\n und unter Linux \n; die
+     * CI meldet dann einen Unterschied, den niemand geschrieben hat, und der
+     * Build ist nicht reproduzierbar.
+     */
+    const content = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
     const curated = curatedDocuments[sourcePath] || {};
     return {
       id: documentId(sourcePath),

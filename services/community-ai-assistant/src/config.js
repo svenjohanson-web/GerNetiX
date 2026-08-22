@@ -1,9 +1,12 @@
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
+
 function createConfig(env = process.env) {
   return {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 5300),
     communityBaseUrl: env.COMMUNITY_BASE_URL || "http://127.0.0.1:5200/api/community",
     aiUsageBaseUrl: env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000/api/ai-usage",
+    internalApiSigningKey: readOptionalInternalApiAuthConfig(env, "community-ai-assistant"),
     useLiveIntegrations: env.USE_LIVE_INTEGRATIONS !== "false",
     defaultModel: env.COMMUNITY_AI_MODEL || "gpt-4.1-mini",
     persistenceBackend: env.PERSISTENCE_BACKEND || env.COMMUNITY_AI_PERSISTENCE_BACKEND || "memory",

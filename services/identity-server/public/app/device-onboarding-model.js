@@ -119,3 +119,17 @@ const DeviceOnboardingModel = (() => {
     supports,
   };
 })();
+
+export {
+  DeviceOnboardingModel,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app.js, development-platform.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  DeviceOnboardingModel,
+});
+/* ---- /Uebergangsbruecke ---- */

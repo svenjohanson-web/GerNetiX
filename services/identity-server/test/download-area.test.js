@@ -66,7 +66,7 @@ test("USB provisioning prefers the background service without leaving GerNetiX",
   assert.match(onboarding, /state\.serialService\.ports\(\)/);
   assert.match(onboarding, /preferredSerialServicePorts\(await state\.serialService\.ports\(\)\)/);
   assert.match(onboarding, /state\.serialService\.probe\(port\.path\)/);
-  assert.match(onboarding, /window\.GerNetiXFlashExecutor\.executeUsb/);
+  assert.match(onboarding, /GerNetiXFlashExecutor\.executeUsb/);
   assert.match(flashExecutor, /serialService\.flash/);
   assert.match(onboarding, /state\.serialService\.serialRequest/);
   assert.match(app, /loadPlatformDownloads\(\)/);

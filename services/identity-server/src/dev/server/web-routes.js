@@ -9,6 +9,10 @@ const publicAppAssets = new Set([
   "/app-shell-early.js",
   "/app.css",
   "/unified-flash-dialog.css",
+  // Die oeffentlichen Nachbau- und Demoseiten flashen ausdruecklich ohne Konto.
+  // Ohne diese beiden Skripte bleibt ihr Flash-Dialog dauerhaft deaktiviert.
+  "/unified-flash-dialog.js",
+  "/unified-flash-executor.js",
   "/i18n/i18n.js",
   "/action-observability.js",
   "/api-client.js",
@@ -45,6 +49,10 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/app/manifest.webmanifest", handler: ({ res }) => serveStatic(res, appDir, "/manifest.webmanifest") });
   registry.register({ method: "*", path: "/app/push-sw.js", handler: ({ res }) => serveStatic(res, appDir, "/push-sw.js") });
   registry.register({ method: "*", path: "/app/operator-shell.css", handler: ({ res, url }) => serveStatic(res, operatorShellDir, "/operator-shell.css", { versioned: url.searchParams.has("v") }) });
+  // Gemeinsames Farb-Vokabular, liegt im selben geteilten Verzeichnis. Bewusst
+  // auf oberster Ebene erreichbar, weil sowohl oeffentliche Seiten als auch die
+  // Plattform darauf zugreifen.
+  registry.register({ method: "*", path: "/theme-tokens.css", handler: ({ res, url }) => serveStatic(res, operatorShellDir, "/theme-tokens.css", { versioned: url.searchParams.has("v") }) });
   registry.register({ method: "GET", pattern: /^\/vendor\/esptool-js\//, handler: ({ res, url }) => serveVendorEsptool(res, url.pathname) });
   registry.register({ method: "*", path: "/s3-touch-spielesammlung", handler: ({ res }) => redirect(res, "/s3-touch-spielesammlung/") });
   registry.register({
@@ -169,6 +177,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/druckmotoren", handler: ({ res }) => redirect(res, "/nachbauprojekte/druckmotoren/") });
   registry.register({ method: "*", path: "/nachbauprojekte/druckmotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/druckmotoren/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/modulares-maker-auto", handler: ({ res }) => redirect(res, "/nachbauprojekte/modulares-maker-auto/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/modulares-maker-auto/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/modulares-maker-auto/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung", handler: ({ res }) => redirect(res, "/nachbauprojekte/hw364a-spielesammlung/") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/hw364a-spielesammlung/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/huehnerstalltuer", handler: ({ res }) => redirect(res, "/nachbauprojekte/huehnerstalltuer/") });

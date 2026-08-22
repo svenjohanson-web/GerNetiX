@@ -111,17 +111,20 @@ module.exports = Object.freeze({
     blockers: [],
   },
   "build-artifact-reference": {
-    report: "334f98c934d3baca6491790981cf7ada9659e32f4b359cf2b8780dd4a9ab6724",
+    report: "67e8bfa3d95aa1d96ee858eb0d7ada71e1bb14885d037fcb165052a51a2e5378",
     fingerprint: "ef90727a9d778d15903af7c77345e2c2559b963b420572c74e5a8073f532487f",
     tree: "3e4bcb362fc275215720dc30566c6b34a727ac15",
-    head: "eb6862bf6687a4b5b820c2b62e53274774b5148f",
+    // Die Commit-OIDs haengen an der Nachricht: seit versionCommitMessage die
+    // Binaerartefakte als GerNetiX-Artifact-Zeilen anhaengt, sind sie andere.
+    // Fingerabdruck, Baum und Dateisaetze bleiben unveraendert.
+    head: "1bcfe0c35d7c5bfa338863d89812ee592a5f44f0",
     pathSet: "490584293ce8372782aa772e960c5376207c8dadc44951faa1661456188f6d60",
     fileSet: "e210f17f583d36636168bb07a347018ea49ae5735bf59cd3582e3e4c77b45269",
     files: {
       "gernetix/project.json": "edb64e367e718d1c357ace21eaf6d9867df36e76b6a2646427c79ef28af6151c",
       "src/main.cpp": "b83966ccb1aeea842dd01124bae88b4bfb730de2517ab6c98808414078159d5d",
     },
-    commits: ["da03f8134177003d343dab02b29634e6d4410a6c", "eb6862bf6687a4b5b820c2b62e53274774b5148f"],
+    commits: ["d0f529b4b4042047d6690c87be5335a4690430e7", "1bcfe0c35d7c5bfa338863d89812ee592a5f44f0"],
     artifact: {
       artifact_id: "artifact-synthetic-001",
       file_name_sha256: "f9262f150fd7e6d79acd39a7e15335313e20a62cc10a3637efa746df839c5848",

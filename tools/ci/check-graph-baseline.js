@@ -40,11 +40,24 @@ function inspectGraph() {
 }
 
 const actual = inspectGraph();
-const expected = JSON.parse(fs.readFileSync(baselinePath, "utf8"));
-if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-  console.error("Canonical graph differs from tools/ci/graph-baseline.json.");
-  console.error(`Expected: ${JSON.stringify(expected, null, 2)}`);
-  console.error(`Actual:   ${JSON.stringify(actual, null, 2)}`);
-  process.exit(1);
+
+// Wie beim Routen-Guard gibt es einen ausdruecklichen Freigabeweg. Ohne ihn
+// wird die Baseline von Hand nachgetragen oder gar nicht, und der Waechter
+// meldet dauerhaft eine Abweichung, die niemand mehr liest.
+if (process.argv.includes("--accept")) {
+  fs.writeFileSync(baselinePath, `${JSON.stringify(actual, null, 2)}\n`);
+  console.log("Graph-Baseline aktualisiert. Diff bitte fachlich pruefen:");
+  console.log(`  ${actual.artifacts} artifacts, ${actual.relationships} relationships`);
+  const severities = Object.entries(actual.validation_errors);
+  console.log(`  Validierung: ${severities.length ? severities.map(([s, c]) => `${s}=${c}`).join(", ") : "keine Befunde"}`);
+} else {
+  const expected = JSON.parse(fs.readFileSync(baselinePath, "utf8"));
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    console.error("Canonical graph differs from tools/ci/graph-baseline.json.");
+    console.error(`Expected: ${JSON.stringify(expected, null, 2)}`);
+    console.error(`Actual:   ${JSON.stringify(actual, null, 2)}`);
+    console.error("Nach fachlicher Pruefung: node tools/ci/check-graph-baseline.js --accept");
+    process.exit(1);
+  }
+  console.log(`Graph baseline valid: ${actual.artifacts} artifacts, ${actual.relationships} relationships`);
 }
-console.log(`Graph baseline valid: ${actual.artifacts} artifacts, ${actual.relationships} relationships`);

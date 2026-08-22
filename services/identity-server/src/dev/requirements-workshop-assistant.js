@@ -10,6 +10,7 @@ function createRequirementsWorkshopAssistant({
   aiUsageJson,
   llmConfigStore,
   projectServerUserId,
+  accountSubscription,
   readJsonBody,
   sendJson,
   fetchImpl = fetch,
@@ -47,7 +48,7 @@ function createRequirementsWorkshopAssistant({
       }
 
       const result = await callOpenAiResponses(config, proposal, session);
-      const usageEvent = await completeUsage(usagePreflight, result.usage);
+      const usageEvent = await completeUsage(usagePreflight, result.usage, session);
       sendJson(res, 200, {
         feedback: normalizeFeedback(result.feedback),
         routing: {
@@ -60,7 +61,7 @@ function createRequirementsWorkshopAssistant({
         usageEvent,
       });
     } catch (error) {
-      await failUsage(usagePreflight, error);
+      await failUsage(usagePreflight, error, session);
       sendJson(res, 503, {
         error: "requirements_workshop_unavailable",
         message: error?.message || "Der KI-Anforderungsspiegel ist gerade nicht erreichbar.",
@@ -121,6 +122,7 @@ function createRequirementsWorkshopAssistant({
     return aiUsageJson("/api/ai-usage/preflight", {
       method: "POST",
       allowPaymentRequired: true,
+      internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session) },
       body: {
         account_id: accountId,
         user_id: accountId,
@@ -135,20 +137,30 @@ function createRequirementsWorkshopAssistant({
     });
   }
 
-  async function completeUsage(preflight, usage) {
+  async function completeUsage(preflight, usage, session) {
     if (!preflight?.event_id) return null;
     return aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, {
       method: "POST",
+      internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session) },
       body: { input_tokens: usage.promptTokens, output_tokens: usage.completionTokens },
     }).catch((error) => ({ event_id: preflight.event_id, status: "tracking_failed", error: error.message || String(error) }));
   }
 
-  async function failUsage(preflight, error) {
+  async function failUsage(preflight, error, session) {
     if (!preflight?.event_id || typeof aiUsageJson !== "function") return null;
     return aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/fail`, {
       method: "POST",
+      internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session) },
       body: { error_code: "provider_error", error_message: error.message || String(error) },
     }).catch(() => null);
+  }
+
+  function userDelegation(session) {
+    return {
+      account_id: accountIdFor(session, projectServerUserId),
+      project_ids: [],
+      entitlements: accountSubscription?.(session)?.entitlements || [],
+    };
   }
 
   return { handleFeedback };

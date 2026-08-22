@@ -19,14 +19,19 @@ const hardwareLab = read("hardware-lab-controller.js");
 const shell = read("app-shell-controller.js");
 
 test("loads one shared AI-chat behavior before domain controllers", () => {
-  assert.match(html, /ai-chat-pattern\.js\?v=20260805-standard-ai-chat-4/);
   assert.doesNotMatch(html, /guided-project-view\.js/);
   assert.match(shell, /loadGuidedProjectAssets[\s\S]*guided-project-view\.js/);
   assert.doesNotMatch(html, /hardware-lab-controller\.js/);
-  assert.match(shell, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`\)/);
+  assert.match(shell, /loadPlatformScript\(`\/app\/hardware-lab-controller\.js\?v=\$\{version\}`(?:, \{ module: true \})?\)/);
   assert.doesNotMatch(shell, /requirements-workshop-controller\.js/);
-  assert.ok(html.indexOf("ai-chat-pattern.js") < html.indexOf("app-shell-controller.js"));
-  assert.equal((html.match(/ai-chat-pattern\.js/g) || []).length, 1);
+  /*
+   * Ueber die Skript-Tags gepruefte Reihenfolge und Anzahl. Die Import Map im
+   * Dokumentkopf nennt dieselben Adressen ein zweites Mal als JSON; eine
+   * Textsuche wuerde sie mitzaehlen und immer sie zuerst finden.
+   */
+  const { scriptPosition } = require("../test-support/platform-app-source");
+  assert.ok(scriptPosition(html, "ai-chat-pattern.js") < scriptPosition(html, "app-shell-controller.js"));
+  assert.equal((html.match(/<script[^>]*src="\/app\/ai-chat-pattern\.js/g) || []).length, 1);
 });
 
 test("applies the standard pattern to every current platform AI chat", () => {

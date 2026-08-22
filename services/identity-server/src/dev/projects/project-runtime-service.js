@@ -20,8 +20,11 @@ function createProjectRuntimeService({
   async function requireSessionProject(session, projectId) {
     const requestedProjectId = String(projectId || "");
     const accountId = projectServerUserId(session);
-    const storedProject = await projectServerJson(`/api/projects/${encodeURIComponent(requestedProjectId)}`)
-      .catch((error) => error.status === 404 ? null : Promise.reject(error));
+    // Do not mint a project delegation from a browser-provided ID.  First
+    // query the authenticated account's project collection, then use the
+    // server-returned project as the authority for later project calls.
+    const ownProjects = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(accountId)}`, accountAccess(accountId));
+    const storedProject = (ownProjects.items || []).find((project) => project.project_id === requestedProjectId) || null;
     if (!storedProject || storedProject.user_id !== accountId) throw sessionProjectNotFound();
     const learningDefinition = getUserIdeState().projectDefinitions
       .find((item) => item.learning_project_id === storedProject.learning_project_id);
@@ -80,13 +83,13 @@ function createProjectRuntimeService({
 
   async function loadUserIdeProjectSummariesUncached(session, userId) {
     await ensureAccountResourcePlan(session);
-    const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`);
+    const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}&profile=summary`, accountAccess(userId));
     return mapUserIdeProjectSummaries(session, response.items || []);
   }
 
   async function loadUserIdeProjectsUncached(session, userId) {
     await ensureAccountResourcePlan(session);
-    const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
+    const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`, accountAccess(userId));
     const learningProjects = getLearningProjects();
     const synchronizedItems = await Promise.all(response.items.map(async (project) => {
       if (project.status === "plan_locked") return project;
@@ -109,6 +112,15 @@ function createProjectRuntimeService({
     loadUserIdeProjects,
     requireSessionProject,
     sessionProjectNotFound,
+  };
+}
+
+function accountAccess(accountId) {
+  return {
+    internalAuth: {
+      scopes: ["project.read"],
+      delegation: { account_id: String(accountId), project_ids: [] },
+    },
   };
 }
 

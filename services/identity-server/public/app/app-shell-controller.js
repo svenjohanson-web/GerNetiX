@@ -1,4 +1,25 @@
 // GerNetiX platform module extracted from app.js.
+import { renderAccountSetup } from "@app/app-account-controller.js";
+import { renderBilling } from "@app/app-billing-controller.js";
+import { loadBoardFeatureCatalog, loadDevicePageTools, loadProcessorBoardCatalog, loadSensorCatalog, renderDashboard, renderKnowledgeUpdates } from "@app/app-dashboard-controller.js";
+import { currentLearningLocale, learningText, renderApplications, renderLearn, renderLearningProjectOverview, renderProjects } from "@app/app-project-controller.js";
+import { escapeAttribute, escapeHtml, getJson, meta, patchJson, postJson, progressFor, projectById, renderGuidedProject } from "@app/app-runtime-utils.js";
+import { GerNetiXI18n } from "@app/i18n/i18n.js";
+import { InformationView } from "@app/information-view.js";
+import { LearningProjectController } from "@app/learning-project-controller.js";
+import { LearningProjectLocales } from "@app/learning-project-locales.js";
+import { SERIAL_SERVICE_CHOICE_EVENT, developmentPlatform, learningProject, platformComponentIfBuilt, projectApp, quiz, registerPlatformComponent } from "@app/platform-components.js";
+import { ROUTE_CHANGED_EVENT, isPublicInformationPage, isPublicKnowledgePage, navigate, routeMap, routeName } from "@app/platform-routing.js";
+import { state } from "@app/platform-state.js";
+import { GerNetiXWelcomeGuide } from "@app/welcome-guide.js";
+
+/*
+ * Die zuletzt gezeichnete Route. Nur diese Datei setzt und liest sie; sie
+ * dient dem Vergleich beim Routenwechsel und ist damit Zustand der Schale,
+ * nicht der Plattform.
+ */
+let lastRenderedRoute = "";
+
 async function bootstrap() {
   if (isPublicInformationPage) {
     const informationAssetsPromise = isPublicKnowledgePage ? loadKnowledgeContentAssets() : Promise.resolve();
@@ -21,22 +42,81 @@ async function bootstrap() {
     document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : (isPublicKnowledgePage ? "Wissensportal" : "Öffentliche Hilfe");
     document.querySelector("#logoutButton").textContent = state.account ? "Abmelden" : "Anmelden";
     renderRoute();
+    GerNetiXWelcomeGuide.maybeOpen(state.account);
     return;
   }
   renderInitialRoute();
   const initialRoute = routeName();
-  await Promise.all([refreshBootstrap(initialRoute), loadRouteAssets(initialRoute)]);
+
+  /*
+   * Der oeffentliche Zweig oben faengt einen Fehlschlag seit jeher ab. Hier
+   * fehlte das: schlug /api/platform/bootstrap fehl, brach bootstrap() an
+   * dieser Stelle ab. Uebersetzungen, Rendern und Willkommensdialog liefen
+   * dann nie, die Ablehnung blieb unbehandelt, und der Nutzer sah eine
+   * statische Huelle ohne jeden Hinweis darauf, dass etwas fehlt.
+   */
+  let startFehler = null;
+  await Promise.all([
+    refreshBootstrap(initialRoute).catch((fehler) => { startFehler = fehler; }),
+    loadRouteAssets(initialRoute),
+  ]);
+
+  if (startFehler) {
+    // state traegt seine Vorgaben (account: null, projects: []), deshalb ist
+    // renderRoute gefahrlos. renderAll bleibt aussen vor: es rechnet mit
+    // geladenen Daten.
+    await initializePlatformI18n();
+    renderRoute();
+    meldeStartFehler(startFehler);
+    return;
+  }
+
   await loadRouteProjectDetail(initialRoute);
   await loadRouteAssets(initialRoute);
   await initializePlatformI18n();
   renderAll();
   renderRoute({ contentRendered: true });
+  GerNetiXWelcomeGuide.maybeOpen(state.account);
   void hydratePlatformState(initialRoute).then((changed) => {
     if (changed && routeName() === initialRoute) renderAll();
   });
 }
 
-function loadPlatformScript(src) {
+// Sichtbar melden statt still schlucken: ein verschwiegener Fehlschlag sieht
+// aus wie eine leere Plattform und verschleiert echte Ausfaelle.
+function meldeStartFehler(fehler) {
+  const shell = document.querySelector(".app-shell");
+  if (!shell || document.querySelector("#platformStartError")) return;
+  const meldung = document.createElement("div");
+  meldung.id = "platformStartError";
+  meldung.className = "platform-start-error";
+  meldung.setAttribute("role", "alert");
+  // payload.error traegt nur den allgemeinen Sammelcode ("internal_server_error"),
+  // die sprechende Ursache steht in payload.message.
+  const grund = fehler?.payload?.message || fehler?.message || fehler?.payload?.error || fehler?.code || "unbekannt";
+  meldung.innerHTML = `<strong>Die Plattformdaten konnten nicht geladen werden.</strong>
+    <span>Angemeldet bist du weiterhin. Grund: ${escapeHtml(String(grund))}</span>`;
+  const neuLaden = document.createElement("button");
+  neuLaden.type = "button";
+  neuLaden.textContent = "Erneut versuchen";
+  neuLaden.addEventListener("click", () => window.location.reload());
+  meldung.append(neuLaden);
+  shell.querySelector(".topbar")?.after(meldung) || shell.prepend(meldung);
+}
+
+/*
+ * Laedt eine Browser-Datei nach.
+ *
+ * Mit { module: true } wird sie als ES-Modul eingebunden. Das ist bewusst
+ * einzeln zu waehlen und nicht der Standard: die 28 hierueber nachgeladenen
+ * Dateien stellen heute Globale bereit, die andere benutzen. Wuerde man sie
+ * pauschal zu Modulen erklaeren, verschwaenden diese Namen und die Anwendung
+ * braeche an vielen Stellen zugleich.
+ *
+ * Ohne diese Wahlmoeglichkeit kann keine der nachgeladenen Dateien je ein
+ * Modul werden -- unabhaengig davon, wie entflochten sie ist.
+ */
+function loadPlatformScript(src, options = {}) {
   const existing = document.querySelector(`script[data-lazy-src="${CSS.escape(src)}"]`);
   if (existing) return existing.dataset.loaded === "true"
     ? Promise.resolve()
@@ -46,6 +126,7 @@ function loadPlatformScript(src) {
     });
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
+    if (options.module) script.type = "module";
     script.src = src;
     script.dataset.lazySrc = src;
     script.addEventListener("load", () => {
@@ -114,12 +195,19 @@ function loadRouteFragment(id, src) {
 
 async function loadKnowledgeContentAssets() {
   const urls = knowledgeContentAssetUrls();
-  await Promise.all(urls.slice(0, -1).map(loadPlatformScript));
-  await loadPlatformScript(urls.at(-1));
+  /*
+   * Nicht .map(loadPlatformScript): map reicht den Index als zweites Argument
+   * weiter, und an dieser Stelle stehen die Optionen. Bisher fiel das nicht
+   * auf, weil eine Zahl keine module-Eigenschaft hat -- die Datei wurde dann
+   * klassisch geladen, was sie ohnehin war. Fuer ein Modul waere es ein
+   * Syntaxfehler gewesen, und zwar erst beim Oeffnen des Wissensportals.
+   */
+  await Promise.all(urls.slice(0, -1).map((url) => loadPlatformScript(url, { module: true })));
+  await loadPlatformScript(urls.at(-1), { module: true });
 }
 
 function knowledgeContentAssetUrls() {
-  const version = "20260812-knowledge-library-3";
+  const version = "20260822-merge-main-3";
   return ["knowledge-chapter-index.js", "knowledge-content.js"].map((file) => `/app/${file}?v=${version}`);
 }
 
@@ -144,52 +232,57 @@ function scheduleKnowledgeContentPrefetch() {
 
 async function loadQuizAssets() {
   await Promise.all([
-    loadPlatformScript("/app/quiz-data.js?v=20260805-route-lazy-2"),
-    loadPlatformScript("/app/quiz.js?v=20260805-route-lazy-2"),
+    loadPlatformScript("/app/quiz-data.js?v=20260820-esm-blatt-6", { module: true }),
+    loadPlatformScript("/app/quiz.js?v=20260820-esm-mitte-1", { module: true }),
   ]);
 }
 
 async function loadProjectAppAssets() {
   await Promise.all([
-    loadPlatformScript("/app/project-app-renderer.js?v=20260807-action-observability-1"),
-    loadPlatformScript("/app/project-app-controller.js?v=20260807-action-observability-1"),
+    loadPlatformScript("/app/project-app-renderer.js?v=20260820-esm-blatt-6", { module: true }),
+    loadPlatformScript("/app/project-app-controller.js?v=20260820-esm-mitte-1", { module: true }),
   ]);
 }
 
 const lazyAssetVersions = {
-  boardConfiguration: "20260731-board-source-groups-1",
-  build: "20260807-action-observability-1",
-  flashDialog: "20260807-helper-progress-1",
-  flashExecutor: "20260804-unified-flash-2",
-  flashProgress: "20260802-flash-progress",
-  guidedProject: "20260808-guided-sequence-17",
-  onboarding: "20260719-04",
-  onboardingModel: "20260803-performance-1",
-  usbDisconnect: "20260801-shared-1",
-  usbTarget: "20260801-partial-usb-flash",
-  wifiSetup: "20260801-shared-port-identification",
+  boardConfiguration: "20260820-esm-blatt-6",
+  build: "20260820-entflechtung-7",
+  flashDialog: "20260820-esm-blatt-3",
+  flashExecutor: "20260820-flash-pruefsumme-1",
+  flashProgress: "20260820-esm-blatt-6",
+  guidedProject: "20260820-esm-kopf-2",
+  onboarding: "20260820-flash-pruefsumme-1",
+  onboardingModel: "20260820-esm-blatt-6",
+  usbDisconnect: "20260820-esm-blatt-6",
+  usbTarget: "20260820-esm-blatt-6",
+  wifiSetup: "20260820-esm-mitte-2",
+  workbenchOutput: "20260820-statuskanal-1",
 };
 
 async function loadBuildWorkbenchAssets() {
   await Promise.all([
-    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`),
-    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
-    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`),
-    loadPlatformScript(`/app/usb-flash-target-model.js?v=${lazyAssetVersions.usbTarget}`),
+    // Statuszeile und Terminal. Der Gerätebau-Controller fuehrt sie ein, holt
+    // sie damit ohnehin -- der Eintrag hier gibt ihr eine Cache-Version und
+    // haelt sie unter derselben Aufsicht wie ihre Geschwister.
+    loadPlatformScript(`/app/workbench-output-view.js?v=${lazyAssetVersions.workbenchOutput}`, { module: true }),
+    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`, { module: true }),
+    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
+    loadPlatformScript(`/app/usb-flash-target-model.js?v=${lazyAssetVersions.usbTarget}`, { module: true }),
   ]);
-  await loadPlatformScript(`/app/app-device-build-controller.js?v=${lazyAssetVersions.build}`);
+  await loadPlatformScript(`/app/app-device-build-controller.js?v=${lazyAssetVersions.build}`, { module: true });
 }
 
 async function loadGuidedProjectAssets() {
   await Promise.all([
-    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
-    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
+    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=20260820-esm-blatt-3`, { module: true }),
   ]);
   await loadGuidedProjectCoreAssets();
 }
 
 async function loadGuidedProjectCoreAssets() {
-  await loadPlatformScript(`/app/guided-project-view.js?v=${lazyAssetVersions.guidedProject}`);
+  await loadPlatformScript(`/app/guided-project-view.js?v=${lazyAssetVersions.guidedProject}`, { module: true });
 }
 
 function activeLearningProjectNeedsHardwareWorkbench() {
@@ -200,26 +293,30 @@ function activeLearningProjectNeedsHardwareWorkbench() {
 
 async function loadIdeWorkbenchAssets() {
   await Promise.all([loadBuildWorkbenchAssets(), loadGuidedProjectAssets()]);
-  await loadPlatformScript(`/app/app-ide-controller.js?v=${lazyAssetVersions.build}`);
+  // Aus app-ide-controller.js herausgeloest und von dort eingefuehrt; steht
+  // deshalb davor und muss hier verwiesen sein, damit die Import Map den
+  // kurzen Namen aufloesen kann.
+  await loadPlatformScript(`/app/ide-project-model.js?v=${lazyAssetVersions.build}`, { module: true });
+  await loadPlatformScript(`/app/app-ide-controller.js?v=${lazyAssetVersions.build}`, { module: true });
   initializeIdeWorkspaceResize();
-  await loadPlatformScript(`/app/device-debug-controller.js?v=${lazyAssetVersions.build}`);
+  await loadPlatformScript(`/app/device-debug-controller.js?v=${lazyAssetVersions.build}`, { module: true });
 }
 
 async function loadDeviceOnboardingAssets() {
   await Promise.all([
-    loadPlatformScript(`/app/device-onboarding-model.js?v=${lazyAssetVersions.onboardingModel}`),
-    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`),
-    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`),
-    loadPlatformScript(`/app/unified-flash-dialog.js?v=${lazyAssetVersions.flashDialog}`),
-    loadPlatformScript(`/app/unified-flash-executor.js?v=${lazyAssetVersions.flashExecutor}`),
-    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`),
+    loadPlatformScript(`/app/device-onboarding-model.js?v=${lazyAssetVersions.onboardingModel}`, { module: true }),
+    loadPlatformScript(`/app/board-configuration-plugin.js?v=${lazyAssetVersions.boardConfiguration}`, { module: true }),
+    loadPlatformScript(`/app/flash-progress.js?v=${lazyAssetVersions.flashProgress}`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-dialog.js?v=20260820-esm-blatt-3`, { module: true }),
+    loadPlatformScript(`/app/unified-flash-executor.js?v=${lazyAssetVersions.flashExecutor}`, { module: true }),
+    loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true }),
   ]);
-  await loadPlatformScript(`/app/device-onboarding-controller.js?v=${lazyAssetVersions.onboarding}`);
+  await loadPlatformScript(`/app/device-onboarding-controller.js?v=${lazyAssetVersions.onboarding}`, { module: true });
 }
 
 async function loadDeviceWifiSetupAssets() {
-  await loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`);
-  await loadPlatformScript(`/app/device-wifi-setup-dialog.js?v=${lazyAssetVersions.wifiSetup}`);
+  await loadPlatformScript(`/app/usb-port-disconnect-detector.js?v=${lazyAssetVersions.usbDisconnect}`, { module: true });
+  await loadPlatformScript(`/app/device-wifi-setup-dialog.js?v=${lazyAssetVersions.wifiSetup}`, { module: true });
   GerNetiXDeviceWifiSetup.bind();
 }
 
@@ -257,15 +354,26 @@ function routeAssetsMissing(route) {
 }
 
 async function loadRouteAssets(route) {
-  const version = "20260805-route-lazy-3";
+  const version = "20260820-esm-kopf-1";
   if (["development-platform", "development-hardware"].includes(route)) {
     await Promise.all([
-      loadPlatformScript("/app/development-hardware-model.js?v=20260731-profile-inheritance-1"),
-      loadPlatformScript("/app/development-component-metamodel.js?v=20260801-hardware-connection-types"),
-      loadPlatformScript("/app/project-feedback-ui.js?v=20260802-project-feedback"),
-      loadPlatformScript("/app/project-repository-card.js?v=20260803-forgejo-contract-v1"),
+      loadPlatformScript("/app/development-hardware-model.js?v=20260820-esm-blatt-6", { module: true }),
+      /*
+       * Aus development-platform.js herausgeloest. Beide werden von dort
+       * eingefuehrt und muessen hier stehen: die Import Map entsteht aus diesen
+       * Verweisen, und ohne Eintrag kann der Browser den kurzen Namen nicht
+       * aufloesen.
+       */
+      loadPlatformScript("/app/development-plantuml.js?v=20260820-entflechtung-2", { module: true }),
+      loadPlatformScript("/app/home-automation-model.js?v=20260820-entflechtung-2", { module: true }),
+      loadPlatformScript("/app/hardware-configuration-model.js?v=20260820-entflechtung-3", { module: true }),
+      loadPlatformScript("/app/requirements-analysis.js?v=20260820-entflechtung-5", { module: true }),
+      // Klassisch: admin-tool liest dieselbe Datei mit require, siehe dort.
+      loadPlatformScript("/app/development-component-metamodel.js?v=20260820-metamodell-1"),
+      loadPlatformScript("/app/project-feedback-ui.js?v=20260820-esm-mitte-1", { module: true }),
+      loadPlatformScript("/app/project-repository-card.js?v=20260820-esm-blatt-6", { module: true }),
     ]);
-    await loadPlatformScript("/app/development-platform.js?v=20260806-project-summary-lazy-1");
+    await loadPlatformScript("/app/development-platform.js?v=20260820-entflechtung-5", { module: true });
     developmentPlatform().init();
     applyDevelopmentSummary();
     return;
@@ -294,7 +402,7 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadRouteFragment("hardwareLabView", `/app/fragments/hardware-lab.html?v=${version}`),
       loadPlatformStyle(`/app/hardware-lab-route.css?v=${version}`),
-      loadPlatformScript(`/app/hardware-lab-controller.js?v=${version}`),
+      loadPlatformScript(`/app/hardware-lab-controller.js?v=${version}`, { module: true }),
     ]);
     GerNetiXHardwareLab.bind();
     return;
@@ -303,7 +411,7 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadRouteFragment("referenceLibraryView", `/app/fragments/reference-library.html?v=${version}`),
       loadPlatformStyle(`/app/reference-library-route.css?v=${version}`),
-      loadPlatformScript(`/app/reference-library-controller.js?v=${version}`),
+      loadPlatformScript(`/app/reference-library-controller.js?v=${version}`, { module: true }),
     ]);
     GerNetiXReferenceLibrary.bind();
     return;
@@ -311,9 +419,9 @@ async function loadRouteAssets(route) {
   if (route === "community") {
     await Promise.all([
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
-      loadPlatformScript(`/app/app-community-controller.js?v=${version}`),
-      loadPlatformScript(`/app/community-ideas-controller.js?v=${version}`),
-      loadPlatformScript(`/app/community-portal-controller.js?v=${version}`),
+      loadPlatformScript(`/app/app-community-controller.js?v=${version}`, { module: true }),
+      loadPlatformScript(`/app/community-ideas-controller.js?v=${version}`, { module: true }),
+      loadPlatformScript(`/app/community-portal-controller.js?v=${version}`, { module: true }),
     ]);
     bindCommunityCoreEvents();
     bindCommunityIdeaEvents();
@@ -324,7 +432,7 @@ async function loadRouteAssets(route) {
     await Promise.all([
       loadRouteFragment("messagesView", `/app/fragments/messages.html?v=${version}`),
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
-      loadPlatformScript(`/app/app-community-controller.js?v=${version}`),
+      loadPlatformScript(`/app/app-community-controller.js?v=${version}`, { module: true }),
     ]);
     bindCommunityMessageEvents();
     return;
@@ -332,7 +440,7 @@ async function loadRouteAssets(route) {
   if (route === "shop") {
     await Promise.all([
       loadPlatformStyle(`/app/community-routes.css?v=${version}`),
-      loadPlatformScript(`/app/community-marketplace-controller.js?v=${version}`),
+      loadPlatformScript(`/app/community-marketplace-controller.js?v=${version}`, { module: true }),
     ]);
     bindCommunityMarketplaceEvents();
   }
@@ -361,11 +469,11 @@ function applyDevelopmentSummary(summary = null) {
 
 async function initializePlatformI18n() {
   try {
-    platformI18n = await window.GerNetiXI18n.create({
+    state.i18n = await window.GerNetiXI18n.create({
       accountLocale: state.account?.preferred_locale || "",
     });
-    platformI18n.translateDocument();
-    syncLanguageControls(platformI18n.locale);
+    state.i18n.translateDocument();
+    syncLanguageControls(state.i18n.locale);
   } catch (error) {
     console.warn("Platform translations could not be initialized.", error);
   }
@@ -377,22 +485,22 @@ function syncLanguageControls(locale) {
 }
 
 async function changePlatformLocale(event) {
-  if (!platformI18n) return;
-  const previousLocale = platformI18n.locale;
+  if (!state.i18n) return;
+  const previousLocale = state.i18n.locale;
   const nextLocale = event.target.value;
   try {
-    await platformI18n.setLocale(nextLocale);
+    await state.i18n.setLocale(nextLocale);
     syncLanguageControls(nextLocale);
-    quizController?.render();
+    platformComponentIfBuilt("quiz")?.render();
     renderRoute();
     if (state.account) {
       const result = await patchJson("/api/account/preferences", { preferred_locale: nextLocale });
       state.account = { ...state.account, ...result.account };
     }
   } catch (error) {
-    await platformI18n.setLocale(previousLocale);
+    await state.i18n.setLocale(previousLocale);
     syncLanguageControls(previousLocale);
-    quizController?.render();
+    platformComponentIfBuilt("quiz")?.render();
     renderRoute();
   }
 }
@@ -421,6 +529,9 @@ function configureSerialServiceInstallLink(link) {
   else link.removeAttribute("download");
   return link;
 }
+
+// Gegenstueck zur Meldung aus dem Build-Controller.
+window.addEventListener(SERIAL_SERVICE_CHOICE_EVENT, () => { void showSerialServiceChoiceDialog(); });
 
 async function showSerialServiceChoiceDialog() {
   if (!state.platformDownloads.length) await loadPlatformDownloads();
@@ -664,35 +775,25 @@ function renderInitialRoute() {
   }
 }
 
-function learningProject() {
-  if (!learningProjectController) {
-    learningProjectController = LearningProjectController.create({
-      state,
-      postJson,
-      navigate,
-      renderLearn,
-      renderDashboard,
-      renderGuidedProject,
-      projectById,
-      loadProjectDetail,
-      progressFor,
-      escapeHtml,
-      localizeProject: (project) => LearningProjectLocales.project(project, currentLearningLocale()),
-      learningText,
-    });
-  }
-  return learningProjectController;
-}
+registerPlatformComponent("learningProject", () => LearningProjectController.create({
+    state,
+    postJson,
+    navigate,
+    renderLearn,
+    renderDashboard,
+    renderGuidedProject,
+    projectById,
+    loadProjectDetail,
+    progressFor,
+    escapeHtml,
+    localizeProject: (project) => LearningProjectLocales.project(project, currentLearningLocale()),
+    learningText,
+  }));
 
-function quiz() {
-  if (!quizController) {
-    quizController = GerNetiXQuiz.create({
-      mount: document.querySelector("#quizMount"),
-      getLocale: () => platformI18n?.locale || document.documentElement.lang || "de",
-    });
-  }
-  return quizController;
-}
+registerPlatformComponent("quiz", () => GerNetiXQuiz.create({
+    mount: document.querySelector("#quizMount"),
+    getLocale: () => state.i18n?.locale || document.documentElement.lang || "de",
+  }));
 
 function renderInformationTopic() {
   InformationView.render({
@@ -867,26 +968,6 @@ function currentLocationTrail(route) {
   return locations[route] || locations.dashboard;
 }
 
-function routeName() {
-  if (/^\/hilfe\/?$/.test(window.location.pathname)) return "help";
-  if (/^\/wissen\/?$/.test(window.location.pathname)) return "knowledge";
-  if (/^\/app\/development-platform\/hardware\/?$/.test(window.location.pathname)) return "development-hardware";
-  if (/^\/app\/device-management\/?$/.test(window.location.pathname)) return "device-management";
-  const deviceManagementMatch = window.location.pathname.match(/^\/app\/device-management\/([^/]+)/);
-  if (deviceManagementMatch) {
-    return {
-      provisioning: "device-provisioning",
-      inventory: "device-inventory",
-      recovery: "device-recovery",
-    }[deviceManagementMatch[1]] || "device-provisioning";
-  }
-  const match = window.location.pathname.match(/^\/app\/([^/]+)/);
-  const route = match ? match[1] : "dashboard";
-  if (route === "projects") return "learn";
-  if (route === "devices") return "device-inventory";
-  if (route === "device-recovery") return "device-recovery";
-  return routeMap[route] ? route : "dashboard";
-}
 
 function topLevelRouteName(route) {
   if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
@@ -905,20 +986,10 @@ function deviceManagementRouteFor(route) {
   }[route] || "";
 }
 
-function navigate(route) {
-  const target = new URL(route, window.location.origin);
-  if (/^\/app\/auth(?:\/|$)/.test(target.pathname)) {
-    window.location.assign(target.pathname + target.search + target.hash);
-    return;
-  }
-  const protectedAppRoute = /^\/app\/(?!auth(?:\/|$))/.test(target.pathname);
-  if (protectedAppRoute && !isServerAuthenticatedAppShell && !state.account) {
-    window.location.assign(`/app/auth/?next=${encodeURIComponent(target.pathname + target.search)}`);
-    return;
-  }
-  history.pushState({}, "", route);
-  activateCurrentRoute();
-}
+
+// Gegenstueck zur Umkehrung in platform-routing.js: dort meldet navigate()
+// nur noch, hier wird darauf reagiert.
+window.addEventListener(ROUTE_CHANGED_EVENT, () => activateCurrentRoute());
 
 function activateCurrentRoute() {
   const activeRoute = routeName();
@@ -1055,3 +1126,18 @@ async function createFlashboxMockOrder() {
     target.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Mock-Kauf konnte nicht angelegt werden.")}</p>`;
   }
 }
+
+export {
+  activateCurrentRoute,
+  bootstrap,
+  changePlatformLocale,
+  claimFlashboxFromCode,
+  createFlashboxMockOrder,
+  loadDeviceWifiSetupAssets,
+  loadProjectDetail,
+  preferredSerialServiceDownload,
+  refresh,
+  renderAll,
+  renderShopConfiguration,
+  showSerialServiceChoiceDialog,
+};

@@ -218,3 +218,17 @@ const ProjectRepositoryCard = (() => {
 
   return { create };
 })();
+
+export {
+  ProjectRepositoryCard,
+};
+
+/* ---- Uebergangsbruecke ---- */
+/*
+ * Noch klassisch und liest diese Namen global: app-shell-controller.js, app.js.
+ * Verschwindet mit dem letzten davon.
+ */
+Object.assign(globalThis, {
+  ProjectRepositoryCard,
+});
+/* ---- /Uebergangsbruecke ---- */

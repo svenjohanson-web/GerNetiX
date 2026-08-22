@@ -13,6 +13,7 @@ const composeModels = [
   { file: "tools/forgejo-integration/compose.yaml" },
   { files: ["tools/forgejo-integration/compose.yaml", "tools/forgejo-ui-e2e/compose.yaml"] },
   { file: "tools/forgejo-backup-restore-test.compose.yaml" },
+  { file: "tools/backup-restore-test.compose.yaml" },
 ];
 
 function requiredVariables(source) {
@@ -36,6 +37,15 @@ function exampleEnvironment(envFile) {
 
 function validate(model) {
   const files = model.files || [model.file];
+  // Eine gelistete, aber geloeschte Datei soll klar gemeldet werden. Ohne diese
+  // Pruefung endet der Lauf in einem ENOENT-Stacktrace, dem man den toten
+  // Verweis nicht ansieht.
+  const missing = files.filter((file) => !fs.existsSync(path.join(repoRoot, file)));
+  if (missing.length) {
+    console.error(`Compose-Modell fehlt: ${missing.join(", ")}`);
+    console.error("Eintrag in tools/ci/check-compose.js entfernen oder Datei wiederherstellen.");
+    process.exit(1);
+  }
   const source = files.map((file) => fs.readFileSync(path.join(repoRoot, file), "utf8")).join("\n");
   const environment = { ...process.env };
   const examples = exampleEnvironment(model.envFile);

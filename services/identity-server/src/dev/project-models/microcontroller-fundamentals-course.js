@@ -53,6 +53,8 @@ function createLessonView(lesson, index) {
         type: completion?.type === "code" ? "code_task" : "code",
         title: lesson.artifact_title || lesson.title,
         content: lesson.code || "",
+        lab_url: lesson.lab_url || "",
+        lab_title: lesson.lab_title || "",
       },
       task: lesson.task,
       expected_result: lesson.expected_result,

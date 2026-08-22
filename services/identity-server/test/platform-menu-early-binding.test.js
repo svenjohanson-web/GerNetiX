@@ -6,18 +6,27 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
+// Die Position wird ueber den Dateinamen gesucht, nicht ueber eine bestimmte
+// Cache-Version. Geprueft wird die Ladereihenfolge; welche Version dabei
+// ausgeliefert wird, sichert asset-cache-versions.test.js.
+const { scriptPosition, readForSandbox } = require("../test-support/platform-app-source");
+
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
-const earlyShell = fs.readFileSync(path.join(appRoot, "app-shell-early.js"), "utf8");
-const eventBindings = fs.readFileSync(path.join(appRoot, "app-event-bindings.js"), "utf8");
+const earlyShell = readForSandbox("app-shell-early.js");
+const eventBindings = readForSandbox("app-event-bindings.js");
+const ladePosition = (datei) => scriptPosition(html, datei);
 
 test("loads the hamburger binding before route and feature controllers", () => {
-  const earlyIndex = html.indexOf("/app/app-shell-early.js?v=20260805-shell-menu-1");
-  const shellIndex = html.indexOf("/app/app-shell-controller.js?v=20260812-knowledge-library-3");
-  const bindingsIndex = html.indexOf("/app/app-event-bindings.js?v=20260805-shell-menu-1");
-  assert.ok(earlyIndex >= 0);
-  assert.ok(earlyIndex < shellIndex);
-  assert.ok(shellIndex < bindingsIndex);
+  const early = ladePosition("app-shell-early.js");
+  const shell = ladePosition("app-shell-controller.js");
+  const bindings = ladePosition("app-event-bindings.js");
+
+  assert.ok(early >= 0, "app-shell-early.js wird nicht geladen");
+  assert.ok(shell >= 0, "app-shell-controller.js wird nicht geladen");
+  assert.ok(bindings >= 0, "app-event-bindings.js wird nicht geladen");
+  assert.ok(early < shell, "app-shell-early.js muss vor dem Controller stehen");
+  assert.ok(shell < bindings, "der Controller muss vor den Bindungen stehen");
   assert.doesNotMatch(eventBindings, /#mainMenuButton[^\n]*addEventListener/);
 });
 

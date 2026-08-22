@@ -105,3 +105,7 @@ const LearningProjectLocales = (() => {
 
   return { project, text };
 })();
+
+export {
+  LearningProjectLocales,
+};

@@ -48,7 +48,10 @@ function discoverIdentityRuntimePaths({
     for (const match of source.matchAll(/require\(\s*["']([^"']+)["']\s*\)/g)) {
       if (!match[1].startsWith(".")) continue;
       const resolved = resolveLocalModule(match[1], sourceFile);
-      if (!resolved || !isInside(repoRoot, resolved)) continue;
+      if (!resolved) {
+        throw new Error(`Nicht aufloesbarer relativer Runtime-Import in ${path.relative(repoRoot, sourceFile)}: ${match[1]}`);
+      }
+      if (!isInside(repoRoot, resolved)) continue;
       requiredPaths.add(path.relative(repoRoot, resolved).split(path.sep).join("/"));
       if (resolved.endsWith(".js")) queue.push(resolved);
     }

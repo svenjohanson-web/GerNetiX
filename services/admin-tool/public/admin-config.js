@@ -1527,6 +1527,12 @@ function monitoringCard(service) {
   const statusText = service.ok ? "online" : "offline";
   const responseTime = Number.isFinite(service.response_ms) ? `${service.response_ms} ms` : "-";
   const operations = service.operations || null;
+  const identityDb = service.service_id === "identity_server" ? (operations?.identity_db || null) : null;
+  const identityDbInfo = identityDb ? [
+    meta(["PostgreSQL", identityDb.reachable ? "verbunden" : "nicht erreichbar"]),
+    identityDb.backend_host ? meta(["DB-Host", identityDb.backend_host]) : "",
+    Number.isFinite(Number(identityDb.latency_ms)) ? meta(["DB-Latenz", `${identityDb.latency_ms} ms`]) : "",
+  ].filter(Boolean).join("") : "";
   const communityMetrics = service.service_id === "community_platform" && operations ? `
     <div class="monitoring-detail-grid" aria-label="Community-Speicherstatus">
       ${monitoringDetail("Fragen", operations.questions?.total)}
@@ -1552,8 +1558,12 @@ function monitoringCard(service) {
         ${meta(["Antwortzeit", responseTime])}
         ${meta(["Status", service.message || statusText])}
         ${operations ? meta(["Persistenz", operations.persistence_backend || "-"]) : ""}
+        ${identityDbInfo}
       </dl>
       ${communityMetrics}
+      ${identityDb && !identityDb.reachable
+          ? `<p class="monitoring-detail-error">${escapeHtml(identityDb.message || "PostgreSQL-Backend ist nicht erreichbar. Prüfe VPN/Firewall und POSTGRES_HOST/PORT.")}</p>`
+          : ""}
       ${service.operations_error ? `<p class="monitoring-detail-error">${escapeHtml(service.operations_error)}</p>` : ""}
     </article>
   `;

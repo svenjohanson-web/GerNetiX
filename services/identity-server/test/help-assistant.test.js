@@ -5,18 +5,21 @@ const { createHelpAssistant } = require("../src/dev/help-assistant");
 test("help assistant uses the cost-controlled OpenAI help route and returns article recommendations", async () => {
   const sent = [];
   const calls = [];
+  const usageCalls = [];
   const assistant = createHelpAssistant({
     aiContextJson: async (path) => {
       assert.match(path, /\/api\/ai-context\/help-articles\/search/);
       return { strategy: "semantic", items: [{ article_id: "help.pairing", title: "Board pairen", summary: "Pairing nach Registrierung", content: "Verbinde das Board per USB, registriere es und bestaetige das Pairing." }] };
     },
     aiUsageJson: async (path, options) => {
+      usageCalls.push({ path, options });
       if (path === "/api/ai-usage/preflight") return { allowed: true, event_id: "usage-help-1" };
       assert.equal(path, "/api/ai-usage/events/usage-help-1/complete");
       assert.deepEqual(options.body, { input_tokens: 120, output_tokens: 20 });
       return { event_id: "usage-help-1", status: "completed" };
     },
     projectServerUserId: () => "acct-test",
+    accountSubscription: () => ({ entitlements: ["ai_assistant"] }),
     llmConfigStore: { resolveRoute(task) { assert.equal(task, "help_chat"); return { provider: "api", apiProvider: "openai-responses", apiBaseUrl: "https://api.openai.test/v1", apiModel: "gpt-5-nano", apiKey: "test-key", costPolicy: "external_costs_with_preflight" }; } },
     readJsonBody: async () => ({ messages: [{ role: "user", content: "How do I pair my ESP32?" }] }),
     sendJson: (_res, status, body) => sent.push({ status, body }),
@@ -38,6 +41,11 @@ test("help assistant uses the cost-controlled OpenAI help route and returns arti
   assert.equal(sent[0].body.routing.provider, "openai-responses");
   assert.equal(sent[0].body.routing.costPolicy, "external_costs_with_preflight");
   assert.equal(sent[0].body.openTopicId, "pair-device");
+  assert.deepEqual(usageCalls[0].options.internalAuth, {
+    scopes: ["ai.usage.consume"],
+    delegation: { account_id: "acct-test", project_ids: [], entitlements: ["ai_assistant"] },
+  });
+  assert.deepEqual(usageCalls[1].options.internalAuth, usageCalls[0].options.internalAuth);
 });
 
 test("help assistant does not call OpenAI or reserve credits without matching help knowledge", async () => {

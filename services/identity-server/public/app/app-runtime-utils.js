@@ -1,4 +1,9 @@
 // GerNetiX platform module extracted from app.js.
+import { ApiClient } from "@app/api-client.js";
+import { DomUtils } from "@app/dom-utils.js";
+import { guidedProjectView } from "@app/platform-components.js";
+import { state } from "@app/platform-state.js";
+
 async function createPlantUmlSvgUrl(source) {
   const bytes = new TextEncoder().encode(themedPlantUmlSource(source));
   const compressed = await deflateForPlantUml(bytes);
@@ -179,3 +184,25 @@ function escapeAttribute(value) {
 function delay(ms) {
   return DomUtils.delay(ms);
 }
+
+export {
+  createPlantUmlSvgUrl,
+  delay,
+  deleteJson,
+  escapeAttribute,
+  escapeHtml,
+  focusIdeStepSource,
+  getJson,
+  guidedViews,
+  meta,
+  patchJson,
+  postJson,
+  primarySourcePath,
+  progressFor,
+  projectById,
+  putJson,
+  renderGuidedProject,
+  renderProjectViewManifest,
+  summaryItem,
+  themedPlantUmlSource,
+};

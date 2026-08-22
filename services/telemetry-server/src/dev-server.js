@@ -7,7 +7,7 @@ const config = createConfig();
 async function bootstrap() {
   const service = await createDefaultTelemetryServer(config);
   startRetentionScheduler({ service, intervalHours: config.retentionIntervalHours });
-  const app = createHttpApp({ service, internalToken: config.internalToken });
+  const app = createHttpApp({ service, internalApiSigningKey: config.internalApiSigningKey });
   http.createServer((req, res) => app(req, res).catch((error) => sendJson(res, error.status || 500, { error: error.code || "internal_server_error", message: error.message || "Interner Fehler.", details: error.details || {} })))
     .listen(config.port, config.host, () => console.log(`Telemetry Server: http://${config.host}:${config.port}`));
 }

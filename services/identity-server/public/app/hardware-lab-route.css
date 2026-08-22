@@ -41,7 +41,7 @@ html.initial-hardware-lab-route #hardwareLabView.hidden { display: grid; }
 .hardware-lab-message.is-user { grid-template-columns: minmax(0, 1fr) 30px; align-self: flex-end; }
 .hardware-lab-message.is-user > span { grid-column: 2; background: #334155; }
 .hardware-lab-message.is-user p { grid-column: 1; grid-row: 1; border-color: #0e7490; border-radius: 13px 4px 13px 13px; background: #164e63; color: #ecfeff; }
-.hardware-lab-message p small { display: block; margin-top: 5px; color: #94a3b8; font-size: 11px; }
+.hardware-lab-message p small { display: block; margin-top: 5px; color: var(--text-muted); font-size: 11px; }
 .hardware-lab-message.is-failed p { border-color: #ef4444; }
 .ai-chat .hardware-lab-message.is-error > p { border-color: #d97706; background: color-mix(in srgb, #d97706 9%, #172131); }
 .hardware-lab-status { margin: 0 16px 10px; padding: 9px 11px; border-radius: 8px; background: var(--soft); font-size: 13px; }
@@ -109,3 +109,9 @@ html.initial-hardware-lab-route #hardwareLabView.hidden { display: grid; }
 @media (max-width: 1050px) { .hardware-lab-layout { grid-template-columns: 1fr; } .hardware-lab-chat { grid-template-rows: auto auto minmax(300px, 48vh) auto auto auto auto; } }
 @media (max-width: 760px) { .hardware-lab-active #hardwareLabView, html.initial-hardware-lab-route #hardwareLabView { padding-top: 150px; } }
 @media (max-width: 620px) { .hardware-lab-intake-grid, .hardware-lab-property-grid { grid-template-columns: 1fr; } .hardware-lab-key-facts { grid-template-columns: 1fr; } .hardware-lab-message { max-width: 96%; } }
+
+/* Hellmodus: zwei Regeln setzen ihre Farbe fest, beziehen die Gegenfarbe aber
+   aus einem Token. Wie in app.css stehen die Ausnahmen gesammelt am Ende,
+   damit der Dunkelmodus unveraendert bleibt. */
+html[data-public-theme="light"] .hardware-lab-usage-loading.is-error { color: var(--status-warn); }
+html[data-public-theme="light"] .hardware-lab-message.is-user > span { background: var(--surface-raised); }

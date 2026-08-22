@@ -14,11 +14,12 @@ function read(relativePath) {
 test("k6 scenario routes remain registered by Identity", () => {
   const authRoutes = read("services/identity-server/src/dev/server/auth-routes.js");
   const projectRoutes = read("services/identity-server/src/dev/server/project-routes.js");
-  const devServer = read("services/identity-server/src/dev-server.js");
+  const authHandlers = read("services/identity-server/src/dev/auth/identity-auth-handlers.js");
+  const platformService = read("services/identity-server/src/dev/platform/platform-service.js");
 
-  assert.match(devServer, /async function handleLogin\(req, res\)/);
+  assert.match(authHandlers, /async function handleLogin\(req, res\)/);
   assert.match(authRoutes, /path: "\/api\/session"/);
-  assert.match(devServer, /async function handlePlatformBootstrap\(res, session/);
+  assert.match(platformService, /async function handlePlatformBootstrap\(res, session/);
   assert.match(projectRoutes, /\^\\\/api\\\/platform\\\/projects\\\/\(\[\^\/\]\+\)\$/);
   assert.match(projectRoutes, /\^\\\/api\\\/platform\\\/projects\\\/\(\[\^\/\]\+\)\\\/project-app\$/);
 });
@@ -35,7 +36,9 @@ test("browser selectors remain present in the productive Identity UI", () => {
   const auth = read("services/identity-server/public/app/auth/index.html");
   const app = read("services/identity-server/public/app/index.html");
   const projectController = read("services/identity-server/public/app/app-project-controller.js");
-  for (const id of ["login-title", "login-form", "show-identifier-login", "login-identifier", "status"]) {
+  // show-identifier-login ist entfallen: der Spitzname ist jetzt ein dauerhaft
+  // sichtbares optionales Feld statt eines Umschalters.
+  for (const id of ["login-title", "login-form", "login-identifier-field", "login-identifier", "status"]) {
     assert.match(auth, new RegExp(`id="${id}"`));
   }
   assert.match(app, /id="projectList"/);

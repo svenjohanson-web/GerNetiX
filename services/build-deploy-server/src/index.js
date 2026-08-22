@@ -31,7 +31,7 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
   const interfaceTelemetry = createInterfaceCallTelemetry({
     dbPath: config.interfaceTelemetrySqlitePath,
     endpoint: config.interfaceTelemetryEndpoint,
-    token: config.interfaceTelemetryToken,
+    internalApiSigningKey: config.internalApiSigningKey,
     sourceService: "build-deploy-server",
   });
   const mqttTransport = config.mqttBrokerUrl ? new MqttTransport({
@@ -63,6 +63,7 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
       mqttPublisher: mqttTransport,
       authorizationSigner,
       acknowledgementStore,
+      internalApiSigningKey: config.internalApiSigningKey,
     }),
     deviceJobLock: new DeviceJobLock(),
     buildTargetLock: buildCoordination || new BuildTargetLock(),
@@ -107,6 +108,8 @@ function createDefaultBuildDeployService(config = createConfig()) {
         ? Promise.resolve(new HttpArtifactStore({
           baseUrl: config.artifactUploadBaseUrl,
           token: config.artifactUploadToken,
+          signingKey: config.internalApiSigningKey,
+          workerId: config.workerId,
           publicBaseUrl: config.publicBaseUrl,
           tempDir: config.tempDir,
           timeoutMs: config.artifactUploadTimeoutMs,
@@ -134,8 +137,8 @@ function createDefaultBuildDeployService(config = createConfig()) {
         : null,
     ]).then(([acknowledgementStore, artifactStore, buildCoordination]) => {
       const service = createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination, artifactPolicySource });
-      if (config.artifactPersistenceBackend === "postgres" && config.artifactUploadToken) {
-        if (config.artifactUploadToken.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
+      if (config.artifactPersistenceBackend === "postgres" && (config.internalApiSigningKey || config.artifactUploadToken)) {
+        if (config.artifactUploadToken && config.artifactUploadToken.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
         service.artifactUploadToken = config.artifactUploadToken;
         service.artifactUploadIngress = new ArtifactUploadIngress({
           artifactStore,

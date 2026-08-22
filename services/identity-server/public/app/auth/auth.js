@@ -1,3 +1,7 @@
+import { GerNetiXActionOps } from "@app/action-observability.js";
+import { GerNetiXI18n } from "@app/i18n/i18n.js";
+import { publicI18n } from "/landing.js";
+
 const loginForm = document.querySelector("#login-form");
 const registerForm = document.querySelector("#register-form");
 const recoveryForm = document.querySelector("#recovery-form");
@@ -17,7 +21,7 @@ function tr(key, fallback, variables = {}) {
 }
 
 function currentLocale() {
-  return i18n?.locale || window.GerNetiXI18n?.resolveLocale?.() || "de";
+  return i18n?.locale || GerNetiXI18n?.resolveLocale?.() || "de";
 }
 
 const titleElement = document.querySelector("#login-title");
@@ -31,8 +35,17 @@ const securingAccount = false;
 initializeI18n();
 activeSessionDialog.addEventListener("cancel", (event) => event.preventDefault());
 
+/*
+ * publicI18n ist eine lebendige Bindung: landing.js weist sie zu, sobald die
+ * Uebersetzung geladen ist, und dieser Zugriff liefert immer den aktuellen
+ * Wert. Frueher stand hier ein Schnappschuss aus window.GerNetiXPublicI18n --
+ * ein Rennschutz fuer den Fall, dass das Ereignis schon gefeuert hatte, bevor
+ * der Lauscher stand. Das Rennen gibt es so nicht mehr.
+ *
+ * Das Ereignis bleibt, denn es sagt nicht was, sondern wann.
+ */
 async function initializeI18n() {
-  i18n = window.GerNetiXPublicI18n || null;
+  i18n = publicI18n;
   if (!i18n) {
     document.addEventListener("gernetix:public-i18n-ready", (event) => {
       i18n = event.detail;
@@ -44,7 +57,7 @@ async function initializeI18n() {
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const action = window.GerNetiXActionOps?.begin("identity.login.passkey", { timeoutMs: 120000 });
+  const action = GerNetiXActionOps?.begin("identity.login.passkey", { timeoutMs: 120000 });
   const username = String(new FormData(loginForm).get("identifier") || "").trim();
   statusElement.textContent = tr("auth.status.passkey.requesting", "Passkey wird angefordert …");
   let browserPasskeyRequest = false;
@@ -69,7 +82,7 @@ loginForm.addEventListener("submit", async (event) => {
     }, actionHeaders(action)), passkeyActionReason);
     await actionStep(action, "auth.session", async () => result, "authentication_verification_failed");
     action?.succeed();
-    window.location.href = result.next || "/app/dashboard/";
+    window.location.href = withWelcomeGuide(result.next || "/app/dashboard/");
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error, action);
     if (error?.code === "active_session_exists" && error?.payload?.pending_login_token) {
@@ -89,7 +102,7 @@ document.querySelector("#cancel-session-takeover").addEventListener("click", asy
 
 document.querySelector("#confirm-session-takeover").addEventListener("click", async () => {
   await completePendingSessionAction("/api/session/takeover", "Sitzung wird gewechselt …", (result) => {
-    window.location.href = result.next || pendingLogin?.next || nextUrl;
+    window.location.href = withWelcomeGuide(result.next || pendingLogin?.next || nextUrl);
   });
 });
 
@@ -118,7 +131,7 @@ registerForm.addEventListener("submit", async (event) => {
       locale: currentLocale(),
     });
     statusElement.textContent = tr("auth.status.account.created", "Konto wurde angelegt.");
-    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 900);
+    window.setTimeout(() => { window.location.href = withWelcomeGuide(result.next || "/app/dashboard/"); }, 900);
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
     statusElement.textContent = registrationFailureMessage(error);
@@ -148,7 +161,7 @@ recoveryForm.addEventListener("submit", async (event) => {
       locale: currentLocale(),
     });
     statusElement.textContent = tr("auth.status.recovery.restored", "Zugang wurde wiederhergestellt.");
-    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 600);
+    window.setTimeout(() => { window.location.href = withWelcomeGuide(result.next || "/app/dashboard/"); }, 600);
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
     statusElement.textContent = localizedErrorMessage(error, "auth.status.recovery.failed", "Zugang konnte nicht wiederhergestellt werden.");
@@ -188,7 +201,7 @@ guestAccessButton.addEventListener("click", async () => {
   statusElement.textContent = tr("auth.status.guest.creating", "Gastzugang wird angelegt …");
   try {
     const result = await postJson("/api/account/guest", { next: nextUrl, locale: currentLocale() });
-    window.location.href = result.next || "/app/dashboard/";
+    window.location.href = withWelcomeGuide(result.next || "/app/dashboard/");
   } catch (error) {
     statusElement.textContent = localizedErrorMessage(error, "auth.status.guest.failed", "Gastzugang konnte nicht angelegt werden.");
   }
@@ -221,6 +234,13 @@ function applyMode(updateUrl) {
     registration ? params.set("mode", "register") : recovery ? params.set("mode", "recovery") : supportRecovery ? params.set("mode", "support-recovery") : params.delete("mode");
     window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
   }
+}
+
+function withWelcomeGuide(destination) {
+  const url = new URL(destination || "/app/dashboard/", window.location.origin);
+  if (url.origin !== window.location.origin) return "/app/dashboard/?welcome=1";
+  url.searchParams.set("welcome", "1");
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 async function postJson(url, body, headers = {}) {

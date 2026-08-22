@@ -59,7 +59,7 @@ function projectBoardContext(project) {
   })}`;
 }
 
-function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
+function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, accountSubscription, readJsonBody, requireProjectAccess, sendJson }) {
   const responseFileContext = new Map();
   const pendingCodeProposals = new Map();
   async function handleChat(req, res, session) {
@@ -90,6 +90,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const learnedIntentContext = codeExplorerMode ? null : await architectureIntentContext(userMessages, aiContextJson, {
         accountId: projectServerUserId(session),
         projectId,
+        internalAuth: { scopes: ["ai.context.read"], delegation: userDelegation(session, projectId) },
       });
       const configuredRoute = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
       const activeConfig = configuredRoute;
@@ -174,14 +175,14 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       let response;
       try {
         response = codeExplorerMode && activeConfig.apiProvider === "openai-responses"
-          ? await callOpenAiCodeAgent(messages, activeConfig, project, { previousResponseId, latestUserMessage: userMessages.at(-1) })
+          ? await callOpenAiCodeAgent(messages, activeConfig, project, { previousResponseId, latestUserMessage: userMessages.at(-1), accountId: projectServerUserId(session) })
           : await callChatProvider(messages, activeConfig);
       } catch (error) {
-        await failUsage(usagePreflight, error);
+        await failUsage(usagePreflight, error, session, projectId);
         throw error;
       }
       const usage = usageFromProvider(response);
-      const usageEvent = await completeUsage(usagePreflight, usage);
+      const usageEvent = await completeUsage(usagePreflight, usage, session, projectId);
       const rawAssistantContent = String(response.message?.content || "").trim();
       if (!rawAssistantContent) throw new Error("Der konfigurierte KI-Provider hat keine Antwort geliefert.");
       const latestUserRequest = [...userMessages].reverse().find((message) => message.role === "user")?.content || "";
@@ -259,6 +260,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     }
     const result = await projectServerJson(`/api/projects/${encodeURIComponent(proposal.projectServerId)}/repository/commits`, {
       method: "POST",
+      ...projectDelegation(session, project, "project.write"),
       body: {
         expected_head_sha: proposal.expectedHeadSha,
         message: String(body.message || "Bestätigten KI-Vorschlag übernehmen").trim().slice(0, 200),
@@ -621,6 +623,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     try {
       const preflight = await aiContextJson("/api/ai-context/preflight", {
         method: "POST",
+        internalAuth: { scopes: ["ai.context.use"], delegation: userDelegation(session, projectId) },
         body: {
           account_id: accountId,
           project_id: projectId,
@@ -781,7 +784,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         previousResponseId = payload.id;
         input = [];
         for (const call of calls) {
-          const output = await executeProjectSourceTool(call, project.project_server_id, toolFiles, repositoryHeadSha);
+          const output = await executeProjectSourceTool(call, project, toolFiles, repositoryHeadSha, options.accountId);
           input.push({ type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) });
         }
       }
@@ -829,7 +832,8 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     while (cache.size > 100) cache.delete(cache.keys().next().value);
   }
 
-  async function executeProjectSourceTool(call, projectServerId, toolFiles, repositoryHeadSha) {
+  async function executeProjectSourceTool(call, project, toolFiles, repositoryHeadSha, accountId) {
+    const projectServerId = String(project.project_server_id);
     let args = {};
     try { args = JSON.parse(call.arguments || "{}"); } catch { args = {}; }
     if (call.name === "find_and_read_project_sources") {
@@ -842,7 +846,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         commit_sha: repositoryHeadSha,
         limit: "20",
       });
-      const result = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/search?${query}`);
+      const result = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/search?${query}`, projectDelegation(null, project, "project.read", accountId));
       const items = (result.items || []).filter((item) => projectSourceMatchesKind(item.path, sourceKind)).slice(0, 3)
         .map((item) => ({ path: item.path, score: item.score, content: String(item.content || "").slice(0, 24000) }));
       items.forEach((item) => toolFiles.set(item.path, { path: item.path, content: item.content }));
@@ -1008,6 +1012,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     return aiUsageJson("/api/ai-usage/preflight", {
       method: "POST",
       allowPaymentRequired: true,
+      internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session, projectId) },
       body: {
         account_id: accountId,
         user_id: accountId,
@@ -1022,11 +1027,12 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     });
   }
 
-  async function completeUsage(preflight, usage) {
+  async function completeUsage(preflight, usage, session, projectId) {
     if (!aiUsageJson || !preflight?.event_id) return null;
     try {
       return await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, {
         method: "POST",
+        internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session, projectId) },
         body: {
           input_tokens: usage.promptTokens ?? 0,
           output_tokens: usage.completionTokens ?? 0,
@@ -1037,11 +1043,12 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     }
   }
 
-  async function failUsage(preflight, error) {
+  async function failUsage(preflight, error, session, projectId) {
     if (!aiUsageJson || !preflight?.event_id) return null;
     try {
       return await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/fail`, {
         method: "POST",
+        internalAuth: { scopes: ["ai.usage.consume"], delegation: userDelegation(session, projectId) },
         body: {
           error_code: "provider_error",
           error_message: error.message || String(error),
@@ -1050,6 +1057,23 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     } catch {
       return null;
     }
+  }
+
+  function projectDelegation(session, project, scope = "project.read", delegatedAccountId = "") {
+    const accountId = delegatedAccountId || (session
+      ? projectServerUserId(session)
+      : String(project.owner_user_id || project.user_id || ""));
+    if (!accountId || !project?.project_server_id) throw new Error("A server-authorized project is required for AI project tools.");
+    return { internalAuth: { scopes: [scope], delegation: { account_id: accountId, project_ids: [String(project.project_server_id)] } } };
+  }
+
+  function userDelegation(session, projectId = "") {
+    const accountId = projectServerUserId(session);
+    return {
+      account_id: accountId,
+      project_ids: projectId ? [projectId] : [],
+      entitlements: accountSubscription?.(session)?.entitlements || [],
+    };
   }
 
   function responseInput(messages) {
@@ -1529,7 +1553,7 @@ async function architectureIntentContext(messages, aiContextJson, metadata = {})
   const utterance = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
   if (!aiContextJson || !looksLikeArchitectureAddition(utterance)) return null;
   const [intentSearch, componentSearch] = await Promise.all([
-    searchIntentExamples(aiContextJson, utterance, metadata.accountId),
+    searchIntentExamples(aiContextJson, utterance, metadata.accountId, metadata.internalAuth),
     searchArchitectureComponents(aiContextJson, utterance),
   ]);
   const intentMatch = intentSearch.items[0] || null;
@@ -1550,6 +1574,10 @@ async function architectureIntentContext(messages, aiContextJson, metadata = {})
     try {
       await aiContextJson("/api/ai-context/clarification-cases", {
         method: "POST",
+        internalAuth: {
+          scopes: ["ai.context.write"],
+          delegation: metadata.internalAuth?.delegation,
+        },
         body: {
           utterance,
           domain: "architecture",
@@ -1578,9 +1606,9 @@ async function architectureIntentContext(messages, aiContextJson, metadata = {})
   };
 }
 
-async function searchIntentExamples(aiContextJson, query, accountId = "") {
+async function searchIntentExamples(aiContextJson, query, accountId = "", internalAuth = undefined) {
   try {
-    const response = await aiContextJson(`/api/ai-context/intent-examples/search?q=${encodeURIComponent(query)}&limit=3&account_id=${encodeURIComponent(accountId)}`);
+    const response = await aiContextJson(`/api/ai-context/intent-examples/search?q=${encodeURIComponent(query)}&limit=3&account_id=${encodeURIComponent(accountId)}`, { internalAuth });
     return { strategy:response.strategy||"none", items:Array.isArray(response.items)?response.items:[] };
   } catch {
     return { strategy:"none", items:[] };

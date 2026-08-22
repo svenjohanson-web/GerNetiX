@@ -57,7 +57,7 @@ class InMemoryIdentityRepository {
     return this.clock().toISOString();
   }
 
-  createUserAccount({ id, username, email, status, accountType = "email_account", guestExpiresAt = null, passkeyCredentialId = null, passkeyPublicKey = null, passkeyCounter = 0, passkeyTransports = [], offlineRecoverySetConfirmedAt = null, offlineRecoverySetHash = null, recoveryBoardIds = [], preferredLocale = "de", subscriptionPlan = "free", planValidUntil = null, lifecycleState = "active", emailVerifiedAt = null }) {
+  createUserAccount({ id, username, email, status, accountType = "email_account", guestExpiresAt = null, passkeyCredentialId = null, passkeyPublicKey = null, passkeyCounter = 0, passkeyTransports = [], offlineRecoverySetConfirmedAt = null, offlineRecoverySetHash = null, recoveryBoardIds = [], preferredLocale = "de", welcomeGuideDisabled = false, subscriptionPlan = "free", planValidUntil = null, lifecycleState = "active", emailVerifiedAt = null }) {
     const normalizedUsername = normalizeUsername(username);
     const normalizedEmail = email ? normalizeEmail(email) : null;
 
@@ -95,6 +95,7 @@ class InMemoryIdentityRepository {
       offline_recovery_set_hash: offlineRecoverySetHash,
       recovery_board_ids: [...recoveryBoardIds],
       preferred_locale: preferredLocale,
+      welcome_guide_disabled: Boolean(welcomeGuideDisabled),
       subscription_plan: subscriptionPlan,
       plan_valid_until: planValidUntil,
       last_meaningful_activity_at: now,

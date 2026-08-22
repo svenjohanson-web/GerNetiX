@@ -1,20 +1,22 @@
 "use strict";
 
 const http = require("node:http");
+const { issueInternalToken } = require("../../shared/internal-api-auth");
+const { readOptionalInternalApiAuthConfig } = require("../../shared/internal-api-auth-env");
 
 async function main() {
-  const token = process.env.SYSTEM_EVENT_INGEST_TOKEN || "";
-  if (!token) throw new Error("SYSTEM_EVENT_INGEST_TOKEN ist fuer den synthetischen Monitor nicht konfiguriert.");
+  const signingKey = readOptionalInternalApiAuthConfig(process.env, "admin-tool");
+  if (!signingKey) throw new Error("Interne API-Authentifizierung ist fuer den synthetischen Monitor nicht konfiguriert.");
   const result = await requestRun({
     baseUrl: process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600",
-    token,
+    signingKey,
     timeoutMs: Number(process.env.SYNTHETIC_CHECK_TIMEOUT_MS || 1500),
   });
   process.stdout.write(`${JSON.stringify({ latest_run_id: result.latest_run_id, summary: result.summary })}\n`);
   if (Number(result.summary?.failed || 0) > 0) process.exitCode = 2;
 }
 
-function requestRun({ baseUrl, token, timeoutMs }) {
+function requestRun({ baseUrl, signingKey, timeoutMs }) {
   const target = new URL("/api/internal/synthetic-checks/run", baseUrl);
   const body = Buffer.from(JSON.stringify({ timeout_ms: timeoutMs }));
   return new Promise((resolve, reject) => {
@@ -23,7 +25,7 @@ function requestRun({ baseUrl, token, timeoutMs }) {
       headers: {
         "Content-Type": "application/json",
         "Content-Length": body.length,
-        "X-GerNetiX-System-Event-Token": token,
+        Authorization: `Bearer ${issueInternalToken({ iss: "admin-tool", sub: "synthetic-monitor", aud: "admin-tool", scopes: ["operations.synthetic_checks.run"] }, signingKey)}`,
       },
     }, (response) => {
       const chunks = [];

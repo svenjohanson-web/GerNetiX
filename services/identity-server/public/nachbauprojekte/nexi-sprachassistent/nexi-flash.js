@@ -1,11 +1,14 @@
 "use strict";
+import { GerNetiXActionOps } from "@app/action-observability.js";
+import { GerNetiXSerialService } from "@app/serial-service-client.js";
+import { GerNetiXFlashDialog } from "@app/unified-flash-dialog.js";
 
 const DEMO_ID = "nexi-basic-waveshare-s3";
 const openFlashButton = document.querySelector("#open-flash-dialog");
 const retryReleaseButton = document.querySelector("#retry-release");
 const flashEntryStatus = document.querySelector("#flash-entry-status");
-const serialService = window.GerNetiXSerialService?.create?.() || null;
-const flashDialog = window.GerNetiXFlashDialog.create();
+const serialService = GerNetiXSerialService?.create?.() || null;
+const flashDialog = GerNetiXFlashDialog.create();
 let selectedDemo = null;
 let selectedPort = null;
 let displayedFlashPercent = 0;
@@ -57,7 +60,7 @@ openFlashButton.addEventListener("click", () => {
     actionTimeoutMs: 10 * 60 * 1000,
     async onExecute(method, progress) {
       if (method !== "usb") throw new Error("Dieser Übertragungsweg ist für Nexi Basic nicht verfügbar.");
-      const action = window.GerNetiXActionOps?.begin?.("nexi.flash.usb.start", {
+      const action = GerNetiXActionOps?.begin?.("nexi.flash.usb.start", {
         releaseId: selectedDemo?.releases?.[0]?.version || "",
         timeoutMs: 10 * 60 * 1000,
       });

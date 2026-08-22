@@ -14,6 +14,7 @@ const identityRoutes = [
   route("identity.network_analyzer_lab", "/technik-labs/netzwerkanalysator/", "public", "Learning"),
   route("identity.motor_rebuild", "/nachbauprojekte/einfache-elektromotoren/", "public", "Learning"),
   route("identity.printed_motor_series", "/nachbauprojekte/druckmotoren/", "public", "Learning"),
+  route("identity.modular_maker_car", "/nachbauprojekte/modulares-maker-auto/", "public", "Learning"),
   route("identity.nexi_rebuild", "/nachbauprojekte/nexi-sprachassistent/", "public", "Learning"),
   route("identity.radar_room_presence_rebuild", "/nachbauprojekte/radar-raumpraesenz/", "public", "Learning"),
   route("identity.flashbox_setup", "/flashbox-einrichten/", "public", "DeviceManagement"),

@@ -1,0 +1,16 @@
+{
+  "comment": [
+    "Zentrale Ausnahmeliste fuer die Test-CI.",
+    "Grundregel: Jeder Service unter services/ und jede *.test.js unter tools/ laeuft in der CI.",
+    "Wer etwas ausnimmt, traegt es hier mit Begruendung ein. Neue Tests laufen automatisch mit.",
+    "Die Ausnahmeliste ist zum Schrumpfen gedacht, nicht zum Wachsen."
+  ],
+  "serviceSkipPatterns": {
+    "project-server": {
+      "pattern": "loads the protected ESP32 basis and overlays only the project user main",
+      "reason": "Braucht die private ESP32-Basissoftware aus ../GerNetiX-Projekte/, die im CI-Checkout nicht vorliegt."
+    }
+  },
+  "excludedServices": {},
+  "excludedToolsTests": {}
+}

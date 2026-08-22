@@ -8,6 +8,7 @@ const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "index.html"), "utf8");
 const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "einfache-elektromotoren", "index.html"), "utf8");
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
+const modularMakerCar = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "modulares-maker-auto", "index.html"), "utf8");
 const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const radarRoomPresenceRoot = path.join(root, "public", "nachbauprojekte", "radar-raumpraesenz");
 const radarRoomPresence = fs.readFileSync(path.join(radarRoomPresenceRoot, "index.html"), "utf8");
@@ -105,6 +106,35 @@ test("publishes the HW-364A one-button game collection as an additional rebuild 
   assert.match(hw364aGames, /SDA GPIO14 und SCL GPIO12/);
   assert.match(hw364aGames, /Build geprüft, Hardware-Abnahme noch offen/);
   assert.match(hw364aGames, /öffentlicher WebSerial-Download wird hier ergänzt/);
+});
+
+test("publishes a modular laser-cut and 3D-printed ESP32 maker car concept", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/modulares-maker-auto"[\s\S]*redirect\(res, "\/nachbauprojekte\/modulares-maker-auto\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/modulares-maker-auto\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/modulares-maker-auto\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/modulares-maker-auto\/"/);
+  assert.match(page, /Modulares Maker-Auto mit ESP32 bauen/);
+  assert.match(page, /Projektkonzept · CAD und Firmware offen/);
+  assert.match(modularMakerCar, /Baue ein ferngesteuertes Auto, das mit deinen Ideen mitwächst/);
+  assert.match(modularMakerCar, /zwei gebürstete 3–6-V-TT-Getriebemotoren/);
+  assert.match(modularMakerCar, /TB6612FNG-Zweikanal-Motortreiber/);
+  assert.match(modularMakerCar, /Amazon-Suchliste · Stand August 2026/);
+  assert.match(modularMakerCar, /ESP32\+DevKit\+WROOM-32\+USB-C/);
+  assert.match(modularMakerCar, /35–55 €/);
+  assert.match(modularMakerCar, /lose 18650-Zellen/);
+  assert.match(modularMakerCar, /Vier AA-NiMH-Zellen/);
+  assert.match(modularMakerCar, /GPIO26 \/ GPIO27[\s\S]*GPIO32 \/ GPIO33[\s\S]*GPIO18/);
+  assert.match(modularMakerCar, /300-ms-Watchdog/);
+  assert.match(modularMakerCar, /TT-Bürstenmotor[\s\S]*N20-Getriebemotor[\s\S]*sensored BLDC/);
+  assert.match(modularMakerCar, /Ein Fahrzeuganschluss, zuerst ein Ultraschallhalter/);
+  assert.match(modularMakerCar, /HC-SR04[\s\S]*GPIO23[\s\S]*GPIO34/);
+  assert.match(modularMakerCar, /1 kΩ[\s\S]*2 kΩ[\s\S]*ungefähr 3,3 V/);
+  assert.match(modularMakerCar, /Unter 40 cm[\s\S]*unter 20 cm/);
+  assert.match(modularMakerCar, /ultrasonic\.front/);
+  assert.match(modularMakerCar, /Ungültige und veraltete Messungen[\s\S]*nie als freie Fahrt/);
+  assert.doesNotMatch(modularMakerCar, /LD2410C|24-GHz-Radar|radar\.front|Radar und Ultraschall/);
+  assert.match(modularMakerCar, /Sechs Ausbaustufen/);
+  assert.match(modularMakerCar, /CAD-Dateien, Firmware und reale Hardware-Abnahme sind noch offen/);
+  assert.doesNotMatch(modularMakerCar, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
 });
 
 test("publishes a Forgejo-backed ESP32 and Arduino Nano radar room-presence rebuild project", () => {
@@ -212,9 +242,9 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiProject, /href="inbetriebnahme\/index\.html"/);
   assert.match(nexiCommissioning, /Schritt 2 von 2[\s\S]*Nexi in Betrieb nehmen/);
   assert.match(nexiCommissioning, /RESET[\s\S]*BOOT[\s\S]*KEY3[\s\S]*KEY2[\s\S]*KEY1/);
-  assert.match(nexiCommissioning, /RGB-Ringfarben[\s\S]*Die drei Nexi-Tasten[\s\S]*class="nexi-actions-title">Inbetriebnahme[\s\S]*integrierten Lautsprecher prüfen[\s\S]*„Hey Nexi“ einrichten/);
+  assert.match(nexiCommissioning, /RGB-Ringfarben[\s\S]*Die drei Nexi-Tasten[\s\S]*class="nexi-actions-title">Inbetriebnahme[\s\S]*integrierten Lautsprecher prüfen[\s\S]*Nexi Schritt für Schritt auf deine Stimme einrichten/);
   assert.doesNotMatch(nexiCommissioning, /Die drei Nexi-Tasten testen/);
-  assert.match(nexiCommissioning, /data-nexi-wake-lab[\s\S]*data-wake-enroll[\s\S]*data-wake-test/);
+  assert.match(nexiCommissioning, /data-nexi-guided-setup[\s\S]*data-setup-guide[\s\S]*data-setup-repeat/);
   assert.doesNotMatch(nexiCommissioning, /nicht verfügbar|Nutzerablauf freigegeben|bisherige Liste/);
   assert.match(nexiProject, /Grundversion funktioniert ohne Konto/);
   assert.match(nexiProject, /kein eigener Build ist erforderlich/);
@@ -223,7 +253,6 @@ test("publishes Nexi as a complete, prebuilt and directly flashable rebuild proj
   assert.match(nexiProject, /id="open-flash-dialog"[^>]*aria-describedby="flash-entry-status"[^>]*disabled/);
   assert.match(nexiProject, /unified-flash-dialog\.js/);
   assert.match(nexiProject, /nexi-flash\.js/);
-  assert.match(nexiProject, /nexi-flash\.js\?v=20260807-action-ops-1/);
   assert.match(nexiFlash, /const DEMO_ID = "nexi-basic-waveshare-s3"/);
   assert.match(nexiFlash, /manifest\.chip !== "esp32s3"/);
   assert.match(nexiFlash, /manifest\.flash_size !== "16MB"/);

@@ -159,9 +159,24 @@ class AuthService {
   }
 
   async update_preferred_locale(userId, locale) {
-    const preferredLocale = normalizePreferredLocale(locale, "");
-    if (!preferredLocale) throw new AuthError("invalid_locale", "Locale is not supported.", 400);
-    const account = await this.repository.updateUserAccount(userId, { preferred_locale: preferredLocale });
+    return this.update_account_preferences(userId, { preferred_locale: locale });
+  }
+
+  async update_account_preferences(userId, preferences = {}) {
+    const patch = {};
+    if (Object.hasOwn(preferences, "preferred_locale")) {
+      const preferredLocale = normalizePreferredLocale(preferences.preferred_locale, "");
+      if (!preferredLocale) throw new AuthError("invalid_locale", "Locale is not supported.", 400);
+      patch.preferred_locale = preferredLocale;
+    }
+    if (Object.hasOwn(preferences, "welcome_guide_disabled")) {
+      if (typeof preferences.welcome_guide_disabled !== "boolean") {
+        throw new AuthError("invalid_preference", "Welcome guide preference must be boolean.", 400);
+      }
+      patch.welcome_guide_disabled = preferences.welcome_guide_disabled;
+    }
+    if (!Object.keys(patch).length) throw new AuthError("invalid_preferences", "No supported preference was provided.", 400);
+    const account = await this.repository.updateUserAccount(userId, patch);
     if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
     return toPublicAccount(account, this.clock());
   }
@@ -970,6 +985,7 @@ function toPublicAccount(account, now = new Date()) {
     updated_at: account.updated_at,
     account_type: account.account_type || "email_account",
     preferred_locale: normalizePreferredLocale(account.preferred_locale),
+    welcome_guide_disabled: Boolean(account.welcome_guide_disabled),
     subscription_plan: account.subscription_plan
       ? normalizeSubscriptionPlan(account.subscription_plan)
       : undefined,

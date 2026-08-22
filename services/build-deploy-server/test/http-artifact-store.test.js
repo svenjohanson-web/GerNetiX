@@ -7,6 +7,7 @@ const path = require("node:path");
 const test = require("node:test");
 const zlib = require("node:zlib");
 const { HttpArtifactStore } = require("../src/modules/http-artifact-store");
+const { verifyInternalToken } = require("../../shared/internal-api-auth");
 
 test("compresses symbol artifacts, streams uploads and finalizes the exact set", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-http-artifacts-"));
@@ -17,7 +18,8 @@ test("compresses symbol artifacts, streams uploads and finalizes the exact set",
   const metrics = [];
   const store = new HttpArtifactStore({
     baseUrl: "https://build.internal",
-    token: "a".repeat(32),
+    signingKey: "http-artifact-store-test-key",
+    workerId: "worker-test-1",
     publicBaseUrl: "https://build.example",
     tempDir: root,
     request: async (request) => {
@@ -38,6 +40,11 @@ test("compresses symbol artifacts, streams uploads and finalizes the exact set",
     assert.deepEqual(zlib.gunzipSync(calls[0].payload), original);
     assert.ok(calls[0].payload.length < original.length);
     assert.deepEqual(JSON.parse(calls[1].payload), { artifacts: ["firmware.elf"] });
+    const uploadGrant = verifyInternalToken(calls[0].headers.Authorization.replace(/^Bearer /, ""), "http-artifact-store-test-key", { audience: "build-deploy-server", requiredScopes: ["artifact.upload"] });
+    assert.deepEqual(uploadGrant.context.job_ids, ["job-1"]);
+    assert.deepEqual(uploadGrant.context.worker_ids, ["worker-test-1"]);
+    assert.deepEqual(uploadGrant.context.artifact_names, ["firmware.elf"]);
+    verifyInternalToken(calls[1].headers.Authorization.replace(/^Bearer /, ""), "http-artifact-store-test-key", { audience: "build-deploy-server", requiredScopes: ["artifact.finalize"] });
     assert.equal(result["firmware.elf"].size_bytes, original.length);
     assert.equal(metrics[0].backend, "http");
     assert.ok(metrics[0].transferred_bytes < metrics[0].total_bytes);

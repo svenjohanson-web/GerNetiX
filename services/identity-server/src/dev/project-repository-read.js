@@ -31,7 +31,7 @@ function createProjectRepositoryRead({ projectServerJson }) {
 
   async function tree(project, commitSha = "") {
     if (!await usesForgejo(project)) return fallback.tree(project, commitSha);
-    return projectServerJson(`${repositoryPath(project)}/tree${commitQuery(commitSha)}`);
+    return projectServerJson(`${repositoryPath(project)}/tree${commitQuery(commitSha)}`, projectAccess(project));
   }
 
   async function file(project, sourcePath, commitSha = "") {
@@ -39,13 +39,14 @@ function createProjectRepositoryRead({ projectServerJson }) {
     const path = validatePath(sourcePath);
     const source = await projectServerJson(
       `/api/projects/${projectId(project)}/sources/${encodeURIComponent(path)}${commitQuery(commitSha)}`,
+      projectAccess(project),
     );
     return filePayload(String(source.commit_sha || commitSha || ""), source);
   }
 
   async function history(project) {
     if (!await usesForgejo(project)) return fallback.history(project);
-    const result = await projectServerJson(`${repositoryPath(project)}/history`);
+    const result = await projectServerJson(`${repositoryPath(project)}/history`, projectAccess(project));
     return {
       contract_version: CONTRACT_VERSION,
       items: (result.items || []).map((item) => ({
@@ -63,6 +64,7 @@ function createProjectRepositoryRead({ projectServerJson }) {
     if (!await usesForgejo(project)) return fallback.diff(project, commitSha);
     const result = await projectServerJson(
       `${repositoryPath(project)}/commits/${encodeURIComponent(commitSha)}/diff`,
+      projectAccess(project),
     );
     return {
       contract_version: CONTRACT_VERSION,
@@ -84,7 +86,7 @@ function createProjectRepositoryRead({ projectServerJson }) {
   }
 
   function loadProject(project) {
-    return projectServerJson(`/api/projects/${projectId(project)}`);
+    return projectServerJson(`/api/projects/${projectId(project)}`, projectAccess(project));
   }
 
   return { diff, file, history, status, tree };
@@ -92,6 +94,12 @@ function createProjectRepositoryRead({ projectServerJson }) {
 
 function projectId(project) {
   return encodeURIComponent(String(project.project_server_id || ""));
+}
+
+function projectAccess(project) {
+  const accountId = String(project.owner_user_id || project.user_id || "");
+  if (!accountId) throw new Error("A server-authorized project owner is required for repository access.");
+  return { internalAuth: { scopes: ["project.read"], delegation: { account_id: accountId, project_ids: [String(project.project_server_id)] } } };
 }
 
 function repositoryPath(project) {

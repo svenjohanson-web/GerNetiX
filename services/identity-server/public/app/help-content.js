@@ -35,3 +35,7 @@ const HelpContent = (() => {
 
   return content;
 })();
+
+export {
+  HelpContent,
+};

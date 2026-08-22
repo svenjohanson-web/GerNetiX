@@ -1,3 +1,15 @@
+/*
+ * Erste Datei, die einen Bezug ausdruecklich einfuehrt statt ihn aus dem
+ * globalen Namensraum aufzulesen.
+ *
+ * Der kurze Name kommt aus der Import Map im Dokumentkopf. Ohne sie muesste
+ * hier "./api-client.js?v=20260820-esm-export-1" stehen -- mit Cache-Version,
+ * die bei jeder Aenderung in jedem import nachzuziehen waere. Ein import ohne
+ * Version wuerde eine zweite Kopie laden und das Modul doppelt anlegen.
+ */
+import { ApiClient } from "@app/api-client.js";
+import { HelpContent } from "@app/help-content.js";
+
 const HelpChatService = (() => {
   async function answer(question, history = []) {
     const text = String(question || "").trim();
@@ -19,3 +31,5 @@ const HelpChatService = (() => {
 
   return { answer };
 })();
+
+export { HelpChatService };

@@ -1,4 +1,7 @@
 // GerNetiX platform module extracted from app.js.
+import { getJson, postJson } from "@app/app-runtime-utils.js";
+import { state } from "@app/platform-state.js";
+
 async function enablePushNotifications() {
   const status = document.querySelector("#pushStatus");
   const projectId = selectedPushProjectId();
@@ -32,3 +35,8 @@ function base64UrlToBytes(value) { const padded = String(value).replace(/-/g, "+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/app/push-sw.js").catch(() => {});
 }
+
+export {
+  enablePushNotifications,
+  sendPushTestNotification,
+};

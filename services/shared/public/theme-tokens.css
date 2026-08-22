@@ -1,0 +1,133 @@
+/*
+ * GerNetiX Farb-Vokabular
+ * =======================
+ *
+ * Diese Datei legt die gemeinsamen Token-NAMEN fest, nicht eine einzige
+ * Palette. Der oeffentliche Auftritt (warm, redaktionell) und die angemeldete
+ * Plattform (technisch, dunkel) bleiben bewusst unterschiedlich gestaltet; sie
+ * benennen ihre Farben nur gleich.
+ *
+ * Dadurch koennen gemeinsam genutzte Bausteine wie der Flash-Dialog ihre
+ * Farben ueber var(--token) beziehen und passen sich automatisch dem Kontext
+ * an, in dem sie geladen werden.
+ *
+ * Hier definiert: die oeffentliche Palette (hell als Grundzustand, dunkel ueber
+ * html[data-public-theme="dark"]). Die Plattform-Palette steht in
+ * services/identity-server/public/app/app.css und verwendet dieselben Namen.
+ *
+ * REGEL: Ausser dieser Datei darf kein Stylesheet einen bedingungslosen
+ * :root-Block mit diesen Farbnamen deklarieren. Ein solcher Block wird spaeter
+ * geladen, ueberschreibt die Token unabhaengig vom gewaehlten Modus und legt
+ * den Hell-/Dunkel-Umschalter still. Genau dieser Fehler hatte die
+ * Spielesammlung dauerhaft dunkel gehalten.
+ *
+ * Bedeutung der Gruppen:
+ *   Flaechen  - vom tiefsten Untergrund bis zur hervorgehobenen Karte
+ *   Rahmen    - von der leisen Trennlinie bis zur betonten Kante
+ *   Text      - von der hellsten Ueberschrift bis zum leisesten Hinweis
+ *   Akzent    - Markenfarbe samt Abstufungen fuer Flaeche, Rand und Schrift
+ *   Status    - Warnung, Erfolg, Fehler, Hinweis
+ *   Ueberlagerung - Abdunklung hinter Dialogen und Schattenwurf
+ *
+ * Typografie gehoert bewusst NICHT hierher: die Schriftarten unterscheiden
+ * sich je Produkt und werden dort gesetzt, wo sie gelten.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Flaechen */
+  --surface-deep: #ebe6dc;
+  --surface: #f6f3ed;
+  --surface-panel: transparent;
+  --surface-raised: transparent;
+  /*
+   * Dialoge und Popover brauchen im Gegensatz zur flachen Seitengestaltung
+   * eine deckende Flaeche, sonst waere ihr Inhalt nicht lesbar. Deshalb sind
+   * diese beiden Werte auch dort deckend, wo --surface-panel transparent ist.
+   */
+  --surface-overlay: #fffdf8;
+  --surface-overlay-inset: #f0ece5;
+
+  /* Rahmen */
+  --border-subtle: #e2ddd2;
+  --border: #d8d2c6;
+  --border-strong: #a99e90;
+
+  /* Text */
+  --text: #20211d;
+  --text-secondary: #3f3d37;
+  --text-muted: #5d5b54;
+  --text-dim: #6f685f;
+
+  /* Akzent */
+  --accent: #8b3a2b;
+  --accent-bright: #a8503c;
+  --accent-strong: #763025;
+  --accent-soft: #f0e4d7;
+  --accent-text: #7a3328;
+
+  /* Status: die *-text-Werte sind fuer Schrift gedacht, die uebrigen fuer
+     Flaechen, Rahmen und Linien. */
+  --status-warn: #a15c12;
+  --status-warn-text: #7a4408;
+  --status-success: #2f6b3a;
+  --status-success-text: #1f5029;
+  --status-error: #a83232;
+  --status-error-text: #862424;
+  --status-info: #2f5d8a;
+  --status-info-text: #234969;
+
+  /* Ueberlagerung */
+  --scrim: rgba(45, 39, 30, .42);
+  --shadow: 0 12px 28px rgba(45, 39, 30, .12);
+
+  /*
+   * Bestandsnamen. Sie bleiben gueltig, damit die vorhandenen var()-Aufrufe
+   * in landing.css unveraendert weiterarbeiten. Neue Regeln verwenden die
+   * sprechenden Namen oben.
+   */
+  --bg: var(--surface);
+  --panel: var(--surface-panel);
+  --panel-soft: var(--surface-raised);
+  --muted: var(--text-muted);
+  --line: var(--border);
+}
+
+html[data-public-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-deep: #0f0f0e;
+  --surface: #171715;
+  --surface-panel: transparent;
+  --surface-raised: transparent;
+  --surface-overlay: #201f1c;
+  --surface-overlay-inset: #2b2926;
+
+  --border-subtle: #3a3833;
+  --border: #494640;
+  --border-strong: #6b665d;
+
+  --text: #f3efe7;
+  --text-secondary: #ddd6ca;
+  --text-muted: #cac3b7;
+  --text-dim: #a49d92;
+
+  --accent: #eaa28d;
+  --accent-bright: #f0a38d;
+  --accent-strong: #d37d68;
+  --accent-soft: #302722;
+  --accent-text: #f0a38d;
+
+  --status-warn: #e0a44a;
+  --status-warn-text: #f2c98a;
+  --status-success: #8fc79a;
+  --status-success-text: #b8dcc0;
+  --status-error: #e79a9a;
+  --status-error-text: #f2bcbc;
+  --status-info: #9dbfe0;
+  --status-info-text: #c3d9ee;
+
+  --scrim: rgba(10, 9, 8, .58);
+  --shadow: 0 12px 28px rgba(0, 0, 0, .38);
+}

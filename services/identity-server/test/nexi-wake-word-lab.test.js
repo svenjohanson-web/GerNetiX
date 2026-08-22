@@ -43,14 +43,15 @@ test("RGB ring and key explanations are outside the commissioning steps", () => 
   assert.match(commissioningPage, /Erklärung · kein Arbeitsschritt/);
 });
 
-test("working Hey Nexi setup is part of commissioning", () => {
+test("UART-synchronized guided Nexi setup is part of commissioning", () => {
   const stepsStart = commissioningPage.indexOf('<ol class="nexi-commissioning-steps">');
   const stepsEnd = commissioningPage.indexOf("</ol>", stepsStart);
   const stepsMarkup = commissioningPage.slice(stepsStart, stepsEnd);
-  assert.match(stepsMarkup, /„Hey Nexi“ einrichten/);
-  assert.match(commissioningPage, /data-nexi-wake-lab/);
-  assert.match(commissioningPage, /data-wake-enroll/);
-  assert.match(commissioningPage, /data-wake-test/);
+  assert.match(stepsMarkup, /Nexi Schritt für Schritt auf deine Stimme einrichten/);
+  assert.match(commissioningPage, /data-nexi-guided-setup/);
+  assert.match(commissioningPage, /data-setup-guide/);
+  assert.match(commissioningPage, /data-setup-repeat/);
+  assert.match(commissioningPage, /data-setup-phrase/);
   assert.match(commissioningPage, /serial-service-client\.js/);
   assert.match(commissioningPage, /nexi-wake-word-lab-ui\.js/);
   assert.doesNotMatch(commissioningPage, /nicht verfügbar|Nutzerablauf freigegeben|bisherige Liste/);
@@ -88,21 +89,64 @@ test("Nexi describes the integrated speaker without requiring external wiring", 
   assert.doesNotMatch(`${projectPage}\n${commissioningPage}`, /passenden Lautsprecher|passiven Lautsprecher|Lautsprecher anschließen/);
 });
 
-test("wake-word setup uses the board microphones through the local serial service", () => {
+test("guided setup mirrors the device state and never captures browser audio", () => {
   const source = fs.readFileSync(
     path.join(publicRoot, "nachbauprojekte/nexi-sprachassistent/nexi-wake-word-lab-ui.js"),
     "utf8",
   );
   assert.match(source, /GerNetiXSerialService/);
-  assert.match(source, /nexi_voice_status/);
-  assert.match(source, /nexi_voice_enroll/);
-  assert.match(source, /nexi_voice_test/);
-  assert.match(source, /nexi_voice_reset/);
-  assert.match(source, /Sprich jetzt einmal klar „Hey Nexi“ in Richtung des Boards/);
+  assert.match(source, /nexi_setup_status/);
+  assert.match(source, /nexi_setup_repeat/);
+  assert.match(source, /payload\.step_index/);
+  assert.match(source, /payload\.phrase/);
+  assert.match(source, /payload\.expected_action/);
+  assert.match(source, /setInterval[\s\S]*750/);
+  // Die Ansage kommt vom Board, nicht vom Browser: nexi_setup_repeat laesst
+  // das Geraet den Satz ueber seinen eigenen Lautsprecher wiederholen. Hier
+  // standen vorher Zusicherungen auf SpeechSynthesisUtterance und den Satz
+  // "Bitte sprich mir nach" -- beides kam in keiner Quelldatei des Projekts
+  // je vor, sodass dieser Test seit seiner Entstehung rot war.
+  assert.match(source, /triggerSpeakPrompt[\s\S]*?nexi_setup_repeat/);
+  assert.doesNotMatch(source, /speechSynthesis|SpeechSynthesisUtterance/);
+  assert.doesNotMatch(source, /nexi_voice_enroll|nexi_voice_test|nexi_voice_reset/);
   assert.doesNotMatch(source, /getUserMedia|MediaRecorder|AudioContext|webkitAudioContext|SpeechRecognition|localStorage|indexedDB/);
   assert.match(commissioningPage, /integrierten Mikrofone des Boards/);
   assert.match(commissioningPage, /Roh-Audio wird nicht an den Computer/);
   assert.doesNotMatch(commissioningPage, /nur in diesem Browser ausgewertet|Mikrofonfreigabe/);
   assert.equal(fs.existsSync(path.join(
     publicRoot, "nachbauprojekte/nexi-sprachassistent/nexi-wake-word-lab.js")), false);
+});
+
+test("guided setup prefers WebSerial and falls back to the native helper", () => {
+  const source = fs.readFileSync(
+    path.join(publicRoot, "nachbauprojekte/nexi-sprachassistent/nexi-wake-word-lab-ui.js"),
+    "utf8",
+  );
+  assert.match(source, /navigator\.serial/);
+  assert.match(source, /hasWebSerial/);
+  assert.match(source, /GerNetiXSerialService/);
+  assert.match(source, /createWebSerialTransport/);
+  assert.match(source, /gernetix\.serial_provisioning/);
+  assert.match(source, /request_id/);
+  assert.match(source, /baudRate:\s*115200/);
+  assert.match(source, /navigator\.serial\.getPorts/);
+  assert.match(source, /navigator\.serial\.requestPort/);
+  assert.match(source, /allowPrompt/);
+  assert.match(source, /serial_permission_declined/);
+  assert.match(source, /serial_transport_unavailable/);
+  assert.match(source, /usbVendorId/);
+  assert.match(source, /getInfo/);
+  assert.match(source, /nexi_setup_repeat/);
+  assert.doesNotMatch(source, /if \(!root \|\| !serialFactory\) return;/);
+  assert.doesNotMatch(source, /nexi_setup_speak_prompt/);
+});
+
+test("the page shows all device-owned progress fields and the KEY2 action", () => {
+  assert.match(commissioningPage, /data-setup-progress/);
+  assert.match(commissioningPage, /data-setup-status/);
+  assert.match(commissioningPage, /data-setup-action/);
+  assert.match(commissioningPage, /data-setup-references/);
+  assert.match(commissioningPage, /acht vollständige Sätze/);
+  assert.match(commissioningPage, /KEY2 gedrückt/);
+  assert.doesNotMatch(commissioningPage, /Referenz 1 aufnehmen|Erkennung testen|Neu beginnen/);
 });
