@@ -7,6 +7,9 @@ RUN cd tools/forgejo-ui-e2e && npm ci --ignore-scripts --no-audit --no-fund
 
 COPY services/project-server/src ./services/project-server/src
 COPY services/shared ./services/shared
+# Von project-service.js eingebunden (buildMigrationPayload); ohne diese Datei
+# bricht der Container beim Start mit MODULE_NOT_FOUND ab.
+COPY tools/forgejo-migration-dry-run.js ./tools/forgejo-migration-dry-run.js
 COPY services/identity-server/src/dev/project-repository-read.js ./services/identity-server/src/dev/project-repository-read.js
 COPY services/identity-server/src/dev/project-repository-contract-stub.js ./services/identity-server/src/dev/project-repository-contract-stub.js
 COPY services/identity-server/src/services/user-action-events.js ./services/identity-server/src/services/user-action-events.js

@@ -207,7 +207,7 @@ async function loadKnowledgeContentAssets() {
 }
 
 function knowledgeContentAssetUrls() {
-  const version = "20260820-esm-wissen-1";
+  const version = "20260822-merge-main-3";
   return ["knowledge-chapter-index.js", "knowledge-content.js"].map((file) => `/app/${file}?v=${version}`);
 }
 

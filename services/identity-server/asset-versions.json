@@ -14,20 +14,20 @@
       "pruefsumme": "fb4bbaa4af5b2a13"
     },
     "/app/app-account-controller.js": {
-      "version": "20260822-merge-main-2",
-      "pruefsumme": "65aab9041e1d7d1a"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "dceb3a0b7f3b647e"
     },
     "/app/app-billing-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "2bd8c67ecf5f4401"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "1c328477314de2be"
     },
     "/app/app-community-controller.js": {
       "version": "20260820-esm-kopf-1",
       "pruefsumme": "7624d44d88e40cf2"
     },
     "/app/app-dashboard-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "0fdf8168288b3ae9"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "4e0192e4a4729327"
     },
     "/app/app-device-build-controller.js": {
       "version": "20260820-entflechtung-7",
@@ -46,24 +46,24 @@
       "pruefsumme": "7a820163d932d2e9"
     },
     "/app/app-project-controller.js": {
-      "version": "20260822-merge-main-1",
-      "pruefsumme": "f401436882f148f7"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "aeedae38c30c3e00"
     },
     "/app/app-push-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "69727edb2b79637c"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "7f6c3147adafdf90"
     },
     "/app/app-runtime-utils.js": {
-      "version": "20260820-esm-abschluss-1",
-      "pruefsumme": "2ede5983a853edf2"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "63bc04f2a7cd5f60"
     },
     "/app/app-shell-controller.js": {
-      "version": "20260820-entflechtung-7",
-      "pruefsumme": "ed5d669d13aed030"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "46843cb0403d8688"
     },
     "/app/app-shell-early.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "e65ebf1646bf7caa"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "58d9b59666d426e3"
     },
     "/app/app.css": {
       "version": "20260822-merge-main-1",
@@ -162,8 +162,8 @@
       "pruefsumme": "2b1388594f3d31c1"
     },
     "/app/help-content.js": {
-      "version": "20260820-esm-grenze-1",
-      "pruefsumme": "a5a4e585b9f041a1"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "d931ee7d7d4e00f3"
     },
     "/app/home-automation-model.js": {
       "version": "20260820-entflechtung-2",
@@ -178,48 +178,48 @@
       "pruefsumme": "1cf14221ba34368e"
     },
     "/app/information-view.js": {
-      "version": "20260820-esm-grenze-2",
-      "pruefsumme": "8cfc1eb4f0e29270"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "b53e2997e5bfae23"
     },
     "/app/initial-view-router.js": {
       "version": "20260805-hardware-lab-route-1",
       "pruefsumme": "dd1d3286b92e68d4"
     },
     "/app/knowledge-chapter-index.js": {
-      "version": "20260820-esm-wissen-1",
-      "pruefsumme": "4d357801be52af01"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "2c70bb367dc90e24"
     },
     "/app/knowledge-content.js": {
-      "version": "20260820-esm-wissen-1",
+      "version": "20260822-merge-main-3",
       "pruefsumme": "f0d34c8027706d80"
     },
     "/app/learning-project-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "0574ae547d4e2292"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "710b284d2c21f8cb"
     },
     "/app/learning-project-locales.js": {
-      "version": "20260822-merge-main-1",
-      "pruefsumme": "6b1a5b8d3086779b"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "aa3af389942fadf5"
     },
     "/app/learning-project-view.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "837c7b880285bd46"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "f4edd0c07a5a7c09"
     },
     "/app/operator-shell.css": {
       "version": "20260819-app-theme-toggle-3",
       "pruefsumme": "d94ec124f0f328b3"
     },
     "/app/platform-components.js": {
-      "version": "20260820-esm-grenze-1",
-      "pruefsumme": "736941009dbd14e0"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "be582ba923f47609"
     },
     "/app/platform-routing.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "c221b5ae3b3ca8b5"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "78a35cb44c9c4a8f"
     },
     "/app/platform-state.js": {
-      "version": "20260820-esm-grenze-1",
-      "pruefsumme": "9f8b80062425092c"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "cb9b24fc67379652"
     },
     "/app/project-app-controller.js": {
       "version": "20260820-esm-mitte-1",
@@ -258,8 +258,8 @@
       "pruefsumme": "ee10670cf20f7652"
     },
     "/app/serial-service-client.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "79d71a85188d5f33"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "e92546ca6370d7ca"
     },
     "/app/session-state.js": {
       "version": "20260819-esm-schritt-1",
@@ -290,8 +290,8 @@
       "pruefsumme": "f580bf434befb0ff"
     },
     "/app/welcome-guide.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "9f92d0367a5e40fe"
+      "version": "20260822-merge-main-3",
+      "pruefsumme": "87a37df34c3950e7"
     },
     "/app/workbench-output-view.js": {
       "version": "20260820-statuskanal-1",
