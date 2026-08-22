@@ -738,4 +738,3 @@ const InformationView = (() => {
 export {
   InformationView,
 };
-

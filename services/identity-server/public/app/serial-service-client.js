@@ -328,4 +328,3 @@ window.GerNetiXSerialService = GerNetiXSerialService;
 export {
   GerNetiXSerialService,
 };
-

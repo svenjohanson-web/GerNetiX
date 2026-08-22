@@ -109,4 +109,3 @@ const LearningProjectLocales = (() => {
 export {
   LearningProjectLocales,
 };
-

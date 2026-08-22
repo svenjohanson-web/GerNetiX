@@ -4,4 +4,3 @@ const KnowledgeChapterIndex={"ai-basics":{"endpoint":"/api/platform/knowledge/ch
 export {
   KnowledgeChapterIndex,
 };
-

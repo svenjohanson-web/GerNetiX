@@ -59,4 +59,3 @@ document.addEventListener("click", closeMainMenu);
 export {
   closeMainMenu,
 };
-

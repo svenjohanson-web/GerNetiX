@@ -1141,4 +1141,3 @@ export {
   renderShopConfiguration,
   showSerialServiceChoiceDialog,
 };
-

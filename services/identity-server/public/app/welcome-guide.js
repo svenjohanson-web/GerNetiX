@@ -123,4 +123,3 @@ const GerNetiXWelcomeGuide = (() => {
 export {
   GerNetiXWelcomeGuide,
 };
-

@@ -500,5 +500,3 @@ function pruefeImportMapEiner(html) {
 }
 
 module.exports = { ermittleStand, liesManifest, MANIFEST, DIENST_WURZEL, schreibeImportMap, pruefeImportMap, hebeVersionenAn };
-
-

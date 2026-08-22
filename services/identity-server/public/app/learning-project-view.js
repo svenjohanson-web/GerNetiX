@@ -156,4 +156,3 @@ const LearningProjectView = (() => {
 export {
   LearningProjectView,
 };
-

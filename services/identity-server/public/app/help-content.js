@@ -39,4 +39,3 @@ const HelpContent = (() => {
 export {
   HelpContent,
 };
-
