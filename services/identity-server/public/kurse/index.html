@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+    <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
+    <meta name="description" content="GerNetiX Einzelkurse und Lernpakete mit dauerhaftem Zugriff sowie Lernzugang im Abo." />
+    <title>Kurse &amp; Lernpakete · GerNetiX</title>
+    <link rel="stylesheet" href="/landing.css?v=20260822-merge-main-1" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+      <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+      <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+        <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/leistungen/">Leistungen</a><a href="/tarife/">Konten &amp; Tarife</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+      </nav>
+    </header>
+
+    <main class="course-sales-page">
+      <section class="panel course-sales-hero" aria-labelledby="course-sales-title">
+        <div>
+          <p class="eyebrow">GerNetiX Lernbereich</p>
+          <h1 id="course-sales-title">Kurse und Lernpakete</h1>
+          <p class="lead">Wähle den Zugangsweg passend zu deinem Lernziel: frei starten, während eines Abos lernen oder einen Kurs dauerhaft kaufen.</p>
+          <div class="services-jump-links"><a class="primary-action" href="/app/auth/?next=%2Fapp%2Flearn%2F">Zum Lernbereich</a><a class="secondary-action" href="/leistungen/">Zur Leistungsübersicht</a></div>
+        </div>
+        <aside class="course-selection-note" data-selected-course hidden>
+          <span>Aus dem Lernbereich ausgewählt</span>
+          <strong data-selected-course-title>Ausgewähltes Lernprojekt</strong>
+          <p data-selected-course-message>Für dieses Lernprojekt fehlt noch der passende Zugang.</p>
+          <a data-selected-course-back href="/app/auth/?next=%2Fapp%2Flearn%2F">Zurück zum Lernprojekt-Katalog</a>
+        </aside>
+      </section>
+
+      <section id="zugang" class="course-access-grid" aria-label="Zugangswege zu Lerninhalten">
+        <article class="panel course-access-card free"><span class="plan-status available">Verfügbar</span><p class="eyebrow">Kostenlos</p><h2>Grundlagen frei lernen</h2><p>Freie Courses und Lernprojekte bleiben ohne Kurskauf nutzbar. Mit Konto wird dein Fortschritt gespeichert.</p><a class="services-text-link" href="/app/auth/?next=%2Fapp%2Flearn%2F">Freie Lernprojekte öffnen →</a></article>
+        <article class="panel course-access-card subscription"><span class="plan-status planned">Geplant</span><p class="eyebrow">Im Abo</p><h2>Bibliothek während der Laufzeit</h2><p>Ein passendes Abo kann freigeschaltete Lernprojekte für seine aktive Laufzeit enthalten. Der genaue Umfang wird vor Abschluss sichtbar.</p><a class="services-text-link" href="/tarife/">Abos vergleichen →</a></article>
+        <article class="panel course-access-card purchase"><span class="plan-status partial">In Ausarbeitung</span><p class="eyebrow">Einmalig kaufen</p><h2>Einzelkurs dauerhaft behalten</h2><p>Der benannte Course und sein Lernfortschritt bleiben deinem Konto dauerhaft zugänglich; Cloud-, Build- und KI-Dienste bleiben getrennt.</p><span class="course-price-placeholder">Preis noch nicht festgelegt</span></article>
+      </section>
+
+      <section class="panel course-bundles" aria-labelledby="course-bundles-title">
+        <header><p class="eyebrow">Lernpakete</p><h2 id="course-bundles-title">Zusammenhängende Lernwege kaufen</h2><p>Pakete bündeln mehrere Courses. Bereits gekaufte enthaltene Courses sollen angerechnet werden; kostenlose Inhalte erhöhen weder Vergleichspreis noch behauptete Ersparnis.</p></header>
+        <div class="services-bundle-grid">
+          <article>
+            <div><p class="eyebrow">Paket 01</p><span class="plan-status partial">In Ausarbeitung</span></div>
+            <h3>Messtechnik und Fehlersuche</h3>
+            <p>Vom sicheren Multimeter-Einsatz über Sensor-, Versorgungs- und Schnittstellendiagnose bis zur systematischen Fehlereingrenzung.</p>
+            <div class="services-topic-list"><span>Multimeter</span><span>Sensoren</span><span>Akkus</span><span>UART · I²C · SPI</span><span>Oszilloskop</span></div>
+          </article>
+          <article>
+            <div><p class="eyebrow">Paket 02</p><span class="plan-status partial">In Ausarbeitung</span></div>
+            <h3>Embedded- und Mikrocontroller-Grundlagen</h3>
+            <p>Vom Programmablauf über Mikrocontrollertechnik und erste Arduino-/AVR-/ESP32-Firmware bis zum eigenen Abschlussprojekt.</p>
+            <div class="services-topic-list"><span>Programmierung</span><span>GPIO · ADC · PWM</span><span>Arduino · AVR</span><span>ESP32</span><span>Abschlussprojekt</span></div>
+          </article>
+        </div>
+        <aside class="course-bundle-rule"><strong>Kein Doppelkauf</strong><p>Ein bereits gekaufter enthaltener Course soll beim späteren Paketkauf angerechnet werden. Konkrete Preise werden erst nach belastbarer Produktprüfung veröffentlicht.</p></aside>
+      </section>
+    </main>
+
+    <footer><span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span><nav class="site-footer-links" aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/leistungen/">Leistungen</a><a href="/kurse/" aria-current="page">Kurse</a><a href="/tarife/">Konten &amp; Tarife</a><a href="/shop/">Webshop</a><a href="/hilfe/">Hilfe</a></nav></footer>
+    <!-- import-map: erzeugt von scripts/update-asset-versions.js -->
+    <script type="importmap">
+    {
+          "imports": {
+                "@app/action-observability.js": "/app/action-observability.js?v=20260820-esm-blatt-2",
+                "@app/api-client.js": "/app/api-client.js?v=20260820-esm-abschluss-1",
+                "@app/app-account-controller.js": "/app/app-account-controller.js?v=20260822-merge-main-2",
+                "@app/app-billing-controller.js": "/app/app-billing-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-dashboard-controller.js": "/app/app-dashboard-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-project-controller.js": "/app/app-project-controller.js?v=20260822-merge-main-1",
+                "@app/app-push-controller.js": "/app/app-push-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-runtime-utils.js": "/app/app-runtime-utils.js?v=20260820-esm-abschluss-1",
+                "@app/app-shell-controller.js": "/app/app-shell-controller.js?v=20260820-entflechtung-7",
+                "@app/app-shell-early.js": "/app/app-shell-early.js?v=20260820-esm-kopf-1",
+                "@app/board-configuration-plugin.js": "/app/board-configuration-plugin.js?v=20260820-esm-blatt-6",
+                "@app/development-hardware-model.js": "/app/development-hardware-model.js?v=20260820-esm-blatt-6",
+                "@app/development-plantuml.js": "/app/development-plantuml.js?v=20260820-entflechtung-2",
+                "@app/device-onboarding-model.js": "/app/device-onboarding-model.js?v=20260820-esm-blatt-6",
+                "@app/dom-utils.js": "/app/dom-utils.js?v=20260820-esm-abschluss-1",
+                "@app/flash-progress.js": "/app/flash-progress.js?v=20260820-esm-blatt-6",
+                "@app/hardware-configuration-model.js": "/app/hardware-configuration-model.js?v=20260820-entflechtung-3",
+                "@app/help-chat-service.js": "/app/help-chat-service.js?v=20260820-esm-abschluss-1",
+                "@app/help-content.js": "/app/help-content.js?v=20260820-esm-grenze-1",
+                "@app/home-automation-model.js": "/app/home-automation-model.js?v=20260820-entflechtung-2",
+                "@app/i18n/i18n.js": "/app/i18n/i18n.js?v=20260820-esm-i18n-1",
+                "@app/ide-project-model.js": "/app/ide-project-model.js?v=20260820-entflechtung-7",
+                "@app/information-view.js": "/app/information-view.js?v=20260820-esm-grenze-2",
+                "@app/knowledge-chapter-index.js": "/app/knowledge-chapter-index.js?v=20260820-esm-wissen-1",
+                "@app/learning-project-controller.js": "/app/learning-project-controller.js?v=20260820-esm-kopf-1",
+                "@app/learning-project-locales.js": "/app/learning-project-locales.js?v=20260822-merge-main-1",
+                "@app/learning-project-view.js": "/app/learning-project-view.js?v=20260820-esm-kopf-1",
+                "@app/platform-components.js": "/app/platform-components.js?v=20260820-esm-grenze-1",
+                "@app/platform-routing.js": "/app/platform-routing.js?v=20260820-esm-kopf-1",
+                "@app/platform-state.js": "/app/platform-state.js?v=20260820-esm-grenze-1",
+                "@app/project-feedback-ui.js": "/app/project-feedback-ui.js?v=20260820-esm-mitte-1",
+                "@app/quiz-data.js": "/app/quiz-data.js?v=20260820-esm-blatt-6",
+                "@app/requirements-analysis.js": "/app/requirements-analysis.js?v=20260820-entflechtung-5",
+                "@app/serial-service-client.js": "/app/serial-service-client.js?v=20260820-esm-kopf-1",
+                "@app/unified-flash-dialog.js": "/app/unified-flash-dialog.js?v=20260820-esm-blatt-3",
+                "@app/unified-flash-executor.js": "/app/unified-flash-executor.js?v=20260820-flash-pruefsumme-1",
+                "@app/usb-port-disconnect-detector.js": "/app/usb-port-disconnect-detector.js?v=20260820-esm-blatt-6",
+                "@app/welcome-guide.js": "/app/welcome-guide.js?v=20260820-esm-kopf-1",
+                "@app/workbench-output-view.js": "/app/workbench-output-view.js?v=20260820-statuskanal-1",
+                "/landing.js": "/landing.js?v=20260822-merge-main-1"
+          }
+    }
+    </script>
+    <!-- /import-map -->
+    <script src="/navigation-model.js?v=20260822-merge-main-1"></script>
+    <script type="module" src="/landing.js?v=20260822-merge-main-1"></script>
+    <script src="/course-sales.js?v=20260822-merge-main-1"></script>
+  </body>
+</html>

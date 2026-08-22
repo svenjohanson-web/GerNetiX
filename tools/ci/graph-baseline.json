@@ -1,8 +1,10 @@
 {
-  "sha256": "695cb85387fa661e90d4503b239762b2a2424e597e8e26f9eacdeff110c09e55",
-  "artifacts": 1417,
-  "relationships": 3287,
-  "graph_authored_artifacts": 731,
-  "graph_authored_relationships": 1062,
-  "validation_errors": {}
+  "sha256": "dcf77eb2b523810f9c5b7962efa9f3c9c0f0e32f6e2026f670477db03353f4c7",
+  "artifacts": 1576,
+  "relationships": 3468,
+  "graph_authored_artifacts": 890,
+  "graph_authored_relationships": 1245,
+  "validation_errors": {
+    "warning": 1
+  }
 }

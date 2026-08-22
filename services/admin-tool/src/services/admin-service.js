@@ -2,6 +2,8 @@ const crypto = require("node:crypto");
 const { AdminToolError } = require("../errors");
 const { issueInternalToken } = require("../../../shared/internal-api-auth");
 
+const SUPPORT_RECOVERY_VERIFICATION_REASONS = new Set(["verified_existing_support_callback", "verified_customer_contract_reference", "verified_operator_exception"]);
+
 class AdminService {
   constructor(options) {
     this.repository = options.repository;
@@ -80,7 +82,23 @@ class AdminService {
     if (!this.serviceClients?.projectServerBaseUrl) {
       throw new AdminToolError("project_server_not_configured", "Der Project Server ist nicht konfiguriert.", 503);
     }
-    return this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary");
+    const [summary, events] = await Promise.all([
+      this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/internal/repositories/summary", {
+        headers: this.serviceClients.projectAdminReadToken
+          ? { "X-GerNetiX-Project-Admin-Token": this.serviceClients.projectAdminReadToken }
+          : {},
+      }),
+      this.repository.listSystemEvents ? this.repository.listSystemEvents({ source_service: "forgejo-operations" }) : [],
+    ]);
+    const latest = (eventType) => events.find((event) => event.event_type === eventType) || null;
+    return {
+      ...summary,
+      recovery: {
+        last_backup: latest("forgejo.backup.completed"),
+        last_restore: latest("forgejo.restore.completed"),
+        last_upgrade: latest("forgejo.upgrade.completed"),
+      },
+    };
   }
 
   async syntheticChecks(filter = {}) {
@@ -204,6 +222,22 @@ class AdminService {
         : summarizeUserActionEvents(items),
       items: items.slice(0, Number(filter.limit || 200)),
       interface_calls: interfaceCalls,
+    };
+  }
+
+  async interfaceStatistics(filter = {}) {
+    const hours = Math.max(1, Math.min(168, Number(filter.hours) || 24));
+    const items = this.repository.interfaceCallStatistics
+      ? await this.repository.interfaceCallStatistics({ hours })
+      : [];
+    return {
+      hours,
+      items,
+      summary: {
+        calls: items.reduce((sum, item) => sum + Number(item.calls || 0), 0),
+        failed: items.reduce((sum, item) => sum + Number(item.failed || 0), 0),
+        targets: items.length,
+      },
     };
   }
 
@@ -679,6 +713,34 @@ class AdminService {
     const access = await this.requireIdentityConfiguration(context, "email_delivery_configuration_read");
     const result = await this.identityEmailConfigRequest("/api/internal/email-config");
     return { access, config: result.config };
+  }
+
+  async startSupportRecovery(input, context) {
+    const access = await this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_identity_recovery",
+      purpose: "support_account_recovery",
+      dataModelId: "data_model.identity_support_recovery_transaction",
+      accountId: null,
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "Support-Wiederherstellung ist fuer diese Rolle nicht erlaubt.", 403, access);
+    const username = String(input.username || "").trim();
+    const email = String(input.email || "").trim();
+    const verificationReason = String(input.verification_reason || "").trim();
+    if (username.length < 3) throw new AdminToolError("invalid_username", "Ein gueltiger Spitzname ist erforderlich.", 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new AdminToolError("invalid_email", "Eine gueltige temporaere E-Mail-Adresse ist erforderlich.", 400);
+    if (!SUPPORT_RECOVERY_VERIFICATION_REASONS.has(verificationReason)) throw new AdminToolError("verification_reason_required", "Ein freigegebener Identitaetspruefweg ist erforderlich.", 400);
+    const actionId = crypto.randomUUID();
+    const result = await this.identityEmailConfigRequest("/api/internal/support-recovery", {
+      method: "POST",
+      body: { username, email, verification_reason: verificationReason, support_actor_id: context.actor.actor_id, support_actor_role: context.actor.role, action_id: actionId },
+    });
+    await this.repository.addAdminAction({
+      actor_id: context.actor.actor_id, actor_role: context.actor.role, action_type: "identity.support_recovery.issue",
+      account_id: result.account_id || null, reason: "Support-Identitaetspruefung dokumentiert",
+      payload: { action_id: actionId, recovery_id: result.recovery_id, delivery_status: result.delivery_status, email_deleted: result.email_deleted, expires_at: result.expires_at },
+    });
+    return { access, ...result };
   }
 
   async updateEmailConfig(input, context) {

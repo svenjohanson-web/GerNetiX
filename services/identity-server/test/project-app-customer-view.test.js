@@ -6,6 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const { normalizeAppPath } = require("../src/dev/http-utils");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 function read(relativePath) {
   return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
@@ -52,7 +53,7 @@ test("presents personal application instances as their own main area", () => {
   const controller = read("public/app/app-project-controller.js");
   const shell = read("public/app/app-shell-controller.js");
   assert.match(routing, /applications: "applicationsView"/);
-  assert.match(html, /data-route="applications"[^>]*>Meine Anwendungen<\/a>/);
+  assert.equal(authenticatedItem("/app/applications/").label, "Meine Anwendungen");
   assert.match(html, /id="applicationsView"[\s\S]*id="applicationList"/);
   assert.match(html, /data-open-route="\/app\/applications\/"[\s\S]*Meine Anwendungen/);
   assert.match(controller, /function personalApplications\(\)[\s\S]*projectOrigin === "account_project"[\s\S]*hasProjectApp\(project\)/);

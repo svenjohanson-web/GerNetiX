@@ -40,21 +40,29 @@
           <p class="form-hint" data-i18n="auth.login.hint">Wähle deinen gespeicherten Passkey – zum Beispiel per Fingerabdruck, Face ID oder Geräte-PIN. Dein Spitzname ist dafür nicht erforderlich.</p>
           <p class="passkey-qr-hint" data-i18n="auth.passkey.qr_hint">Siehst du einen QR-Code? Scanne ihn mit deinem Smartphone oder Tablet und bestätige den Passkey dort. Das ist besonders bei Browsern ohne Touch-ID-Zugriff nötig.</p>
           <button class="primary" type="submit" data-action-type="identity.login.passkey" data-action-timeout="120000" data-i18n="auth.login.passkey">Mit Passkey anmelden</button>
-          <button class="link-button" type="button" id="show-identifier-login" data-i18n="auth.login.identifier.show">Spitzname stattdessen eingeben</button>
-          <label id="login-identifier-field" class="hidden" for="login-identifier"><span data-i18n="auth.nickname">Spitzname</span><input id="login-identifier" name="identifier" autocomplete="username webauthn" /></label>
+          <label id="login-identifier-field" for="login-identifier"><span>Spitzname (optional)</span><input id="login-identifier" name="identifier" autocomplete="username webauthn" placeholder="z. B. sven02" /></label>
         </form>
         <form class="login-form hidden" id="recovery-form" autocomplete="off">
           <p class="form-hint" data-i18n="auth.recovery.hint">Gib deinen Spitznamen und dein Offline-Recovery-Set ein. Anschließend richtest du einen neuen Passkey ein.</p>
           <label for="recovery-username"><span data-i18n="auth.nickname">Spitzname</span><input id="recovery-username" name="username" required /></label>
           <label for="recovery-set"><span data-i18n="auth.recovery.set">Offline-Recovery-Set</span><input id="recovery-set" name="recovery_set" required /></label>
           <button class="primary" type="submit" data-i18n="auth.recovery.check">Recovery-Set prüfen</button>
+          <button class="link-button" type="button" id="show-support-recovery">Vorläufiges Support-Passwort verwenden</button>
+        </form>
+        <form class="login-form hidden" id="support-recovery-form" autocomplete="off">
+          <p class="form-hint">Hast du vom GerNetiX-Support ein vorläufiges Passwort erhalten? Es kann genau einmal verwendet werden und öffnet ausschließlich die Einrichtung eines neuen Passkeys.</p>
+          <label for="support-recovery-username"><span>Spitzname</span><input id="support-recovery-username" name="username" minlength="3" required /></label>
+          <label for="support-temporary-password"><span>Vorläufiges Passwort</span><input id="support-temporary-password" name="temporary_password" type="password" autocomplete="one-time-code" minlength="12" required /></label>
+          <button class="primary" type="submit">Einmalpasswort prüfen und neuen Passkey einrichten</button>
+          <button class="link-button" type="button" id="show-offline-recovery">Offline-Recovery-Set verwenden</button>
         </form>
         <form class="login-form hidden" id="register-form" autocomplete="username">
           <p class="step-label" data-i18n="auth.register.step">Konto anlegen</p>
           <p class="form-hint" data-i18n="auth.register.hint">Du musst dir kein Passwort merken. Dein Passkey wird sicher auf diesem Gerät oder in deinem Schlüsselbund gespeichert.</p>
           <p class="passkey-qr-hint" data-i18n="auth.passkey.qr_hint">Siehst du einen QR-Code? Scanne ihn mit deinem Smartphone oder Tablet und bestätige den Passkey dort. Das ist besonders bei Browsern ohne Touch-ID-Zugriff nötig.</p>
           <label for="register-username"><span data-i18n="auth.nickname">Spitzname</span><input id="register-username" name="username" autocomplete="username" minlength="3" required /></label>
-          <label class="check-line" for="register-accepted-terms"><input id="register-accepted-terms" name="accepted_terms" type="checkbox" required /><span data-i18n="auth.register.terms">Ich akzeptiere Datenschutz und Nutzungsbedingungen.</span></label>
+          <label class="check-line" for="register-accepted-terms"><input id="register-accepted-terms" name="accepted_terms" type="checkbox" required /><span data-i18n="auth.register.terms">Ich akzeptiere die Nutzungsbedingungen.</span></label>
+          <p class="form-hint auth-privacy-information"><span data-i18n="auth.register.privacy_intro">Wie GerNetiX deine Kontodaten verarbeitet, steht in der</span> <a href="/datenschutz/" target="_blank" rel="noopener" data-i18n="footer.privacy_information">Datenschutzinformation</a>. <span data-i18n="auth.register.privacy_no_consent">Dafür ist keine Zustimmung erforderlich.</span></p>
           <button class="primary" type="submit" data-i18n="auth.register.submit">Passkey einrichten und Konto erstellen</button>
         </form>
         <dialog id="active-session-dialog" class="active-session-dialog" aria-labelledby="active-session-title" aria-describedby="active-session-description">
@@ -80,7 +88,7 @@
     </main>
     <footer class="auth-site-footer">
       <span data-i18n="footer.tagline">© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
-      <nav aria-label="Weiterführende Informationen" data-i18n-aria-label="footer.more"><a href="/ueber-uns/" data-i18n="footer.about">Über uns</a><a href="/wissen/" data-i18n="nav.knowledge">Wissensportal</a><a href="/hilfe/" data-i18n="nav.help">Hilfe</a><a href="/" data-i18n="nav.home">Startseite</a></nav>
+      <nav aria-label="Weiterführende Informationen" data-i18n-aria-label="footer.more"><a href="/ueber-uns/" data-i18n="footer.about">Über uns</a><a href="/datenschutz/" data-i18n="footer.privacy">Datenschutz</a><a href="/wissen/" data-i18n="nav.knowledge">Wissensportal</a><a href="/hilfe/" data-i18n="nav.help">Hilfe</a><a href="/" data-i18n="nav.home">Startseite</a></nav>
     </footer>
     <!-- import-map: erzeugt von scripts/update-asset-versions.js -->
     <script type="importmap">
@@ -88,10 +96,10 @@
           "imports": {
                 "@app/action-observability.js": "/app/action-observability.js?v=20260820-esm-blatt-2",
                 "@app/api-client.js": "/app/api-client.js?v=20260820-esm-abschluss-1",
-                "@app/app-account-controller.js": "/app/app-account-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-account-controller.js": "/app/app-account-controller.js?v=20260822-merge-main-2",
                 "@app/app-billing-controller.js": "/app/app-billing-controller.js?v=20260820-esm-kopf-1",
                 "@app/app-dashboard-controller.js": "/app/app-dashboard-controller.js?v=20260820-esm-kopf-1",
-                "@app/app-project-controller.js": "/app/app-project-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-project-controller.js": "/app/app-project-controller.js?v=20260822-merge-main-1",
                 "@app/app-push-controller.js": "/app/app-push-controller.js?v=20260820-esm-kopf-1",
                 "@app/app-runtime-utils.js": "/app/app-runtime-utils.js?v=20260820-esm-abschluss-1",
                 "@app/app-shell-controller.js": "/app/app-shell-controller.js?v=20260820-entflechtung-7",
@@ -111,7 +119,7 @@
                 "@app/information-view.js": "/app/information-view.js?v=20260820-esm-grenze-2",
                 "@app/knowledge-chapter-index.js": "/app/knowledge-chapter-index.js?v=20260820-esm-wissen-1",
                 "@app/learning-project-controller.js": "/app/learning-project-controller.js?v=20260820-esm-kopf-1",
-                "@app/learning-project-locales.js": "/app/learning-project-locales.js?v=20260820-esm-kopf-1",
+                "@app/learning-project-locales.js": "/app/learning-project-locales.js?v=20260822-merge-main-1",
                 "@app/learning-project-view.js": "/app/learning-project-view.js?v=20260820-esm-kopf-1",
                 "@app/platform-components.js": "/app/platform-components.js?v=20260820-esm-grenze-1",
                 "@app/platform-routing.js": "/app/platform-routing.js?v=20260820-esm-kopf-1",
@@ -125,14 +133,15 @@
                 "@app/usb-port-disconnect-detector.js": "/app/usb-port-disconnect-detector.js?v=20260820-esm-blatt-6",
                 "@app/welcome-guide.js": "/app/welcome-guide.js?v=20260820-esm-kopf-1",
                 "@app/workbench-output-view.js": "/app/workbench-output-view.js?v=20260820-statuskanal-1",
-                "/landing.js": "/landing.js?v=20260820-landing-modul-1"
+                "/landing.js": "/landing.js?v=20260822-merge-main-1"
           }
     }
     </script>
     <!-- /import-map -->
     <script type="module" src="/app/i18n/i18n.js?v=20260820-esm-i18n-1"></script>
-    <script type="module" src="/landing.js?v=20260820-landing-modul-1"></script>
+    <script src="/navigation-model.js?v=20260822-merge-main-1"></script>
+    <script type="module" src="/landing.js?v=20260822-merge-main-1"></script>
     <script type="module" src="/app/action-observability.js?v=20260820-esm-blatt-2"></script>
-    <script type="module" src="/app/auth/auth.js?v=20260820-landing-modul-1"></script>
+    <script type="module" src="/app/auth/auth.js?v=20260822-merge-main-1"></script>
   </body>
 </html>

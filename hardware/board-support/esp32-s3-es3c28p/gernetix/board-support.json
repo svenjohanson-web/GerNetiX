@@ -1,0 +1,26 @@
+{
+  "schema_id": "gernetix.board-support",
+  "schema_version": 1,
+  "hardware_item_id": "hardware.processor_board.esp32_s3_es3c28p",
+  "release_version": "1.0.0",
+  "files": [
+    {
+      "path": "boards/es3c28p.json",
+      "target_path": "boards/es3c28p.json",
+      "role": "board_definition",
+      "sha256": "4125bff948f2263237cebe2a16668076db32c5165cb430f769b199b2bbbf13cc"
+    },
+    {
+      "path": "partitions/partitions_full_16mb.csv",
+      "target_path": "partitions_full_16mb.csv",
+      "role": "partition_table",
+      "sha256": "c0a24e3b34148e2ee4fa24ca908b743b84019cf627025b7f2f26aa7a52090140"
+    },
+    {
+      "path": "include/gernetix_es3c28p_board_support.h",
+      "target_path": "include/gernetix_es3c28p_board_support.h",
+      "role": "header",
+      "sha256": "6339b9d3a79b545c71594f4da596091a30364ad870e14ccb645759ad232f47e2"
+    }
+  ]
+}

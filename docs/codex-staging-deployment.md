@@ -68,10 +68,14 @@ Die kurzen Prozessmonitor-Abfragen verwenden dagegen das getrennte
 `GERNETIX_STAGING_MONITOR_SSH` und dürfen keine Portweiterleitungen aufbauen.
 Der Benutzer `gernetix-monitor` besitzt keine interaktive Shell, kein Passwort und
 keinen Docker-Gruppenzugriff. Der Monitor darf ausschliesslich das root-eigene,
-read-only Diagnoseprogramm `/usr/local/sbin/gernetix-monitor-diagnostic` ueber
-eng begrenzte `sudoers`-Eintraege ausfuehren. Das Programm akzeptiert nur die
-Kommandos `security`, `compose-ps`, `link-integrity` und
-`user-action-alerts`. Die Installation muss
+fest begrenzte Programm `/usr/local/sbin/gernetix-monitor-diagnostic` ueber
+eng begrenzte `sudoers`-Eintraege ausfuehren. Die Diagnosekommandos bleiben
+read-only. Zusaetzlich existiert genau eine idempotente Betriebsaktion, die nur
+`runtime-postgres` mit Compose startet; freie Dienstnamen, Stoppen, Entfernen,
+Deployments und Shellbefehle sind ausgeschlossen. Das Programm akzeptiert nur die
+Kommandos `security`, `compose-ps`, `account-database-status`,
+`start-account-database`, `link-integrity`, `user-action-alerts` und
+`interface-statistics`. Die Installation muss
 vor der Umstellung mit `visudo` validiert werden; ein Root-Login fuer den Monitor
 ist danach nicht mehr erforderlich.
 
@@ -270,6 +274,14 @@ zeigt den SSH-Befehl. `--plan` liest zusaetzlich den aktuell deployten
 VPS-Commit, berechnet die Commit-Differenz und nennt Modus, Dienste,
 Edge-/Firewall-Aktionen und den Grund fuer einen Full-Deploy. Jeder echte
 Deployment-Lauf zeigt diesen Plan automatisch vor der ersten VPS-Aenderung.
+
+Wenn eine geschuetzte VPS-Konfiguration ohne Git-Runtime-Diff bewusst in alle
+Container uebernommen werden muss, kann nach ausdruecklicher Freigabe zuerst
+`node tools/staging-deploy.js --plan --force-full` und danach genau einmal
+`node tools/staging-deploy.js --force-full` verwendet werden. Der Orchestrator
+uebergibt dabei absichtlich eine nicht existierende vorherige Commit-ID, damit
+auch der serverseitige Klassifizierer garantiert den vollstaendigen Ablauf
+waehlt; lokale und entfernte Plananzeige duerfen sich nicht widersprechen.
 
 Das Tool bricht ab, wenn:
 

@@ -5,6 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 const { createQuizContentStore } = require("../src/quiz/quiz-content-store");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
@@ -21,7 +22,7 @@ function loadQuizModule() {
 }
 
 test("offers a dedicated internal quiz route from navigation and dashboard", () => {
-  assert.match(html, /href="\/app\/quiz\/" data-route="quiz" data-i18n="platform\.nav\.quiz">Quiz<\/a>/);
+  assert.equal(authenticatedItem("/app/quiz/").route, "quiz");
   assert.match(html, /data-open-route="\/app\/quiz\/"[\s\S]*data-i18n="dashboard\.quiz\.title">Quiz/);
   assert.match(html, /id="quizView"[\s\S]*id="quizMount"/);
   assert.doesNotMatch(html, /<script[^>]+quiz-data\.js/);

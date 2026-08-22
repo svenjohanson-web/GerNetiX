@@ -6,15 +6,11 @@ function createIdentityAuthHandlers({
   host, port, identityAppBaseUrl, crypto, generateRegistrationOptions,
   verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse,
   readUserActionContext, passkeyClientError, recordSystemEvent,
-  recordPasskeyLoginFailure, evictCachedSessionsForUser,
+  recordPasskeyLoginFailure, evictCachedSessionsForUser, passkeyConfiguration,
 }) {
   const passkeyChallenges = new Map();
   const offlineRecoveryAttempts = new Map();
 
-  function passkeyConfiguration(req) {
-    const origin = String(req.headers.origin || identityAppBaseUrl || `http://${host}:${port}`).replace(/\/$/, "");
-    return { origin, rpID: new URL(origin).hostname };
-  }
   function subject(username) { return String(username || "").trim().toLowerCase() || "__discoverable_passkey__"; }
   function recoverySubject(token) { return `offline-recovery:${crypto.createHash("sha256").update(String(token || "")).digest("base64url")}`; }
   function storeChallenge(kind, username, challenge, config) {
@@ -31,11 +27,14 @@ function createIdentityAuthHandlers({
   function clientAddress(req) { return String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket?.remoteAddress || "unknown"; }
   function auditHash(value) { return crypto.createHash("sha256").update(String(value || "")).digest("base64url"); }
   function recoveryEvent(req, eventType, severity, message, username, error = null) {
+    const supportRecovery = eventType.startsWith("support_recovery_");
     return recordSystemEvent({
       severity, source_service: "identity_server", category: "authentication", event_type: eventType, message,
       impact: eventType === "offline_recovery_passkey_replaced"
         ? "Ein Konto hat seinen Login-Passkey über Offline-Recovery ersetzt; vorherige Sessions wurden widerrufen."
-        : "Offline-Recovery-Zugriffe werden begrenzt und ohne Recovery-Geheimnisse protokolliert.",
+        : supportRecovery
+          ? "Support-Recovery bleibt auf die Passkey-Erneuerung begrenzt und wird ohne Zustelladresse, Passwort oder Passkey-Material protokolliert."
+          : "Offline-Recovery-Zugriffe werden begrenzt und ohne Recovery-Geheimnisse protokolliert.",
       route: "/app/auth/",
       details: { username_hash: auditHash(String(username || "").trim().toLowerCase()), client_hash: auditHash(clientAddress(req)), ...(error ? { error_code: error.code || "offline_recovery_failed" } : {}) },
     });
@@ -143,21 +142,21 @@ function createIdentityAuthHandlers({
   }
 
   async function handlePasskeyRegistrationOptions(req, res) {
-    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); if (username.length < 3) throw new Error("invalid_username"); const config = passkeyConfiguration(req); const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userName: username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" } }); storeChallenge("register", username, options.challenge, config); sendJson(res, 200, options); }
-    catch (error) { sendJson(res, 400, { error: error.code || (error.message === "invalid_username" ? "invalid_username" : "passkey_registration_unavailable"), message: "Konto wurde nicht angelegt. Grund: Passkey konnte nicht vorbereitet werden." }); }
+    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); if (username.length < 3) throw new Error("invalid_username"); const config = passkeyConfiguration.forRequest(req, { mutation: true }); const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userName: username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" } }); storeChallenge("register", username, options.challenge, config); sendJson(res, 200, options); }
+    catch (error) { sendJson(res, error.status || 400, { error: error.code || (error.message === "invalid_username" ? "invalid_username" : "passkey_registration_unavailable"), message: "Konto wurde nicht angelegt. Grund: Passkey konnte nicht vorbereitet werden." }); }
   }
   async function handlePasskeyRegistrationVerify(req, res) {
-    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); if (body.accepted_terms !== true) throw new Error("terms_not_accepted"); const challenge = readChallenge("register", username); const verification = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true }); if (!verification.verified || !verification.registrationInfo) throw new Error("passkey_registration_not_verified"); const credential = verification.registrationInfo.credential; const created = await auth().create_passkey_account(username, { credentialId: credential.id, publicKey: base64Url(credential.publicKey), counter: credential.counter, transports: credential.transports || [] }, { preferredLocale: body.locale }); establish(res, created); sendJson(res, 201, { account: created.account, message: "Konto wurde angelegt.", next: next(body) }); }
-    catch (error) { const message = error.message === "terms_not_accepted" ? "Konto wurde nicht angelegt. Grund: Bitte bestätige Datenschutz und Nutzungsbedingungen." : host === "127.0.0.1" ? `Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden: ${error.message || "unbekannter Fehler"}` : "Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden."; sendJson(res, error.status || 400, { error: error.code || (error.message === "terms_not_accepted" ? "terms_not_accepted" : "passkey_registration_failed"), message }); }
+    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); if (body.accepted_terms !== true) throw new Error("terms_not_accepted"); passkeyConfiguration.forRequest(req, { mutation: true }); const challenge = readChallenge("register", username); const verification = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true }); if (!verification.verified || !verification.registrationInfo) throw new Error("passkey_registration_not_verified"); const credential = verification.registrationInfo.credential; const created = await auth().create_passkey_account(username, { credentialId: credential.id, publicKey: base64Url(credential.publicKey), counter: credential.counter, transports: credential.transports || [], rpId: challenge.config.rpID }, { preferredLocale: body.locale }); establish(res, created); sendJson(res, 201, { account: created.account, message: "Konto wurde angelegt.", next: next(body) }); }
+    catch (error) { const message = error.message === "terms_not_accepted" ? "Konto wurde nicht angelegt. Grund: Bitte bestätige die Nutzungsbedingungen." : host === "127.0.0.1" ? `Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden: ${error.message || "unbekannter Fehler"}` : "Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden."; sendJson(res, error.status || 400, { error: error.code || (error.message === "terms_not_accepted" ? "terms_not_accepted" : "passkey_registration_failed"), message }); }
   }
   async function handlePasskeyAuthenticationOptions(req, res) {
     let account = null; const actionContext = readUserActionContext(req, "identity.login.passkey");
-    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); const config = passkeyConfiguration(req); account = username ? await auth().get_passkey_login_candidate(username) : null; const options = await generateAuthenticationOptions({ rpID: config.rpID, userVerification: "required", ...(account ? { allowCredentials: [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }] } : {}) }); storeChallenge("authenticate", username, options.challenge, config); sendJson(res, 200, options); }
+    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); const config = passkeyConfiguration.forRequest(req); account = username ? await auth().get_passkey_login_candidate(username, config.rpID) : null; const options = await generateAuthenticationOptions({ rpID: config.rpID, userVerification: "required", ...(account ? { allowCredentials: account.passkey_credentials.map((item) => ({ id: item.credential_id, transports: item.transports || [] })) } : {}) }); storeChallenge("authenticate", username, options.challenge, config); sendJson(res, 200, options); }
     catch (error) { await recordPasskeyLoginFailure("options", error, account, actionContext?.actionId); const clientError = passkeyClientError("options", error); sendJson(res, clientError.status, clientError); }
   }
   async function handlePasskeyAuthenticationVerify(req, res) {
     let account = null; const actionContext = readUserActionContext(req, "identity.login.passkey");
-    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); account = username ? await auth().get_passkey_login_candidate(username) : await auth().get_passkey_login_candidate_by_credential_id(body.credential?.id); const challenge = readChallenge("authenticate", username); const verification = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true, credential: { id: account.passkey_credential_id, publicKey: Buffer.from(account.passkey_public_key, "base64url"), counter: Number(account.passkey_counter || 0), transports: account.passkey_transports || [] } }); if (!verification.verified) throw new Error("passkey_authentication_not_verified"); const login = await auth().login_passkey_by_credential_id(account.passkey_credential_id, verification.authenticationInfo.newCounter); if (body.locale) login.account = await auth().update_preferred_locale(login.account.user_id, body.locale); completeLogin(res, login, body); }
+    try { const body = await readJsonBody(req); const username = String(body.username || "").trim(); const config = passkeyConfiguration.forRequest(req); account = username ? await auth().get_passkey_login_candidate(username, config.rpID) : await auth().get_passkey_login_candidate_by_credential_id(body.credential?.id, config.rpID); const selected = account.passkey_credentials.find((item) => item.credential_id === body.credential?.id); if (!selected) throw Object.assign(new Error("passkey_credential_not_allowed"), { code: "passkey_credential_not_allowed" }); const challenge = readChallenge("authenticate", username); const verification = await verifyAuthenticationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true, credential: { id: selected.credential_id, publicKey: Buffer.from(selected.public_key, "base64url"), counter: Number(selected.counter || 0), transports: selected.transports || [] } }); if (!verification.verified) throw new Error("passkey_authentication_not_verified"); const login = await auth().login_passkey_by_credential_id(selected.credential_id, verification.authenticationInfo.newCounter, config.rpID); if (body.locale) login.account = await auth().update_preferred_locale(login.account.user_id, body.locale); completeLogin(res, login, body); }
     catch (error) { await recordPasskeyLoginFailure("verification", error, account, actionContext?.actionId); const clientError = passkeyClientError("verification", error); sendJson(res, clientError.status, clientError); }
   }
   async function handleOfflineRecoveryStart(req, res) {
@@ -167,12 +166,73 @@ function createIdentityAuthHandlers({
     catch (error) { recordRecoveryFailure(rateLimit.key); await recoveryEvent(req, "offline_recovery_failed", "warning", "Offline-Recovery-Set konnte nicht geprüft werden.", username, error); sendJson(res, error.status || 401, { error: error.code || "offline_recovery_failed", message: "Recovery-Set konnte nicht geprüft werden." }); }
   }
   async function handleOfflineRecoveryPasskeyOptions(req, res) {
-    try { const body = await readJsonBody(req); const recoveryToken = String(body.recovery_token || ""); const account = await auth().get_offline_recovery_account(recoveryToken); const config = passkeyConfiguration(req); const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userID: Buffer.from(account.id), userName: account.username, userDisplayName: account.username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" }, excludeCredentials: account.passkey_credential_id ? [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }] : [] }); storeChallenge("offline-recovery", recoverySubject(recoveryToken), options.challenge, config); sendJson(res, 200, options); }
+    try { const body = await readJsonBody(req); const recoveryToken = String(body.recovery_token || ""); const account = await auth().get_offline_recovery_account(recoveryToken); const config = passkeyConfiguration.forRequest(req, { mutation: true }); const existing = await auth().list_passkeys(account.id); const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userID: Buffer.from(account.id), userName: account.username, userDisplayName: account.username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" }, excludeCredentials: existing.filter((item) => item.rp_id === config.rpID).map((item) => ({ id: item.credential_id, transports: item.transports || [] })) }); storeChallenge("offline-recovery", recoverySubject(recoveryToken), options.challenge, config); sendJson(res, 200, options); }
     catch (error) { sendJson(res, error.status || 401, { error: error.code || "offline_recovery_passkey_unavailable", message: "Neuer Passkey konnte nicht vorbereitet werden." }); }
   }
   async function handleOfflineRecoveryPasskeyVerify(req, res) {
-    try { const body = await readJsonBody(req); const recoveryToken = String(body.recovery_token || ""); await auth().get_offline_recovery_account(recoveryToken); const challenge = readChallenge("offline-recovery", recoverySubject(recoveryToken)); const verification = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true }); if (!verification.verified || !verification.registrationInfo) throw new Error("offline_recovery_passkey_not_verified"); const credential = verification.registrationInfo.credential; const completed = await auth().complete_offline_recovery(recoveryToken, { credentialId: credential.id, publicKey: base64Url(credential.publicKey), counter: credential.counter, transports: credential.transports || [] }); if (body.locale) completed.account = await auth().update_preferred_locale(completed.account.user_id, body.locale); evictCachedSessionsForUser(completed.account.user_id); await recoveryEvent(req, "offline_recovery_passkey_replaced", "warning", "Offline-Recovery hat den Login-Passkey ersetzt.", completed.account.username); establish(res, completed); sendJson(res, 200, { account: completed.account, next: next(body) }); }
+    try { const body = await readJsonBody(req); const recoveryToken = String(body.recovery_token || ""); passkeyConfiguration.forRequest(req, { mutation: true }); await auth().get_offline_recovery_account(recoveryToken); const challenge = readChallenge("offline-recovery", recoverySubject(recoveryToken)); const verification = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true }); if (!verification.verified || !verification.registrationInfo) throw new Error("offline_recovery_passkey_not_verified"); const credential = verification.registrationInfo.credential; const completed = await auth().complete_offline_recovery(recoveryToken, { credentialId: credential.id, publicKey: base64Url(credential.publicKey), counter: credential.counter, transports: credential.transports || [], rpId: challenge.config.rpID }); if (body.locale) completed.account = await auth().update_preferred_locale(completed.account.user_id, body.locale); evictCachedSessionsForUser(completed.account.user_id); await recoveryEvent(req, "offline_recovery_passkey_replaced", "warning", "Offline-Recovery hat den Login-Passkey ersetzt.", completed.account.username); establish(res, completed); sendJson(res, 200, { account: completed.account, next: next(body) }); }
     catch (error) { sendJson(res, error.status || 401, { error: error.code || "offline_recovery_passkey_failed", message: "Zugang konnte nicht wiederhergestellt werden." }); }
+  }
+  async function handleSupportRecoveryLogin(req, res) {
+    let username = "";
+    try {
+      const body = await readJsonBody(req);
+      username = String(body.username || "");
+      const result = await auth().login_support_recovery(username, String(body.temporary_password || ""));
+      await recoveryEvent(req, "support_recovery_password_accepted", "warning", "Vorläufiges Support-Passwort wurde angenommen; bestehende Sitzungen wurden widerrufen.", username);
+      sendJson(res, 200, result);
+    } catch (error) {
+      await recoveryEvent(req, "support_recovery_password_failed", "warning", "Vorläufiges Support-Passwort wurde abgewiesen.", username, error);
+      sendJson(res, error.status || 401, { error: error.code || "support_recovery_invalid", message: "Vorläufiges Passwort ist ungültig oder abgelaufen." });
+    }
+  }
+  async function handleSupportRecoveryPasskeyOptions(req, res) {
+    try {
+      const body = await readJsonBody(req); const token = String(body.support_recovery_token || "");
+      const { account } = await auth().get_support_recovery_account(token);
+      const config = passkeyConfiguration.forRequest(req, { mutation: true });
+      const existing = await auth().list_passkeys(account.id);
+      const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userID: Buffer.from(account.id), userName: account.username, userDisplayName: account.username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" }, excludeCredentials: existing.filter((item) => item.rp_id === config.rpID).map((item) => ({ id: item.credential_id, transports: item.transports || [] })) });
+      storeChallenge("support-recovery", recoverySubject(token), options.challenge, config); sendJson(res, 200, options);
+    } catch (error) { await recoveryEvent(req, "support_recovery_passkey_options_failed", "warning", "Passkey-Erneuerung für Support-Recovery konnte nicht vorbereitet werden.", "", error); sendJson(res, error.status || 401, { error: error.code || "support_recovery_passkey_unavailable", message: "Neuer Passkey konnte nicht vorbereitet werden." }); }
+  }
+  async function handleSupportRecoveryPasskeyVerify(req, res) {
+    try {
+      const body = await readJsonBody(req); const token = String(body.support_recovery_token || "");
+      passkeyConfiguration.forRequest(req, { mutation: true });
+      await auth().get_support_recovery_account(token);
+      const challenge = readChallenge("support-recovery", recoverySubject(token));
+      const verification = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true });
+      if (!verification.verified || !verification.registrationInfo) throw new Error("support_recovery_passkey_not_verified");
+      const credential = verification.registrationInfo.credential;
+      const completed = await auth().complete_support_recovery(token, { credentialId: credential.id, publicKey: base64Url(credential.publicKey), counter: credential.counter, transports: credential.transports || [], rpId: challenge.config.rpID });
+      evictCachedSessionsForUser(completed.account.user_id); establish(res, completed);
+      await recoveryEvent(req, "support_recovery_passkey_completed", "warning", "Support-Recovery hat einen neuen kanonischen Passkey eingerichtet.", completed.account.username);
+      sendJson(res, 200, { account: completed.account, next: next(body) });
+    } catch (error) { await recoveryEvent(req, "support_recovery_passkey_failed", "warning", "Support-Recovery konnte keinen neuen Passkey abschließen.", "", error); sendJson(res, error.status || 401, { error: error.code || "support_recovery_passkey_failed", message: "Support-Wiederherstellung konnte nicht abgeschlossen werden." }); }
+  }
+  async function handlePasskeyManagementList(req, res) {
+    const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    sendJson(res, 200, { items: await auth().list_passkeys(session.account.user_id) });
+  }
+  async function handlePasskeyManagementOptions(req, res) {
+    try {
+      const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+      const config = passkeyConfiguration.forRequest(req, { mutation: true }); const existing = await auth().list_passkeys(session.account.user_id);
+      const options = await generateRegistrationOptions({ rpName: "GerNetiX", rpID: config.rpID, userID: Buffer.from(session.account.user_id), userName: session.account.username, userDisplayName: session.account.username, attestationType: "none", authenticatorSelection: { residentKey: "required", userVerification: "required" }, excludeCredentials: existing.filter((item) => item.rp_id === config.rpID).map((item) => ({ id: item.credential_id, transports: item.transports || [] })) });
+      storeChallenge("manage-passkey", session.account.user_id, options.challenge, config); sendJson(res, 200, options);
+    } catch (error) { sendJson(res, error.status || 400, { error: error.code || "passkey_management_unavailable", message: "Zusätzlicher Passkey konnte nicht vorbereitet werden." }); }
+  }
+  async function handlePasskeyManagementVerify(req, res) {
+    try {
+      const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+      const body = await readJsonBody(req); passkeyConfiguration.forRequest(req, { mutation: true });
+      const challenge = readChallenge("manage-passkey", session.account.user_id);
+      const verification = await verifyRegistrationResponse({ response: body.credential, expectedChallenge: challenge.challenge, expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID, requireUserVerification: true });
+      if (!verification.verified || !verification.registrationInfo) throw new Error("passkey_registration_not_verified");
+      const credential = verification.registrationInfo.credential;
+      sendJson(res, 201, await auth().add_passkey(session.account.user_id, { credentialId: credential.id, publicKey: base64Url(credential.publicKey), counter: credential.counter, transports: credential.transports || [], rpId: challenge.config.rpID, label: String(body.label || "Zusätzlicher Passkey") }));
+    } catch (error) { sendJson(res, error.status || 400, { error: error.code || "passkey_management_failed", message: "Zusätzlicher Passkey konnte nicht gespeichert werden." }); }
   }
   function registrationMessage(error) {
     if (error.code === "username_taken") return "Dieser Benutzername ist bereits vergeben.";
@@ -187,7 +247,7 @@ function createIdentityAuthHandlers({
     if (error.code === "external_email_conflict") return "Diese E-Mail-Adresse gehört bereits zu einem anderen Konto.";
     return "Externer Login fehlgeschlagen.";
   }
-  return { handleLogin, handleRegister, handleExternalLogin, handleLogout, handleSession, handleSessionTakeover, handleSessionTakeoverCancel, handleSessionSecure, handlePasskeyRegistrationOptions, handlePasskeyRegistrationVerify, handlePasskeyAuthenticationOptions, handlePasskeyAuthenticationVerify, handleOfflineRecoveryStart, handleOfflineRecoveryPasskeyOptions, handleOfflineRecoveryPasskeyVerify };
+  return { handleLogin, handleRegister, handleExternalLogin, handleLogout, handleSession, handleSessionTakeover, handleSessionTakeoverCancel, handleSessionSecure, handlePasskeyRegistrationOptions, handlePasskeyRegistrationVerify, handlePasskeyAuthenticationOptions, handlePasskeyAuthenticationVerify, handleOfflineRecoveryStart, handleOfflineRecoveryPasskeyOptions, handleOfflineRecoveryPasskeyVerify, handleSupportRecoveryLogin, handleSupportRecoveryPasskeyOptions, handleSupportRecoveryPasskeyVerify, handlePasskeyManagementList, handlePasskeyManagementOptions, handlePasskeyManagementVerify };
 }
 
 module.exports = { createIdentityAuthHandlers };

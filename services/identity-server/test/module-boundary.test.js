@@ -78,14 +78,19 @@ test("every remaining bridge belongs to a file that is loaded on demand", () => 
 /*
  * Die Plattform besteht aus Modulen, nicht aus einem geteilten Namensraum.
  *
- * Eine einzige Ausnahme ist beabsichtigt: initial-view-router.js waehlt die
- * Ansicht, bevor gezeichnet wird. Als Modul wuerde es aufgeschoben, und beim
- * Aufruf einer Unterseite blitzte kurz das Dashboard auf.
+ * Zwei Ausnahmen sind beabsichtigt:
+ * - initial-view-router.js waehlt die Ansicht, bevor gezeichnet wird. Als
+ *   Modul wuerde es aufgeschoben, und beim Aufruf einer Unterseite blitzte
+ *   kurz das Dashboard auf.
+ * - app-navigation.js liest das globale GerNetiXNavigationModel, das
+ *   navigation-model.js als klassisches Skript setzt. Dasselbe Modell traegt
+ *   die oeffentlichen Seiten, die keine Import Map fuer /app/ haben.
  */
-test("every script in the platform document is a module, except the one that must not be", () => {
+test("every script in the platform document is a module, except the ones that must not be", () => {
   const klassisch = [...html.matchAll(/<script([^>]*)src="\/app\/([a-z0-9-]+\.js)\?v=/g)]
     .filter((t) => !/type="module"/.test(t[1]))
     .map((t) => t[2]);
-  assert.deepEqual(klassisch, ["initial-view-router.js"]);
+  assert.deepEqual(klassisch, ["initial-view-router.js", "app-navigation.js"]);
   assert.doesNotMatch(quelle("initial-view-router.js"), MODULSYNTAX);
+  assert.doesNotMatch(quelle("app-navigation.js"), MODULSYNTAX);
 });

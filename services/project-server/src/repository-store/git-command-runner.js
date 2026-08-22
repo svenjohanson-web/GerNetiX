@@ -23,6 +23,7 @@ function createGitCommandRunner(options = {}) {
     const env = {
       ...process.env,
       GIT_TERMINAL_PROMPT: "0",
+      ...safeGitEnvironment(runOptions.env),
       ...(authToken ? {
         GIT_CONFIG_COUNT: "1",
         GIT_CONFIG_KEY_0: "http.extraHeader",
@@ -62,6 +63,16 @@ function createGitCommandRunner(options = {}) {
       });
     });
   };
+}
+
+function safeGitEnvironment(value) {
+  const allowed = new Set([
+    "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "GIT_COMMITTER_DATE",
+  ]);
+  return Object.fromEntries(Object.entries(value || {}).filter(([key, entry]) => (
+    allowed.has(key) && typeof entry === "string" && !entry.includes("\0")
+  )));
 }
 
 function appendBounded(current, chunk, maxBytes = 16_384, binary = false) {

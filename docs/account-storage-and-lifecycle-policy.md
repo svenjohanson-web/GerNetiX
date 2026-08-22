@@ -42,7 +42,8 @@ wo der API-Vertrag dies ausdruecklich festlegt.
 Konfigurierbar sind insbesondere:
 
 - verwendbare Projektanzahl und interne Abuse-Grenzen,
-- Git-, Release- und gegebenenfalls gemeinsamer dauerhafter Speicher,
+- getrennte Grenzwerte fuer Git, Git-LFS und Artifact Store; ein gemeinsamer
+  Wert darf nur als ausdruecklicher kompatibler Alias existieren,
 - Warnschwellen und Verhalten im Ueberkontingent,
 - Aufbewahrung normaler, Debug- und diagnostischer Build-Artefakte,
 - Cache-TTL und betriebliche Soft-Limits,
@@ -153,7 +154,8 @@ Kundenansicht erklaert Grenzwert, aktuelle Nutzung, Auswirkung und moegliche
 Abhilfe, statt nur einen generischen Sperrstatus zu zeigen.
 
 Die Kundenansicht zeigt diese Angaben zentral unter `Billing`: belegten und
-maximalen Projekt-/Git-Speicher, prozentuale Auslastung, Warnstatus,
+maximalen Projekt-/Git-Speicher sowie getrennt LFS- und Artifact-Nutzung,
+prozentuale Auslastung, Warnstatus,
 Policy-Version, Messgrundlage sowie die bei Erreichen der Grenze verbleibenden
 Handlungen. Die Warnschwelle ist Teil der versionierten Tarifpolicy und wird im
 Admin Tool pro Profil konfiguriert. Dort werden fuer jeden Account dieselbe

@@ -22,6 +22,17 @@ function adminContext(overrides = {}) {
   };
 }
 
+test("interface statistics aggregate the central Operations records", async () => {
+  const repository = new InMemoryAdminRepository();
+  repository.addInterfaceCall({ occurred_at:new Date().toISOString(), source_service:"identity-server", target_service:"project-server", duration_ms:10, succeeded:true });
+  repository.addInterfaceCall({ occurred_at:new Date().toISOString(), source_service:"identity-server", target_service:"project-server", duration_ms:30, succeeded:false });
+  const service = new AdminService({ repository });
+  const result = await service.interfaceStatistics({ hours:24 });
+  assert.deepEqual(result.summary,{calls:2,failed:1,targets:1});
+  assert.equal(result.items[0].average_ms,20);
+  assert.equal(result.items[0].maximum_ms,30);
+});
+
 test("device detail is masked without consent or legal basis and audited", async () => {
   const service = createDefaultAdminTool();
   const result = await service.getDevice("device_verified_1", adminContext());
@@ -715,6 +726,36 @@ test("admin keeps SMTP password server-side while configuring Identity mail deli
   verifyInternalToken(calls[0].options.headers.Authorization.replace(/^Bearer\s+/, ""), "test-internal-signing-key", { audience: "identity-server", requiredScopes: ["identity.email.write"] });
   assert.equal(calls[0].options.body.password, "secret");
   assert.equal(tested.ok, true);
+});
+
+test("support recovery forwards the one-time delivery address but persists only a minimized audit", async () => {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({ repository, accessPolicy: new AdminAccessPolicy({ repository }) });
+  let forwarded;
+  service.identityEmailConfigRequest = async (pathname, options) => {
+    forwarded = { pathname, options };
+    return {
+      recovery_id: "recovery-1",
+      account_id: "account-1",
+      expires_at: "2026-08-18T12:15:00.000Z",
+      delivery_status: "accepted",
+      email_deleted: true,
+    };
+  };
+  const result = await service.startSupportRecovery({
+    username: "sven02",
+    email: "temporary-reset@example.net",
+    verification_reason: "verified_existing_support_callback",
+  }, adminContext());
+
+  assert.equal(forwarded.pathname, "/api/internal/support-recovery");
+  assert.equal(forwarded.options.body.email, "temporary-reset@example.net");
+  assert.equal(result.email_deleted, true);
+  const audit = repository.adminActions.at(-1);
+  assert.equal(audit.action_type, "identity.support_recovery.issue");
+  assert.equal(audit.payload.email_deleted, true);
+  assert.doesNotMatch(JSON.stringify(audit), /temporary-reset@example\.net/);
+  assert.doesNotMatch(JSON.stringify(audit), /verified_existing_support_callback/);
 });
 
 test("llm config test uses OpenAI Responses API when configured", async () => {

@@ -9,7 +9,7 @@ const domains = [
     "identity_knowledge_chapter_reads", "identity_migrations",
   ]],
   ["project", [
-    "project_projects", "project_sources", "project_artifacts", "project_build_jobs",
+    "project_projects", "project_artifacts", "project_build_jobs",
     "project_consents", "project_feedback", "project_resource_policies", "project_migrations",
   ]],
   ["telemetry", [

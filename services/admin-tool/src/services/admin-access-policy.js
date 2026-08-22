@@ -4,6 +4,7 @@ const ROLE_CAPABILITIES = {
     "admin_ai_usage_monitoring",
     "admin_ai_cost_controls",
     "admin_identity_configuration",
+    "admin_identity_recovery",
     "admin_link_integrity",
     "admin_learning",
     "admin_community_support",
@@ -13,6 +14,7 @@ const ROLE_CAPABILITIES = {
     "support_registered_board_check",
     "admin_device_management",
     "admin_community_support",
+    "admin_identity_recovery",
   ],
   community_moderator: ["admin_community_moderation"],
 };

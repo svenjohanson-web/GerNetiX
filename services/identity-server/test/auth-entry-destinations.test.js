@@ -27,6 +27,7 @@ test("keeps the requested destination through every browser auth path", () => {
   assert.match(authClient, /authentication\/verify"[\s\S]*next: nextUrl/);
   assert.match(authClient, /registration\/verify"[\s\S]*next: nextUrl/);
   assert.match(authClient, /offline\/passkey\/verify"[\s\S]*next: nextUrl/);
+  assert.match(authClient, /support\/passkey\/verify"[\s\S]*next: nextUrl/);
   assert.match(authClient, /postJson\("\/api\/account\/guest", \{ next: nextUrl, locale: currentLocale\(\) \}\)/);
 });
 

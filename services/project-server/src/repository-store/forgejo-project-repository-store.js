@@ -44,6 +44,38 @@ class ForgejoProjectRepositoryStore {
     return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, commit.head_sha);
   }
 
+  async migrateProjectHistory(input = {}) {
+    const projectId = required(input.project_id, "project_id");
+    const repositoryName = repositoryNameForProject(projectId);
+    await this.client.ensureOrganization(this.organization, {
+      full_name: "GerNetiX Projekte",
+      description: "Private Kundenprojekte von GerNetiX.",
+    });
+    const ensured = await this.client.ensureOrganizationRepository(this.organization, {
+      name: repositoryName,
+      description: `GerNetiX Projekt ${projectId}`,
+      default_branch: this.defaultBranch,
+    });
+    const repository = ensured.repository || {};
+    const remoteUrl = trustedCloneUrl(repository.clone_url, this.client.baseUrl);
+    if (!ensured.created && !repository.empty) {
+      const existingHead = await this.git.head({ remote_url: remoteUrl, branch: this.defaultBranch });
+      if (existingHead.head_sha !== input.expected_head_oid) {
+        throw new ProjectServerError("repository_migration_target_conflict", "Das vorhandene Repository entspricht nicht dem freigegebenen Migrationsstand.", 409);
+      }
+      return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, existingHead.head_sha);
+    }
+    const imported = await this.git.importHistory({
+      remote_url: remoteUrl,
+      branch: this.defaultBranch,
+      commits: input.commits,
+    });
+    if (imported.head_sha !== input.expected_head_oid) {
+      throw new ProjectServerError("repository_migration_head_mismatch", "Der importierte Repository-Kopf stimmt nicht mit dem Migrationsplan überein.", 409);
+    }
+    return repositoryBinding(this.organization, repositoryName, repository, remoteUrl, this.defaultBranch, imported.head_sha);
+  }
+
   async commitChanges(binding = {}, input = {}) {
     requireConfiguredBinding(binding, this.organization);
     return this.git.commit({
@@ -145,6 +177,51 @@ class ForgejoProjectRepositoryStore {
       html_url: repository?.html_url || "",
     };
   }
+
+  async inspectProjectRepository(binding = {}) {
+    requireConfiguredBinding(binding, this.organization);
+    const startedAt = Date.now();
+    const repository = await this.client.getRepository(binding.organization, binding.repository_name);
+    if (!repository) throw new ProjectServerError("project_repository_not_found", "Das gebundene Forgejo-Projekt-Repository wurde nicht gefunden.", 503);
+    const paths = await this.tree(binding, binding.head_sha);
+    return {
+      exists: true,
+      archived: Boolean(repository.archived),
+      empty: Boolean(repository.empty),
+      repository_size_bytes: safeKilobytes(repository.size),
+      lfs_size_bytes: safeBytes(repository.lfs_size),
+      object_count: paths.length,
+      latency_ms: Date.now() - startedAt,
+      html_url: repository.html_url || "",
+    };
+  }
+
+  async listOrphanProjectRepositories(bindings = []) {
+    const boundNames = new Set(bindings
+      .filter((binding) => binding?.provider === "forgejo" && binding.organization === this.organization)
+      .map((binding) => binding.repository_name));
+    return (await this.client.listOrganizationRepositories(this.organization))
+      .filter((repository) => String(repository?.name || "").startsWith("project-") && !boundNames.has(repository.name))
+      .map((repository) => ({
+        organization: this.organization,
+        repository_name: repository.name,
+        repository_id: repository.id === undefined ? "" : String(repository.id),
+        archived: Boolean(repository.archived),
+        repository_size_bytes: safeKilobytes(repository.size),
+        lfs_size_bytes: safeBytes(repository.lfs_size),
+        html_url: repository.html_url || "",
+      }));
+  }
+}
+
+function safeKilobytes(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.round(number * 1024) : 0;
+}
+
+function safeBytes(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.round(number) : 0;
 }
 
 function repositoryBinding(organization, repositoryName, repository, remoteUrl, defaultBranch, headSha) {

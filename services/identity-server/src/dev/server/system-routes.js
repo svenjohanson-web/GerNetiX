@@ -3,10 +3,12 @@
 function registerSystemRoutes({
   registry, requireSession, readJsonBody, sendJson, sendDevJson, requireInternalAdmin,
   handleDevLessonPreviewMigration, identityPersistenceBackend, identityRuntimeLocation, identityRemoteDev,
+  identityPersistenceHealth,
   smtpConfigStore, smtpEmailService, createIdentityLinkInventory, publicDir,
   webPushService, securityAlertPushAccountIds, requireSessionProject, projectServerUserId,
   handleInternalDevicePushEvent, handleInternalDeviceRuntimeEvent, handleUserActionIngest,
   userActionDiagnostics, handleProjectRuntimeStream, telemetryJson,
+  auth, recordSystemEvent,
   checkIdentityDbHealth = async () => ({ status: "unknown" }),
   checkIdentityDependencies = async () => ({ status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [] }),
 }) {
@@ -23,6 +25,7 @@ function registerSystemRoutes({
     method: "*",
     path: "/health",
     async handler({ res }) {
+      const persistence = identityPersistenceHealth ? await identityPersistenceHealth() : { ready: true };
       const identityDb = await checkIdentityDbHealth().catch((error) => ({
         backend: "postgres",
         reachable: false,
@@ -39,12 +42,26 @@ function registerSystemRoutes({
         unreachable: 1,
         items: [{ id: "dependency-health", name: "Dependency-Healthcheck", reachable: false, error_code: error.code || "health_check_failed", message: error.message || String(error) }],
       }));
-      const status = identityDb.reachable === false ? "unhealthy" : dependencies.status === "degraded" ? "degraded" : "ok";
-      sendJson(res, 200, {
+      /*
+       * Die Kontodatenbank entscheidet ueber die Erreichbarkeit des Dienstes:
+       * ohne sie ist keine Anmeldung moeglich, gleich was die uebrige
+       * Nachbarschaft meldet. Deshalb faellt bei ihr der Statuscode auf 503,
+       * waehrend ein ausgefallener Nachbar nur "degraded" bei 200 ergibt.
+       */
+      const persistenceReachable = persistence.ready !== false && identityDb.reachable !== false;
+      const status = !persistenceReachable ? "degraded" : dependencies.status === "degraded" ? "degraded" : "ok";
+      sendJson(res, persistenceReachable ? 200 : 503, {
         status, service: "identity-server", persistence_backend: identityPersistenceBackend,
         runtime_location: identityRuntimeLocation, remote_dev: identityRemoteDev,
         identity_db: identityDb,
-        dependencies,
+        /*
+         * postgres steht neben der Nachbarschaftsuebersicht, nicht statt ihrer:
+         * die Anmeldeseite unterscheidet daran ihre Fehlermeldung, der
+         * Prozess-Monitor liest zusaetzlich status, unreachable und items.
+         */
+        dependencies: identityPersistenceBackend === "postgres"
+          ? { ...dependencies, postgres: { status: persistenceReachable ? "healthy" : "unavailable" } }
+          : dependencies,
       });
     },
   });
@@ -56,6 +73,25 @@ function registerSystemRoutes({
       if (req.method === "GET") { sendJson(res, 200, { config: smtpConfigStore.publicConfig() }); return; }
       if (req.method === "PUT") { sendJson(res, 200, { config: await smtpConfigStore.update(await readJsonBody(req)) }); return; }
       sendJson(res, 405, { error: "method_not_allowed" });
+    },
+  });
+  registry.register({
+    method: "POST",
+    path: "/api/internal/support-recovery",
+    async handler({ req, res }) {
+      requireInternalAdmin(req);
+      const body = await readJsonBody(req);
+      try {
+        const result = await auth().start_support_recovery({
+          username: body.username, email: body.email, supportActorId: body.support_actor_id,
+          supportActorRole: body.support_actor_role, reason: body.verification_reason, actionId: body.action_id,
+        });
+        await recordSystemEvent({ severity: "warning", source_service: "identity_server", target_service: "identity_server", category: "authentication", event_type: "support_recovery_password_issued", message: "Ein vorläufiges Support-Passwort wurde zur Zustellung angenommen.", impact: "Das Konto besitzt für kurze Zeit einen ausschließlich zur Passkey-Wiederherstellung nutzbaren Zugang.", account_id: result.account_id, route: "/api/internal/support-recovery", correlation_id: result.action_id, details: { support_actor_id: String(body.support_actor_id || "").slice(0, 160), expires_at: result.expires_at, email_deleted: true } });
+        sendJson(res, 201, result);
+      } catch (error) {
+        await recordSystemEvent({ severity: "warning", source_service: "identity_server", target_service: "identity_server", category: "authentication", event_type: "support_recovery_issue_failed", message: "Ein Support-Recovery-Vorgang wurde abgewiesen oder konnte nicht zugestellt werden.", impact: "Es wurde kein nutzbarer Recovery-Zugang ausgestellt.", route: "/api/internal/support-recovery", correlation_id: /^[0-9a-f-]{36}$/i.test(String(body.action_id || "")) ? body.action_id : null, details: { support_actor_id: String(body.support_actor_id || "").slice(0, 160), error_code: error.code || "support_recovery_failed" } });
+        sendJson(res, error.status || 400, { error: error.code || "support_recovery_failed", message: error.message || "Support-Wiederherstellung konnte nicht vorbereitet werden." });
+      }
     },
   });
   registry.register({
@@ -73,6 +109,21 @@ function registerSystemRoutes({
       requireInternalAdmin(req, "identity.email.test");
       await smtpEmailService.testConnection();
       sendJson(res, 200, { ok: true, config: smtpConfigStore.publicConfig() });
+    },
+  });
+  registry.register({
+    method: "POST",
+    path: "/api/internal/email-delivery/suppress",
+    async handler({ req, res }) {
+      requireInternalAdmin(req);
+      const body = await readJsonBody(req);
+      const result = await auth().suppress_community_email_delivery({
+        event_id: body.event_id,
+        reason_code: body.reason_code,
+        source: body.source,
+        smtp_status: body.smtp_status,
+      });
+      sendJson(res, 200, result);
     },
   });
   registry.register({

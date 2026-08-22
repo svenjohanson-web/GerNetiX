@@ -36,6 +36,16 @@ test("Dutch learning catalog translations preserve canonical project identity", 
   assert.match(localized.description, /zonder voorkennis/);
 });
 
+test("the chicken-coop smartphone app project is localized without changing its slug", () => {
+  const original = { id: "learning_project.chicken_coop_door_smartphone_app", slug: "chicken-coop-door-smartphone-app", name: "Eigene Smartphone-App für die Hühnerstalltür", description: "Deutsch" };
+  const english = context.locales.project(original, "en");
+  const dutch = context.locales.project(original, "nl");
+  assert.equal(english.slug, original.slug);
+  assert.equal(dutch.slug, original.slug);
+  assert.match(english.name, /smartphone app/i);
+  assert.match(dutch.name, /smartphone-app/i);
+});
+
 test("learning interface labels follow the selected locale", () => {
   assert.equal(context.locales.text("en", "continue"), "Continue");
   assert.equal(context.locales.text("nl", "startProject"), "Leerproject starten");

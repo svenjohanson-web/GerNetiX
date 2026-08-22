@@ -14,6 +14,7 @@ async function createDefaultCommunityPlatform(config = createConfig()) {
     messageRateLimit: config.messageRateLimit,
     messageRateWindowSeconds: config.messageRateWindowSeconds,
     supportUserIds: config.supportUserIds,
+    notificationRetention: config.notificationRetention,
   });
   await seedKnowledge(service);
   return service;

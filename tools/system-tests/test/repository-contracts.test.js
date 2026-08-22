@@ -36,7 +36,9 @@ test("browser selectors remain present in the productive Identity UI", () => {
   const auth = read("services/identity-server/public/app/auth/index.html");
   const app = read("services/identity-server/public/app/index.html");
   const projectController = read("services/identity-server/public/app/app-project-controller.js");
-  for (const id of ["login-title", "login-form", "show-identifier-login", "login-identifier", "status"]) {
+  // show-identifier-login ist entfallen: der Spitzname ist jetzt ein dauerhaft
+  // sichtbares optionales Feld statt eines Umschalters.
+  for (const id of ["login-title", "login-form", "login-identifier-field", "login-identifier", "status"]) {
     assert.match(auth, new RegExp(`id="${id}"`));
   }
   assert.match(app, /id="projectList"/);

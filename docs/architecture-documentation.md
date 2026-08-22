@@ -41,6 +41,19 @@ Die persoenliche Ein-Sitzungs-Regel, der ausdrueckliche Geraetewechsel, die
 Kontosicherung bei unbekannter Anmeldung und die testbaren Arbeitspakete
 stehen in [Eine aktive Kontositzung pro Einzelkonto](single-active-account-session.md).
 
+Die optionale verifizierte Kontaktadresse, getrennte persoenliche
+Community-E-Mail-Praeferenzen und die Grenze ohne Werbung, Tracking,
+Cookie-Consent oder Datenschutz-Kenntnisnahme stehen in
+[Optionale Account-E-Mail und persoenliche Community-Hinweise](account-email-community-notifications.md).
+Die zugehoerige oeffentliche Transparenzseite liegt unter `/datenschutz/`;
+bis zur Ergaenzung der Betreiberangaben, finalen Rechtsgrundlagen und
+Loeschfristen bleibt sie ausdruecklich ein nicht freigegebener Entwurf.
+Die standardmaessig deaktivierten Notification- und Token-Retention-Worker
+sowie ihre geschuetzten Aktivzustaende sind im selben Fachdokument beschrieben.
+Dasselbe Dokument beschreibt die adressversionsgebundene Community-Mail-
+Suppression, den geschuetzten internen Delivery-Status-Vertrag und die
+Revalidierung ohne Verlust der persoenlichen Praeferenzen.
+
 Die beschlossene Ablösung der PostgreSQL-Projektquellen durch private
 Forgejo-Repositories, die Speichergrenze zu PostgreSQL und Artifact Store sowie
 die testbaren Migrationsschritte stehen in
@@ -82,6 +95,12 @@ Die verbindliche Trennung zwischen wiederverwendbaren Lernprojekten, Courses,
 Learning Paths und kaufbaren Bundles sowie die Bestandsordnung stehen im
 [Katalogvertrag fuer Lernangebote](learning-catalog-governance.md).
 
+Das öffentliche Nachbauprojekt der ferngesteuerten Hühnerstalltür, seine
+lokale Sicherheitsgrenze, die alternativen WLAN-/LoRa-Wege und das zugehörige
+Smartphone-App-Lernprojekt sind unter
+[Ferngesteuerte Hühnerstalltür und Smartphone-App-Lernprojekt](project-remote-chicken-coop-door.md)
+beschrieben.
+
 Die verbindliche Trennung des Plattform-Startpfads in kritischen Bootstrap,
 routenbezogene Summary-Abschnitte, eigene Domaenenendpunkte und lazy geladene
 Browsermodule steht im
@@ -105,6 +124,63 @@ oeffentlichen Inbetriebnahmeseite stehen in der
 Das öffentliche [Virtuelle Elektroniklabor](virtual-electronics-lab.md)
 grenzt anonyme, hardwarefreie Messsimulationen bewusst von Nachbauprojekten,
 der angemeldeten Plattform und realer Hardwareansteuerung ab.
+Die Entscheidung gegen eine vorschnelle externe Simulationsruntime und die
+verbindlichen Gates für einen späteren isolierten Provider dokumentiert der
+[SPICE-/WASM-Machbarkeitsnachweis](virtual-electronics-lab-spice-wasm-feasibility.md).
+
+Das gemeinsame Elektroniklabor wird weiterhin in kontrollierten Durchstichen
+ausgebaut. Sein
+[Lastenheft-Entwurf](virtual-electronics-lab-requirements-draft.md), der
+[Zielarchitektur-Entwurf](virtual-electronics-lab-target-architecture-draft.md)
+und die
+[Codex-Arbeitsanweisung](codex-virtual-electronics-lab-implementation-procedure.md)
+halten den aktuellen Planungsstand fest. Kontrollierte Arbeitspakete grenzen
+den [GPIO-LED-Durchstich](virtual-electronics-lab-gpio-led-vertical-slice-spec.md),
+den [PWM-LED-Durchstich](virtual-electronics-lab-pwm-led-vertical-slice-spec.md),
+die
+[Oszilloskop-Anbindung](virtual-electronics-lab-pwm-oscilloscope-vertical-slice-spec.md),
+das
+[PT1000-Umweltmodell](virtual-electronics-lab-pt1000-environment-model-work-package.md)
+und den
+[linearen DC-Arbeitspunkt-Solver](virtual-electronics-lab-dc-operating-point-solver-work-package.md)
+und den
+[ersten freien Simulationsdurchstich](virtual-electronics-lab-free-simulation-work-packages.md)
+voneinander ab. Der jeweilige Dokumentstatus und der SQLite-Graph bestimmen,
+ob ein Paket nur geplant oder bereits implementiert ist.
+Der [gemeinsame LabProject-Messpfad](virtual-electronics-lab-shared-project-measurement-work-package.md)
+vereinigt den freien Schaltungs- und Messaufbau an der Analysegrenze und führt
+einen typisierten MeasurementTrace für DC- und Transientenmessungen ein.
+Die [leere Laborfläche](virtual-electronics-lab-empty-workbench-work-package.md)
+ergänzt denselben freien Command- und Messpfad um einen Startzustand ohne
+vorgegebene Schaltung.
+Der [einheitliche Simulations- und Netlist-Vertrag](virtual-electronics-lab-spice-simulation-contract-work-package.md)
+führt DC und Transient über einen providerneutralen Auftrag zusammen und
+erzeugt daraus eine deterministische, begrenzte SPICE-Netlist, ohne bereits
+eine externe Simulationsruntime einzuführen.
+Die [lineare AC-Kleinsignalanalyse](virtual-electronics-lab-spice-ac-analysis-work-package.md)
+erweitert denselben Auftrag um begrenzte logarithmische RLC-Sweeps, komplexe
+MNA-Ergebnisse und den passenden `.ac`-Netlist-Export.
+Die [sichtbare AC-/Bode-Analyse](virtual-electronics-lab-spice-visible-ac-work-package.md)
+bindet diesen Vertrag über virtuelle Tastköpfe, RC-Vorlage, Bode-Kurven und
+eine nur lesbare Netlist in die bestehende freie Laborfläche ein.
+Die [naechsten parallelen SPICE-Arbeitspakete](virtual-electronics-lab-next-parallel-spice-work-packages.md)
+halten den umgesetzten Capability-, Provider- und Ergebnisvertrag, die
+AC-Kennwertauswertung sowie den kanonischen Solver-/Netlist-Orakelkorpus fest.
+Ein echter WASM-Provider bleibt weiterhin hinter den dokumentierten Build-,
+Lizenz-, Worker- und Ressourcengates.
+Die [kompakte Arbeitspaket-Uebersicht](virtual-electronics-lab-work-package-status.md)
+trennt abgeschlossene Pakete, definierte offene Pakete, ausstehende Nachweise
+und noch nicht paketierte Architekturthemen.
+Die umgesetzte Fehlersuchkette von falscher Tasterverdrahtung über fehlenden
+Pull-Widerstand und Tasterprellen bis zur quellcodegesteuerten Entprellung und
+der optionalen, creditgebundenen KI-Hilfe ist in
+der [Fehlersuch-Roadmap](virtual-electronics-lab-fault-search-roadmap.md)
+zusammengefasst.
+Die serverseitige Grenze der KI-Hilfe ist im
+[FS-012-Arbeitspaket](virtual-electronics-lab-live-ai-work-package.md)
+festgelegt: Simulation und manuelle Fehlersuche bleiben statisch, während nur
+der bestätigungspflichtige Assistent den Identity Server, AI Usage und OpenAI
+Responses verwendet.
 
 Die betriebliche Sicht auf fehlgeschlagene oder haengende Schaltflaechen und
 Nutzerablaeufe, einschliesslich lokaler Datenschutzgrenze, Ereignismodell,

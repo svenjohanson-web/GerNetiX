@@ -7,6 +7,7 @@ const path = require("node:path");
 const identityRoutes = [
   route("identity.home", "/", "public", "Identity"),
   route("identity.about", "/ueber-uns/", "public", "Business"),
+  route("identity.privacy", "/datenschutz/", "public", "Identity"),
   route("identity.rebuild_projects", "/nachbauprojekte/", "public", "Learning"),
   route("identity.virtual_electronics_labs", "/technik-labs/", "public", "Learning"),
   route("identity.spectrum_analyzer_lab", "/technik-labs/spektrumanalysator/", "public", "Learning"),

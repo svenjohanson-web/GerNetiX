@@ -372,8 +372,8 @@ test("configures a touchscreen game collection through games, board and inventor
 test("development platform scales like a compact workspace", () => {
   assert.match(publicApp, /development-workspace-active", route === "development-platform"/);
   assert.match(publicCss, /\.development-workspace-active \{[\s\S]*min-height: 100dvh;[\s\S]*overflow: auto/);
-  assert.match(publicCss, /\.development-workspace-active \.app-shell \{[\s\S]*padding: 4px 8px 8px/);
-  assert.match(publicCss, /\.development-workspace-active \.topbar \{[\s\S]*position: sticky;[\s\S]*top: 4px;[\s\S]*z-index: 40/);
+  assert.match(publicCss, /\.development-workspace-active \.app-shell \{[\s\S]*padding: 0 8px 8px/);
+  assert.match(publicCss, /\.development-workspace-active \.topbar \{[\s\S]*position: sticky;[\s\S]*top: 0;[\s\S]*z-index: 40/);
   assert.match(publicCss, /\.development-workspace-active \.app-menu \{[\s\S]*position: fixed;[\s\S]*top: 54px;[\s\S]*z-index: 50/);
   assert.match(publicCss, /\.development-workspace-active #developmentPlatformView \{[\s\S]*flex: 1 1 auto;[\s\S]*overflow: visible/);
   assert.match(publicCss, /\.development-workspace-active \.development-platform-layout,[\s\S]*\.development-workspace-active \.development-workspace-panel \{[\s\S]*overflow: visible/);

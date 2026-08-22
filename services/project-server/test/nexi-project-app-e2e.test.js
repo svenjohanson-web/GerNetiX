@@ -21,6 +21,11 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
       (title, text, insight) => ({ title, text, insight }),
     );
     const approvedCommit = "c".repeat(40);
+    let repositoryFiles = [];
+    const repositoryBinding = {
+      provider: "forgejo", organization: "gernetix-projects", repository_name: "project-learning-nexi-e2e",
+      default_branch: "main", head_sha: "d".repeat(40), state: "active",
+    };
     const productStore = {
       readProtectedFiles: async () => [
         { path: "voice_lab.cpp", content: "void userSetup() { nexi::ApplicationManager app; }\n" },
@@ -28,7 +33,13 @@ test("starts Nexi, persists its Project-App settings and resumes them after a re
         { path: "include/nexi/voice_types.h", content: "enum class VoiceEffect { Robot, Echo, };\n" },
         { path: "gernetix/system-repository.json", content: "{}\n" },
       ],
-      provisionProject: async () => ({}),
+      provisionProject: async (input) => {
+        repositoryFiles = input.changes.map((change) => ({ path: change.path, content: change.content }));
+        return repositoryBinding;
+      },
+      tree: async () => repositoryFiles.map((file) => file.path),
+      readFiles: async () => repositoryFiles,
+      readFile: async (_binding, _commitSha, sourcePath) => repositoryFiles.find((file) => file.path === sourcePath) || null,
     };
     const serviceOptions = {
       projectRepositoryStore: productStore,

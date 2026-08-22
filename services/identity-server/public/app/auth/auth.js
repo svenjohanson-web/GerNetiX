@@ -5,6 +5,7 @@ import { publicI18n } from "/landing.js";
 const loginForm = document.querySelector("#login-form");
 const registerForm = document.querySelector("#register-form");
 const recoveryForm = document.querySelector("#recovery-form");
+const supportRecoveryForm = document.querySelector("#support-recovery-form");
 const modeToggle = document.querySelector("#auth-mode-toggle");
 const recoveryModeToggle = document.querySelector("#recovery-mode-toggle");
 const guestAccessButton = document.querySelector("#guest-access-button");
@@ -13,6 +14,7 @@ const activeSessionDialog = document.querySelector("#active-session-dialog");
 const activeSessionStatus = document.querySelector("#active-session-status");
 let i18n = null;
 let pendingLogin = null;
+let supportRecoveryToken = "";
 
 function tr(key, fallback, variables = {}) {
   return i18n ? i18n.t(key, variables, fallback) : fallback;
@@ -27,7 +29,7 @@ const statusElement = document.querySelector("#status");
 const identifierField = document.querySelector("#login-identifier-field");
 const query = new URLSearchParams(window.location.search);
 const nextUrl = query.get("next") || "/app/dashboard/";
-let mode = query.get("mode") === "register" ? "register" : query.get("mode") === "recovery" ? "recovery" : "login";
+let mode = query.get("mode") === "register" ? "register" : query.get("mode") === "recovery" ? "recovery" : query.get("mode") === "support-recovery" ? "support-recovery" : "login";
 const securingAccount = false;
 
 initializeI18n();
@@ -61,6 +63,7 @@ loginForm.addEventListener("submit", async (event) => {
   let browserPasskeyRequest = false;
   let actionStage = "options";
   try {
+    await ensureIdentityLoginReady();
     const options = await actionStep(action, "auth.options", () => postJson(
       "/api/passkeys/authentication/options",
       username ? { username } : {},
@@ -109,11 +112,6 @@ document.querySelector("#secure-account").addEventListener("click", async () => 
   });
 });
 
-document.querySelector("#show-identifier-login").addEventListener("click", () => {
-  identifierField.classList.remove("hidden");
-  document.querySelector("#login-identifier").focus();
-});
-
 registerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(registerForm);
@@ -142,6 +140,8 @@ registerForm.addEventListener("submit", async (event) => {
 
 modeToggle.addEventListener("click", () => { mode = mode === "login" ? "register" : "login"; applyMode(true); });
 recoveryModeToggle.addEventListener("click", () => { mode = "recovery"; applyMode(true); });
+document.querySelector("#show-support-recovery").addEventListener("click", () => { mode = "support-recovery"; applyMode(true); });
+document.querySelector("#show-offline-recovery").addEventListener("click", () => { mode = "recovery"; applyMode(true); });
 recoveryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(recoveryForm);
@@ -167,6 +167,36 @@ recoveryForm.addEventListener("submit", async (event) => {
     statusElement.textContent = localizedErrorMessage(error, "auth.status.recovery.failed", "Zugang konnte nicht wiederhergestellt werden.");
   }
 });
+supportRecoveryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(supportRecoveryForm));
+  statusElement.textContent = "Vorläufiges Passwort wird geprüft …";
+  let browserPasskeyRequest = false;
+  try {
+    if (!supportRecoveryToken) {
+      const recovery = await postJson("/api/recovery/support/login", data);
+      supportRecoveryToken = recovery.support_recovery_token;
+      supportRecoveryForm.elements.temporary_password.value = "";
+      supportRecoveryForm.elements.temporary_password.required = false;
+    }
+    statusElement.textContent = "Einmalpasswort bestätigt. Neuer Passkey wird eingerichtet …";
+    const options = await postJson("/api/recovery/support/passkey/options", { support_recovery_token: supportRecoveryToken });
+    browserPasskeyRequest = true;
+    const credential = await navigator.credentials.create({ publicKey: parseCreationOptions(options) });
+    browserPasskeyRequest = false;
+    const result = await postJson("/api/recovery/support/passkey/verify", { support_recovery_token: supportRecoveryToken, credential: credentialJson(credential), next: nextUrl, locale: currentLocale() });
+    supportRecoveryToken = "";
+    statusElement.textContent = "Zugang wurde wiederhergestellt. Das vorläufige Passwort ist ungültig geworden.";
+    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 600);
+  } catch (error) {
+    if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
+    if (["support_recovery_grant_invalid", "support_recovery_invalid"].includes(error?.code)) {
+      supportRecoveryToken = "";
+      supportRecoveryForm.elements.temporary_password.required = true;
+    }
+    statusElement.textContent = localizedErrorMessage(error, "auth.status.recovery.failed", "Support-Wiederherstellung konnte nicht abgeschlossen werden.");
+  }
+});
 guestAccessButton.addEventListener("click", async () => {
   statusElement.textContent = tr("auth.status.guest.creating", "Gastzugang wird angelegt …");
   try {
@@ -180,13 +210,15 @@ guestAccessButton.addEventListener("click", async () => {
 function applyMode(updateUrl) {
   const registration = mode === "register";
   const recovery = mode === "recovery";
-  loginForm.classList.toggle("hidden", registration || recovery);
+  const supportRecovery = mode === "support-recovery";
+  loginForm.classList.toggle("hidden", registration || recovery || supportRecovery);
   registerForm.classList.toggle("hidden", !registration);
   recoveryForm.classList.toggle("hidden", !recovery);
-  guestAccess.classList.toggle("hidden", registration || recovery);
+  supportRecoveryForm.classList.toggle("hidden", !supportRecovery);
+  guestAccess.classList.toggle("hidden", registration || recovery || supportRecovery);
   titleElement.textContent = registration
     ? tr("auth.register.step", "Konto anlegen")
-    : recovery
+    : recovery || supportRecovery
       ? tr("auth.recovery.title", "Zugang wiederherstellen")
       : tr("auth.login.title", "Anmelden");
   if (recovery && securingAccount) {
@@ -199,7 +231,7 @@ function applyMode(updateUrl) {
   statusElement.textContent = "";
   if (updateUrl) {
     const params = new URLSearchParams(window.location.search);
-    registration ? params.set("mode", "register") : recovery ? params.set("mode", "recovery") : params.delete("mode");
+    registration ? params.set("mode", "register") : recovery ? params.set("mode", "recovery") : supportRecovery ? params.set("mode", "support-recovery") : params.delete("mode");
     window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
   }
 }
@@ -222,6 +254,20 @@ async function postJson(url, body, headers = {}) {
     throw error;
   }
   return payload;
+}
+
+async function ensureIdentityLoginReady() {
+  const response = await fetch("/health", { headers:{ Accept:"application/json" }, cache:"no-store" });
+  if (response.ok) return;
+  let payload={};
+  try { payload=await response.json(); } catch {}
+  const persistenceUnavailable=payload?.dependencies?.postgres?.status==="unavailable";
+  const error=new Error(persistenceUnavailable
+    ? tr("auth.error.login.persistence_unavailable", "Anmeldung nicht möglich: Die zentrale Kontodatenbank ist momentan nicht erreichbar.")
+    : tr("auth.error.login.identity_unreachable", "Der Identity-Dienst ist momentan nicht erreichbar."));
+  error.code=persistenceUnavailable?"identity_persistence_unavailable":"identity_unreachable";
+  error.status=response.status;
+  throw error;
 }
 
 function showActiveSessionDialog(payload) {
@@ -268,8 +314,8 @@ function passkeyActionReason(error) {
   if (reason === "NotAllowedError") return "passkey_cancelled";
   if (reason === "NotSupportedError") return "passkey_not_supported";
   if (reason === "SecurityError") return "passkey_origin_invalid";
-  if (reason === "TypeError" || reason === "identity_persistence_unavailable") return "identity_unreachable";
-  if (["invalid_credentials", "account_not_found", "passkey_not_configured", "account_disabled", "account_not_verified", "guest_expired"].includes(reason)) return "account_unavailable";
+  if (["TypeError", "identity_unreachable", "identity_persistence_unavailable"].includes(reason)) return "identity_unreachable";
+  if (["invalid_credentials", "account_not_found", "passkey_not_configured", "passkey_not_registered_for_site", "account_disabled", "account_not_verified", "guest_expired"].includes(reason)) return "account_unavailable";
   return "authentication_verification_failed";
 }
 async function reportPasskeyBrowserError(flow, error, action = null) {
@@ -295,10 +341,14 @@ function passkeyLoginFailureMessage(error) {
     invalid_credentials: "auth.error.login.account_not_found",
     account_not_found: "auth.error.login.account_not_found",
     passkey_not_configured: "auth.error.login.passkey_not_configured",
+    passkey_not_registered_for_site: "auth.error.login.passkey_not_configured",
+    passkey_canonical_origin_required: "auth.error.security",
+    passkey_remote_dev_mutation_forbidden: "auth.error.security",
     account_disabled: "auth.error.login.account_disabled",
     account_not_verified: "auth.error.login.account_not_verified",
     guest_expired: "auth.error.login.guest_expired",
     identity_persistence_unavailable: "auth.error.login.persistence_unavailable",
+    identity_unreachable: "auth.error.login.identity_unreachable",
     passkey_authentication_unavailable: "auth.error.login.authentication_unavailable",
     passkey_challenge_expired: "auth.error.login.challenge_expired",
     passkey_verification_failed: "auth.error.login.verification_failed",

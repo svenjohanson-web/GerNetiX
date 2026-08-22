@@ -6,7 +6,12 @@ const path = require("node:path");
 
 const root = __dirname;
 const port = Number(process.env.LAB_PORT || 4319);
-const contentTypes = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+const contentTypes = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+};
 
 http.createServer((request, response) => {
   const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;

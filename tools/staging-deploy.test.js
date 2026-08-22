@@ -150,6 +150,25 @@ test("parses an explicit full-deployment recovery", () => {
   assert.equal(parseArgs(["--force-full"]).forceFull, true);
 });
 
+test("force-full nennt dem Server gar keinen vorherigen Commit", () => {
+  /*
+   * Ohne Vergleichspunkt waehlt der Server den vollstaendigen Weg. Eine
+   * unmoegliche Null-OID taete dasselbe, ist aber ein Umweg: der Server
+   * begruendet den Vollmodus dann mit einem Objekt, das es nie gab.
+   */
+  const command = remoteDeployCommand({
+    branch: "main",
+    commit: "a".repeat(40),
+    remoteDir: "/opt/gernetix",
+    forceFullDeployment: true,
+  });
+  // Nach der Shell-Quotierung ist die leere Zuweisung nicht mehr woertlich
+  // lesbar; die Zusicherung ist, dass kein Vergleichspunkt ermittelt wird.
+  assert.doesNotMatch(command, /git rev-parse HEAD/);
+  assert.match(command, /previous_commit=/);
+  assert.match(remoteDeployCommand({ branch: "main", commit: "a".repeat(40), remoteDir: "/opt/gernetix" }), /git rev-parse HEAD/);
+});
+
 test("quotes remote values and deploys an exact commit", () => {
   assert.equal(shellQuote("/opt/gernetix"), "'/opt/gernetix'");
   const command = remoteDeployCommand({

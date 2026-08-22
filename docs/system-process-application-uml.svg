@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur mit einem zentralen kundenbedienten Flash-Dialog und einem gemeinsamen Flash-Executor fuer IDE, Provisioning, gefuehrte Projekte und oeffentliche GerNetiX-Seiten. Anwendungen koennen bis zu 16 kompatible Account-Geraete binden; Project Server speichert die geordnete Liste, Device Management bestaetigt Besitz und Status. Entwicklungs-Discovery bleibt bis zur ausdruecklichen IDE-Projektspeicherung fluechtiger Browserzustand. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL. Erst gespeicherte Projektdateien und Historie liegen nach dem aktivierten Cutover-Gate in privaten Forgejo-Git-Repositories; geschuetzte Basissoftware und Produkte liegen in getrennten System-Repositories, Binaries im Artifact Store. Generative KI und Embeddings verwenden standardmaessig die kostenkontrollierte OpenAI API; ein lokales LLM ist nicht vorausgesetzt. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
+  <desc id="desc">Remote-first Architektur mit kanonisch gebundenen, mehrfachen Passkeys, optionaler verifizierter Kontaktadresse, datensparsamen persoenlichen Community-E-Mail-Hinweisen und adressversionsgebundener Suppression sowie einer rollen-, re-authentisierungs- und zeitbegrenzten Support-Recovery ohne persistierte Zustelladresse. Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL. Aktive Projektdateien und Historie liegen ausschliesslich in privaten Forgejo-Git-Repositories; Binaries liegen im Artifact Store. Generative KI und Embeddings verwenden standardmaessig die kostenkontrollierte OpenAI API. Eine providerneutrale Compute Control Plane trennt typisierte Jobs und austauschbare Capacity-Provider.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -78,7 +78,7 @@
 
     <rect class="node edge" x="635" y="150" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="176" text-anchor="middle">Identity Server</text>
-    <text class="smallText" x="745" y="196" text-anchor="middle">Plattform + geschuetzte Inhalte/Quiz-API · :4300</text>
+    <text class="smallText" x="745" y="196" text-anchor="middle">Passkeys · Kontakt/Praeferenzen · Recovery · :4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="256" text-anchor="middle">Admin Access Server</text>
@@ -86,7 +86,7 @@
 
     <rect class="node edge" x="635" y="310" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="336" text-anchor="middle">Admin Tool</text>
-    <text class="smallText" x="745" y="356" text-anchor="middle">Ops, Synthetic Checks + Audit :4600</text>
+    <text class="smallText" x="745" y="356" text-anchor="middle">Ops, Support-Recovery + Audit :4600</text>
 
     <rect class="node edge" x="635" y="390" width="220" height="40" rx="10"/>
     <text class="titleText" x="745" y="415" text-anchor="middle">Context Manager :5050</text>
@@ -98,7 +98,7 @@
 
     <rect class="node domain" x="965" y="150" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="174" text-anchor="middle">Project Server</text>
-    <text class="smallText" x="1055" y="193" text-anchor="middle">Projekt + Board-Snapshot :4800</text>
+    <text class="smallText" x="1055" y="193" text-anchor="middle">Forgejo-only + Operations :4800</text>
 
     <rect class="node domain" x="1170" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="174" text-anchor="middle">Build-Pool · erster Compute-Adapter</text>
@@ -134,7 +134,7 @@
 
     <rect class="node domain" x="965" y="405" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="429" text-anchor="middle">Community Platform</text>
-    <text class="smallText" x="1055" y="448" text-anchor="middle">Forum + Ideen + Showcase + Kleinanzeigen :5200</text>
+    <text class="smallText" x="1055" y="448" text-anchor="middle">Inbox + Notification-Outbox + Community :5200</text>
 
     <rect class="node domain" x="1170" y="405" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="429" text-anchor="middle">Community AI</text>
@@ -146,11 +146,11 @@
 
     <rect class="node domain" x="1385" y="505" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="529" text-anchor="middle">IONOS Mail</text>
-    <text class="smallText" x="1480" y="548" text-anchor="middle">SMTP/TLS</text>
+    <text class="smallText" x="1480" y="548" text-anchor="middle">SMTP/TLS · Reset + generische Hinweise</text>
 
     <rect class="node tool" x="965" y="505" width="180" height="54" rx="10"/>
-    <text class="titleText" x="1055" y="529" text-anchor="middle">Forgejo · Adapter lokal</text>
-    <text class="smallText" x="1055" y="548" text-anchor="middle">private Projekt-Git-Repositories</text>
+    <text class="titleText" x="1055" y="529" text-anchor="middle">Forgejo · Staging aktiv</text>
+    <text class="smallText" x="1055" y="548" text-anchor="middle">Projekte + System-/Board-Support</text>
 
     <rect class="node domain" x="1170" y="505" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="529" text-anchor="middle">Device Voice Orchestrator</text>
@@ -167,7 +167,7 @@
     <text class="titleText" x="464" y="608" text-anchor="middle">YAML Graph</text>
     <text class="smallText" x="464" y="627" text-anchor="middle">Importer</text>
     <rect class="node tool" x="265" y="648" width="260" height="24" rx="10"/>
-    <text class="smallText" x="395" y="665" text-anchor="middle">Prozess-Monitor · VPN · Linkstatus</text>
+    <text class="smallText" x="395" y="665" text-anchor="middle">Prozess-Monitor · VPN · DB-Status/Start</text>
     <rect class="node tool" x="265" y="704" width="260" height="18" rx="10"/>
     <text class="smallText" x="395" y="717" text-anchor="middle">Architektur-Dokumentation · offline</text>
   </g>
@@ -201,7 +201,7 @@
 
     <rect class="node store" x="625" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="742" y="807" text-anchor="middle">Zentrales PostgreSQL / Identity</text>
-    <text class="smallText" x="742" y="826" text-anchor="middle">Accounts · Asset-/Release-Referenzen · Konfiguration</text>
+    <text class="smallText" x="742" y="826" text-anchor="middle">Accounts · Passkeys · Sessions · Recovery-Vorgaenge</text>
 
     <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="992" y="807" text-anchor="middle">Dasselbe PostgreSQL / Project + Build</text>
@@ -217,7 +217,7 @@
 
     <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
     <text class="titleText" x="992" y="880" text-anchor="middle">Forgejo DB + Repository-Volume</text>
-    <text class="smallText" x="992" y="899" text-anchor="middle">DB forgejo · forgejo_data · Dateien + Historie</text>
+    <text class="smallText" x="992" y="899" text-anchor="middle">DB + Daten · Git/LFS · Dateien + Historie</text>
 
     <rect class="node store" x="1125" y="858" width="250" height="52" rx="10"/>
     <text class="titleText" x="1250" y="880" text-anchor="middle">Dasselbe PostgreSQL + pgvector</text>
@@ -248,8 +248,10 @@
   <path class="line" d="M 855 179 L 965 347"/>
   <path class="line" d="M 855 179 L 1170 347"/>
   <path class="line" d="M 855 179 L 1385 432"/>
+  <path class="line dashed" d="M 965 432 L 855 179"/>
+  <text class="label" x="870" y="330">Outbox-Poll · Lease · minimiertes Ereignis</text>
   <path class="line" d="M 855 179 L 1385 532"/>
-  <text class="label" x="1170" y="515">SMTP/TLS</text>
+  <text class="label" x="1170" y="515">SMTP/TLS · kein Nachrichtentext</text>
   <path class="line" d="M 855 179 C 910 205, 910 315, 855 339"/>
   <text class="label" x="874" y="222">WebAuthn/Auth-Events</text>
   <path class="line" d="M 855 179 L 1445 869"/>
@@ -280,7 +282,7 @@
   <path class="line" d="M 855 179 L 1265 320"/>
   <text class="label" x="980" y="258">KI-Werkzeuge · Preflight + Tokens</text>
   <path class="line dashed" d="M 855 179 C 1080 300, 1320 700, 1445 914"/>
-  <text class="label" x="1130" y="560">Hardware + Anforderungen · Structured Output · store=false</text>
+  <text class="label" x="1130" y="560">Hardware + Anforderungen + Elektroniklabor · Structured Output · store=false</text>
   <path class="line" d="M 1360 432 L 1170 347"/>
   <path class="line" d="M 1170 432 L 1145 432"/>
   <path class="line" d="M 1265 204 L 1530 795"/>

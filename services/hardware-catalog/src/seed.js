@@ -317,6 +317,7 @@ function defaultCatalogSeed() {
         module_name: "ESP32-S3-WROOM-1",
         module_memory_variant: "N16R8",
         firmware_build_target_id: "firmware_build_target.esp32_s3_opi_n16r8",
+        board_support_source_id: "gernetix-board-support-esp32-s3-es3c28p",
         extra_capability_ids: ["capability.display_output", "capability.touchscreen_input", "capability.audio_output", "capability.bluetooth", "capability.analog_input"],
         pin_profile: {
           assigned_pins: {
@@ -1165,7 +1166,7 @@ function esp32Board(input) {
       monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 16,
       supported_frameworks: ["arduino", "espidf"],
       libraries: ["lovyan03/LovyanGFX@^1.2.7"], build_flags: ["-D ARDUINO_USB_MODE=1", "-D ARDUINO_USB_CDC_ON_BOOT=1"],
-      firmware_basis_id: "",
+      firmware_basis_id: "", board_support_source_id: "gernetix-board-support-esp32-s3-es3c28p",
     } : isCamera ? {
       platform: "espressif32", board: "esp32cam", environment: "esp32cam", framework: "arduino",
       monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 4, firmware_basis_id: "",
@@ -1295,6 +1296,7 @@ function networkBoard(input) {
     firmware_build_target_id: input.firmware_build_target_id
       || (input.mcu_variant === "ESP32" ? "firmware_build_target.esp32_classic_qspi_4mb" : "")
       || (input.mcu_variant === "ESP32-C6" ? "firmware_build_target.esp32_c6_qspi_4mb" : ""),
+    board_support_source_id: input.board_support_source_id || "",
     platformio_build: input.platformio_build || {},
     vendor: input.vendor || "Generic",
     form_factor: input.form_factor || "",

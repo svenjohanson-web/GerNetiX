@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { navigationModel } = require("../test-support/navigation-model");
 
 const publicRoot = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
@@ -128,22 +129,16 @@ test("does not single out the UML learning project on the homepage", () => {
 });
 
 test("offers a hamburger menu with the public webshop entry only", () => {
-  const menu = html.slice(html.indexOf('id="publicMenu"'), html.indexOf("</nav>", html.indexOf('id="publicMenu"')));
+  const paths = navigationModel.anonymous.map((item) => item.href);
   assert.match(html, /id="publicMenuButton"[\s\S]*aria-expanded="false"/);
-  assert.match(menu, /href="\/">Startseite/);
-  assert.match(menu, /href="\/nachbauprojekte\/nexi-sprachassistent\/">Nexi/);
-  assert.match(menu, /href="\/hilfe\/">Hilfe/);
-  assert.doesNotMatch(menu, /href="\/entdecken\/"|GerNetiX entdecken/);
-  assert.match(menu, /href="\/nachbauprojekte\/">Projekte zum Nachbauen/);
-  assert.match(menu, /href="\/technik-labs\/">Virtuelles Elektroniklabor/);
-  assert.match(menu, /href="\/flashbox-einrichten\/">FlashBox einrichten/);
-  assert.match(menu, /href="\/shop\/">Webshop/);
-  assert.match(menu, /href="\/app\/auth\/">Anmelden/);
-  assert.doesNotMatch(menu, /Dashboard|Geräte|Billing|Entwicklungsplattform/);
+  for (const path of ["/", "/nachbauprojekte/nexi-sprachassistent/", "/hilfe/", "/nachbauprojekte/", "/technik-labs/", "/flashbox-einrichten/", "/shop/", "/app/auth/"]) {
+    assert.ok(paths.includes(path), path);
+  }
+  assert.equal(paths.includes("/entdecken/"), false);
   assert.match(headerCss, /\.site-menu \{[\s\S]*position: absolute/);
   assert.match(client, /aria-expanded/);
   assert.match(client, /event\.key === "Escape"/);
-  assert.match(client, /\["\/technik-labs\/", "Virtuelles Elektroniklabor"\]/);
+  assert.equal(navigationModel.anonymous.find((item) => item.href === "/technik-labs/")?.label, "Virtuelles Elektroniklabor");
   assert.match(html, /class="site-footer-links"[\s\S]*Warum GerNetiX\?[\s\S]*Wissensportal[\s\S]*Hilfe/);
   assert.doesNotMatch(html.match(/class="site-footer-links"[\s\S]*/)?.[0] || "", /href="\/app\/vision\/"/);
 });

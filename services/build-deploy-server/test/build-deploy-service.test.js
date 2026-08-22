@@ -505,10 +505,11 @@ async function createTestArtifacts(packageDir, content) {
   return artifacts;
 }
 
-async function waitFor(predicate) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+async function waitFor(predicate, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
     if (predicate()) return;
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
   assert.fail("Erwarteter asynchroner Zustand wurde nicht erreicht.");
 }

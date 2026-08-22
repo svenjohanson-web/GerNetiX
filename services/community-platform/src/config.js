@@ -11,6 +11,11 @@ function createConfig(env = process.env) {
     // with Identity, which only acts on behalf of regular customer accounts.
     messageRateLimit: Number(env.COMMUNITY_MESSAGE_RATE_LIMIT || 20),
     messageRateWindowSeconds: Number(env.COMMUNITY_MESSAGE_RATE_WINDOW_SECONDS || 600),
+    notificationRetention: {
+      enabled: env.COMMUNITY_NOTIFICATION_RETENTION_ENABLED === "1",
+      deliveredDays: boundedDays(env.COMMUNITY_NOTIFICATION_DELIVERED_RETENTION_DAYS, 30),
+      deadLetterDays: boundedDays(env.COMMUNITY_NOTIFICATION_DEAD_LETTER_RETENTION_DAYS, 90),
+    },
     supportUserIds: String(env.COMMUNITY_SUPPORT_USER_IDS || "support-mailbox").split(",").map((item) => item.trim()).filter(Boolean),
     // Community data has its own database. In-memory mode remains useful for isolated tests only.
     persistenceBackend: env.PERSISTENCE_BACKEND || env.COMMUNITY_PERSISTENCE_BACKEND || "sqlite",
@@ -25,6 +30,11 @@ function createConfig(env = process.env) {
       password: env.COMMUNITY_POSTGRES_PASSWORD || "",
     },
   };
+}
+
+function boundedDays(value, fallback) {
+  const days = Number(value || fallback);
+  return Number.isInteger(days) && days >= 1 && days <= 365 ? days : fallback;
 }
 
 module.exports = { createConfig };

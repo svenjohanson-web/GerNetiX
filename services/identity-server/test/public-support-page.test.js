@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedItem, navigationModel } = require("../test-support/navigation-model");
 
 const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "support", "index.html"), "utf8");
@@ -38,6 +39,9 @@ test("links Support from every public hamburger menu", () => {
   ];
   for (const relativePath of menuPages) {
     const html = fs.readFileSync(path.join(root, "public", relativePath), "utf8");
-    assert.match(html, /href="\/support\/"[^>]*>Support<\/a>/, relativePath);
+    // Ohne Version festzunageln: die pflegt scripts/update-asset-versions.js.
+    assert.match(html, /navigation-model\.js\?v=/, relativePath);
   }
+  assert.ok(navigationModel.anonymous.some((item) => item.href === "/support/"));
+  assert.equal(authenticatedItem("/support/").label, "Support");
 });

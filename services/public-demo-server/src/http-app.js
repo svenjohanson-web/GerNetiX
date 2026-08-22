@@ -16,7 +16,7 @@ function createHttpApp({ service, internalApiSigningKey, publicDir = nodePath.jo
     if (req.method === "GET" && (path === "/" || path === "/index.html" || path === "/app.js" || path === "/app.css" || path === "/gernetix-gx.svg" || path === "/gernetix-logo.png" || path === "/gernetix-wordmark.png")) {
       return serveStatic(res, publicDir, path === "/" ? "/index.html" : path);
     }
-    if (req.method === "GET" && path === "/landing.js") return serveStatic(res, identityPublicDir, path);
+    if (req.method === "GET" && ["/landing.js", "/navigation-model.js"].includes(path)) return serveStatic(res, identityPublicDir, path);
     if (req.method === "GET" && path.startsWith("/app/") && sharedAppAssets.has(nodePath.basename(path))) {
       return serveStatic(res, nodePath.join(identityPublicDir, "app"), `/${nodePath.basename(path)}`);
     }

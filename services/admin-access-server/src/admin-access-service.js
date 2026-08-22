@@ -1,8 +1,8 @@
 const { normalizeUsername, verifyPassword } = require("./admin-access-repository");
 
 const ROLE_CAPABILITIES = {
-  administrator: ["admin_device_management", "admin_ai_usage_monitoring", "admin_ai_cost_controls", "admin_identity_configuration", "admin_link_integrity", "admin_learning", "admin_community_support", "admin_community_moderation", "context_manager.read", "context_manager.write", "context_manager.analyze"],
-  support: ["admin_device_management", "support_registered_board_check", "admin_community_support"],
+  administrator: ["admin_device_management", "admin_ai_usage_monitoring", "admin_ai_cost_controls", "admin_identity_configuration", "admin_identity_recovery", "admin_link_integrity", "admin_learning", "admin_community_support", "admin_community_moderation", "context_manager.read", "context_manager.write", "context_manager.analyze"],
+  support: ["admin_device_management", "support_registered_board_check", "admin_community_support", "admin_identity_recovery"],
   community_moderator: ["admin_community_moderation"],
 };
 
@@ -44,6 +44,17 @@ class AdminAccessService {
     if (!session) return false;
     await this.repository.audit(session.admin_id, eventType, detail);
     return true;
+  }
+  async reauthenticate(token, password) {
+    const session = await this.repository.resolveSession(token);
+    if (!session) return null;
+    const user = await this.repository.findUser(normalizeUsername(session.username));
+    if (!user || !user.enabled || !verifyPassword(password, user)) {
+      await this.repository.audit(session.admin_id, "support_recovery_reauthentication_denied", "");
+      return null;
+    }
+    await this.repository.audit(session.admin_id, "support_recovery_reauthenticated", "");
+    return { actor_id: session.admin_id, role: session.role, capabilities: ROLE_CAPABILITIES[session.role] || [] };
   }
   async listAdmins(token) {
     if (!await this.actorFor(token)) return null;

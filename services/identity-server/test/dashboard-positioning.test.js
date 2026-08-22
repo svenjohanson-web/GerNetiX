@@ -24,7 +24,8 @@ test("uses the existing GerNetiX design tokens for the dashboard", () => {
 });
 
 test("keeps the platform topbar and its menu visible while the dashboard scrolls", () => {
-  assert.match(css, /\.topbar \{[\s\S]*position: sticky;[\s\S]*top: 10px;[\s\S]*z-index: 40;[\s\S]*backdrop-filter: blur\(14px\);/);
+  assert.match(css, /\.app-shell \{[^}]*padding: 0 22px 22px;/);
+  assert.match(css, /\.topbar \{[\s\S]*position: sticky;[\s\S]*top: 0;[\s\S]*z-index: 40;[\s\S]*backdrop-filter: blur\(14px\);/);
   assert.match(css, /\.app-menu \{[\s\S]*position: fixed;[\s\S]*top: 74px;/);
 });
 

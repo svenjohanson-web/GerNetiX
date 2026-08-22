@@ -4,10 +4,12 @@ function createAccountTransparencyFactory({
   hardwareShopJson,
   projectServerJson,
   projectServerUserId,
+  getContactNotificationSettings,
 }) {
   return async function createAccountTransparency(session, options = {}) {
     const accountId = projectServerUserId(session);
     const generatedAt = new Date().toISOString();
+    const contactNotificationSettings = await getContactNotificationSettings(accountId);
     const [
       projects,
       feedback,
@@ -39,9 +41,16 @@ function createAccountTransparencyFactory({
         sources: [sourceRef("identity-server.session", "authenticated_session")],
       },
       contact_data: {
-        email: session.account.email || null,
-        email_verified: session.account.email_verified === true,
-        sources: [sourceRef("identity-server.session", "own_account_contact_data")],
+        email: contactNotificationSettings.email,
+        pending_email: contactNotificationSettings.pending_email,
+        email_status: contactNotificationSettings.status,
+        sources: [sourceRef("identity-server.account", "own_account_contact_data")],
+      },
+      notification_preferences: {
+        ...contactNotificationSettings.notification_preferences,
+        community_email_suppression: contactNotificationSettings.community_email_suppression || { active: false },
+        classification: "personal_community_notifications_not_marketing_consent",
+        sources: [sourceRef("identity-server.account", "own_notification_preferences")],
       },
       login_providers: [{
         provider: "local_password",

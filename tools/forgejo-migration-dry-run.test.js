@@ -96,6 +96,9 @@ test("requires complete Artifact Store references for SQL binary versions", () =
     sha256: "a".repeat(64),
     size_bytes: 42,
   }]);
+  const payload = require("./forgejo-migration-dry-run").buildMigrationPayload(inventory);
+  assert.match(payload.projects[0].commits[0].message, /GerNetiX-Artifact: artifact-1 sha256=/);
+  assert.equal(payload.projects[0].commits[0].message.includes("firmware.bin"), false);
 });
 
 test("blocks duplicate paths, projection conflicts, path rewrites and broken source hashes", () => {

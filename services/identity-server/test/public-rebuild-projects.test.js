@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedGroup, authenticatedItem } = require("../test-support/navigation-model");
 
 const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "index.html"), "utf8");
@@ -13,6 +14,8 @@ const radarRoomPresenceRoot = path.join(root, "public", "nachbauprojekte", "rada
 const radarRoomPresence = fs.readFileSync(path.join(radarRoomPresenceRoot, "index.html"), "utf8");
 const pirMotionDetector = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "pir-bewegungsmelder", "index.html"), "utf8");
 const monitorVcpController = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "esp-kvm", "index.html"), "utf8");
+const chickenCoopDoor = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "huehnerstalltuer", "index.html"), "utf8");
+const chickenCoopDoorRadioPaths = fs.readFileSync(path.join(root, "public", "assets", "chicken-coop-door-radio-paths.svg"), "utf8");
 const nexiProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "index.html"), "utf8");
 const nexiCommissioning = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "inbetriebnahme", "index.html"), "utf8");
 const nexiFlash = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "nexi-sprachassistent", "nexi-flash.js"), "utf8");
@@ -52,9 +55,11 @@ test("serves the public project catalog and links directly to the available proj
 test("keeps the authenticated session visible in the public rebuild-project navigation", () => {
   assert.match(publicNavigation, /fetch\("\/api\/session", \{[\s\S]*credentials: "same-origin"/);
   assert.match(publicNavigation, /if \(!session\.authenticated\) return;[\s\S]*showAuthenticatedPublicNavigation\(session\.account\)/);
-  assert.match(publicNavigation, /createNavigationLink\("\/app\/dashboard\/", "Übersicht", "platform\.nav\.dashboard"\)/);
-  assert.match(publicNavigation, /createNavigationGroup\("Lernen & Entwickeln"[\s\S]*createNavigationGroup\("Boards & Werkzeuge"[\s\S]*createNavigationGroup\("Service & Shop"[\s\S]*createNavigationGroup\("Konto"/);
-  assert.match(publicNavigation, /createNavigationLink\("\/app\/messages\/", "Nachrichten"\)/);
+  assert.equal(authenticatedItem("/app/dashboard/").label, "Übersicht");
+  for (const key of ["platform.menu.learn_develop", "platform.menu.boards_tools", "platform.menu.service_shop", "platform.menu.account"]) {
+    assert.ok(authenticatedGroup(key));
+  }
+  assert.equal(authenticatedItem("/app/messages/").label, "Nachrichten");
   assert.match(publicNavigation, /fetch\("\/api\/logout", \{ method: "POST", credentials: "same-origin" \}\)/);
   assert.match(publicNavigation, /if \(response\.ok\) window\.location\.assign\("\/"\)/);
   assert.match(publicHeaderCss, /\.site-menu-group > summary/);
@@ -198,6 +203,24 @@ test("publishes ESP KVM with an explicit local desktop bridge", () => {
   assert.match(monitorVcpController, /kein ESP32-S3/);
   assert.match(monitorVcpController, /ILI9341-Display mit XPT2046-Touch/);
   assert.doesNotMatch(monitorVcpController, /Fertig gebaut · direkt flashbar|>Jetzt flashen</);
+});
+
+test("publishes a safe remote chicken-coop door with Wi-Fi and LoRa variants", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/huehnerstalltuer"[\s\S]*redirect\(res, "\/nachbauprojekte\/huehnerstalltuer\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/huehnerstalltuer\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/huehnerstalltuer\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/huehnerstalltuer\/"/);
+  assert.match(page, /Ferngesteuerte Hühnerstalltür/);
+  assert.match(page, /Anleitung · WLAN oder LoRa/);
+  assert.match(chickenCoopDoor, /Eine Hühnerstalltür, die aus der Ferne gehorcht/);
+  assert.match(chickenCoopDoor, /Lieferstatus:[\s\S]*Ausgearbeitete Bau- und Systemanleitung/);
+  assert.match(chickenCoopDoor, /id="variants-title">Wähle deinen Funkweg/);
+  assert.match(chickenCoopDoor, /Smartphones besitzen üblicherweise kein direkt nutzbares LoRa-Funkmodul/);
+  assert.match(chickenCoopDoor, /Keine Bewegung darf allein vom Funk abhängen/);
+  assert.match(chickenCoopDoor, /Endschalter, Fahrzeitlimit und Überstromabschaltung wirken im Stallcontroller/);
+  assert.match(chickenCoopDoor, /catalog_chicken-coop-door-smartphone-app/);
+  assert.doesNotMatch(chickenCoopDoor, /Fertig gebaut · direkt flashbar|Jetzt flashen/);
+  assert.match(chickenCoopDoorRadioPaths, /Zwei Funkwege, eine lokale Sicherheitsentscheidung/);
+  assert.match(chickenCoopDoorRadioPaths, /kein direktes Smartphone-LoRa/);
 });
 
 test("publishes Nexi as a complete, prebuilt and directly flashable rebuild project", () => {

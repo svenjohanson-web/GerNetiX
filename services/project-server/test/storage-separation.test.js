@@ -14,9 +14,18 @@ test("uses separate default SQLite files for projects and telemetry", () => {
   assert.match(telemetryConfig({}).sqlitePath, /gernetix-telemetry\.sqlite$/);
 });
 
-test("keeps SQL sources as the default and requires separated Forgejo credentials when enabled", () => {
+test("keeps SQL sources only for isolated local storage and requires Forgejo for PostgreSQL runtime", () => {
   assert.equal(projectConfig({}).repositoryStoreBackend, "sql");
   assert.equal(projectConfig({}).requireForgejoForNewProjects, false);
+  const postgres = projectConfig({ PERSISTENCE_BACKEND: "postgres" });
+  assert.equal(postgres.repositoryStoreBackend, "forgejo");
+  assert.equal(postgres.requireForgejoForNewProjects, true);
+  assert.throws(() => projectConfig({ PERSISTENCE_BACKEND: "postgres", PROJECT_REPOSITORY_STORE: "sql" }), /legacy_sql_project_sources_runtime_forbidden/);
+  assert.throws(() => projectConfig({
+    PERSISTENCE_BACKEND: "postgres",
+    PROJECT_REPOSITORY_STORE: "sql",
+    PROJECT_ALLOW_LEGACY_SQL_SOURCES: "true",
+  }), /legacy_sql_project_sources_runtime_forbidden/);
   const config = projectConfig({
     PROJECT_REPOSITORY_STORE: "forgejo",
     PROJECT_REQUIRE_FORGEJO_NEW_PROJECTS: "true",

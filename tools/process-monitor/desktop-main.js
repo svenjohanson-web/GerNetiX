@@ -35,6 +35,7 @@ function createWindow() {
 
 ipcMain.handle("processes:list", () => control.processStates());
 ipcMain.handle("processes:list-vps", () => control.remoteProcessStates());
+ipcMain.handle("database:start-vps", () => control.startRemoteAccountDatabase());
 ipcMain.handle("interfaces:statistics", (_event, hours) => control.interfaceStatistics(hours));
 ipcMain.handle("runtime:alerts", (_event, hours) => control.operationsAlerts(hours));
 ipcMain.handle("security:rules", (_event, force) => control.securityRuleStates({ force:Boolean(force) }));

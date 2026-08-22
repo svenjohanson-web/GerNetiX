@@ -13,7 +13,7 @@
       "files": [
         "services/admin-access-server/src/http-app.js"
       ],
-      "fingerprint": "sha256:3e00bf3b53eb288f5fe4171dc9406bcd87d215e3ec67ae508e46c65e3914495f"
+      "fingerprint": "sha256:e94b09217709099af0f33a38a91c94962f50157c15a15fb0f855ad002e7b5c35"
     },
     "admin-tool": {
       "inventorySection": "Identitaets- und Admin-Kante",
@@ -25,7 +25,7 @@
       "files": [
         "services/admin-tool/src/http-app.js"
       ],
-      "fingerprint": "sha256:27a8ef94e7686d97b00542fcff870c1ae87d7f44477f9cdd6301e7cee905dc9a"
+      "fingerprint": "sha256:9f36d64a09f949c67055417f94a9b1e81c91cedc87285906fe2cecf76e942165"
     },
     "ai-context-server": {
       "inventorySection": "KI, Kontext und Telemetrie",
@@ -91,7 +91,7 @@
       "files": [
         "services/community-platform/src/http-app.js"
       ],
-      "fingerprint": "sha256:b38c70bf369f4cd6cf1a44e3f62536594a5bfc7e87815588b8f1eab38c430dee"
+      "fingerprint": "sha256:4091228216ce7374b2892c234e796ee21b62590cd0a23ea9f0f59be909a572aa"
     },
     "compute-control-plane": {
       "inventorySection": "Projekt, Build und Artefakte",
@@ -191,6 +191,7 @@
         "services/identity-server/src/dev/server/community-routes.js",
         "services/identity-server/src/dev/server/device-routes.js",
         "services/identity-server/src/dev/server/download-routes.js",
+        "services/identity-server/src/dev/server/electronics-lab-routes.js",
         "services/identity-server/src/dev/server/hardware-lab-routes.js",
         "services/identity-server/src/dev/server/hardware-routes.js",
         "services/identity-server/src/dev/server/knowledge-routes.js",
@@ -202,7 +203,7 @@
         "services/identity-server/src/dev/server/system-routes.js",
         "services/identity-server/src/dev/server/web-routes.js"
       ],
-      "fingerprint": "sha256:68eb2a3436d34f679e1697cb98f4bc1d62cc77ab1229c7bdf4214d02e169bfe1"
+      "fingerprint": "sha256:77f89490354a3239c34830c1baf08c5a2936687dd0134a40a00279fe50a87a60"
     },
     "persistence-server": {
       "inventorySection": "Lokale Entwicklungs- und Persistenzdienste",
@@ -251,7 +252,7 @@
       "files": [
         "services/public-demo-server/src/http-app.js"
       ],
-      "fingerprint": "sha256:852dd1a5cf46bb6eb1cb27bb9d738d8e93f1c81e0526f0c6ed0f552b783b1d7e"
+      "fingerprint": "sha256:cbf5af7700b839d9651f36774df558e4ee46a23188b3099362ff24d36dafdb16"
     },
     "recovery-tool": {
       "inventorySection": "Geraete, Provisionierung und Recovery",

@@ -10,6 +10,7 @@ const { effectiveSubscriptionPlan } = require("./services/account-lifecycle");
 const { createSmtpConfigStore } = require("./services/smtp-config-store");
 const { SmtpEmailService } = require("./services/smtp-email-service");
 const { ConfigurableEmailService } = require("./services/configurable-email-service");
+const { createPasskeyConfiguration } = require("./services/passkey-configuration");
 const { createWebPushService } = require("./services/web-push-service");
 const { SqlitePlatformDownloadRepository } = require("./repositories/sqlite-platform-download-repository");
 const { SqliteAccountAssetRepository } = require("./repositories/sqlite-account-asset-repository");
@@ -26,6 +27,8 @@ const { createUserActionReporter } = require("./services/user-action-reporter");
 const { createUserActionIngestHandler, readUserActionContext } = require("./services/user-action-events");
 const { createDependencyHealthChecker } = require("./services/dependency-health");
 const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
+const { createCommunityNotificationOutboxWorker } = require("./services/community-notification-outbox-worker");
+const { createIdentityRetentionCleanup, createIdentityRetentionWorker } = require("./services/identity-retention-worker");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
 const { createIdentityLinkInventory } = require("./link-integrity/identity-link-inventory");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
@@ -33,6 +36,7 @@ const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { createHelpAssistant } = require("./dev/help-assistant");
 const { createRequirementsWorkshopAssistant } = require("./dev/requirements-workshop-assistant");
+const { createElectronicsLabAssistant } = require("./dev/electronics-lab-assistant");
 const { createProjectRepositoryRead } = require("./dev/project-repository-read");
 const { developmentProjectSources } = require("./dev/development-project-structure");
 const { completeBrowserFlashDefinitions, esp32FirmwareAddress, usesGerNetixOtaAppLayout } = require("./dev/browser-flash-manifest");
@@ -89,6 +93,7 @@ const { registerCommunityRoutes } = require("./dev/server/community-routes");
 const { registerBuildRoutes } = require("./dev/server/build-routes");
 const { registerHardwareLabRoutes } = require("./dev/server/hardware-lab-routes");
 const { registerRequirementsWorkshopRoutes } = require("./dev/server/requirements-workshop-routes");
+const { registerElectronicsLabRoutes } = require("./dev/server/electronics-lab-routes");
 const { customerArtifactList } = require("./dev/server/build-artifact-visibility");
 const { registerProjectRoutes } = require("./dev/server/project-routes");
 const { registerSystemRoutes } = require("./dev/server/system-routes");
@@ -255,6 +260,13 @@ const webPushService = createWebPushService({ sqlitePath: identityAuxiliarySqlit
 const securityAlertPushAccountIds = String(process.env.WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean);
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
+const localIdentityOrigin = `http://${host === "0.0.0.0" ? "localhost" : host}:${port}`;
+const passkeyConfiguration = createPasskeyConfiguration({
+  canonicalOrigin: identityAppBaseUrl || localIdentityOrigin,
+  canonicalRpId: process.env.IDENTITY_PASSKEY_RP_ID || "",
+  allowedOrigins: String(process.env.IDENTITY_PASSKEY_ALLOWED_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean),
+  remoteDev: identityRemoteDev,
+});
 const demoUsername = process.env.DEMO_USER || "demo";
 const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
@@ -388,6 +400,7 @@ const createAccountTransparency = createAccountTransparencyFactory({
   hardwareShopJson,
   projectServerJson,
   projectServerUserId,
+  getContactNotificationSettings: (accountId) => auth.get_contact_notification_settings(accountId),
 });
 const {
   nexiCourseModel,
@@ -432,6 +445,17 @@ const developmentAssistant = createDevelopmentAssistant({
 });
 const helpAssistant = createHelpAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, accountSubscription: (session) => accountSubscription(session), readJsonBody, sendJson });
 const requirementsWorkshopAssistant = createRequirementsWorkshopAssistant({ aiUsageJson, llmConfigStore, projectServerUserId, accountSubscription: (session) => accountSubscription(session), readJsonBody, sendJson });
+const electronicsLabAssistant = createElectronicsLabAssistant({
+  aiUsageJson,
+  llmConfigStore,
+  projectServerUserId,
+  readJsonBody,
+  sendJson,
+  enabled: process.env.ELECTRONICS_LAB_AI_ENABLED !== "0",
+  rateLimit: Number(process.env.ELECTRONICS_LAB_AI_RATE_LIMIT || 8),
+  rateWindowMs: Number(process.env.ELECTRONICS_LAB_AI_RATE_WINDOW_MS || 60_000),
+  auditEvent: recordSystemEvent,
+});
 const builtInDemoAccounts = [
   { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword, subscription_plan: "premium_demo" },
   { user_id: "acct-basis-demo", username: basisDemoUsername, email: basisDemoEmail, password: basisDemoPassword, subscription_plan: "free" },
@@ -452,6 +476,15 @@ const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
   emailRecipient: communityNotificationEmailRecipient,
 });
 let auth;
+const communityNotificationOutboxWorker = createCommunityNotificationOutboxWorker({
+  communityJson,
+  deliver: (event) => auth.deliver_community_notification(event),
+  intervalMs: Number(process.env.COMMUNITY_NOTIFICATION_OUTBOX_INTERVAL_MS || 15_000),
+});
+const identityRetentionWorker = createIdentityRetentionWorker({
+  cleanup: createIdentityRetentionCleanup({ getAuth: () => auth, env: process.env }),
+  intervalMs: Number(process.env.IDENTITY_RETENTION_INTERVAL_MS || 60 * 60 * 1000),
+});
 let userIdeState;
 const {
   defaultHomeAutomationConfiguration,
@@ -844,6 +877,7 @@ const authHandlers = createIdentityAuthHandlers({
   host,
   port,
   identityAppBaseUrl,
+  passkeyConfiguration,
   crypto,
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -948,6 +982,7 @@ registerCommunityRoutes({
   auth: () => auth,
   createCommunityProjectSnapshot,
   notifyPrivateCommunityRequest,
+  communityNotificationOutboxWorker,
 });
 registerBuildRoutes({
   registry: routeRegistry,
@@ -980,6 +1015,11 @@ registerRequirementsWorkshopRoutes({
   registry: routeRegistry,
   requireSession: sessionAccess.requireSession,
   requirementsWorkshopAssistant,
+});
+registerElectronicsLabRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  electronicsLabAssistant,
 });
 registerProjectRoutes({
   registry: routeRegistry,
@@ -1032,6 +1072,7 @@ registerSystemRoutes({
   identityPersistenceBackend,
   identityRuntimeLocation,
   identityRemoteDev,
+  identityPersistenceHealth: async () => auth?.repository?.checkHealth ? auth.repository.checkHealth() : { ready:true },
   smtpConfigStore,
   smtpEmailService,
   createIdentityLinkInventory,
@@ -1046,6 +1087,8 @@ registerSystemRoutes({
   userActionDiagnostics: () => recordUserActionEvent.diagnostics(),
   handleProjectRuntimeStream,
   telemetryJson,
+  auth: () => auth,
+  recordSystemEvent,
   checkIdentityDbHealth,
   checkIdentityDependencies,
 });
@@ -1157,6 +1200,8 @@ async function bootstrap() {
     postgres: identityPostgres,
     appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
   }));
+  communityNotificationOutboxWorker.start();
+  identityRetentionWorker.start();
   await measureBootstrapStep("identity-seed-demo-account", async () => seedDemoAccount());
 
   const requestHandler = await measureBootstrapStep("identity-request-handler", async () => createRequestHandler({
@@ -1468,6 +1513,7 @@ async function createAccountSummary(session, existingAiUsage = null, { includeAi
 function readWorkspaceText(relativePath) {
   return fs.readFileSync(path.join(workspaceRoot, relativePath), "utf8");
 }
+
 
 
 bootstrap().catch((error) => {

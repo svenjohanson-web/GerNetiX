@@ -19,8 +19,15 @@ const { renderPlatformioIni } = require("../../../shared/platformio-config");
 const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-software-ownership");
 const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
 const { validateSha } = require("../repository-store/git-project-repository-store");
+const { buildMigrationPayload } = require("../../../../tools/forgejo-migration-dry-run");
 const { loadProjectFileSet, mimeTypeForPath, validateProjectChanges } = require("../repository-store/project-file-schema");
+const {
+  materializeBoardSupportFiles,
+  normalizeBoardSupportReference,
+  sameBoardSupportReference,
+} = require("../repository-store/board-support-manifest");
 const { SqlCacheAccountStorageMeter } = require("./sql-cache-account-storage-meter");
+const { RepositoryAccountStorageMeter } = require("./repository-account-storage-meter");
 const {
   PROJECT_APP_MANIFEST_PATH,
   validateProjectAppManifest,
@@ -34,7 +41,9 @@ class ProjectService {
     this.requireForgejoForNewProjects = options.requireForgejoForNewProjects === true;
     this.systemRepositories = (options.systemRepositories || []).map((item) => structuredClone(item));
     this.systemRepositoryById = new Map(this.systemRepositories.map((item) => [item.source_id, item]));
-    this.storageMeter = options.storageMeter || new SqlCacheAccountStorageMeter(this.repository);
+    this.storageMeter = options.storageMeter || (this.projectRepositoryStore
+      ? new RepositoryAccountStorageMeter(this.repository, this.projectRepositoryStore)
+      : new SqlCacheAccountStorageMeter(this.repository));
     this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
     this.ready = this.ensureResourcePolicies();
   }
@@ -56,7 +65,7 @@ class ProjectService {
     if (template && template.status !== "template") throw new ProjectServerError("project_template_required", "Die Projektquelle ist kein unveränderliches Template.", 409);
     if (requestedStatus !== "template") await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
     const now = new Date().toISOString();
-    const templateBinding = template ? this.activeRepositoryBinding(template) : null;
+    const templateBinding = template ? this.runtimeRepositoryBinding(template) : null;
     const templateSources = template
       ? templateBinding ? await this.repositoryFiles(template, templateBinding.head_sha) : await this.repository.listSources(template.project_id)
       : [];
@@ -118,9 +127,41 @@ class ProjectService {
     };
     await this.repository.saveProject(project);
     let configurationProjection = emptyProjectionResult();
+    const initialSources = initialInputSources
+      .map((source) => ({ ...source, path: remapSoftwareSourcePath(source.path, sourceLayoutMappings) }));
+    let persistedProject = project;
+    if (this.projectRepositoryStore) {
+      const repositorySources = materializeInitialProjectSources(project, initialSources, now);
+      const managedPaths = repositorySources.filter((source) => isManagedProjectionPath(source.path)).map((source) => source.path);
+      configurationProjection = { ...emptyProjectionResult(), changed_paths: uniqueSorted(managedPaths) };
+      try {
+        loadProjectFileSet(repositorySources);
+        const currentBytes = await this.storageMeter.accountStorageBytes(project.user_id);
+        await this.assertProjectedStorageQuota(project, {
+          current_bytes: currentBytes,
+          projected_bytes: currentBytes + sourceSetBytes(repositorySources),
+          measurement_source: "forgejo_repository_head",
+        });
+        const binding = await this.projectRepositoryStore.provisionProject({
+          project_id: project.project_id,
+          message: `Projekt ${project.title} angelegt`,
+          changes: repositorySources.map((source) => ({ path: source.path, content: source.content })),
+        });
+        persistedProject = await this.repository.saveProject({ ...project, repository_binding: { ...binding, provisioned_at: now } });
+      } catch (error) {
+        if (error.code === "storage_quota_exceeded") {
+          await this.repository.deleteProject(project.project_id);
+          throw error;
+        }
+        await this.repository.saveProject({
+          ...project,
+          repository_binding: { provider: "forgejo", state: "failed", error_code: error.code || "repository_provision_failed", failed_at: new Date().toISOString() },
+        });
+        throw error;
+      }
+      return { ...await this.projectWithSummary(persistedProject, repositorySources.map((source) => source.path)), configuration_projection: configurationProjection };
+    }
     try {
-      const initialSources = initialInputSources
-        .map((source) => ({ ...source, path: remapSoftwareSourcePath(source.path, sourceLayoutMappings) }));
       for (const source of defaultSources(project, initialSources)) {
         if (project.status === "template") {
           const sourcePath = normalizeSourcePath(required(source.path, "path"));
@@ -136,25 +177,6 @@ class ProjectService {
     } catch (error) {
       if (error.code === "storage_quota_exceeded") await this.repository.deleteProject(project.project_id);
       throw error;
-    }
-    let persistedProject = project;
-    if (this.projectRepositoryStore) {
-      try {
-        const repositorySources = await this.repository.listSources(project.project_id);
-        loadProjectFileSet(repositorySources);
-        const binding = await this.projectRepositoryStore.provisionProject({
-          project_id: project.project_id,
-          message: `Projekt ${project.title} angelegt`,
-          changes: repositorySources.map((source) => ({ path: source.path, content: source.content })),
-        });
-        persistedProject = await this.repository.saveProject({ ...project, repository_binding: { ...binding, provisioned_at: now } });
-      } catch (error) {
-        await this.repository.saveProject({
-          ...project,
-          repository_binding: { provider: "forgejo", state: "failed", error_code: error.code || "repository_provision_failed", failed_at: new Date().toISOString() },
-        });
-        throw error;
-      }
     }
     return { ...await this.projectWithSummary(persistedProject), configuration_projection: configurationProjection };
   }
@@ -315,6 +337,14 @@ class ProjectService {
   async listProjects(query = {}) {
     await this.ready;
     if (query.profile === "summary") {
+      if (this.projectRepositoryStore) {
+        const projects = await this.repository.listProjects({ user_id: query.user_id || query.userId || "" });
+        return Promise.all(projects.map(async (project) => {
+          const binding = this.activeRepositoryBinding(project);
+          const paths = binding ? await this.projectRepositoryStore.tree(binding, binding.head_sha) : [];
+          return projectSummary({ ...project, has_project_app: paths.includes(PROJECT_APP_MANIFEST_PATH) });
+        }));
+      }
       const projects = this.repository.listProjectSummaries
         ? await this.repository.listProjectSummaries({ user_id: query.user_id || query.userId || "" })
         : await this.repository.listProjects({ user_id: query.user_id || query.userId || "" });
@@ -331,9 +361,12 @@ class ProjectService {
     if (Object.hasOwn(input, "status") && normalizeProjectStatus(input.status) !== project.status) {
       throw new ProjectServerError("project_status_managed", "Der Projektstatus wird ausschließlich durch interne Tarif- und Template-Prozesse geändert.", 409);
     }
-    if (this.activeRepositoryBinding(project)) validateSha(input.expected_head_sha, "expected_head_sha");
+    const activeBinding = this.runtimeRepositoryBinding(project);
+    if (activeBinding) validateSha(input.expected_head_sha, "expected_head_sha");
     this.assertExpectedRepositoryHead(project, input.expected_head_sha);
-    const rollbackSources = await this.repository.listSources(projectId);
+    const rollbackSources = activeBinding
+      ? await this.repositoryFiles(project, project.repository_binding.head_sha)
+      : await this.repository.listSources(projectId);
     const requestedViewManifest = input.view_manifest || input.project_view_manifest
       ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
       : project.view_manifest;
@@ -384,37 +417,58 @@ class ProjectService {
       status: project.status,
       updated_at: new Date().toISOString(),
     };
+    if (activeBinding) {
+      const { projection, changes } = configurationProjectionForSources(next, rollbackSources);
+      await this.assertStorageQuota(project, changes);
+      await this.assertValidProjectFileChangeSet(project, activeBinding, input.expected_head_sha, changes);
+      let repositoryCommit = { head_sha: activeBinding.head_sha, branch: activeBinding.default_branch, changed_paths: [], no_change: true };
+      if (changes.length) {
+        repositoryCommit = await this.projectRepositoryStore.commitChanges(activeBinding, {
+          expected_head_sha: input.expected_head_sha,
+          message: "Entwicklungskonfiguration aktualisiert",
+          changes,
+        });
+      }
+      repositoryCommit = { ...repositoryCommit, summary: configurationProjectionSummary(projection) };
+      let saved;
+      try {
+        saved = await this.repository.saveProject({
+          ...next,
+          repository_binding: {
+            ...activeBinding,
+            head_sha: repositoryCommit.head_sha,
+            updated_at: new Date().toISOString(),
+          },
+        });
+      } catch (error) {
+        if (!repositoryCommit.no_change) throw new ProjectServerError(
+          "repository_metadata_sync_failed",
+          "Git-Commit wurde geschrieben, aber seine SQL-Referenz konnte nicht aktualisiert werden.",
+          503,
+          { committed_head_sha: repositoryCommit.head_sha, cause: error.code || "sql_update_failed" },
+        );
+        throw error;
+      }
+      return {
+        ...await this.projectWithSummary(saved),
+        configuration_projection: projection,
+        repository_commit: repositoryCommit,
+      };
+    }
     let saved = await this.repository.saveProject(next);
     let platformioProjection;
     let projectProjection;
-    let repositoryCommit = null;
-    let repositoryCommitPushed = false;
     try {
       platformioProjection = await this.syncPlatformioSources(saved);
       projectProjection = await this.syncProjectConfigurationSources(saved);
-      const projection = mergeProjectionResults(platformioProjection, projectProjection);
-      repositoryCommit = await this.commitProjectedChanges(saved, projection, input.expected_head_sha, "Entwicklungskonfiguration aktualisiert");
-      repositoryCommitPushed = Boolean(repositoryCommit && !repositoryCommit.no_change);
-      if (repositoryCommit && !repositoryCommit.no_change) {
-        saved = await this.repository.saveProject({
-          ...saved,
-          repository_binding: { ...saved.repository_binding, head_sha: repositoryCommit.head_sha, updated_at: new Date().toISOString() },
-        });
-      }
     } catch (error) {
-      if (rollbackSources && !repositoryCommitPushed) await this.restoreSqlSourceCache(project, rollbackSources);
-      if (repositoryCommitPushed) throw new ProjectServerError(
-        "repository_metadata_sync_failed",
-        "Git-Commit wurde geschrieben, aber seine SQL-Referenz konnte nicht aktualisiert werden.",
-        503,
-        { committed_head_sha: repositoryCommit.head_sha, cause: error.code || "sql_update_failed" },
-      );
+      if (rollbackSources) await this.restoreSqlSourceCache(project, rollbackSources);
       throw error;
     }
     return {
       ...await this.projectWithSummary(saved),
       configuration_projection: mergeProjectionResults(platformioProjection, projectProjection),
-      repository_commit: repositoryCommit,
+      repository_commit: null,
     };
   }
 
@@ -507,7 +561,7 @@ class ProjectService {
   async listSources(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (binding) {
       const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
       const paths = await this.projectRepositoryStore.tree(binding, commitSha);
@@ -525,7 +579,7 @@ class ProjectService {
     const limit = Math.max(1, Math.min(8, Number(input.limit) || 6));
     const terms = [...new Set(query.match(/[\p{L}\p{N}_-]{3,}/gu) || [])]
       .filter((term) => !SOURCE_SEARCH_STOP_WORDS.has(term));
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     const sources = binding ? await this.repositoryFiles(project, input.commit_sha) : await this.repository.listSources(projectId);
     return sources
       .filter((source) => !sourceKind || sourceMatchesKind(source.path, sourceKind))
@@ -539,7 +593,7 @@ class ProjectService {
   async getSource(projectId, sourcePath, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (binding) {
       const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
       const file = await this.projectRepositoryStore.readFile(binding, commitSha, normalizeSourcePath(sourcePath));
@@ -570,7 +624,7 @@ class ProjectService {
     };
     await this.assertStorageQuota(project, [{ path, content }]);
     let repositoryCommit = null;
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (binding) {
       validateSha(input.expected_head_sha, "expected_head_sha");
       await this.assertValidProjectFileChangeSet(project, binding, input.expected_head_sha, [{ path, content }]);
@@ -580,7 +634,7 @@ class ProjectService {
         changes: [{ path, content }],
       });
     }
-    await this.repository.saveSource(source);
+    if (!binding) await this.repository.saveSource(source);
     await this.repository.saveProject({
       ...project,
       ...(repositoryCommit && !repositoryCommit.no_change ? {
@@ -608,21 +662,6 @@ class ProjectService {
       changes,
     });
     const now = new Date().toISOString();
-    for (const change of changes) {
-      if (change.operation === "delete") {
-        await this.repository.deleteSource(projectId, change.path);
-        continue;
-      }
-      await this.repository.saveSource({
-        project_id: projectId,
-        path: change.path,
-        content: change.content,
-        content_sha256: sha256(change.content),
-        content_type: contentType(change.path),
-        role: inferSourceRole(change.path),
-        updated_at: now,
-      });
-    }
     const saved = await this.repository.saveProject({
       ...project,
       repository_binding: { ...binding, head_sha: commit.head_sha, updated_at: now },
@@ -660,7 +699,7 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     this.assertProjectWritable(project);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (!binding) {
       const path = normalizeSourcePath(sourcePath);
       const deleted = await this.repository.deleteSource(projectId, path);
@@ -727,7 +766,6 @@ class ProjectService {
       repository_binding: { ...binding, head_sha: commit.head_sha, updated_at: now },
       updated_at: now,
     });
-    await this.replaceSqlSourceCache(projectId, restoredSources);
     return { project_id: projectId, repository_binding: publicRepositoryBinding(saved.repository_binding), commit };
   }
 
@@ -755,6 +793,18 @@ class ProjectService {
       : null;
   }
 
+  runtimeRepositoryBinding(project) {
+    const binding = this.activeRepositoryBinding(project);
+    if (this.projectRepositoryStore && !binding) {
+      throw new ProjectServerError(
+        "repository_not_active",
+        "Projekt besitzt kein aktives Forgejo-Repository. SQL-Projektdateien sind im Forgejo-Betrieb nur für die kontrollierte Migration zugelassen.",
+        409,
+      );
+    }
+    return binding;
+  }
+
   assertExpectedRepositoryHead(project, expectedHeadSha) {
     const binding = this.activeRepositoryBinding(project);
     if (!binding || !expectedHeadSha) return;
@@ -765,25 +815,6 @@ class ProjectService {
     });
   }
 
-  async commitProjectedChanges(project, projection, expectedHeadSha, message) {
-    const binding = this.activeRepositoryBinding(project);
-    if (!binding) return null;
-    const changedPaths = uniqueSorted(projection.changed_paths || []);
-    const removedPaths = uniqueSorted(projection.removed_paths || []);
-    if (!changedPaths.length && !removedPaths.length) return { head_sha: binding.head_sha, branch: binding.default_branch, changed_paths: [], no_change: true };
-    const changes = [];
-    for (const sourcePath of changedPaths) {
-      const source = await this.repository.findSource(project.project_id, sourcePath);
-      if (source) changes.push({ path: sourcePath, content: source.content });
-    }
-    for (const sourcePath of removedPaths) changes.push({ path: sourcePath, operation: "delete" });
-    return this.projectRepositoryStore.commitChanges(binding, {
-      expected_head_sha: expectedHeadSha || binding.head_sha,
-      message,
-      changes,
-    });
-  }
-
   async restoreSqlSourceCache(project, sources) {
     const expectedPaths = new Set(sources.map((source) => source.path));
     for (const source of await this.repository.listSources(project.project_id)) {
@@ -791,14 +822,6 @@ class ProjectService {
     }
     for (const source of sources) await this.repository.saveSource(source);
     await this.repository.saveProject(project);
-  }
-
-  async replaceSqlSourceCache(projectId, sources) {
-    const expectedPaths = new Set(sources.map((source) => source.path));
-    for (const source of await this.repository.listSources(projectId)) {
-      if (!expectedPaths.has(source.path)) await this.repository.deleteSource(projectId, source.path);
-    }
-    for (const source of sources) await this.repository.saveSource({ ...source, project_id: projectId, updated_at: new Date().toISOString() });
   }
 
   async getDebugSession(projectId) {
@@ -817,7 +840,7 @@ class ProjectService {
     const now = new Date();
     const policy = await this.policyFor(project.plan_id || "free");
     const idleHours = positiveLimit(policy.debug_session_idle_hours, 48);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     const sources = binding ? [] : await this.repository.listSources(project.project_id);
     const session = {
       debug_session_id: createId("debug_session"),
@@ -889,7 +912,7 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     this.assertProjectBuildAllowed(project);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     const commitSha = binding ? validateSha(input.commit_sha || binding.head_sha, "commit_sha") : "";
     const buildProject = binding
       ? projectFromRepositoryFiles(project, await this.repositoryFiles(project, commitSha))
@@ -979,7 +1002,7 @@ class ProjectService {
     await this.ready;
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (job.commit_sha) {
       const currentCommitSha = binding?.head_sha || "";
       const reusable = job.status === "succeeded"
@@ -1050,8 +1073,29 @@ class ProjectService {
 
   protectBuildConfig(buildConfig) {
     if (!buildConfig) return null;
+    const boardSupportSourceId = String(buildConfig.board_support_source_id || buildConfig.board_configuration?.board_support_source_id || "");
+    let boardSupportReference = null;
+    if (boardSupportSourceId) {
+      const boardSupportSource = this.systemRepositoryById.get(boardSupportSourceId);
+      if (!boardSupportSource || boardSupportSource.kind !== "board_support") {
+        throw new ProjectServerError("board_support_source_invalid", "Die angeforderte Board-Support-Quelle ist nicht freigegeben.", 400);
+      }
+      const hardwareItemId = String(buildConfig.board_configuration?.base_board_profile_id || "");
+      if (hardwareItemId && boardSupportSource.hardware_item_id !== hardwareItemId) {
+        throw new ProjectServerError("board_support_hardware_mismatch", "Die Board-Support-Quelle gehört nicht zum ausgewählten Board.", 409);
+      }
+      if (!boardSupportSource.commit_sha) {
+        throw new ProjectServerError("protected_repository_commit_required", `Für ${boardSupportSource.title} ist noch kein freigegebener Forgejo-Commit konfiguriert.`, 503);
+      }
+      boardSupportReference = normalizeBoardSupportReference(null, boardSupportSource);
+    }
+    const boardConfiguration = buildConfig.board_configuration ? {
+      ...buildConfig.board_configuration,
+      board_support_source_id: boardSupportSourceId,
+      board_support_release: boardSupportReference,
+    } : buildConfig.board_configuration;
     const source = this.systemRepositoryById.get(buildConfig.firmware_basis_id);
-    if (!source) return { ...buildConfig, firmware_basis_reference: null };
+    if (!source) return { ...buildConfig, board_support_source_id: boardSupportSourceId, board_support_reference: boardSupportReference, board_configuration: boardConfiguration, firmware_basis_reference: null };
     if (!source.commit_sha) {
       if (this.requireForgejoForNewProjects) {
         throw new ProjectServerError(
@@ -1060,9 +1104,23 @@ class ProjectService {
           503,
         );
       }
-      return { ...buildConfig, firmware_basis_reference: null };
+      return { ...buildConfig, board_support_source_id: boardSupportSourceId, board_support_reference: boardSupportReference, board_configuration: boardConfiguration, firmware_basis_reference: null };
     }
-    return { ...buildConfig, firmware_basis_reference: protectedSourceReference(source) };
+    return { ...buildConfig, board_support_source_id: boardSupportSourceId, board_support_reference: boardSupportReference, board_configuration: boardConfiguration, firmware_basis_reference: protectedSourceReference(source) };
+  }
+
+  async loadBoardSupportFiles(buildConfig = {}) {
+    const reference = buildConfig.board_support_reference;
+    if (!reference) return [];
+    const source = this.systemRepositoryById.get(String(reference.source_id || ""));
+    if (!source || source.kind !== "board_support" || !sameBoardSupportReference(reference, normalizeBoardSupportReference(null, source))) {
+      throw new ProjectServerError("board_support_reference_mismatch", "Die Board-Support-Referenz entspricht nicht der serverseitig freigegebenen Version.", 409);
+    }
+    if (!this.projectRepositoryStore?.readProtectedFiles) {
+      throw new ProjectServerError("protected_repository_store_required", "Die Board-Support-Dateien können nur aus Forgejo geladen werden.", 503);
+    }
+    const files = await this.projectRepositoryStore.readProtectedFiles(reference);
+    return materializeBoardSupportFiles(files, reference).files;
   }
 
   async loadProductSource(sourceId) {
@@ -1141,6 +1199,48 @@ class ProjectService {
     const artifactCountByJob = countBy(artifacts, (item) => item.build_job_id);
     const buildCountByProject = countBy(buildJobs, (item) => item.project_id);
     const artifactCountByProject = countBy(artifacts, (item) => item.project_id);
+    const projectRepositories = await Promise.all(projects.map(async (project) => {
+      const binding = this.activeRepositoryBinding(project);
+      let inspection = binding ? { inspection_state: "inspection_not_supported" } : { inspection_state: "repository_not_bound" };
+      if (binding && this.projectRepositoryStore?.inspectProjectRepository) {
+        try {
+          inspection = { ...await this.projectRepositoryStore.inspectProjectRepository(binding), inspection_state: "available" };
+        } catch (error) {
+          inspection = { inspection_state: "unavailable", error: error.code || "repository_inspection_failed" };
+        }
+      }
+      return {
+        project_id: project.project_id,
+        title: project.title,
+        user_id: project.user_id,
+        status: project.status,
+        repository: project.repository_binding || null,
+        ...inspection,
+        template_ref: project.view_manifest?.template_ref || null,
+        product_source_reference: project.view_manifest?.product_source_reference || null,
+        basissoftware_references: softwareUnitsForProject(project).map((unit) => unit.build_config?.firmware_basis_reference).filter(Boolean),
+        build_count: buildCountByProject.get(project.project_id) || 0,
+        artifact_count: artifactCountByProject.get(project.project_id) || 0,
+        updated_at: project.updated_at,
+      };
+    }));
+    let orphanRepositories = [];
+    let orphanInspectionState = "inspection_not_supported";
+    if (this.projectRepositoryStore?.listOrphanProjectRepositories) {
+      try {
+        orphanRepositories = await this.projectRepositoryStore.listOrphanProjectRepositories(projects.map((project) => project.repository_binding).filter(Boolean));
+        orphanInspectionState = "available";
+      } catch (error) {
+        orphanInspectionState = error.code || "repository_inspection_failed";
+      }
+    }
+    const alerts = [
+      ...systemRepositories.filter((item) => item.inspection_state === "unavailable").map((item) => ({ severity: "critical", code: "system_repository_unavailable", source_id: item.source_id })),
+      ...projectRepositories.filter((item) => item.inspection_state === "unavailable").map((item) => ({ severity: "critical", code: "project_repository_unavailable", project_id: item.project_id, error: item.error })),
+      ...projectRepositories.filter((item) => item.inspection_state === "repository_not_bound" && item.status !== "template").map((item) => ({ severity: "warning", code: "project_repository_not_bound", project_id: item.project_id })),
+      ...orphanRepositories.map((item) => ({ severity: "warning", code: "orphan_project_repository", repository_name: item.repository_name })),
+      ...buildJobs.filter((item) => item.status === "failed").slice(-50).map((item) => ({ severity: "warning", code: "build_failed", build_job_id: item.build_job_id, project_id: item.project_id })),
+    ];
     return {
       generated_at: new Date().toISOString(),
       cutover: {
@@ -1152,23 +1252,20 @@ class ProjectService {
         system_repositories_ready: systemRepositories.filter((item) => item.exists && item.commit_sha).length,
         project_repositories: projects.filter((item) => this.activeRepositoryBinding(item)).length,
         projects_without_repository: projects.filter((item) => !this.activeRepositoryBinding(item)).length,
+        project_repositories_available: projectRepositories.filter((item) => item.inspection_state === "available").length,
+        project_repositories_unavailable: projectRepositories.filter((item) => item.inspection_state === "unavailable").length,
+        orphan_project_repositories: orphanRepositories.length,
+        repository_size_bytes: projectRepositories.reduce((total, item) => total + Number(item.repository_size_bytes || 0), 0),
+        lfs_size_bytes: projectRepositories.reduce((total, item) => total + Number(item.lfs_size_bytes || 0), 0),
         builds: buildJobs.length,
         artifacts: artifacts.length,
+        alerts: alerts.length,
       },
       system_repositories: systemRepositories,
-      project_repositories: projects.map((project) => ({
-        project_id: project.project_id,
-        title: project.title,
-        user_id: project.user_id,
-        status: project.status,
-        repository: project.repository_binding || null,
-        template_ref: project.view_manifest?.template_ref || null,
-        product_source_reference: project.view_manifest?.product_source_reference || null,
-        basissoftware_references: softwareUnitsForProject(project).map((unit) => unit.build_config?.firmware_basis_reference).filter(Boolean),
-        build_count: buildCountByProject.get(project.project_id) || 0,
-        artifact_count: artifactCountByProject.get(project.project_id) || 0,
-        updated_at: project.updated_at,
-      })),
+      project_repositories: projectRepositories,
+      orphan_repositories: orphanRepositories,
+      orphan_inspection_state: orphanInspectionState,
+      alerts,
       builds: [...buildJobs].sort((left, right) => String(right.created_at).localeCompare(String(left.created_at))).slice(0, 200).map((job) => ({
         build_job_id: job.build_job_id,
         project_id: job.project_id,
@@ -1204,35 +1301,93 @@ class ProjectService {
       const existing = await this.repository.findProject(requestedProjectId);
       if (!existing) throw new ProjectServerError("project_not_found", "Projekt wurde nicht gefunden.", 404);
     }
-    const plan = projects.map((project) => ({ project_id: project.project_id, title: project.title, user_id: project.user_id }));
-    if (input.apply !== true) return { mode: "plan", projects: plan, count: plan.length };
-    const migrated = [];
-    for (const current of projects) {
-      const softwareUnits = this.protectSoftwareUnits(normalizeSoftwareUnits(current.software_units, current.build_config));
-      const activeSoftwareUnitId = activeSoftwareUnitIdFor(current.active_software_unit_id, softwareUnits);
-      const project = await this.repository.saveProject({
-        ...current,
-        software_units: softwareUnits,
-        active_software_unit_id: activeSoftwareUnitId,
-        build_config: softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || null,
-        updated_at: new Date().toISOString(),
-      });
-      await this.syncPlatformioSources(project);
-      await this.syncProjectConfigurationSources(project);
-      const sources = await this.repository.listSources(project.project_id);
-      loadProjectFileSet(sources);
-      const binding = await this.projectRepositoryStore.provisionProject({
-        project_id: project.project_id,
-        message: `Projekt ${project.title} aus PostgreSQL migriert`,
-        changes: sources.map((source) => ({ path: source.path, content: source.content })),
-      });
-      await this.repository.saveProject({
-        ...project,
-        repository_binding: { ...binding, provisioned_at: new Date().toISOString(), migration_source: "postgresql" },
-      });
-      migrated.push({ project_id: project.project_id, repository_id: binding.repository_id, commit_sha: binding.head_sha });
+    const inventory = { source_kind: "postgresql", projects, sources: [], versions: [], read_errors: [] };
+    for (const project of projects) {
+      inventory.sources.push(...await this.repository.listSources(project.project_id));
+      inventory.versions.push(...await this.repository.listVersions({ project_id: project.project_id }));
     }
-    return { mode: "applied", migrated, count: migrated.length };
+    let payload;
+    try {
+      payload = buildMigrationPayload(inventory);
+    } catch (error) {
+      if (error.code !== "FORGEJO_MIGRATION_REPORT_BLOCKED") throw error;
+      throw new ProjectServerError("forgejo_migration_plan_blocked", "Der SQL-Altbestand ist nicht verlustfrei migrierbar.", 409, {
+        error_count: error.report?.summary?.error_count || 0,
+        report_sha256: sha256(JSON.stringify(error.report || {})),
+      });
+    }
+    const plan = payload.projects.map((entry) => ({
+      project_id: entry.project_id,
+      source_sha256: entry.source_sha256,
+      target_head_commit_oid: entry.target_head_commit_oid,
+      source_file_count: entry.source_file_count,
+      source_version_count: entry.source_version_count,
+      target_commit_count: entry.target_commit_count,
+    }));
+    if (input.apply !== true) return {
+      mode: "plan", projects: plan, count: plan.length,
+      source_fingerprint_sha256: payload.source_fingerprint_sha256,
+      report_sha256: payload.report_sha256,
+    };
+    const migrated = [];
+    for (const migration of payload.projects) {
+      const project = projects.find((entry) => entry.project_id === migration.project_id);
+      const existing = typeof this.repository.findRepositoryMigration === "function"
+        ? await this.repository.findRepositoryMigration(project.project_id) : null;
+      if (existing && existing.source_sha256 !== migration.source_sha256) {
+        throw new ProjectServerError("forgejo_migration_source_changed", "Der SQL-Altbestand hat sich seit dem ersten Migrationsversuch verändert.", 409);
+      }
+      const startedAt = existing?.started_at || new Date().toISOString();
+      const ledgerBase = {
+        project_id: project.project_id,
+        source_sha256: migration.source_sha256,
+        report_sha256: payload.report_sha256,
+        source_file_count: migration.source_file_count,
+        source_version_count: migration.source_version_count,
+        target_commit_count: migration.target_commit_count,
+        started_at: startedAt,
+      };
+      if (typeof this.repository.saveRepositoryMigration === "function") {
+        await this.repository.saveRepositoryMigration({ ...ledgerBase, status: "applying", updated_at: new Date().toISOString() });
+      }
+      try {
+        const binding = await this.projectRepositoryStore.migrateProjectHistory({
+          project_id: project.project_id,
+          expected_head_oid: migration.target_head_commit_oid,
+          commits: migration.commits,
+        });
+        const completedAt = new Date().toISOString();
+        await this.repository.saveProject({
+          ...project,
+          repository_binding: { ...binding, provisioned_at: completedAt, migration_source: "postgresql" },
+          updated_at: completedAt,
+        });
+        if (typeof this.repository.saveRepositoryMigration === "function") {
+          await this.repository.saveRepositoryMigration({
+            ...ledgerBase,
+            target_repository_id: binding.repository_id,
+            target_head_sha: binding.head_sha,
+            status: "completed",
+            completed_at: completedAt,
+            updated_at: completedAt,
+          });
+        }
+        migrated.push({ project_id: project.project_id, repository_id: binding.repository_id, commit_sha: binding.head_sha });
+      } catch (error) {
+        if (typeof this.repository.saveRepositoryMigration === "function") {
+          try {
+            await this.repository.saveRepositoryMigration({
+              ...ledgerBase,
+              status: "failed",
+              error_code: String(error.code || "migration_failed").slice(0, 100),
+              updated_at: new Date().toISOString(),
+            });
+          } catch { /* Der urspruengliche Fehler bleibt massgeblich. */ }
+        }
+        throw error;
+      }
+    }
+    return { mode: "applied", migrated, count: migrated.length, report_sha256: payload.report_sha256 };
   }
 
   async createBuildPackage(jobId) {
@@ -1240,7 +1395,7 @@ class ProjectService {
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
     this.assertProjectBuildAllowed(project);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     let buildProject = project;
     let allSources;
     if (job.commit_sha) {
@@ -1262,9 +1417,14 @@ class ProjectService {
     if (job.software_unit_id && softwareUnit?.software_unit_id !== job.software_unit_id) {
       throw new ProjectServerError("build_commit_software_unit_missing", "Die Softwareeinheit des BuildJobs fehlt im gebundenen Commit.", 409);
     }
-    const productAssets = await this.loadProductBuildAssets(project.view_manifest?.product_source_reference);
-    const sources = sourcesForSoftwareUnit(mergeSourceSets(productAssets, allSources), softwareUnit, softwareUnits);
     const buildConfig = debugBuildConfig(job.build_config || softwareUnit?.build_config || buildProject.build_config, job.build_profile);
+    const productAssets = await this.loadProductBuildAssets(project.view_manifest?.product_source_reference);
+    const boardSupportFiles = await this.loadBoardSupportFiles(buildConfig);
+    const sources = sourcesForSoftwareUnit(
+      mergeProtectedBoardSupportFiles(mergeSourceSets(productAssets, allSources), boardSupportFiles),
+      softwareUnit,
+      softwareUnits,
+    );
     const contractProblems = firmwareSoftwareUnitProblems(softwareUnit, sources.map((source) => source.path), {
       pathsAreScoped: true,
       requireEntrypointSource: true,
@@ -1454,7 +1614,7 @@ class ProjectService {
     this.assertProjectPlanUnlocked(project, "Für das tarifgesperrte Projekt kann keine neue Version angelegt werden.");
     const versions = await this.repository.listVersions({ project_id: projectId });
     const now = new Date().toISOString();
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (binding) {
       const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
       if (commitSha !== binding.head_sha) throw new ProjectServerError("repository_head_conflict", "Eine benannte Version kann nur den bestaetigten Repository-Head referenzieren.", 409, {
@@ -1529,7 +1689,7 @@ class ProjectService {
     this.assertProjectWritable(project);
     const version = await this.repository.findVersion(versionId);
     if (!version || version.project_id !== project.project_id) throw new ProjectServerError("project_version_not_found", "Projektversion wurde nicht gefunden.", 404);
-    const binding = this.activeRepositoryBinding(project);
+    const binding = this.runtimeRepositoryBinding(project);
     if (binding) {
       if (!version.commit_sha) throw new ProjectServerError("project_version_commit_missing", "Projektversion besitzt keinen Git-Commit.", 409);
       const restored = await this.restoreRepository(projectId, {
@@ -1802,13 +1962,20 @@ class ProjectService {
     return updated;
   }
 
-  async projectWithSummary(project) {
-    const sources = await this.repository.listSources(project.project_id);
+  async projectWithSummary(project, knownRepositoryPaths = null) {
+    const binding = this.activeRepositoryBinding(project);
+    const sourceFiles = binding
+      ? (knownRepositoryPaths || (typeof this.projectRepositoryStore.tree === "function"
+        ? await this.projectRepositoryStore.tree(binding, binding.head_sha)
+        : [])).map((path) => ({ path, role: inferSourceRole(path) }))
+      : this.projectRepositoryStore
+        ? []
+        : (await this.repository.listSources(project.project_id)).map((source) => ({ path: source.path, role: source.role || inferSourceRole(source.path) }));
     return {
       ...sanitizeProject(project),
       repository_binding: publicRepositoryBinding(project.repository_binding),
-      source_count: sources.length,
-      source_files: sources.map((source) => ({ path: source.path, role: source.role || inferSourceRole(source.path) })),
+      source_count: sourceFiles.length,
+      source_files: sourceFiles,
       build_count: (await this.repository.listBuildJobs({ project_id: project.project_id })).length,
     };
   }
@@ -1818,15 +1985,21 @@ class ProjectService {
     const policies = await this.repository.listResourcePolicies();
     const byAccount = new Map();
     for (const project of await this.repository.listProjects()) {
-      const entry = byAccount.get(project.user_id) || { account_id: project.user_id, plan_id: project.plan_id || "free", projects: 0, storage_bytes: 0 };
+      const entry = byAccount.get(project.user_id) || { account_id: project.user_id, plan_id: project.plan_id || "free", projects: 0, storage_bytes: 0, git_storage_bytes: 0, lfs_storage_bytes: 0, artifact_storage_bytes: 0 };
       entry.projects += 1;
-      entry.storage_bytes += await this.storageMeter.projectStorageBytes(project.project_id);
+      entry.git_storage_bytes += await this.storageMeter.projectStorageBytes(project.project_id);
+      entry.storage_bytes = entry.git_storage_bytes;
       byAccount.set(project.user_id, entry);
+    }
+    const projectOwners = new Map((await this.repository.listProjects()).map((project) => [project.project_id, project.user_id]));
+    for (const artifact of await this.repository.listArtifacts({})) {
+      const account = byAccount.get(projectOwners.get(artifact.project_id));
+      if (account) account.artifact_storage_bytes += Math.max(0, Number(artifact.size_bytes || 0));
     }
     return {
       policies,
       accounts: Array.from(byAccount.values()).sort((a, b) => b.storage_bytes - a.storage_bytes),
-      measurement_source: "sql_source_cache",
+      measurement_source: this.projectRepositoryStore ? "forgejo_repository_head" : "legacy_sql_sources",
     };
   }
 
@@ -1837,6 +2010,10 @@ class ProjectService {
     const projects = (await this.repository.listProjects({ user_id: normalizedAccountId }))
       .filter((project) => project.status !== "template");
     const storageBytes = await this.storageMeter.accountStorageBytes(normalizedAccountId);
+    const projectIds = new Set(projects.map((project) => project.project_id));
+    const artifactStorageBytes = (await this.repository.listArtifacts({}))
+      .filter((artifact) => projectIds.has(artifact.project_id))
+      .reduce((total, artifact) => total + Math.max(0, Number(artifact.size_bytes || 0)), 0);
     return {
       account_id: normalizedAccountId,
       plan_id: policy.plan_id,
@@ -1846,12 +2023,18 @@ class ProjectService {
         active_projects: projects.filter((project) => project.status === "active").length,
         locked_projects: projects.filter((project) => project.status === "plan_locked").length,
         storage_bytes: storageBytes,
+        git_storage_bytes: storageBytes,
+        lfs_storage_bytes: 0,
+        artifact_storage_bytes: artifactStorageBytes,
       },
       over_quota: {
         projects: policy.max_projects !== null && projects.length > policy.max_projects,
-        storage: policy.max_storage_bytes !== null && storageBytes > policy.max_storage_bytes,
+        storage: policy.max_git_storage_bytes !== null && storageBytes > policy.max_git_storage_bytes,
+        git_storage: policy.max_git_storage_bytes !== null && storageBytes > policy.max_git_storage_bytes,
+        lfs_storage: false,
+        artifact_storage: policy.max_artifact_storage_bytes !== null && artifactStorageBytes > policy.max_artifact_storage_bytes,
       },
-      measurement_source: "sql_source_cache",
+      measurement_source: this.projectRepositoryStore ? "forgejo_repository_head" : "legacy_sql_sources",
     };
   }
 
@@ -1901,6 +2084,12 @@ class ProjectService {
       change_reason: required(input.change_reason, "change_reason"),
       max_projects: unlimitedOrPositiveLimit(input.max_projects, current.max_projects),
       max_storage_bytes: unlimitedOrPositiveLimit(input.max_storage_bytes, current.max_storage_bytes),
+      max_git_storage_bytes: unlimitedOrPositiveLimit(
+        Object.hasOwn(input, "max_git_storage_bytes") ? input.max_git_storage_bytes : input.max_storage_bytes,
+        current.max_git_storage_bytes,
+      ),
+      max_lfs_storage_bytes: unlimitedOrPositiveLimit(input.max_lfs_storage_bytes, current.max_lfs_storage_bytes),
+      max_artifact_storage_bytes: unlimitedOrPositiveLimit(input.max_artifact_storage_bytes, current.max_artifact_storage_bytes),
       storage_warning_threshold_percent: percentageLimit(input.storage_warning_threshold_percent, current.storage_warning_threshold_percent),
       max_monthly_traffic_bytes: unlimitedOrPositiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
       debug_session_idle_hours: positiveLimit(input.debug_session_idle_hours, current.debug_session_idle_hours || 48),
@@ -1952,8 +2141,8 @@ class ProjectService {
   async assertProjectedStorageQuota(project, usage) {
     const policy = await this.policyFor(project.plan_id);
     const growsStorage = usage.projected_bytes > usage.current_bytes;
-    if (policy.max_storage_bytes !== null && growsStorage && usage.projected_bytes > policy.max_storage_bytes) {
-      throw new ProjectServerError("storage_quota_exceeded", `Speicherlimit von ${policy.max_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413, {
+    if (policy.max_git_storage_bytes !== null && growsStorage && usage.projected_bytes > policy.max_git_storage_bytes) {
+      throw new ProjectServerError("storage_quota_exceeded", `Git-Speicherlimit von ${policy.max_git_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413, {
         account_id: project.user_id,
         current_bytes: usage.current_bytes,
         projected_bytes: usage.projected_bytes,
@@ -1998,6 +2187,7 @@ class ProjectService {
 
   async ensureComponentSoftwareLayout(project) {
     if (project.status === "plan_locked") return project;
+    if (this.projectRepositoryStore) return project;
     const previousUnits = Array.isArray(project.software_units) ? project.software_units : [];
     const softwareUnits = normalizeSoftwareUnits(previousUnits, project.build_config || null);
     const activeSoftwareUnitId = activeSoftwareUnitIdFor(project.active_software_unit_id, softwareUnits);
@@ -2188,6 +2378,18 @@ function mergeSourceSets(baseSources = [], overlaySources = []) {
   return [...sources.values()];
 }
 
+function mergeProtectedBoardSupportFiles(projectSources = [], supportSources = []) {
+  const byPath = new Map(projectSources.map((source) => [String(source.path || ""), source]));
+  for (const source of supportSources) {
+    const existing = byPath.get(source.path);
+    if (existing && sourceContentSha256(existing) !== sourceContentSha256(source)) {
+      throw new ProjectServerError("board_support_path_conflict", "Eine Projektdatei würde eine geschützte Board-Support-Datei überschreiben.", 409, { path: source.path });
+    }
+    byPath.set(source.path, source);
+  }
+  return [...byPath.values()];
+}
+
 function countBy(items, keyFor) {
   const counts = new Map();
   for (const item of items || []) {
@@ -2290,6 +2492,7 @@ function sourcesForSoftwareUnit(sources, selectedUnit, softwareUnits) {
   return sources.filter((source) => !otherRoots.some((prefix) => source.path.startsWith(prefix)));
 }
 
+
 function positiveLimit(value, fallback) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : fallback;
@@ -2310,9 +2513,9 @@ function percentageLimit(value, fallback = 80) {
 function defaultResourcePolicies() {
   const now = new Date().toISOString();
   return [
-    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 25 * 1024 * 1024, debug_session_idle_hours: 48 },
-    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024, debug_session_idle_hours: 48 },
-    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024, debug_session_idle_hours: 48 },
+    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, max_git_storage_bytes: 5 * 1024 * 1024, max_lfs_storage_bytes: null, max_artifact_storage_bytes: 25 * 1024 * 1024, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 25 * 1024 * 1024, debug_session_idle_hours: 48 },
+    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, max_git_storage_bytes: null, max_lfs_storage_bytes: null, max_artifact_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024, debug_session_idle_hours: 48 },
+    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, max_git_storage_bytes: null, max_lfs_storage_bytes: null, max_artifact_storage_bytes: null, storage_warning_threshold_percent: 80, max_monthly_traffic_bytes: 1024 * 1024 * 1024, debug_session_idle_hours: 48 },
   ].map((policy) => ({
     ...policy,
     policy_id: resourcePolicyId(policy.plan_id),
@@ -2334,6 +2537,9 @@ function normalizePersistedResourcePolicy(policy) {
     status: "active",
     changed_by: policy.changed_by || "system",
     change_reason: policy.change_reason || "legacy_policy_migration",
+    max_git_storage_bytes: unlimitedOrPositiveLimit(policy.max_git_storage_bytes, policy.max_storage_bytes),
+    max_lfs_storage_bytes: unlimitedOrPositiveLimit(policy.max_lfs_storage_bytes, null),
+    max_artifact_storage_bytes: unlimitedOrPositiveLimit(policy.max_artifact_storage_bytes, policy.max_monthly_traffic_bytes),
     storage_warning_threshold_percent: percentageLimit(policy.storage_warning_threshold_percent, 80),
     debug_session_idle_hours: positiveLimit(policy.debug_session_idle_hours, 48),
   };
@@ -2433,6 +2639,92 @@ function defaultSources(project, sources) {
       "",
     ].join("\n"),
   }];
+}
+
+function materializeInitialProjectSources(project, suppliedSources, at) {
+  const byPath = new Map();
+  const add = (raw, fallbackRole = "project_file") => {
+    const path = remapSoftwareSourcePath(
+      normalizeSourcePath(required(raw.path, "path")),
+      softwareLayoutMappings([], project.software_units || []),
+    );
+    const content = String(raw.content ?? "");
+    byPath.set(path, {
+      project_id: project.project_id,
+      path,
+      content,
+      content_sha256: sha256(content),
+      content_type: raw.content_type || contentType(path),
+      role: raw.role || fallbackRole || inferSourceRole(path),
+      updated_at: at,
+    });
+  };
+  for (const source of defaultSources(project, suppliedSources)) add(source, source.role || "user_code");
+  for (const unit of softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit)) {
+    add({
+      path: [String(unit.source_root || "").replace(/\/$/, ""), "platformio.ini"].filter(Boolean).join("/"),
+      content: renderPlatformioIni(unit.build_config),
+      content_type: "text/plain",
+      role: "build_config",
+    });
+  }
+  for (const source of projectConfigurationSources(project)) add(source, source.role);
+  return [...byPath.values()].sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function configurationProjectionForSources(project, currentSources = []) {
+  const desired = [...projectConfigurationSources(project)];
+  for (const unit of softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit)) {
+    desired.push({
+      path: [String(unit.source_root || "").replace(/\/$/, ""), "platformio.ini"].filter(Boolean).join("/"),
+      content: renderPlatformioIni(unit.build_config),
+      content_type: "text/plain",
+      role: "build_config",
+    });
+  }
+  const currentByPath = new Map(currentSources.map((source) => [source.path, source]));
+  const desiredByPath = new Map(desired.map((source) => [source.path, source]));
+  const projection = emptyProjectionResult();
+  const changes = [];
+  for (const source of desired) {
+    const current = currentByPath.get(source.path);
+    if (current && sourceContentSha256(current) === sha256(source.content)) {
+      projection.unchanged_paths.push(source.path);
+      continue;
+    }
+    projection.changed_paths.push(source.path);
+    changes.push({ path: source.path, content: source.content });
+  }
+  for (const source of currentSources) {
+    if (!isManagedProjectionPath(source.path) || desiredByPath.has(source.path)) continue;
+    projection.removed_paths.push(source.path);
+    changes.push({ path: source.path, operation: "delete" });
+  }
+  projection.changed_paths = uniqueSorted(projection.changed_paths);
+  projection.unchanged_paths = uniqueSorted(projection.unchanged_paths);
+  projection.removed_paths = uniqueSorted(projection.removed_paths);
+  return { projection, changes };
+}
+
+function configurationProjectionSummary(projection = {}) {
+  const changed = (projection.changed_paths || []).length;
+  const removed = (projection.removed_paths || []).length;
+  if (!changed && !removed) return "Keine Projektdatei geändert";
+  const parts = [];
+  if (changed) parts.push(`${changed} Projektdatei${changed === 1 ? "" : "en"} aktualisiert`);
+  if (removed) parts.push(`${removed} Projektdatei${removed === 1 ? "" : "en"} entfernt`);
+  return parts.join(", ");
+}
+
+function isManagedProjectionPath(sourcePath) {
+  return sourcePath === "gernetix/project.json"
+    || /^gernetix\/(?:architecture|hardware|configuration|software-units)\//.test(sourcePath)
+    || /(?:^|\/)platformio\.ini$/.test(sourcePath)
+    || /(?:^|\/)include\/gernetix_(?:board|basissoftware)_configuration\.h$/.test(sourcePath);
+}
+
+function sourceSetBytes(sources = []) {
+  return sources.reduce((total, source) => total + Buffer.byteLength(String(source.content ?? ""), "utf8"), 0);
 }
 
 function sanitizeProject(project) {

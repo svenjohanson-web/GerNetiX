@@ -41,14 +41,6 @@ class PostgresProjectRepository {
         ON project_projects (repository_provider, repository_name)
         WHERE repository_provider IS NOT NULL AND repository_name IS NOT NULL;
 
-      CREATE TABLE IF NOT EXISTS project_sources (
-        project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
-        path text NOT NULL,
-        raw_json jsonb NOT NULL,
-        updated_at timestamptz NOT NULL,
-        PRIMARY KEY (project_id, path)
-      );
-
       CREATE TABLE IF NOT EXISTS project_build_jobs (
         build_job_id text PRIMARY KEY,
         project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
@@ -172,10 +164,40 @@ class PostgresProjectRepository {
         migration_id text PRIMARY KEY,
         applied_at timestamptz NOT NULL DEFAULT now()
       );
+
+      CREATE TABLE IF NOT EXISTS project_repository_migrations (
+        project_id text PRIMARY KEY REFERENCES project_projects(project_id) ON DELETE CASCADE,
+        source_sha256 text NOT NULL,
+        report_sha256 text NOT NULL,
+        target_repository_id text,
+        target_head_sha text,
+        source_file_count integer NOT NULL,
+        source_version_count integer NOT NULL,
+        target_commit_count integer NOT NULL,
+        status text NOT NULL,
+        error_code text,
+        started_at timestamptz NOT NULL,
+        completed_at timestamptz,
+        updated_at timestamptz NOT NULL
+      );
+
+      CREATE OR REPLACE FUNCTION gernetix_reject_project_version_snapshot()
+      RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.raw_json ?| ARRAY['sources', 'source_snapshot', 'project_snapshot'] THEN
+          RAISE EXCEPTION 'PROJECT_SQL_VERSION_SNAPSHOT_FORBIDDEN' USING ERRCODE = 'integrity_constraint_violation';
+        END IF;
+        RETURN NEW;
+      END $$;
+      DROP TRIGGER IF EXISTS project_versions_snapshot_forbidden ON project_versions;
+      CREATE TRIGGER project_versions_snapshot_forbidden
+        BEFORE INSERT OR UPDATE ON project_versions
+        FOR EACH ROW EXECUTE FUNCTION gernetix_reject_project_version_snapshot();
     `);
   }
 
   async saveProject(project) {
+    assertNoProjectFilePayload(project, "PROJECT_SQL_PROJECT_PAYLOAD_FORBIDDEN");
     const binding = project.repository_binding || {};
     await this.pool.query(`
       INSERT INTO project_projects
@@ -245,10 +267,7 @@ class PostgresProjectRepository {
         COALESCE(p.raw_json->'device_ids', '[]'::jsonb) AS device_ids,
         p.raw_json->>'created_at' AS created_at,
         p.raw_json->>'updated_at' AS updated_at,
-        EXISTS (
-          SELECT 1 FROM project_sources source
-          WHERE source.project_id=p.project_id AND source.path='project-app/manifest.json'
-        ) AS has_project_app
+        false AS has_project_app
       FROM project_projects p
       ${where}
       ORDER BY p.updated_at DESC
@@ -257,35 +276,29 @@ class PostgresProjectRepository {
   }
 
   async saveSource(source) {
-    await this.pool.query(`
-      INSERT INTO project_sources (project_id, path, raw_json, updated_at)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (project_id, path) DO UPDATE SET
-        raw_json=EXCLUDED.raw_json,
-        updated_at=EXCLUDED.updated_at
-    `, [source.project_id, source.path, source, source.updated_at]);
-    return clone(source);
+    void source;
+    throw new Error("PROJECT_SQL_SOURCE_WRITE_FORBIDDEN");
   }
 
   async findSource(projectId, sourcePath) {
-    return first(await this.pool.query(
-      "SELECT raw_json FROM project_sources WHERE project_id=$1 AND path=$2",
-      [projectId, sourcePath],
-    ));
+    void projectId;
+    void sourcePath;
+    throw new Error("PROJECT_SQL_SOURCE_READ_FORBIDDEN");
   }
 
   async listSources(projectId) {
-    return rows(await this.pool.query(
-      "SELECT raw_json FROM project_sources WHERE project_id=$1 ORDER BY path",
-      [projectId],
-    ));
+    void projectId;
+    throw new Error("PROJECT_SQL_SOURCE_READ_FORBIDDEN");
   }
 
   async deleteSource(projectId, sourcePath) {
-    return (await this.pool.query("DELETE FROM project_sources WHERE project_id=$1 AND path=$2", [projectId, sourcePath])).rowCount > 0;
+    void projectId;
+    void sourcePath;
+    throw new Error("PROJECT_SQL_SOURCE_WRITE_FORBIDDEN");
   }
 
   async saveBuildJob(job) {
+    assertNoProjectFilePayload(job, "PROJECT_SQL_BUILD_PAYLOAD_FORBIDDEN");
     await this.pool.query(`
       INSERT INTO project_build_jobs
         (build_job_id, project_id, user_id, repository_id, commit_sha, status, raw_json, updated_at)
@@ -344,6 +357,7 @@ class PostgresProjectRepository {
   }
 
   async saveVersion(version) {
+    assertNoProjectFilePayload(version, "PROJECT_SQL_VERSION_SNAPSHOT_FORBIDDEN");
     const result = await this.pool.query(`
       INSERT INTO project_versions
         (version_id, project_id, parent_version_id, created_by_user_id, state,
@@ -583,7 +597,6 @@ class PostgresProjectRepository {
       await client.query("BEGIN");
       const counts = {};
       for (const [key, table] of [
-        ["sources", "project_sources"],
         ["build_jobs", "project_build_jobs"],
         ["artifacts", "project_artifacts"],
         ["feedback", "project_feedback"],
@@ -595,6 +608,7 @@ class PostgresProjectRepository {
           [projectId],
         )).rows[0].count);
       }
+      counts.sources = 0;
       counts.consents = Number((await client.query(`
         SELECT COUNT(*) AS count
         FROM project_consents c
@@ -623,8 +637,53 @@ class PostgresProjectRepository {
     )).rowCount > 0;
   }
 
+  async findRepositoryMigration(projectId) {
+    const result = await this.pool.query(
+      "SELECT * FROM project_repository_migrations WHERE project_id=$1",
+      [projectId],
+    );
+    return result.rows[0] ? clone(result.rows[0]) : null;
+  }
+
+  async saveRepositoryMigration(entry) {
+    const result = await this.pool.query(`
+      INSERT INTO project_repository_migrations
+        (project_id, source_sha256, report_sha256, target_repository_id, target_head_sha,
+         source_file_count, source_version_count, target_commit_count, status, error_code,
+         started_at, completed_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      ON CONFLICT (project_id) DO UPDATE SET
+        source_sha256=EXCLUDED.source_sha256,
+        report_sha256=EXCLUDED.report_sha256,
+        target_repository_id=EXCLUDED.target_repository_id,
+        target_head_sha=EXCLUDED.target_head_sha,
+        source_file_count=EXCLUDED.source_file_count,
+        source_version_count=EXCLUDED.source_version_count,
+        target_commit_count=EXCLUDED.target_commit_count,
+        status=EXCLUDED.status,
+        error_code=EXCLUDED.error_code,
+        started_at=EXCLUDED.started_at,
+        completed_at=EXCLUDED.completed_at,
+        updated_at=EXCLUDED.updated_at
+      RETURNING *
+    `, [
+      entry.project_id, entry.source_sha256, entry.report_sha256,
+      entry.target_repository_id || null, entry.target_head_sha || null,
+      entry.source_file_count, entry.source_version_count, entry.target_commit_count,
+      entry.status, entry.error_code || null, entry.started_at,
+      entry.completed_at || null, entry.updated_at,
+    ]);
+    return clone(result.rows[0]);
+  }
+
   async importLegacyState(state, migrationId = "project-sqlite-v1") {
     if (await this.hasMigration(migrationId)) return { imported: false, reason: "already_applied" };
+    if ((state.sources || []).length
+      || (state.projects || []).some(hasProjectFilePayload)
+      || (state.buildJobs || []).some(hasProjectFilePayload)
+      || (state.versions || []).some(hasProjectFilePayload)) {
+      throw new Error("PROJECT_SQL_LEGACY_CONTENT_IMPORT_FORBIDDEN");
+    }
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
@@ -639,7 +698,6 @@ class PostgresProjectRepository {
           VALUES ($1, $2, $3, $4, $5)
         `, [project.project_id, project.user_id, project.status, project, timestamp(project, "updated_at", "created_at")]);
       }
-      await importSources(client, state.sources);
       await importBuildJobs(client, state.buildJobs);
       await importArtifacts(client, state.artifacts);
       await importFeedback(client, state.feedback);
@@ -667,13 +725,16 @@ class PostgresProjectRepository {
   }
 }
 
-async function importSources(client, items = []) {
-  for (const item of items) {
-    await client.query(`
-      INSERT INTO project_sources (project_id, path, raw_json, updated_at)
-      VALUES ($1, $2, $3, $4)
-    `, [item.project_id, item.path, item, timestamp(item, "updated_at")]);
-  }
+const FORBIDDEN_PROJECT_PAYLOAD_KEYS = new Set(["sources", "source_snapshot", "project_snapshot"]);
+
+function hasProjectFilePayload(value) {
+  if (Array.isArray(value)) return value.some(hasProjectFilePayload);
+  if (!value || typeof value !== "object") return false;
+  return Object.entries(value).some(([key, entry]) => FORBIDDEN_PROJECT_PAYLOAD_KEYS.has(key) || hasProjectFilePayload(entry));
+}
+
+function assertNoProjectFilePayload(value, code) {
+  if (hasProjectFilePayload(value)) throw new Error(code);
 }
 
 async function importBuildJobs(client, items = []) {

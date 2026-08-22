@@ -16,6 +16,14 @@ GerNetiX verkauft Lerninhalte in einer einfachen Hierarchie:
 
 Konkrete Preise werden erst nach Umfangs-, Abschlussraten-, Support- und Zahlungsbereitschaftstests festgelegt. Bis dahin tragen Shop- und Tarifansichten den Status `Preis noch nicht festgelegt`.
 
+## Verkaufs- und Einstiegspfad
+
+- `/leistungen/` bleibt die kompakte Wahl zwischen Lern- und Entwicklungsbereich und zeigt je Bereich nur `Kostenlos`, `Abo` und `Kaufen`.
+- `/kurse/` ist die eigene öffentliche Verkaufs- und Vergleichsseite für freie Lerninhalte, Abo-Zugang, dauerhaft kaufbare Einzel-Courses und Lernpakete.
+- Ein freies oder für das Konto freigeschaltetes Lernprojekt öffnet aus dem Lernprojekt-Katalog weiterhin seine Projektübersicht.
+- Fehlt das wirksame Abo- oder Course-Entitlement, führt der Klick mit der stabilen Course-/Projektkennung zu `/kurse/`; dort wird das ausgewählte Lernprojekt kontextbezogen erklärt.
+- Die serverseitige Start-API prüft dieselbe Freischaltung erneut. Die öffentliche Kursseite selbst liest keine Konto-, Projekt-, Preis- oder Entitlementdaten und erteilt keine Berechtigung.
+
 ## Paket 1: Messtechnik und Fehlersuche
 
 **Produkt-ID:** `product_offering.measurement_troubleshooting_bundle`

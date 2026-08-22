@@ -26,6 +26,35 @@ function createHttpApp(options) {
       return;
     }
 
+    if (path.startsWith(`${prefix}/notification-outbox`)) {
+      /*
+       * Nur Dienst zu Dienst: hier holt sich der Benachrichtigungs-Worker des
+       * Identity-Servers seine Auftraege. Ein Delegations-Token hiesse, dass
+       * jemand im Namen eines Kontos anfragt -- dafuer ist die Warteschlange
+       * nicht da.
+       */
+      requireService(req, service.internalApiSigningKey, "community.write");
+      if (req.headers["x-gernetix-delegation"]) {
+        sendJson(res, 403, { error: "notification_outbox_internal_only" });
+        return;
+      }
+      if (req.method === "POST" && path === `${prefix}/notification-outbox/claim`) {
+        sendJson(res, 200, await service.claimNotificationOutbox(await readJsonBody(req)));
+        return;
+      }
+      const outboxAction = path.match(new RegExp(`^${prefix}/notification-outbox/([^/]+)/(complete|retry)$`));
+      if (req.method === "POST" && outboxAction) {
+        const eventId = decodeURIComponent(outboxAction[1]);
+        const input = await readJsonBody(req);
+        sendJson(res, 200, outboxAction[2] === "complete"
+          ? await service.completeNotificationOutbox(eventId, input)
+          : await service.retryNotificationOutbox(eventId, input));
+        return;
+      }
+      sendJson(res, 404, { error: "notification_outbox_route_not_found" });
+      return;
+    }
+
     if (req.method === "GET" && path === `${prefix}/operations-summary`) {
       requireService(req, service.internalApiSigningKey, "community.operations.read");
       sendJson(res, 200, await service.operationsSummary());

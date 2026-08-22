@@ -1,5 +1,7 @@
 "use strict";
 
+const { hasLearningProjectCatalogAccess, learningProjectPurchaseUrl } = require("../learning-project-access");
+
 function createLearningProjectService({ userIdeState, catalogProjectIdForDefinition, sendJson, projectServerUserId, projectServerJson, crypto, accountSubscription, projectViewManifest, demoProjectSources, mapProjectServerProject, invalidateUserIdeProjectCaches, touchWorkspace, learningProgress, toPlatformProject, nexiCourseModel, mapUserIdeProjects, requireSessionProject, readJsonBody, loadUserIdeDevices, loadAvailableProcessorBoards, platformSoftwareUnits, buildConfigForBoard, compilerBoardConfiguration, telemetryJson, webPushService }) {
 function accountAccess(accountId, scope = "project.read") {
   return { internalAuth: { scopes: [scope], delegation: { account_id: String(accountId), project_ids: [] } } };
@@ -14,6 +16,16 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
     .find((item) => item.project_server_id === catalogProjectId || catalogProjectIdForDefinition(item) === catalogProjectId);
   if (!definition) {
     sendJson(res, 404, { error: "learning_project_not_found", message: "Dieses Lernprojekt ist im Katalog nicht vorhanden." });
+    return;
+  }
+
+  if (!hasLearningProjectCatalogAccess(definition, accountSubscription(session).entitlements)) {
+    sendJson(res, 403, {
+      error: "learning_project_access_required",
+      message: "Dieses Lernprojekt benötigt ein passendes Abo oder eine dauerhafte Kursfreischaltung.",
+      access_model: definition.access_model || "subscription",
+      purchase_url: learningProjectPurchaseUrl(definition),
+    });
     return;
   }
 
@@ -116,6 +128,16 @@ async function handleDevelopmentLessonStart(res, session, catalogProjectId, less
     sendJson(res, 404, {
       error: "development_lesson_not_found",
       message: "Diese Entwicklungslesson ist im gewählten Entwicklungsprojekt nicht vorhanden.",
+    });
+    return;
+  }
+
+  if (!hasLearningProjectCatalogAccess(definition, accountSubscription(session).entitlements)) {
+    sendJson(res, 403, {
+      error: "learning_project_access_required",
+      message: "Diese Entwicklungslesson benötigt ein passendes Abo oder eine dauerhafte Kursfreischaltung.",
+      access_model: definition.access_model || "subscription",
+      purchase_url: learningProjectPurchaseUrl(definition),
     });
     return;
   }

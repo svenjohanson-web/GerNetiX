@@ -14,8 +14,8 @@
       "pruefsumme": "fb4bbaa4af5b2a13"
     },
     "/app/app-account-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "0affd23e888dae42"
+      "version": "20260822-merge-main-2",
+      "pruefsumme": "65aab9041e1d7d1a"
     },
     "/app/app-billing-controller.js": {
       "version": "20260820-esm-kopf-1",
@@ -41,9 +41,13 @@
       "version": "20260820-entflechtung-7",
       "pruefsumme": "59c2e43eaf1216d6"
     },
+    "/app/app-navigation.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "7a820163d932d2e9"
+    },
     "/app/app-project-controller.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "c414d63166961e25"
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "f401436882f148f7"
     },
     "/app/app-push-controller.js": {
       "version": "20260820-esm-kopf-1",
@@ -62,8 +66,8 @@
       "pruefsumme": "e65ebf1646bf7caa"
     },
     "/app/app.css": {
-      "version": "20260819-start-error-1",
-      "pruefsumme": "a4a97a7c79781945"
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "f93a3ef04097ed0d"
     },
     "/app/app.js": {
       "version": "20260820-esm-kopf-1",
@@ -74,8 +78,8 @@
       "pruefsumme": "6e3ca8ad32c47a83"
     },
     "/app/auth/auth.js": {
-      "version": "20260820-landing-modul-1",
-      "pruefsumme": "92eac416fe3d71a4"
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "65aa5ca559e37062"
     },
     "/app/board-configuration-plugin.js": {
       "version": "20260820-esm-blatt-6",
@@ -194,8 +198,8 @@
       "pruefsumme": "0574ae547d4e2292"
     },
     "/app/learning-project-locales.js": {
-      "version": "20260820-esm-kopf-1",
-      "pruefsumme": "0ab780cb19c1c550"
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "6b1a5b8d3086779b"
     },
     "/app/learning-project-view.js": {
       "version": "20260820-esm-kopf-1",
@@ -301,6 +305,10 @@
       "version": "20260819-asset-manifest-1",
       "pruefsumme": "8ececca39973d262"
     },
+    "/course-sales.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "ebda1893ae0e9a36"
+    },
     "/flashbox-einrichten/app.js": {
       "version": "20260820-esm-seiten-1",
       "pruefsumme": "adc6b292d24105f9"
@@ -310,12 +318,16 @@
       "pruefsumme": "1f157968d319585a"
     },
     "/landing.css": {
-      "version": "20260819-theme-tokens-2",
-      "pruefsumme": "28f26ac6b65f8382"
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "98a499d6af9cd955"
     },
     "/landing.js": {
-      "version": "20260820-landing-modul-1",
-      "pruefsumme": "4659eab6fa62d4e8"
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "031966be208c3574"
+    },
+    "/navigation-model.js": {
+      "version": "20260822-merge-main-1",
+      "pruefsumme": "e4d98af55eaa73e0"
     },
     "/public-header.css": {
       "version": "20260814-auth-theme-1",

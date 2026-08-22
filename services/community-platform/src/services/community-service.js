@@ -10,6 +10,8 @@ class CommunityService {
     this.messageRateLimit = options.messageRateLimit || 20;
     this.messageRateWindowSeconds = options.messageRateWindowSeconds || 600;
     this.supportUserIds = options.supportUserIds?.length ? options.supportUserIds : ["support"];
+    this.notificationRetention = normalizeNotificationRetention(options.notificationRetention);
+    this.notificationRetentionLastRunAt = 0;
   }
 
   async operationsSummary() {
@@ -19,6 +21,7 @@ class CommunityService {
     const marketplaceListings = await this.repository.listMarketplaceListings?.({}) || [];
     const projectIdeas = await this.repository.listProjectIdeas?.({}) || [];
     const projectShowcases = await this.repository.listProjectShowcases?.({}) || [];
+    const notificationOutbox = await this.repository.notificationOutboxSummary?.() || {};
     const now = Date.now();
     return {
       persistence_backend: this.persistenceBackend,
@@ -55,6 +58,8 @@ class CommunityService {
         total: projectShowcases.length,
         published: projectShowcases.filter((item) => item.state === "published").length,
       },
+      notification_outbox: notificationOutbox,
+      notification_retention: this.notificationRetention,
     };
   }
 
@@ -428,7 +433,13 @@ class CommunityService {
       entry_kind: "thread", thread_id: thread.thread_id, state: "unread",
       created_at: now, read_at: null, latest_message_id: message.message_id,
     }];
-    await this.repository.createMessageThreadBundle({ thread, members, message, inboxEntries });
+    const outboxEvents = [personalNotificationEvent({
+      eventId: `community:direct:${thread.thread_id}:${recipientUserId}`,
+      recipientUserId,
+      category: "direct_messages",
+      now,
+    })];
+    await this.repository.createMessageThreadBundle({ thread, members, message, inboxEntries, outboxEvents });
     return { ...thread, members: [senderUserId, recipientUserId], latest_message: message };
   }
 
@@ -516,6 +527,12 @@ class CommunityService {
       authorMember: null,
       message,
       inboxEntries,
+      outboxEvents: inboxEntries.map((entry) => personalNotificationEvent({
+        eventId: `community:thread-message:${message.message_id}:${entry.recipient_user_id}`,
+        recipientUserId: entry.recipient_user_id,
+        category: thread.mailbox_kind === "support" ? "support_replies" : "thread_replies",
+        now,
+      })),
     });
     return message;
   }
@@ -667,6 +684,12 @@ class CommunityService {
       authorMember: { ...member, last_read_message_id: message.message_id },
       message,
       inboxEntries,
+      outboxEvents: inboxEntries.map((entry) => personalNotificationEvent({
+        eventId: `community:thread-message:${message.message_id}:${entry.recipient_user_id}`,
+        recipientUserId: entry.recipient_user_id,
+        category: thread.mailbox_kind === "support" ? "support_replies" : "thread_replies",
+        now,
+      })),
     });
     return message;
   }
@@ -772,12 +795,18 @@ class CommunityService {
     const sender = required(actor.user_id, "actor_user_id");
     if (recipient === sender) throw new CommunityPlatformError("inbox_recipient_invalid", "Eine Nachricht an dich selbst ist nicht sinnvoll.", 400);
     const now = new Date().toISOString();
-    return this.repository.saveInboxItem({
+    const item = {
       inbox_item_id: createId("inbox"), type: "direct_message", recipient_user_id: recipient,
       sender_user_id: sender, sender_label: String(input.sender_label || "Mitglied").slice(0, 80),
       subject: String(input.subject || "Direktnachricht").slice(0, 160), body: required(input.body, "body").slice(0, 8000),
       state: "unread", created_at: now, read_at: null,
-    });
+    };
+    return this.repository.saveInboxItemWithNotification(item, personalNotificationEvent({
+      eventId: `community:direct:${item.inbox_item_id}:${recipient}`,
+      recipientUserId: recipient,
+      category: "direct_messages",
+      now,
+    }));
   }
 
   async listInbox(actor = {}) {
@@ -839,12 +868,69 @@ class CommunityService {
   async createProjectInvitation(input = {}, actor = {}) {
     const recipient = required(input.recipient_user_id, "recipient_user_id");
     const now = new Date().toISOString();
-    return this.repository.saveInboxEntry({
+    const entry = {
       inbox_entry_id: createId("inbox_entry"), entry_kind: "project_invitation", type: "project_invitation", recipient_user_id: recipient,
       sender_user_id: required(actor.user_id, "actor_user_id"), sender_label: String(input.sender_label || "Mitglied").slice(0, 80),
       subject: "Projekteinladung", body: "", thread_id: null, state: "unread", created_at: now, read_at: null, latest_message_id: null,
       action: { project_id: required(input.project_id, "project_id"), role: input.role === "collaborate" ? "collaborate" : "read", status: "pending" },
+    };
+    return this.repository.saveInboxEntryWithNotification(entry, personalNotificationEvent({
+      eventId: `community:project-invitation:${entry.inbox_entry_id}:${recipient}`,
+      recipientUserId: recipient,
+      category: "project_invitations",
+      now,
+    }));
+  }
+
+  async claimNotificationOutbox(input = {}) {
+    const now = new Date().toISOString();
+    const retention = await this.purgeNotificationOutbox(now);
+    const limit = boundedInteger(input.limit, 1, 50, 25);
+    const leaseSeconds = boundedInteger(input.lease_seconds, 10, 300, 60);
+    const leaseUntil = new Date(Date.now() + leaseSeconds * 1000).toISOString();
+    const events = await this.repository.claimNotificationOutbox({ now, leaseUntil, limit });
+    return { events: events.map(minimizedNotificationEvent), retention };
+  }
+
+  async purgeNotificationOutbox(now = new Date().toISOString()) {
+    if (!this.notificationRetention.enabled || !this.repository.purgeNotificationOutbox) {
+      return { enabled: false, purged: { delivered: 0, dead_letter: 0, total: 0 } };
+    }
+    const currentTime = new Date(now).getTime();
+    if (currentTime - this.notificationRetentionLastRunAt < 60 * 60 * 1000) {
+      return { enabled: true, skipped: true, purged: { delivered: 0, dead_letter: 0, total: 0 } };
+    }
+    this.notificationRetentionLastRunAt = currentTime;
+    const dayMs = 24 * 60 * 60 * 1000;
+    const purged = await this.repository.purgeNotificationOutbox({
+      deliveredBefore: new Date(currentTime - this.notificationRetention.delivered_days * dayMs).toISOString(),
+      deadLetterBefore: new Date(currentTime - this.notificationRetention.dead_letter_days * dayMs).toISOString(),
     });
+    return { enabled: true, purged };
+  }
+
+  async completeNotificationOutbox(eventId, input = {}) {
+    const outcome = ["sent", "skipped"].includes(input.outcome) ? input.outcome : "skipped";
+    const completed = await this.repository.completeNotificationOutboxEvent(required(eventId, "event_id"), {
+      now: new Date().toISOString(),
+      outcome,
+    });
+    if (!completed) throw new CommunityPlatformError("notification_outbox_lease_missing", "Notification lease is missing.", 409);
+    return { event_id: completed.event_id, status: completed.status };
+  }
+
+  async retryNotificationOutbox(eventId, input = {}) {
+    const currentTime = Date.now();
+    const attempts = boundedInteger(input.attempts, 1, 100, 1);
+    const delaySeconds = Math.min(3600, 15 * (2 ** Math.min(8, attempts - 1)));
+    const retried = await this.repository.retryNotificationOutboxEvent(required(eventId, "event_id"), {
+      now: new Date(currentTime).toISOString(),
+      nextAttemptAt: new Date(currentTime + delaySeconds * 1000).toISOString(),
+      errorCode: normalizeNotificationErrorCode(input.error_code),
+      maxAttempts: 8,
+    });
+    if (!retried) throw new CommunityPlatformError("notification_outbox_lease_missing", "Notification lease is missing.", 409);
+    return { event_id: retried.event_id, status: retried.status, next_attempt_at: retried.next_attempt_at };
   }
 
   async publishKnowledgeDocument(question, answer) {
@@ -1026,6 +1112,51 @@ function required(value, field) {
 
 function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function personalNotificationEvent({ eventId, recipientUserId, category, now }) {
+  return {
+    event_id: required(eventId, "event_id"),
+    recipient_user_id: required(recipientUserId, "recipient_user_id"),
+    category,
+    status: "pending",
+    attempts: 0,
+    next_attempt_at: now,
+    lease_until: null,
+    outcome: null,
+    last_error_code: null,
+    created_at: now,
+    updated_at: now,
+    delivered_at: null,
+  };
+}
+
+function minimizedNotificationEvent(event) {
+  return {
+    event_id: event.event_id,
+    recipient_user_id: event.recipient_user_id,
+    category: event.category,
+    attempts: Number(event.attempts || 0),
+  };
+}
+
+function normalizeNotificationErrorCode(value) {
+  const code = String(value || "delivery_failed").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 64);
+  return code || "delivery_failed";
+}
+
+function normalizeNotificationRetention(value = {}) {
+  return Object.freeze({
+    enabled: value.enabled === true,
+    delivered_days: boundedInteger(value.deliveredDays ?? value.delivered_days, 1, 365, 30),
+    dead_letter_days: boundedInteger(value.deadLetterDays ?? value.dead_letter_days, 1, 365, 90),
+  });
+}
+
+function boundedInteger(value, minimum, maximum, fallback) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return fallback;
+  return Math.min(maximum, Math.max(minimum, parsed));
 }
 
 module.exports = { CommunityService, seedKnowledge };

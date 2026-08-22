@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const { scriptAbschnitt } = require("../test-support/platform-app-source");
+const { authenticatedItem } = require("../test-support/navigation-model");
 
 const appRoot = path.resolve(__dirname, "../public/app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
@@ -13,7 +14,7 @@ const shell = fs.readFileSync(path.join(appRoot, "app-shell-controller.js"), "ut
 const bindings = fs.readFileSync(path.join(appRoot, "app-event-bindings.js"), "utf8");
 
 test("device WLAN setup is a reusable dark dialog opened from the device menu", () => {
-  assert.match(html, /id="deviceWifiSetupMenuButton"[^>]*>Device-WLAN-Setup/);
+  assert.equal(authenticatedItem("deviceWifiSetupMenuButton").label, "Device-WLAN-Setup");
   assert.match(html, /id="deviceWifiSetupDialog" class="device-wifi-setup-dialog"/);
   assert.doesNotMatch(html, /device-wifi-setup-dialog\.js\?v=/);
   assert.match(shell, /loadDeviceWifiSetupAssets[\s\S]*device-wifi-setup-dialog\.js/);

@@ -26,6 +26,7 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
         projectIdeas: [],
         projectIdeaComments: [],
         projectShowcases: [],
+        notificationOutbox: [],
       },
       collectionMap: {
         questions: "questions",
@@ -43,6 +44,7 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
         projectIdeas: "project_ideas",
         projectIdeaComments: "project_idea_comments",
         projectShowcases: "project_showcases",
+        notificationOutbox: "notification_outbox",
       },
     }));
   }
@@ -66,10 +68,22 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
   }
 
   saveInboxItem(item) { return this.saveAndPersist(() => super.saveInboxItem(item)); }
+  saveInboxItemWithNotification(item, notificationEvent) {
+    InMemoryCommunityRepository.prototype.saveInboxItem.call(this, item);
+    InMemoryCommunityRepository.prototype.saveNotificationOutboxEvent.call(this, notificationEvent);
+    this.persist();
+    return item;
+  }
   saveMessageThread(thread) { return this.saveAndPersist(() => super.saveMessageThread(thread)); }
   saveThreadMember(member) { return this.saveAndPersist(() => super.saveThreadMember(member)); }
   saveMessage(message) { return this.saveAndPersist(() => super.saveMessage(message)); }
   saveInboxEntry(entry) { return this.saveAndPersist(() => super.saveInboxEntry(entry)); }
+  saveInboxEntryWithNotification(entry, notificationEvent) {
+    InMemoryCommunityRepository.prototype.saveInboxEntry.call(this, entry);
+    InMemoryCommunityRepository.prototype.saveNotificationOutboxEvent.call(this, notificationEvent);
+    this.persist();
+    return entry;
+  }
   saveBroadcast(broadcast) { return this.saveAndPersist(() => super.saveBroadcast(broadcast)); }
   saveMessageBlock(block) { return this.saveAndPersist(() => super.saveMessageBlock(block)); }
   deleteMessageBlock(blockerUserId, blockedUserId) { return this.saveAndPersist(() => super.deleteMessageBlock(blockerUserId, blockedUserId)); }
@@ -78,23 +92,26 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
   saveProjectIdea(idea) { return this.saveAndPersist(() => super.saveProjectIdea(idea)); }
   saveProjectIdeaComment(comment) { return this.saveAndPersist(() => super.saveProjectIdeaComment(comment)); }
   saveProjectShowcase(showcase) { return this.saveAndPersist(() => super.saveProjectShowcase(showcase)); }
+  purgeNotificationOutbox(input) { return this.saveAndPersist(() => super.purgeNotificationOutbox(input)); }
 
-  createMessageThreadBundle({ thread, members, message, inboxEntries }) {
+  createMessageThreadBundle({ thread, members, message, inboxEntries, outboxEvents = [] }) {
     InMemoryCommunityRepository.prototype.saveMessageThread.call(this, thread);
     for (const member of members) InMemoryCommunityRepository.prototype.saveThreadMember.call(this, member);
     InMemoryCommunityRepository.prototype.saveMessage.call(this, message);
     for (const entry of inboxEntries) InMemoryCommunityRepository.prototype.saveInboxEntry.call(this, entry);
+    for (const event of outboxEvents) InMemoryCommunityRepository.prototype.saveNotificationOutboxEvent.call(this, event);
     this.persist();
-    return { thread, members, message, inboxEntries };
+    return { thread, members, message, inboxEntries, outboxEvents };
   }
 
-  appendMessageBundle({ thread, authorMember, message, inboxEntries }) {
+  appendMessageBundle({ thread, authorMember, message, inboxEntries, outboxEvents = [] }) {
     InMemoryCommunityRepository.prototype.saveMessage.call(this, message);
     InMemoryCommunityRepository.prototype.saveMessageThread.call(this, thread);
     if (authorMember) InMemoryCommunityRepository.prototype.saveThreadMember.call(this, authorMember);
     for (const entry of inboxEntries) InMemoryCommunityRepository.prototype.saveInboxEntry.call(this, entry);
+    for (const event of outboxEvents) InMemoryCommunityRepository.prototype.saveNotificationOutboxEvent.call(this, event);
     this.persist();
-    return { thread, authorMember, message, inboxEntries };
+    return { thread, authorMember, message, inboxEntries, outboxEvents };
   }
 
   saveBroadcastBundle({ broadcast, inboxEntries }) {
@@ -103,6 +120,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
     this.persist();
     return { broadcast, inboxEntries };
   }
+
+  claimNotificationOutbox(options) { return this.saveAndPersist(() => super.claimNotificationOutbox(options)); }
+  completeNotificationOutboxEvent(eventId, options) { return this.saveAndPersist(() => super.completeNotificationOutboxEvent(eventId, options)); }
+  retryNotificationOutboxEvent(eventId, options) { return this.saveAndPersist(() => super.retryNotificationOutboxEvent(eventId, options)); }
 
   saveAndPersist(save) {
     const result = save();
@@ -127,6 +148,7 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
       projectIdeas: Array.from(this.projectIdeas.values()),
       projectIdeaComments: Array.from(this.projectIdeaComments.values()),
       projectShowcases: Array.from(this.projectShowcases.values()),
+      notificationOutbox: Array.from(this.notificationOutbox.values()),
     };
     this.store.save(state);
     this.store.replaceCollection?.("questions", state.questions, "question_id");
@@ -144,6 +166,7 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
     this.store.replaceCollection?.("project_ideas", state.projectIdeas, "idea_id");
     this.store.replaceCollection?.("project_idea_comments", state.projectIdeaComments, "comment_id");
     this.store.replaceCollection?.("project_showcases", state.projectShowcases, "showcase_id");
+    this.store.replaceCollection?.("notification_outbox", state.notificationOutbox, "event_id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("community_questions", state.questions, questionColumns());
       this.store.replaceTable("community_answers", state.answers, answerColumns());
@@ -160,6 +183,7 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
       this.store.replaceTable("community_project_ideas", state.projectIdeas, projectIdeaColumns());
       this.store.replaceTable("community_project_idea_comments", state.projectIdeaComments, projectIdeaCommentColumns());
       this.store.replaceTable("community_project_showcases", state.projectShowcases, projectShowcaseColumns());
+      this.store.replaceTable("community_notification_outbox", state.notificationOutbox, notificationOutboxColumns());
     }
   }
 }
@@ -181,6 +205,7 @@ function communitySchema() {
     `CREATE TABLE IF NOT EXISTS community_project_ideas (idea_id TEXT PRIMARY KEY, author_user_id TEXT, state TEXT, title TEXT, stage TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS community_project_idea_comments (comment_id TEXT PRIMARY KEY, idea_id TEXT, author_user_id TEXT, created_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS community_project_showcases (showcase_id TEXT PRIMARY KEY, author_user_id TEXT, state TEXT, title TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS community_notification_outbox (event_id TEXT PRIMARY KEY, recipient_user_id TEXT, category TEXT, status TEXT, attempts INTEGER, next_attempt_at TEXT, lease_until TEXT, created_at TEXT, updated_at TEXT, delivered_at TEXT, raw_json TEXT NOT NULL);`,
   ];
 }
 
@@ -237,5 +262,6 @@ function broadcastColumns() {
 }
 function messageBlockColumns() { return { block_key: (row) => `${row.blocker_user_id}:${row.blocked_user_id}`, blocker_user_id: "blocker_user_id", blocked_user_id: "blocked_user_id", created_at: "created_at", raw_json: jsonColumn((row) => row) }; }
 function messageReportColumns() { return { report_id: "report_id", reporter_user_id: "reporter_user_id", thread_id: "thread_id", message_id: "message_id", status: "status", created_at: "created_at", raw_json: jsonColumn((row) => row) }; }
+function notificationOutboxColumns() { return { event_id: "event_id", recipient_user_id: "recipient_user_id", category: "category", status: "status", attempts: "attempts", next_attempt_at: "next_attempt_at", lease_until: "lease_until", created_at: "created_at", updated_at: "updated_at", delivered_at: "delivered_at", raw_json: jsonColumn((row) => row) }; }
 
 module.exports = { SqliteBackedCommunityRepository };

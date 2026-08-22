@@ -59,6 +59,37 @@ test("central session access returns the session or one uniform 401 response", a
   assert.deepEqual(responses.at(-1), { res, status: 401, body: { error: "not_authenticated" } });
 });
 
+test("internal email suppression reports require admin access and pass only allowlisted fields", async () => {
+  const registry = createRouteRegistry();
+  const calls = [];
+  registerSystemRoutes({
+    registry,
+    requireInternalAdmin: (req) => calls.push(["authorize", req.headers]),
+    readJsonBody: async () => ({
+      event_id: "community:event-1", reason_code: "mailbox_not_found",
+      source: "delivery_status_notification", smtp_status: "5.1.1", raw_bounce: "must not pass",
+    }),
+    sendJson: (res, status, body) => calls.push(["response", status, body]),
+    sendDevJson: () => {},
+    auth: () => ({
+      suppress_community_email_delivery: async (input) => {
+        calls.push(["suppress", input]);
+        return { suppression: { active: true } };
+      },
+    }),
+  });
+  const req = { method: "POST", headers: { "x-gernetix-admin-token": "protected" } };
+  assert.equal(await registry.dispatch({
+    req, res: {}, url: new URL("http://localhost/api/internal/email-delivery/suppress"),
+  }), true);
+  assert.deepEqual(calls[0], ["authorize", req.headers]);
+  assert.deepEqual(calls[1], ["suppress", {
+    event_id: "community:event-1", reason_code: "mailbox_not_found",
+    source: "delivery_status_notification", smtp_status: "5.1.1",
+  }]);
+  assert.deepEqual(calls[2], ["response", 200, { suppression: { active: true } }]);
+});
+
 test("knowledge route uses centralized session access and decodes the chapter id", async () => {
   const registry = createRouteRegistry();
   const calls = [];
@@ -150,6 +181,38 @@ test("account routes derive guest and profile state through their injected bound
   assert.equal(responses[1][1].account.user_id, "user-1");
 });
 
+test("account contact routes stay session-bound and expose preferences without a consent record", async () => {
+  const registry = createRouteRegistry();
+  const calls = [];
+  const auth = {
+    get_contact_notification_settings: async (userId) => ({ userId, status: "verified", notification_preferences: {} }),
+    request_contact_email_change: async (userId, email) => ({ userId, pending_email: email }),
+    update_notification_preferences: async (userId, body) => ({ userId, notification_preferences: body }),
+    remove_contact_email: async (userId) => ({ userId, status: "not_configured" }),
+  };
+  registerAccountRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    readJsonBody: async () => ({ email: "member@example.net", direct_messages: true }),
+    sendJson: (res, status, body) => calls.push([status, body]),
+    auth: () => auth,
+    sessions: new Map(), setSessionCookie: () => {}, sanitizeNextPath: (value) => value,
+    updateCachedSessionAccount: () => {}, accountAssetRepository: () => null,
+    createAccountTransparency: async () => ({}),
+  });
+  for (const [method, path] of [
+    ["GET", "/api/account/contact-notifications"],
+    ["POST", "/api/account/contact-email"],
+    ["PATCH", "/api/account/contact-notifications"],
+    ["DELETE", "/api/account/contact-email"],
+  ]) await registry.dispatch({ req: { method }, res: {}, url: new URL(`http://localhost${path}`) });
+
+  assert.equal(calls.length, 4);
+  assert.equal(JSON.stringify(calls).includes("consent"), false);
+  assert.equal(calls[1][1].pending_email, "member@example.net");
+  assert.equal(calls[2][1].notification_preferences.direct_messages, true);
+});
+
 test("hardware routes keep catalog access behind the shared session boundary", async () => {
   const registry = createRouteRegistry();
   const responses = [];
@@ -214,6 +277,30 @@ test("community routes keep public reads separate from authenticated writes", as
     [200, { path: "/api/community/questions", actor: "" }],
     [201, { path: "/api/community/questions", actor: "user-1" }],
   ]);
+});
+
+test("community writes schedule the durable notification outbox without exposing its internal API", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  let scheduled = 0;
+  registerCommunityRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "sender-1", username: "Ada" } }),
+    readJsonBody: async () => ({ recipient_username: "bob", subject: "private subject", body: "private body" }),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    communityJson: async () => ({ thread_id: "thread-1" }),
+    auth: () => ({
+      repository: { findUserByUsername: async () => ({ id: "recipient-1", account_type: "base" }) },
+    }),
+    createCommunityProjectSnapshot: async () => ({}),
+    notifyPrivateCommunityRequest: async () => {},
+    communityNotificationOutboxWorker: { schedule: () => { scheduled += 1; } },
+  });
+
+  await registry.dispatch({ req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/community/message-threads") });
+  await registry.dispatch({ req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/community/notification-outbox/claim") });
+  assert.equal(scheduled, 1);
+  assert.deepEqual(responses, [[201, { thread_id: "thread-1" }], [404, { error: "route_not_found" }]]);
 });
 
 test("community marketplace forwards an electronics classified without a project snapshot", async () => {
@@ -515,8 +602,21 @@ test("system health exposes runtime identity without requiring a session", async
     runtime_location: "server",
     remote_dev: false,
     identity_db: { status: "unknown" },
-    dependencies: { status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [] },
+    dependencies: { status: "unknown", total: 0, reachable: 0, unreachable: 0, items: [], postgres: { status: "healthy" } },
   }]]);
+});
+
+test("system health reports central PostgreSQL failure as degraded", async () => {
+  const registry=createRouteRegistry(),responses=[];
+  registerSystemRoutes({
+    registry,sendJson:(res,status,body)=>responses.push([status,body]),
+    identityPersistenceBackend:"postgres",identityRuntimeLocation:"local",identityRemoteDev:true,
+    identityPersistenceHealth:async()=>({ready:false,error_code:"identity_persistence_unavailable"}),
+  });
+  await registry.dispatch({req:{method:"GET"},res:{},url:new URL("http://localhost/health")});
+  assert.equal(responses[0][0],503);
+  assert.equal(responses[0][1].status,"degraded");
+  assert.equal(responses[0][1].dependencies.postgres.status,"unavailable");
 });
 
 test("system routes forward same-origin user action events to the ingest boundary", async () => {

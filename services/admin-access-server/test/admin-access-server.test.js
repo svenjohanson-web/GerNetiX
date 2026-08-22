@@ -39,6 +39,16 @@ test("Admin-Login persistiert nur einen gehashten Sitzungstoken und liefert serv
   runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true });
 });
 
+test("Support-Recovery verlangt eine erneute Passwortpruefung der aktiven Admin-Sitzung", async () => {
+  const runtime = createRuntime(); await runtime.service.bootstrap();
+  const login = await runtime.service.login({ username: "operator", password: "ein-ausreichend-langes-admin-passwort" });
+  assert.equal(await runtime.service.reauthenticate(login.token, "falsch"), null);
+  const actor = await runtime.service.reauthenticate(login.token, "ein-ausreichend-langes-admin-passwort");
+  assert.equal(actor.actor_id, login.admin.admin_id);
+  assert.equal(actor.role, "administrator");
+  runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true });
+});
+
 test("nur ein angemeldeter Administrator kann weitere Admin-Konten anlegen", async () => {
   const runtime = createRuntime(); await runtime.service.bootstrap();
   const login = await runtime.service.login({ username: "operator", password: "ein-ausreichend-langes-admin-passwort" });
@@ -61,7 +71,7 @@ test("Admin-Zugänge können auf Support oder Community-Moderation begrenzt werd
     password: "noch-ein-ausreichend-langes-passwort",
     role: "community_moderator",
   });
-  assert.deepEqual(support.capabilities, ["admin_device_management", "support_registered_board_check", "admin_community_support"]);
+  assert.deepEqual(support.capabilities, ["admin_device_management", "support_registered_board_check", "admin_community_support", "admin_identity_recovery"]);
   assert.deepEqual(moderator.capabilities, ["admin_community_moderation"]);
   runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true });
 });
@@ -99,6 +109,8 @@ test("Admin-Proxy trennt Support und Moderation nach Capabilities", async () => 
     assert.equal((await fetch(`${base}/api/admin/accounts`, { headers: { Cookie: cookieFor(supportLogin) } })).status, 403);
     assert.equal((await fetch(`${base}/api/admin/community/questions`, { headers: { Cookie: cookieFor(supportLogin) } })).status, 403);
     assert.equal((await fetch(`${base}/api/admin/community/support-threads`, { headers: { Cookie: cookieFor(supportLogin) } })).status, 500);
+    assert.equal((await fetch(`${base}/api/admin/identity/support-recovery`, { method: "POST", headers: { Cookie: cookieFor(supportLogin), "Content-Type": "application/json" }, body: JSON.stringify({ admin_password: "falsch" }) })).status, 403);
+    assert.equal((await fetch(`${base}/api/admin/identity/support-recovery`, { method: "POST", headers: { Cookie: cookieFor(supportLogin), "Content-Type": "application/json" }, body: JSON.stringify({ admin_password: "ein-weiteres-ausreichend-langes-passwort" }) })).status, 500);
     assert.equal((await fetch(`${base}/api/admin/community/support-threads`, { headers: { Cookie: cookieFor(moderatorLogin) } })).status, 403);
     assert.equal((await fetch(`${base}/api/admin/community/questions`, { headers: { Cookie: cookieFor(moderatorLogin) } })).status, 500);
   } finally { await new Promise((resolve) => server.close(resolve)); runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true }); }

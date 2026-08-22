@@ -45,6 +45,10 @@ function normalizeBuildConfig(input = {}) {
     firmware_basis_version: input.firmware_basis_version || "",
     firmware_basis_variant: input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : ""),
     firmware_basis_reference: normalizeProtectedSourceReference(input.firmware_basis_reference),
+    board_support_source_id: String(input.board_support_source_id || input.board_configuration?.board_support_source_id || "").slice(0, 100),
+    board_support_reference: input.board_support_reference && typeof input.board_support_reference === "object"
+      ? JSON.parse(JSON.stringify(input.board_support_reference))
+      : null,
     partition_profile_id: input.partition_profile_id || "",
     flash_size_mb: positiveInteger(input.flash_size_mb) || (/^espressif(32|8266)$/i.test(platform) ? 4 : 0),
     user_source_path: input.user_source_path || "",
@@ -206,6 +210,10 @@ function normalizeBoardConfiguration(input = null) {
     base_board_profile_id: String(input.base_board_profile_id || "").slice(0, 180),
     account_board_id: String(input.account_board_id || "").slice(0, 180),
     account_board_version: Number.isInteger(Number(input.account_board_version)) ? Number(input.account_board_version) : 0,
+    board_support_source_id: String(input.board_support_source_id || "").slice(0, 100),
+    board_support_release: input.board_support_release && typeof input.board_support_release === "object"
+      ? JSON.parse(JSON.stringify(input.board_support_release))
+      : null,
     board_features: features,
     snapshot_at: String(input.snapshot_at || input.saved_at || "").slice(0, 40),
   };

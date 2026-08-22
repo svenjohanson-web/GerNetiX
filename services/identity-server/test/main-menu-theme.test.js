@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { authenticatedGroup, authenticatedItem, navigationModel } = require("../test-support/navigation-model");
 
 const css = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.css"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
@@ -19,16 +20,16 @@ test("main menu uses the shared dark typography and states", () => {
 });
 
 test("groups the main destinations under clear user-facing headings", () => {
-  assert.match(html, /data-route="dashboard"[^>]*>Übersicht/);
-  assert.match(html, /data-route="applications"[^>]*>Meine Anwendungen<\/a>/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.learn_develop">Lernen &amp; Entwickeln<\/summary>/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.boards_tools">Boards &amp; Werkzeuge<\/summary>/);
-  assert.match(html, /id="hardwareLabMenuLink"[^>]*href="\/app\/hardware-lab\/"[^>]*data-route="hardware-lab"[^>]*>KI-Hardware-Assistent<\/a>/);
+  assert.equal(authenticatedItem("/app/dashboard/").label, "Übersicht");
+  assert.equal(authenticatedItem("/app/applications/").label, "Meine Anwendungen");
+  assert.equal(authenticatedGroup("platform.menu.learn_develop").label, "Lernen & Entwickeln");
+  assert.equal(authenticatedGroup("platform.menu.boards_tools").label, "Boards & Werkzeuge");
+  assert.equal(authenticatedItem("hardwareLabMenuLink").route, "hardware-lab");
   assert.doesNotMatch(html, /127\.0\.0\.1:5100/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.service_shop">Service &amp; Shop<\/summary>/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.account">Konto<\/summary>/);
-  assert.equal((html.match(/class="app-menu-group/g) || []).length, 4);
-  assert.doesNotMatch(html, /<a class="utility public-information-link" href="\/">Startseite<\/a>/);
+  assert.equal(authenticatedGroup("platform.menu.service_shop").label, "Service & Shop");
+  assert.equal(authenticatedGroup("platform.menu.account").label, "Konto");
+  assert.equal(navigationModel.authenticated.groups.length, 4);
+  assert.equal(authenticatedItem("/")?.href, undefined);
   assert.match(source, /group\.open = Boolean\(group\.querySelector\("a\.active"\)\)/);
   assert.match(css, /body\.public-information-anonymous #mainMenu \.app-menu-group-private/);
   assert.doesNotMatch(css, /body\.public-help-page #mainMenu \.app-menu-group-private/);
@@ -36,11 +37,9 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
 });
 
+
 test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {
-  const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
-  const groupStart = menu.indexOf('platform.menu.learn_develop');
-  const groupEnd = menu.indexOf("</details>", groupStart);
-  const group = menu.slice(groupStart, groupEnd);
+  const group = authenticatedGroup("platform.menu.learn_develop");
   const destinations = [
     "/app/learn/",
     "/app/development-platform/",
@@ -49,30 +48,25 @@ test("puts learning, development, quiz, knowledge, community and rebuild project
     "/app/community/",
     "/nachbauprojekte/",
   ];
-  destinations.forEach((destination) => assert.match(group, new RegExp(`href="${destination.replaceAll("/", "\\/")}"`)));
-  assert.match(group, /Wissensspeicher/);
-  const toolsStart = menu.indexOf('platform.menu.boards_tools');
-  const toolsEnd = menu.indexOf("</details>", toolsStart);
-  assert.doesNotMatch(menu.slice(toolsStart, toolsEnd), /href="\/app\/quiz\/"/);
+  assert.deepEqual(Array.from(group.items, (item) => item.href), [
+    ...destinations.slice(0, 4),
+    "/app/nachschlagewerke/",
+    ...destinations.slice(4),
+  ]);
+  assert.equal(group.items.find((item) => item.href === "/wissen/").label, "Wissensspeicher");
+  assert.equal(authenticatedGroup("platform.menu.boards_tools").items.some((item) => item.href === "/app/quiz/"), false);
 });
 
 test("keeps Help, Messages and the session action permanently outside collapsible hamburger groups", () => {
-  const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
-  const accountGroupEnd = menu.indexOf("</details>", menu.indexOf('platform.menu.account'));
-  const helpIndex = menu.indexOf('id="helpMenuLink"');
-  const messagesIndex = menu.indexOf('id="messagesMenuLink"');
-  const loginIndex = menu.indexOf('id="loginMenuLink"');
-  const logoutIndex = menu.indexOf('id="logoutButton"');
-  assert.ok(helpIndex > accountGroupEnd);
-  assert.ok(helpIndex < messagesIndex);
-  assert.ok(messagesIndex < loginIndex);
-  assert.ok(loginIndex > accountGroupEnd);
-  assert.ok(logoutIndex > accountGroupEnd);
-  assert.equal((menu.match(/href="\/hilfe\/"/g) || []).length, 1);
-  assert.match(menu, /id="helpMenuLink" class="utility public-information-link menu-fixed-action"/);
-  assert.match(menu, /id="messagesMenuLink" class="utility menu-fixed-action"/);
+  const fixed = navigationModel.authenticated.fixed;
+  assert.deepEqual(Array.from(fixed.filter((item) => !item.contexts || item.contexts.includes("app")), (item) => item.id), [
+    "helpMenuLink", "welcomeGuideMenuButton", "messagesMenuLink", "loginMenuLink", "logoutButton",
+  ]);
+  assert.equal(fixed.filter((item) => item.href === "/hilfe/").length, 1);
+  assert.equal(authenticatedItem("helpMenuLink").className, "utility public-information-link menu-fixed-action");
+  assert.equal(authenticatedItem("messagesMenuLink").className, "utility menu-fixed-action");
   assert.match(css, /\.app-menu \.menu-fixed-action/);
-  assert.match(menu, /menu-session-action/);
+  assert.match(authenticatedItem("loginMenuLink").className, /menu-session-action/);
   assert.match(css, /\.app-menu \.menu-session-action/);
 });
 
@@ -80,7 +74,7 @@ test("platform uses the shared operator shell without claiming PWA delivery", ()
   assert.match(html, /operator-shell\.css/);
   assert.doesNotMatch(html, /Plattform · PWA/);
   assert.match(html, /operator-surface/);
-  assert.match(html, /data-route="dashboard"[^>]*>Übersicht/);
+  assert.equal(authenticatedItem("/app/dashboard/").label, "Übersicht");
   assert.doesNotMatch(html, /data-route="builds">Betrieb/);
   assert.match(server, /\/app\/operator-shell\.css/);
 });

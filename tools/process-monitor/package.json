@@ -1,12 +1,17 @@
 {
   "name": "gernetix-process-monitor",
   "productName": "GerNetiX Prozess-Monitor",
-  "version": "0.1.0",
+  "version": "0.2.1",
+  "description": "Lokaler GerNetiX Remote-Dev- und VPS-Betriebsmonitor",
+  "author": "GerNetiX",
+  "packageManager": "pnpm@11.19.0",
   "private": true,
   "main": "desktop-main.js",
   "scripts": {
     "start": "electron .",
-    "dist:mac": "electron-builder --mac dir",
+    "test": "node --test process-monitor.test.js",
+    "dist:mac": "electron-builder --mac dir && node verify-mac-bundle.js",
+    "verify:mac-bundle": "node verify-mac-bundle.js",
     "dist:win": "electron-builder --win portable"
   },
   "devDependencies": {

@@ -21,8 +21,13 @@ zusätzlich mit `from="<WireGuard-Peer>"`, `no-pty`, `no-agent-forwarding`,
 `no-port-forwarding` und `no-X11-forwarding` eingeschränkt werden.
 
 Der Wrapper akzeptiert ausschließlich `security`, `compose-ps`,
-`link-integrity` und `user-action-alerts`. Die Account-Shell zeigt auf den SSH-Einstieg, der alle anderen
-Kommandos ablehnt. Erst nach Installation und einem erfolgreichen Test über den
+`account-database-status`, `start-account-database`, `link-integrity`,
+`user-action-alerts` und `interface-statistics`. Nur
+`start-account-database` darf Zustand aendern und fuehrt ohne frei waehlbaren
+Dienstnamen ausschließlich `docker compose up -d runtime-postgres` aus. Die Account-Shell zeigt auf den SSH-Einstieg, der alle anderen
+Kommandos ablehnt. Der Datenbankstatus wird nicht aus dem Containerzustand
+abgeleitet, sondern durch eine echte read-only Abfrage der Identity-Kontotabelle
+bestimmt. Erst nach Installation und einem erfolgreichen Test über den
 WireGuard-Peer darf `GERNETIX_STAGING_MONITOR_SSH` in `.env.staging.local` auf
 `gernetix-monitor@gernetix-vps` gesetzt werden. `GERNETIX_STAGING_SSH` bleibt für
 den separaten Diagnose-/Datenbanktunnel erhalten. Die laufende VPS-Konfiguration

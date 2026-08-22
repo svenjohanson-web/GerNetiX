@@ -254,6 +254,7 @@ test("adds protected binary product assets to the immutable build package", asyn
   const approvedCommit = "d".repeat(40);
   const repository = new InMemoryProjectRepository();
   const audio = Buffer.from([0, 1, 2, 255]);
+  let repositoryFiles = [];
   const productFiles = [
     { path: "src/user_main.cpp", content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n' },
     { path: "assets/story.pcm8", content_base64: audio.toString("base64"), binary: true },
@@ -268,11 +269,16 @@ test("adds protected binary product assets to the immutable build package", asyn
     }],
     projectRepositoryStore: {
       readProtectedFiles: async () => productFiles,
-      provisionProject: async () => ({
-        provider: "forgejo", organization: "gernetix-projects", repository_name: "project-audio",
-        repository_id: "789", clone_url: "http://forgejo:3000/gernetix-projects/project-audio.git",
-        default_branch: "main", head_sha: "a".repeat(40), state: "active",
-      }),
+      provisionProject: async (input) => {
+        repositoryFiles = input.changes.map((file) => ({ ...file, size_bytes: Buffer.byteLength(file.content) }));
+        return {
+          provider: "forgejo", organization: "gernetix-projects", repository_name: "project-audio",
+          repository_id: "789", clone_url: "http://forgejo:3000/gernetix-projects/project-audio.git",
+          default_branch: "main", head_sha: "a".repeat(40), state: "active",
+        };
+      },
+      readFiles: async () => repositoryFiles,
+      tree: async () => repositoryFiles.map((file) => file.path),
     },
   });
   const created = await service.createProject({
@@ -280,9 +286,7 @@ test("adds protected binary product assets to the immutable build package", asyn
     system_source_id: "product-audio",
     build_config: { platform: "espressif32", framework: "arduino", board: "esp32dev", environment: "esp32dev", user_source_path: "src/user_main.cpp" },
   });
-  await repository.saveProject({ ...(await repository.findProject(created.project_id)), repository_binding: null });
-
-  const job = await service.createBuildJob(created.project_id);
+  const job = await service.createBuildJob(created.project_id, { commit_sha: created.repository_binding.head_sha });
   const buildPackage = await service.createBuildPackage(job.build_job_id);
   assert.deepEqual(buildPackage.files.find((file) => file.path === "assets/story.pcm8").content, { base64: audio.toString("base64") });
   assert.equal(buildPackage.files.find((file) => file.path === "assets/story.pcm8").sha256, require("node:crypto").createHash("sha256").update(audio).digest("hex"));
@@ -317,13 +321,13 @@ test("migrates legacy SQL project sources into a private Forgejo repository", as
   const repository = new InMemoryProjectRepository();
   const legacyService = new ProjectService({ repository });
   await legacyService.createProject({ user_id: "account-legacy", title: "Altprojekt", sources: [{ path: "docs/notes.md", content: "Bestand\n" }] });
-  let provisionInput;
+  let migrationInput;
   const cutoverService = new ProjectService({
     repository,
     projectRepositoryStore: {
-      provisionProject: async (input) => {
-        provisionInput = input;
-        return { provider: "forgejo", organization: "gernetix-projects", repository_name: "project-migrated", repository_id: "987", clone_url: "http://forgejo:3000/gernetix-projects/project-migrated.git", default_branch: "main", head_sha: "d".repeat(40), state: "active" };
+      migrateProjectHistory: async (input) => {
+        migrationInput = input;
+        return { provider: "forgejo", organization: "gernetix-projects", repository_name: "project-migrated", repository_id: "987", clone_url: "http://forgejo:3000/gernetix-projects/project-migrated.git", default_branch: "main", head_sha: input.expected_head_oid, state: "active" };
       },
     },
   });
@@ -331,7 +335,8 @@ test("migrates legacy SQL project sources into a private Forgejo repository", as
   assert.equal(plan.mode, "plan");
   assert.equal(plan.count, 1);
   const result = await cutoverService.migrateProjectRepositories({ apply: true });
-  assert.equal(result.migrated[0].commit_sha, "d".repeat(40));
-  assert.ok(provisionInput.changes.some((item) => item.path === "docs/notes.md"));
+  assert.equal(result.migrated[0].commit_sha, migrationInput.expected_head_oid);
+  assert.ok(migrationInput.commits.at(-1).files.some((item) => item.path === "docs/notes.md"));
+  assert.equal((await repository.findRepositoryMigration(migrationInput.project_id)).status, "completed");
   assert.ok((await cutoverService.listProjects({}))[0].repository_binding.state === "active");
 });

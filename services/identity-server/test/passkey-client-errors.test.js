@@ -8,6 +8,13 @@ test("reports central persistence failures instead of blaming the passkey", () =
     error: "identity_persistence_unavailable",
     message: "Die zentrale Kontodatenbank ist momentan nicht erreichbar.",
   });
+  for (const error of [
+    new Error("Connection terminated unexpectedly"),
+    Object.assign(new Error("PostgreSQL connection failed"), { code:"08006" }),
+    new Error("Passkey lookup failed", { cause:Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:25432"), { code:"ECONNREFUSED" }) }),
+  ]) {
+    assert.equal(passkeyClientError("verification", error).error, "identity_persistence_unavailable");
+  }
 });
 
 test("keeps account errors actionable and hides unknown verification details", () => {

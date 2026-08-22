@@ -7,8 +7,11 @@ requested_command="${SSH_ORIGINAL_COMMAND:-${2:-}}"
 case "$requested_command" in
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic security") action=security ;;
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps") action=compose-ps ;;
+  "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic account-database-status") action=account-database-status ;;
+  "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic start-account-database") action=start-account-database ;;
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic link-integrity") action=link-integrity ;;
   "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic user-action-alerts") action=user-action-alerts ;;
+  "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic interface-statistics") action=interface-statistics ;;
   *) echo "unsupported monitor command" >&2; exit 64 ;;
 esac
 exec sudo -n /usr/local/sbin/gernetix-monitor-diagnostic "$action"

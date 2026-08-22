@@ -54,6 +54,19 @@
           <button id="refreshCommunityButton" type="button">Aktualisieren</button>
         </section>
         <section class="metrics-grid" id="communityMetrics"></section>
+        <section class="panel" data-community-capability="admin_identity_recovery">
+          <p class="eyebrow">Kontowiederherstellung</p>
+          <h2>Vorläufiges Support-Passwort senden</h2>
+          <p class="helper-text">Die E-Mail-Adresse wird nur für diesen Versand verwendet, nie dem Konto zugeordnet und nach der Übergabe an den Maildienst nicht in GerNetiX gespeichert. Die Adresse allein ist kein Identitätsnachweis.</p>
+          <form id="supportRecoveryForm" class="form-grid" autocomplete="off">
+            <label>Spitzname <input name="username" minlength="3" maxlength="120" required /></label>
+            <label>Temporäre E-Mail-Adresse <input name="email" type="email" maxlength="254" required /></label>
+            <label class="full-width">Durchgeführte Identitätsprüfung <select name="verification_reason" required><option value="">Prüfweg auswählen</option><option value="verified_existing_support_callback">Bestehenden Supportkontakt über Rückruf geprüft</option><option value="verified_customer_contract_reference">Vertrags- oder Bestellreferenz im getrennten Supportprozess geprüft</option><option value="verified_operator_exception">Betreiberfreigabe nach dokumentiertem Ausnahmeprozess</option></select></label>
+            <label>Admin-Passwort erneut bestätigen <input name="admin_password" type="password" minlength="16" autocomplete="current-password" required /></label>
+            <div class="button-row"><button class="primary" type="submit">Einmalpasswort sicher senden</button></div>
+            <p id="supportRecoveryStatus" class="flash-status hidden" role="status" aria-live="polite"></p>
+          </form>
+        </section>
         <section class="admin-layout community-layout" data-community-capability="admin_community_support">
           <article class="panel">
             <p class="eyebrow">Privates Postfach</p>
@@ -918,6 +931,6 @@
         </section>
       </section>
     </main>
-    <script src="/admin/admin-config.js?v=20260807-action-explorer-1"></script>
+    <script src="/admin/admin-config.js?v=20260818-support-recovery-1"></script>
   </body>
 </html>

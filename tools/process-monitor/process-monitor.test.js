@@ -1,9 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
-const { DatabaseSync } = require("node:sqlite");
 const control = require("./desktop-process-control");
 const html = fs.readFileSync(path.join(__dirname, "public/desktop.html"), "utf8");
 const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "utf8");
@@ -12,55 +10,13 @@ const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"
 
 test("monitor controls Identity and the isolated build worker locally while persisted backends stay on the VPS", async () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
-  assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
-  assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
-  assert.equal(control.services.find((item) => item.id === "telemetry-server").port, 5600);
-  assert.equal(control.services.find((item) => item.id === "public-demo-server").port, 4920);
-  assert.equal(control.services.find((item) => item.id === "community-ai-assistant").port, 5300);
-  assert.equal(control.services.find((item) => item.id === "persistence-server").port, 5400);
-  assert.equal(control.services.find((item) => item.id === "device-voice-orchestrator").port, 5800);
-  assert.equal(control.services.find((item) => item.id === "provisioning-tool").port, 4500);
-  assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
-  assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
   assert.equal(control.services.find((item) => item.id === "build-worker").port, 4400);
-  assert.equal(control.services.length, 19);
+  assert.equal(control.services.length, 2);
   assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server", "build-worker"]);
   assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), ["identity-server"]);
   const states = await control.processStates();
   assert.equal(states.length, 2);
   assert.deepEqual(states.map((item) => item.id), ["identity-server", "build-worker"]);
-});
-
-test("desktop monitor reports Community SQLite counts without reading content", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-monitor-community-"));
-  const runtime = path.join(root, ".runtime");
-  const dbPath = path.join(runtime, "gernetix-community.sqlite");
-  fs.mkdirSync(runtime);
-  const db = new DatabaseSync(dbPath);
-  try {
-    db.exec(`
-      CREATE TABLE community_questions (question_id TEXT, visibility TEXT, status TEXT);
-      CREATE TABLE community_answers (answer_id TEXT, verification_state TEXT);
-      CREATE TABLE community_knowledge_documents (document_id TEXT);
-      INSERT INTO community_questions VALUES ('public-1', 'public', 'open');
-      INSERT INTO community_questions VALUES ('private-1', 'private', 'answered');
-      INSERT INTO community_answers VALUES ('answer-1', 'verified');
-      INSERT INTO community_knowledge_documents VALUES ('document-1');
-    `);
-  } finally {
-    db.close();
-  }
-
-  try {
-    const summary = control.communityStorageSummary(root);
-    assert.equal(summary.exists, true);
-    assert.deepEqual(summary.questions, { total:2, public:1, private:1, open:1 });
-    assert.deepEqual(summary.answers, { total:1, verified:1 });
-    assert.equal(summary.knowledgeDocuments.total, 1);
-    assert.equal(summary.path, path.join(".runtime", "gernetix-community.sqlite"));
-  } finally {
-    fs.rmSync(root, { recursive:true, force:true });
-  }
 });
 
 test("desktop app uses isolated IPC and keeps admin access outside the renderer", () => {
@@ -76,8 +32,8 @@ test("packaged Electron runtime starts services in Node mode", () => {
   assert.match(source, /ELECTRON_RUN_AS_NODE:"1"/);
 });
 
-test("packaged monitor starts local services with Node instead of its Electron executable", () => {
-  assert.equal(control.serviceNodeExecutable({ env:{}, versions:{ electron:"37.10.3" }, execPath:"C:\\Program Files\\GerNetiX Prozess-Monitor.exe" }), "node");
+test("packaged monitor uses its bundled Electron executable in Node mode without relying on GUI PATH", () => {
+  assert.equal(control.serviceNodeExecutable({ env:{ PATH:"/usr/bin:/bin" }, versions:{ electron:"37.10.3" }, execPath:"/Applications/GerNetiX Prozess-Monitor.app/Contents/MacOS/GerNetiX Prozess-Monitor" }), "/Applications/GerNetiX Prozess-Monitor.app/Contents/MacOS/GerNetiX Prozess-Monitor");
   assert.equal(control.serviceNodeExecutable({ env:{ GERNETIX_NODE_COMMAND:"C:\\Tools\\node.exe" }, versions:{ electron:"37.10.3" }, execPath:"ignored" }), "C:\\Tools\\node.exe");
   assert.equal(control.serviceNodeExecutable({ env:{}, versions:{}, execPath:"C:\\Program Files\\node.exe" }), "C:\\Program Files\\node.exe");
 });
@@ -113,6 +69,31 @@ test("desktop monitor resolves Docker Desktop even with a restricted GUI PATH", 
     existsSync:(candidate)=>candidate==="/Applications/Docker.app/Contents/Resources/bin/docker",
   });
   assert.equal(result,"/Applications/Docker.app/Contents/Resources/bin/docker");
+});
+
+test("build worker start opens Docker Desktop on macOS and waits for its API", async () => {
+  const calls=[];
+  let dockerChecks=0;
+  const result=await control.ensureDockerReady({
+    platform:"darwin",dockerCommand:"/usr/local/bin/docker",dockerReadyAttempts:3,delay:async()=>{},
+    execFileAsync:async(file,args)=>{
+      calls.push([file,...args]);
+      if(file==="open")return {stdout:"",stderr:""};
+      dockerChecks+=1;
+      if(dockerChecks<3)throw new Error("docker socket missing");
+      return {stdout:"27.5.1\n",stderr:""};
+    },
+  });
+  assert.equal(result,"/usr/local/bin/docker");
+  assert.deepEqual(calls[1],["open","-g","-a","Docker"]);
+  assert.equal(dockerChecks,3);
+});
+
+test("build worker start reports a clear Docker Desktop readiness timeout", async () => {
+  await assert.rejects(control.ensureDockerReady({
+    platform:"darwin",dockerCommand:"/usr/local/bin/docker",dockerReadyAttempts:2,delay:async()=>{},
+    execFileAsync:async(file)=>{if(file==="open")return {stdout:"",stderr:""};throw new Error("docker socket missing");},
+  }),/Docker-API war nach zwei Minuten noch nicht bereit/);
 });
 
 test("monitor starts local Identity only in PostgreSQL Remote-Dev mode", () => {
@@ -159,28 +140,38 @@ test("monitor reads VPS compose state through the established staging SSH config
   const rows = control.parseComposePs([
     JSON.stringify({ Service: "mqtt-broker", Name: "gernetix-mqtt-broker-1", State: "running", Health: "healthy", Status: "Up 2 hours (healthy)" }),
     JSON.stringify({ Service: "build-deploy-server", Name: "gernetix-build-deploy-server-1", State: "running", Health: "unhealthy", Status: "Up 2 hours (unhealthy)" }),
+    JSON.stringify({ Service: "runtime-postgres", Name: "gernetix-runtime-postgres-1", State: "exited", Health: "", Status: "Exited (1)" }),
   ].join("\n"));
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 3);
   assert.equal(rows[0].id, "mqtt-broker");
   assert.equal(rows[0].healthy, true);
   assert.equal(rows[0].portLabel, "8883");
   assert.equal(rows[1].healthy, false);
   assert.equal(rows[1].portLabel, "4400");
+  assert.equal(rows[2].name,"Zentrale Kontodatenbank (PostgreSQL)");
+  assert.equal(rows[2].healthy,false);
   assert.match(desktopPreload, /listVps/);
   assert.match(desktopMain, /processes:list-vps/);
   assert.match(html, /Backend und Infrastruktur/);
   assert.match(client, /renderVps/);
-  let remoteCommand = "";
+  const remoteCommands = [];
   const remote = await control.remoteProcessStates({
     config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
-    execFileAsync:async(_file,args)=>{remoteCommand=args.at(-1);return { stdout:[
+    execFileAsync:async(_file,args)=>{const command=args.at(-1);remoteCommands.push(command);if(command.endsWith("account-database-status"))return {stdout:'{"status":"unavailable"}',stderr:""};return { stdout:[
       JSON.stringify({ Service:"identity-server", Name:"identity", State:"running", Health:"healthy" }),
       JSON.stringify({ Service:"project-postgres-migration", Name:"migration", State:"exited", Health:"" }),
       JSON.stringify({ Service:"project-server", Name:"project", State:"running", Health:"healthy" }),
     ].join("\n"), stderr:"" }}
   });
-  assert.equal(remoteCommand, "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps");
-  assert.deepEqual(remote.items.map((item)=>item.id), ["identity-server", "project-server"]);
+  assert.deepEqual(remoteCommands, [
+    "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic compose-ps",
+    "sudo -n /usr/local/sbin/gernetix-monitor-diagnostic account-database-status",
+  ]);
+  assert.equal(remote.database.status,"unavailable");
+  assert.ok(remote.items.some((item)=>item.id==="identity-server"&&item.healthy));
+  assert.ok(remote.items.some((item)=>item.id==="project-server"&&item.healthy));
+  assert.ok(remote.items.some((item)=>item.id==="runtime-postgres"&&!item.healthy&&item.status==="Kontodatenbank nicht erreichbar"));
+  assert.ok(!remote.items.some((item)=>item.id.endsWith("-migration")));
 
   const unavailable = await control.remoteProcessStates({
     config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
@@ -188,7 +179,7 @@ test("monitor reads VPS compose state through the established staging SSH config
   });
   assert.equal(unavailable.stale, true);
   assert.ok(unavailable.error.includes("VPS nicht erreichbar"));
-  assert.equal(unavailable.items.length, 2);
+  assert.equal(unavailable.items.length, remote.items.length);
   assert.ok(unavailable.items.every((item)=>item.healthy===false&&item.state==="unknown"&&item.stale===true));
   assert.ok(unavailable.checkedAt);
   assert.ok(unavailable.lastSuccessfulAt);
@@ -197,18 +188,48 @@ test("monitor reads VPS compose state through the established staging SSH config
   assert.match(client, /Port.*portLabel/);
   assert.match(html, /VPS-Portweiterleitung \(SSH\)/);
   assert.match(html, /vpsCheckedAt/);
+  assert.match(client,/Zentrale Kontodatenbank nicht erreichbar – Login nicht verfügbar/);
+  assert.match(client,/PostgreSQL nicht erreichbar – Login nicht verfügbar/);
+  assert.match(fs.readFileSync(path.join(__dirname,"../../infra/vps/security/gernetix-monitor-diagnostic"),"utf8"),/compose.*ps --all --format json/);
 });
 
-test("monitor displays persisted external interface call statistics", () => {
+test("monitor checks and starts exactly the central account database through fixed VPS commands", async () => {
+  let command="";
+  const config={GERNETIX_STAGING_SSH:"operator@gernetix-vps",GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps"};
+  const state=await control.remoteAccountDatabaseState({config,execFileAsync:async(_file,args)=>{command=args.at(-1);return {stdout:'{"status":"unavailable"}',stderr:""};}});
+  assert.equal(command,"sudo -n /usr/local/sbin/gernetix-monitor-diagnostic account-database-status");
+  assert.equal(state.reachable,false);
+  const started=await control.startRemoteAccountDatabase({config,execFileAsync:async(_file,args)=>{command=args.at(-1);return {stdout:'{"status":"healthy"}',stderr:""};}});
+  assert.equal(command,"sudo -n /usr/local/sbin/gernetix-monitor-diagnostic start-account-database");
+  assert.equal(started.reachable,true);
+  assert.match(desktopMain,/database:start-vps/);
+  assert.match(desktopPreload,/startVpsDatabase/);
+  assert.match(client,/Kontodatenbank starten/);
+  assert.match(client,/startVpsDatabase/);
+  const diagnostic=fs.readFileSync(path.join(__dirname,"../../infra/vps/security/gernetix-monitor-diagnostic"),"utf8");
+  assert.match(diagnostic,/start-account-database[\s\S]*up -d runtime-postgres/);
+  assert.doesNotMatch(diagnostic,/down -v|rm -rf|docker system prune/);
+});
+
+test("monitor reads interface statistics from central Operations PostgreSQL through the fixed diagnostic", async () => {
   assert.match(html, /data-view="statisticsView">Betrieb/);
   assert.match(html, /Ausgehende Schnittstellenaufrufe/);
   assert.match(client, /interfaceStatistics\(24\)/);
   assert.match(client, /renderStatistics/);
   assert.match(desktopPreload, /interfaceStatistics/);
   assert.match(desktopMain, /interfaces:statistics/);
-  const statistics = control.interfaceStatistics(24);
-  assert.equal(Array.isArray(statistics.items), true);
-  assert.equal(typeof statistics.summary.calls, "number");
+  let remoteCommand = "";
+  const statistics = await control.interfaceStatistics(24, {
+    force:true,
+    config:{ GERNETIX_STAGING_SSH:"gernetix-vps", GERNETIX_STAGING_MONITOR_SSH:"gernetix-monitor@gernetix-vps" },
+    execFileAsync:async(_file,args)=>{
+      remoteCommand=args.at(-1);
+      return {stdout:JSON.stringify({hours:24,summary:{calls:3,failed:1,targets:1},items:[{source_service:"identity-server",target_service:"project-server",calls:3,failed:1,average_ms:12,maximum_ms:20,last_call:"2026-08-17T10:00:00.000Z"}]})};
+    },
+  });
+  assert.equal(remoteCommand,"sudo -n /usr/local/sbin/gernetix-monitor-diagnostic interface-statistics");
+  assert.equal(statistics.summary.calls,3);
+  assert.equal(statistics.items[0].target_service,"project-server");
 });
 
 test("monitor reads link integrity through the fixed Admin Tool diagnostic command", async () => {
@@ -502,17 +523,18 @@ test("detects Windows listener PIDs independently of the localized state label",
   assert.equal(control.pidFromWindowsNetstat("  TCP    10.77.0.5:4400    0.0.0.0:0    LISTENING    100\n  TCP    127.0.0.1:4400    0.0.0.0:0    LISTENING    200",4400,"127.0.0.1"),200);
 });
 
-test("monitor shows runtime alerts from persisted system and interface failures", () => {
+test("monitor shows central Operations alerts without reading local runtime databases", async () => {
   assert.match(html, /id="runtimeAlerts"/);
   assert.match(html, /Auffaelligkeiten/);
   assert.match(client, /runtimeAlerts\(24\)/);
   assert.match(client, /renderAlerts/);
   assert.match(desktopPreload, /runtimeAlerts/);
   assert.match(desktopMain, /runtime:alerts/);
-  assert.match(fs.readFileSync(path.join(__dirname,"desktop-process-control.js"),"utf8"), /admin_tool_user_action_events/);
-  const alerts = control.runtimeAlerts(24);
-  assert.equal(Array.isArray(alerts.items), true);
-  assert.equal(typeof alerts.summary.errors, "number");
+  const source=fs.readFileSync(path.join(__dirname,"desktop-process-control.js"),"utf8");
+  assert.doesNotMatch(source,/node:sqlite|gernetix-services\.sqlite|gernetix-community\.sqlite/);
+  const alerts = await control.operationsAlerts(24,{config:{}});
+  assert.equal(Array.isArray(alerts.items),true);
+  assert.equal(typeof alerts.summary.errors,"number");
 });
 
 test("monitor reads central user action failures through the fixed read-only diagnostic", async () => {
@@ -575,6 +597,15 @@ test("monitor shows all VPS protection rules with status and recommended action"
   assert.match(client, /securityRules/);
   assert.match(desktopPreload, /security:rules/);
   assert.match(desktopMain, /security:rules/);
+  const diagnostic=fs.readFileSync(path.join(__dirname,"../../infra/vps/security/gernetix-monitor-diagnostic"),"utf8");
+  const sshEntrypoint=fs.readFileSync(path.join(__dirname,"../../infra/vps/security/gernetix-monitor-ssh"),"utf8");
+  const sudoers=fs.readFileSync(path.join(__dirname,"../../infra/vps/security/gernetix-monitor.sudoers"),"utf8");
+  for(const source of [diagnostic,sshEntrypoint,sudoers]){
+    assert.match(source,/interface-statistics/);
+    assert.match(source,/account-database-status/);
+    assert.match(source,/start-account-database/);
+  }
+  for(const port of [4300,4400,4600,4610,4700,4800,4900,4910,4920,5000,5200,5500,5600,5700,5800,14400])assert.match(diagnostic,new RegExp(String(port)));
   const checks = control.parseSecurityCheckOutput("firewall_protection=active\nweb_rate_limit=missing\n");
   assert.equal(checks.firewall_protection, "active");
   assert.equal(checks.web_rate_limit, "missing");

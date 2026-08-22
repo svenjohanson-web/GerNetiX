@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-# Fixed, read-only command surface for the desktop process monitor.
+# Fixed command surface for the desktop process monitor. All diagnostics are
+# read-only; the only mutation is the explicit start of runtime-postgres.
 # Install root-owned as /usr/local/sbin/gernetix-monitor-diagnostic and allow
 # only this exact path through sudoers for the gernetix-monitor account.
 
@@ -23,12 +24,37 @@ case "${1:-}" in
     emit mqtt_connection_rate 'nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv4" && nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv6"'
     emit mqtt_resource_limits 'docker exec gernetix-mqtt-broker-1 grep -q "max_connections 2048" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "max_packet_size 131072" /mosquitto/config/mosquitto.conf'
     emit admin_loopback 'ss -lnt 2>/dev/null | grep -q "127.0.0.1:4600"'
-    emit services_private '! ss -lnt 2>/dev/null | grep -Eq "(0.0.0.0|\\[::\\]):(4300|4400|4700|4800|4900|4910|5000|5500)"'
+    emit services_private '! ss -lnt 2>/dev/null | grep -Eq "(0.0.0.0|\\[::\\]):(4300|4400|4600|4610|4700|4800|4900|4910|4920|5000|5200|5500|5600|5700|5800|14400)"'
     emit root_login_disabled 'sshd -T 2>/dev/null | grep -q "^permitrootlogin no$"'
     ;;
   compose-ps)
     cd /opt/gernetix
-    exec docker compose --env-file .env.vps -f compose.vps.yaml ps --format json
+    exec docker compose --env-file .env.vps -f compose.vps.yaml ps --all --format json
+    ;;
+  account-database-status)
+    cd /opt/gernetix
+    if docker compose --env-file .env.vps -f compose.vps.yaml exec -T runtime-postgres \
+      psql -U gernetix_runtime -d gernetix_runtime -Atqc 'SELECT 1 FROM identity_user_accounts LIMIT 1' >/dev/null 2>&1; then
+      printf '{"status":"healthy"}\n'
+    else
+      printf '{"status":"unavailable"}\n'
+    fi
+    ;;
+  start-account-database)
+    cd /opt/gernetix
+    docker compose --env-file .env.vps -f compose.vps.yaml up -d runtime-postgres >/dev/null
+    attempts=0
+    while [ "$attempts" -lt 60 ]; do
+      if docker compose --env-file .env.vps -f compose.vps.yaml exec -T runtime-postgres \
+        psql -U gernetix_runtime -d gernetix_runtime -Atqc 'SELECT 1 FROM identity_user_accounts LIMIT 1' >/dev/null 2>&1; then
+        printf '{"status":"healthy"}\n'
+        exit 0
+      fi
+      attempts=$((attempts + 1))
+      sleep 1
+    done
+    printf '{"status":"unavailable"}\n' >&2
+    exit 1
     ;;
   link-integrity)
     cd /opt/gernetix
@@ -37,6 +63,10 @@ case "${1:-}" in
   user-action-alerts)
     cd /opt/gernetix
     exec docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-user-action-alerts.js
+    ;;
+  interface-statistics)
+    cd /opt/gernetix
+    exec docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-interface-statistics.js
     ;;
   *)
     echo "unsupported diagnostic command" >&2

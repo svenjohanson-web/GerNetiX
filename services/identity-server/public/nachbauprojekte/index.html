@@ -8,7 +8,7 @@
   <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
   <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
   <title>Öffentliche Nachbauprojekte · GerNetiX</title>
-  <link rel="stylesheet" href="/landing.css?v=20260819-theme-tokens-2" />
+  <link rel="stylesheet" href="/landing.css?v=20260822-merge-main-1" />
 </head>
 <body>
   <header class="site-header">
@@ -60,6 +60,12 @@
       <section class="maker-project-category" aria-labelledby="more-projects-title">
         <h2 id="more-projects-title">Weitere Nachbauprojekte</h2>
         <div class="maker-project-list">
+          <a class="panel maker-project-tile maker-project-series-tile" href="/nachbauprojekte/huehnerstalltuer/">
+            <span class="maker-project-series-label">Anleitung · WLAN oder LoRa</span>
+            <h3>Ferngesteuerte Hühnerstalltür</h3>
+            <p>Baue eine motorisierte Kleinspannungs-Tür mit Endlagen, Hinderniserkennung und lokaler Sicherheitslogik – wahlweise über WLAN oder LoRa bedient.</p>
+            <span class="maker-project-tile-action">Bauweg ansehen →</span>
+          </a>
           <a class="panel maker-project-tile maker-project-series-tile" href="/nachbauprojekte/modulares-maker-auto/">
             <span class="maker-project-series-label">Projektkonzept · CAD und Firmware offen</span>
             <h3>Modulares Maker-Auto mit ESP32 bauen</h3>
@@ -126,10 +132,10 @@
           "imports": {
                 "@app/action-observability.js": "/app/action-observability.js?v=20260820-esm-blatt-2",
                 "@app/api-client.js": "/app/api-client.js?v=20260820-esm-abschluss-1",
-                "@app/app-account-controller.js": "/app/app-account-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-account-controller.js": "/app/app-account-controller.js?v=20260822-merge-main-2",
                 "@app/app-billing-controller.js": "/app/app-billing-controller.js?v=20260820-esm-kopf-1",
                 "@app/app-dashboard-controller.js": "/app/app-dashboard-controller.js?v=20260820-esm-kopf-1",
-                "@app/app-project-controller.js": "/app/app-project-controller.js?v=20260820-esm-kopf-1",
+                "@app/app-project-controller.js": "/app/app-project-controller.js?v=20260822-merge-main-1",
                 "@app/app-push-controller.js": "/app/app-push-controller.js?v=20260820-esm-kopf-1",
                 "@app/app-runtime-utils.js": "/app/app-runtime-utils.js?v=20260820-esm-abschluss-1",
                 "@app/app-shell-controller.js": "/app/app-shell-controller.js?v=20260820-entflechtung-7",
@@ -149,7 +155,7 @@
                 "@app/information-view.js": "/app/information-view.js?v=20260820-esm-grenze-2",
                 "@app/knowledge-chapter-index.js": "/app/knowledge-chapter-index.js?v=20260820-esm-wissen-1",
                 "@app/learning-project-controller.js": "/app/learning-project-controller.js?v=20260820-esm-kopf-1",
-                "@app/learning-project-locales.js": "/app/learning-project-locales.js?v=20260820-esm-kopf-1",
+                "@app/learning-project-locales.js": "/app/learning-project-locales.js?v=20260822-merge-main-1",
                 "@app/learning-project-view.js": "/app/learning-project-view.js?v=20260820-esm-kopf-1",
                 "@app/platform-components.js": "/app/platform-components.js?v=20260820-esm-grenze-1",
                 "@app/platform-routing.js": "/app/platform-routing.js?v=20260820-esm-kopf-1",
@@ -163,11 +169,12 @@
                 "@app/usb-port-disconnect-detector.js": "/app/usb-port-disconnect-detector.js?v=20260820-esm-blatt-6",
                 "@app/welcome-guide.js": "/app/welcome-guide.js?v=20260820-esm-kopf-1",
                 "@app/workbench-output-view.js": "/app/workbench-output-view.js?v=20260820-statuskanal-1",
-                "/landing.js": "/landing.js?v=20260820-landing-modul-1"
+                "/landing.js": "/landing.js?v=20260822-merge-main-1"
           }
     }
     </script>
     <!-- /import-map -->
-  <script type="module" src="/landing.js?v=20260820-landing-modul-1"></script>
+  <script src="/navigation-model.js?v=20260822-merge-main-1"></script>
+  <script type="module" src="/landing.js?v=20260822-merge-main-1"></script>
 </body>
 </html>

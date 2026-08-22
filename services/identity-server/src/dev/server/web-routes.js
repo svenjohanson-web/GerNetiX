@@ -117,6 +117,9 @@ function registerWebRoutes({
   for (const routePath of ["/ueber-uns", "/ueber-uns/"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, path.join(publicDir, "ueber-uns"), "/index.html") });
   }
+  for (const routePath of ["/datenschutz", "/datenschutz/"]) {
+    registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, path.join(publicDir, "datenschutz"), "/index.html") });
+  }
   registry.register({
     method: "*",
     pattern: /^\/app\/dashboard(?:\/|$)/,
@@ -160,6 +163,7 @@ function registerWebRoutes({
   });
   for (const routePath of ["/shop", "/shop/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/shop/index.html") });
   for (const routePath of ["/leistungen", "/leistungen/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/leistungen/index.html") });
+  for (const routePath of ["/kurse", "/kurse/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/kurse/index.html") });
   for (const routePath of ["/tarife", "/tarife/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/tarife/index.html") });
   for (const routePath of ["/entdecken", "/entdecken/", "/downloads", "/downloads/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => redirect(res, "/nachbauprojekte/") });
   for (const routePath of ["/technik-labs", "/technik-labs/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, virtualElectronicsLabDir, "/index.html") });
@@ -167,7 +171,7 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/technik-labs/spektrumanalysator/", handler: ({ res }) => redirect(res, "/technik-labs/?lab=spectrum") });
   registry.register({ method: "*", path: "/technik-labs/netzwerkanalysator", handler: ({ res }) => redirect(res, "/technik-labs/?lab=vna") });
   registry.register({ method: "*", path: "/technik-labs/netzwerkanalysator/", handler: ({ res }) => redirect(res, "/technik-labs/?lab=vna") });
-  registry.register({ method: "*", pattern: /^\/technik-labs\/(?:app\.js|styles\.css|labs\/[^/]+\.js)$/, handler: ({ res, url }) => serveStatic(res, virtualElectronicsLabDir, url.pathname.slice("/technik-labs".length), { versioned: url.searchParams.has("v") }) });
+  registry.register({ method: "*", pattern: /^\/technik-labs\/(?:app\.js|styles\.css|lab-template-(?:contract|catalog)\.mjs|ai\/[^/]+\.mjs|domain\/[^/]+\.mjs|instruments\/[^/]+\.mjs|labs\/[^/]+\.js|labs\/[^/]+\.mjs|environment-models\/[^/]+\.mjs|free-simulation\/[^/]+\.mjs|input-models\/[^/]+\.mjs|learning-circuits\/[^/]+\.mjs|learning-solver\/[^/]+\.mjs|peripherals\/[^/]+\.mjs|virtual-mcu\/[^/]+\.mjs)$/, handler: ({ res, url }) => serveStatic(res, virtualElectronicsLabDir, url.pathname.slice("/technik-labs".length), { versioned: url.searchParams.has("v") }) });
   for (const routePath of ["/nachbauprojekte", "/nachbauprojekte/"]) registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren", handler: ({ res }) => redirect(res, "/nachbauprojekte/einfache-elektromotoren/") });
   registry.register({ method: "*", path: "/nachbauprojekte/einfache-elektromotoren/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html") });
@@ -177,6 +181,8 @@ function registerWebRoutes({
   registry.register({ method: "*", path: "/nachbauprojekte/modulares-maker-auto/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/modulares-maker-auto/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung", handler: ({ res }) => redirect(res, "/nachbauprojekte/hw364a-spielesammlung/") });
   registry.register({ method: "*", path: "/nachbauprojekte/hw364a-spielesammlung/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/hw364a-spielesammlung/index.html") });
+  registry.register({ method: "*", path: "/nachbauprojekte/huehnerstalltuer", handler: ({ res }) => redirect(res, "/nachbauprojekte/huehnerstalltuer/") });
+  registry.register({ method: "*", path: "/nachbauprojekte/huehnerstalltuer/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/huehnerstalltuer/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/", handler: ({ res }) => serveStatic(res, publicDir, "/nachbauprojekte/nexi-sprachassistent/index.html") });
   registry.register({ method: "*", path: "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme", handler: ({ res }) => redirect(res, "/nachbauprojekte/nexi-sprachassistent/inbetriebnahme/") });

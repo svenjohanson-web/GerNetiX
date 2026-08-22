@@ -153,6 +153,21 @@ test("Admin Action Explorer reicht die exakte Action-ID als Filter weiter", asyn
   });
 });
 
+test("Admin API liefert zentrale Schnittstellenstatistik fuer das angeforderte Zeitfenster", async () => {
+  const calls=[];
+  const service={
+    serviceClients:{},
+    async interfaceStatistics(filter){calls.push(filter);return {hours:48,summary:{calls:2,failed:0,targets:1},items:[]};},
+  };
+  const app=createHttpApp({service});
+  await withServer(app,async(baseUrl)=>{
+    const response=await fetch(`${baseUrl}/api/admin/interface-statistics?hours=48`);
+    assert.equal(response.status,200);
+    assert.equal((await response.json()).summary.calls,2);
+    assert.deepEqual(calls,[{hours:"48"}]);
+  });
+});
+
 test("Admin API exposes the audited user action incident lifecycle", async () => {
   const calls = [];
   const service = {

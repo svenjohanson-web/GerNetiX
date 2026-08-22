@@ -10,6 +10,7 @@ const guideCss = fs.readFileSync(path.join(root, "welcome-guide.css"), "utf8");
 const auth = fs.readFileSync(path.join(root, "auth", "auth.js"), "utf8");
 const shell = fs.readFileSync(path.join(root, "app-shell-controller.js"), "utf8");
 const events = fs.readFileSync(path.join(root, "app-event-bindings.js"), "utf8");
+const { authenticatedItem } = require("./../test-support/navigation-model");
 const accountRoutes = fs.readFileSync(path.join(__dirname, "..", "src", "dev", "server", "account-routes.js"), "utf8");
 const sqliteRepository = fs.readFileSync(path.join(__dirname, "..", "src", "repositories", "sqlite-backed-identity-repository.js"), "utf8");
 
@@ -36,7 +37,9 @@ test("opens the guide after login and keeps it available from help", () => {
   assert.match(auth, /url\.searchParams\.set\("welcome", "1"\)/);
   assert.match(shell, /GerNetiXWelcomeGuide\.maybeOpen\(state\.account\)/);
   assert.match(events, /#welcomeGuideMenuButton/);
-  assert.match(html, /id="welcomeGuideMenuButton"/);
+  // Das Menue wird seit der einheitlichen Navigation aus dem Modell erzeugt,
+  // nicht mehr im Dokument gepflegt.
+  assert.equal(authenticatedItem("welcomeGuideMenuButton").label, "Willkommen bei GerNetiX");
   assert.match(guide, /url\.searchParams\.delete\("welcome"\)/);
 });
 

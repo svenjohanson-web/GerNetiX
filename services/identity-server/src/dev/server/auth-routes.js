@@ -25,6 +25,12 @@ function registerAuthRoutes({
   handleOfflineRecoveryStart,
   handleOfflineRecoveryPasskeyOptions,
   handleOfflineRecoveryPasskeyVerify,
+  handleSupportRecoveryLogin,
+  handleSupportRecoveryPasskeyOptions,
+  handleSupportRecoveryPasskeyVerify,
+  handlePasskeyManagementList,
+  handlePasskeyManagementOptions,
+  handlePasskeyManagementVerify,
 }) {
   const handlers = new Map([
     ["/api/login", handleLogin],
@@ -96,9 +102,15 @@ function registerAuthRoutes({
     ["/api/recovery/offline/start", handleOfflineRecoveryStart],
     ["/api/recovery/offline/passkey/options", handleOfflineRecoveryPasskeyOptions],
     ["/api/recovery/offline/passkey/verify", handleOfflineRecoveryPasskeyVerify],
+    ["/api/recovery/support/login", handleSupportRecoveryLogin],
+    ["/api/recovery/support/passkey/options", handleSupportRecoveryPasskeyOptions],
+    ["/api/recovery/support/passkey/verify", handleSupportRecoveryPasskeyVerify],
   ]) {
     registry.register({ method: "POST", path, handler: ({ req, res }) => handler(req, res) });
   }
+  registry.register({ method: "GET", path: "/api/passkeys/manage", handler: ({ req, res }) => handlePasskeyManagementList(req, res) });
+  registry.register({ method: "POST", path: "/api/passkeys/manage/options", handler: ({ req, res }) => handlePasskeyManagementOptions(req, res) });
+  registry.register({ method: "POST", path: "/api/passkeys/manage/verify", handler: ({ req, res }) => handlePasskeyManagementVerify(req, res) });
 }
 
 module.exports = { registerAuthRoutes };

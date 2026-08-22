@@ -15,6 +15,7 @@ class InMemoryCommunityRepository {
     this.projectIdeas = new Map((seed.projectIdeas || []).map((item) => [item.idea_id, clone(item)]));
     this.projectIdeaComments = new Map((seed.projectIdeaComments || []).map((item) => [item.comment_id, clone(item)]));
     this.projectShowcases = new Map((seed.projectShowcases || []).map((item) => [item.showcase_id, clone(item)]));
+    this.notificationOutbox = new Map((seed.notificationOutbox || []).map((item) => [item.event_id, clone(item)]));
   }
 
   saveQuestion(question) {
@@ -85,6 +86,11 @@ class InMemoryCommunityRepository {
   }
 
   saveInboxItem(item) { this.inboxItems.set(item.inbox_item_id, item); return item; }
+  saveInboxItemWithNotification(item, notificationEvent) {
+    this.saveInboxItem(item);
+    this.saveNotificationOutboxEvent(notificationEvent);
+    return clone(item);
+  }
   findInboxItem(id) { return this.inboxItems.get(id) || null; }
   listInboxItems(filter = {}) {
     return Array.from(this.inboxItems.values()).filter((item) => !filter.user_id || item.recipient_user_id === filter.user_id).sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -118,6 +124,11 @@ class InMemoryCommunityRepository {
     return Array.from(this.messages.values()).filter((item) => item.thread_id === threadId && !item.deleted_at).sort((a, b) => a.created_at.localeCompare(b.created_at)).map(clone);
   }
   saveInboxEntry(entry) { this.inboxEntries.set(entry.inbox_entry_id, clone(entry)); return clone(entry); }
+  saveInboxEntryWithNotification(entry, notificationEvent) {
+    this.saveInboxEntry(entry);
+    this.saveNotificationOutboxEvent(notificationEvent);
+    return clone(entry);
+  }
   findInboxEntry(entryId) { return clone(this.inboxEntries.get(entryId)); }
   listInboxEntries(userId) {
     return Array.from(this.inboxEntries.values()).filter((item) => item.recipient_user_id === userId).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(clone);
@@ -163,20 +174,87 @@ class InMemoryCommunityRepository {
     return Array.from(this.messages.values()).filter((item) => item.author_user_id === userId && item.created_at >= since).length;
   }
 
-  createMessageThreadBundle({ thread, members, message, inboxEntries }) {
+  saveNotificationOutboxEvent(event) {
+    if (!this.notificationOutbox.has(event.event_id)) this.notificationOutbox.set(event.event_id, clone(event));
+    return clone(this.notificationOutbox.get(event.event_id));
+  }
+
+  claimNotificationOutbox({ now, leaseUntil, limit = 25 }) {
+    const eligible = Array.from(this.notificationOutbox.values())
+      .filter((event) => (
+        (["pending", "retry"].includes(event.status) && event.next_attempt_at <= now)
+        || (event.status === "leased" && event.lease_until && event.lease_until <= now)
+      ))
+      .sort((left, right) => left.created_at.localeCompare(right.created_at))
+      .slice(0, limit);
+    return eligible.map((event) => {
+      const leased = { ...event, status: "leased", attempts: Number(event.attempts || 0) + 1, lease_until: leaseUntil, updated_at: now };
+      this.notificationOutbox.set(event.event_id, leased);
+      return clone(leased);
+    });
+  }
+
+  completeNotificationOutboxEvent(eventId, { now, outcome }) {
+    const event = this.notificationOutbox.get(eventId);
+    if (!event || event.status !== "leased") return null;
+    const completed = { ...event, status: "delivered", outcome, lease_until: null, delivered_at: now, updated_at: now, last_error_code: null };
+    this.notificationOutbox.set(eventId, completed);
+    return clone(completed);
+  }
+
+  retryNotificationOutboxEvent(eventId, { now, nextAttemptAt, errorCode, maxAttempts = 8 }) {
+    const event = this.notificationOutbox.get(eventId);
+    if (!event || event.status !== "leased") return null;
+    const exhausted = Number(event.attempts || 0) >= maxAttempts;
+    const retried = {
+      ...event,
+      status: exhausted ? "dead_letter" : "retry",
+      lease_until: null,
+      next_attempt_at: exhausted ? event.next_attempt_at : nextAttemptAt,
+      updated_at: now,
+      last_error_code: errorCode,
+    };
+    this.notificationOutbox.set(eventId, retried);
+    return clone(retried);
+  }
+
+  notificationOutboxSummary() {
+    const values = Array.from(this.notificationOutbox.values());
+    return Object.fromEntries(["pending", "retry", "leased", "delivered", "dead_letter"].map((status) => [status, values.filter((item) => item.status === status).length]));
+  }
+
+  purgeNotificationOutbox({ deliveredBefore, deadLetterBefore }) {
+    const purged = { delivered: 0, dead_letter: 0, total: 0 };
+    const deliveredCutoff = new Date(deliveredBefore).getTime();
+    const deadLetterCutoff = new Date(deadLetterBefore).getTime();
+    for (const [eventId, event] of this.notificationOutbox.entries()) {
+      const timestamp = new Date(event.delivered_at || event.updated_at || event.created_at || "").getTime();
+      const purgeDelivered = event.status === "delivered" && Number.isFinite(timestamp) && timestamp < deliveredCutoff;
+      const purgeDeadLetter = event.status === "dead_letter" && Number.isFinite(timestamp) && timestamp < deadLetterCutoff;
+      if (!purgeDelivered && !purgeDeadLetter) continue;
+      this.notificationOutbox.delete(eventId);
+      purged[event.status] += 1;
+      purged.total += 1;
+    }
+    return purged;
+  }
+
+  createMessageThreadBundle({ thread, members, message, inboxEntries, outboxEvents = [] }) {
     this.saveMessageThread(thread);
     for (const member of members) this.saveThreadMember(member);
     this.saveMessage(message);
     for (const entry of inboxEntries) this.saveInboxEntry(entry);
-    return clone({ thread, members, message, inboxEntries });
+    for (const event of outboxEvents) this.saveNotificationOutboxEvent(event);
+    return clone({ thread, members, message, inboxEntries, outboxEvents });
   }
 
-  appendMessageBundle({ thread, authorMember, message, inboxEntries }) {
+  appendMessageBundle({ thread, authorMember, message, inboxEntries, outboxEvents = [] }) {
     this.saveMessage(message);
     this.saveMessageThread(thread);
     if (authorMember) this.saveThreadMember(authorMember);
     for (const entry of inboxEntries) this.saveInboxEntry(entry);
-    return clone({ thread, authorMember, message, inboxEntries });
+    for (const event of outboxEvents) this.saveNotificationOutboxEvent(event);
+    return clone({ thread, authorMember, message, inboxEntries, outboxEvents });
   }
 
   saveBroadcastBundle({ broadcast, inboxEntries }) {

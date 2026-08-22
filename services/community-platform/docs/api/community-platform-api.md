@@ -96,6 +96,22 @@ Ideen, Showcase-Projekte, Marketplace-Eintraege sowie das konfigurierte
 Persistenz-Backend. Titel, Texte, technische Account-/Projektkennungen und
 andere Community-Inhalte werden nicht ausgegeben.
 
+Die ebenfalls durch `COMMUNITY_INTERNAL_TOKEN` geschuetzten
+`notification-outbox`-Routen duerfen nur ohne Community-Akteur durch Identity
+verwendet werden. Claim-Antworten enthalten ausschliesslich Ereignis-ID,
+Empfaenger-`user_id`, Kategorie und Versuchszahl. Browser-Akteure erhalten
+keinen Zugriff. Complete beziehungsweise Retry akzeptieren nur den minimierten
+Zustellstatus; Nachrichten-, Projekt- oder E-Mail-Inhalte sind nicht Teil des
+Vertrags.
+
+Jeder Claim kann vorab den statusgebundenen Retention-Lauf ausfuehren. Die
+Antwort ergaenzt nur `retention.enabled` und aggregierte Loeschzaehler, keine
+geloeschten Kennungen. Ohne
+`COMMUNITY_NOTIFICATION_RETENTION_ENABLED=1` bleibt die Bereinigung
+deaktiviert. Bei Aktivierung laeuft sie hoechstens stuendlich und entfernt nur
+abgelaufene `delivered`- beziehungsweise `dead_letter`-Zeilen; `pending`,
+`retry` und aktive Leases bleiben erhalten.
+
 ## Getrennte Admin-Verwaltung
 
 ```text

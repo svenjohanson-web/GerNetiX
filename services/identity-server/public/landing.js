@@ -1,6 +1,7 @@
 const menuButton = document.querySelector("#publicMenuButton");
 const menu = document.querySelector("#publicMenu");
 const publicLoginLink = document.querySelector("#publicLoginLink");
+const navigationModel = window.GerNetiXNavigationModel;
 let publicI18n = null;
 
 initializePublicTheme();
@@ -9,26 +10,10 @@ const publicI18nReady = initializePublicI18n();
 initializePublicSession();
 
 function normalizePublicNavigation() {
-  if (!menu) return;
-  const links = [
-    ["/", "Startseite"],
-    ["/ueber-uns/", "Über uns"],
-    ["/nachbauprojekte/nexi-sprachassistent/", "Nexi"],
-    ["/nachbauprojekte/", "Projekte zum Nachbauen"],
-    ["/technik-labs/", "Virtuelles Elektroniklabor"],
-    ["/flashbox-einrichten/", "FlashBox einrichten"],
-    ["/wissen/", "Wissensportal"],
-    ["/community/", "Community"],
-    ["/hilfe/", "Hilfe"],
-    ["/support/", "Support"],
-    ["/leistungen/", "Leistungen"],
-    ["/tarife/", "Konten & Tarife"],
-    ["/shop/", "Webshop"],
-    ["/app/auth/", "Anmelden"],
-  ];
+  if (!menu || !navigationModel) return;
   menu.setAttribute("aria-label", "Öffentliche Bereiche");
   menu.dataset.i18nAriaLabel = "nav.public";
-  menu.replaceChildren(...links.map(([href, label]) => createNavigationLink(href, label)));
+  menu.replaceChildren(...navigationModel.anonymous.map(createNavigationLink));
   document.body.classList.remove("public-session-authenticated");
 }
 
@@ -48,46 +33,21 @@ async function initializePublicSession() {
 }
 
 function showAuthenticatedPublicNavigation(account) {
-  if (!menu) return;
+  if (!menu || !navigationModel) return;
+  const authenticated = navigationModel.authenticated;
+  const isVisible = (item) => !item.contexts || item.contexts.includes("public");
   const username = String(account?.username || "").trim();
-  const dashboardLink = createNavigationLink("/app/dashboard/", "Übersicht", "platform.nav.dashboard");
+  const [dashboard, ...primary] = authenticated.primary;
+  const dashboardLink = createNavigationLink(dashboard);
   if (username) dashboardLink.prepend(document.createTextNode(`${username} · `));
-  const logoutLink = createNavigationLink("/app/auth/", "Abmelden", "platform.nav.logout");
-  logoutLink.dataset.publicLogout = "true";
 
   menu.setAttribute("aria-label", "Plattformbereiche");
   menu.removeAttribute("data-i18n-aria-label");
   menu.replaceChildren(
     dashboardLink,
-    createNavigationLink("/app/applications/", "Meine Anwendungen", "platform.nav.applications"),
-    createNavigationGroup("Lernen & Entwickeln", "platform.menu.learn_develop", [
-      ["/app/learn/", "Lernplattform", "platform.nav.learning"],
-      ["/app/development-platform/", "Entwicklungsplattform", "platform.nav.development"],
-      ["/app/quiz/", "Quiz", "platform.nav.quiz"],
-      ["/wissen/", "Wissensspeicher", "platform.nav.knowledge_store"],
-      ["/app/community/", "Community", "platform.nav.community"],
-      ["/nachbauprojekte/", "Nachbauprojekte", "nav.rebuild_projects"],
-    ]),
-    createNavigationGroup("Boards & Werkzeuge", "platform.menu.boards_tools", [
-      ["/app/device-management/", "Geräte", "platform.nav.devices"],
-      ["/app/hardware-lab/", "KI-Hardware-Assistent", "platform.nav.hardware_lab"],
-      ["/technik-labs/", "Virtuelles Elektroniklabor"],
-      ["/app/downloads/", "Downloads", "platform.nav.downloads"],
-      ["/flashbox-einrichten/", "FlashBox einrichten", "nav.usb_helper"],
-    ]),
-    createNavigationGroup("Service & Shop", "platform.menu.service_shop", [
-      ["/app/about/", "Über uns", "footer.about"],
-      ["/support/", "Support", "nav.support"],
-      ["/leistungen/", "Leistungen", "nav.services"],
-      ["/shop/", "Webshop", "nav.shop"],
-    ]),
-    createNavigationGroup("Konto", "platform.menu.account", [
-      ["/app/account-setup/", "Profil", "profile.menu"],
-      ["/app/billing/", "Billing", "platform.nav.billing"],
-    ]),
-    createNavigationLink("/hilfe/", "Hilfe", "nav.help"),
-    createNavigationLink("/app/messages/", "Nachrichten"),
-    logoutLink,
+    ...primary.filter(isVisible).map(createNavigationLink),
+    ...authenticated.groups.map((group) => createNavigationGroup(group, isVisible)),
+    ...authenticated.fixed.filter(isVisible).map(createNavigationLink),
   );
   if (publicLoginLink) {
     publicLoginLink.href = "/app/dashboard/";
@@ -98,27 +58,29 @@ function showAuthenticatedPublicNavigation(account) {
   document.body.classList.add("public-session-authenticated");
 }
 
-function createNavigationGroup(label, i18nKey, links) {
+function createNavigationGroup(groupDefinition, isVisible) {
   const group = document.createElement("details");
   group.className = "site-menu-group";
   const summary = document.createElement("summary");
-  summary.textContent = label;
-  if (i18nKey) summary.dataset.i18n = i18nKey;
+  summary.textContent = groupDefinition.label;
+  if (groupDefinition.i18n) summary.dataset.i18n = groupDefinition.i18n;
   const content = document.createElement("div");
-  content.append(...links.map(([href, linkLabel, linkI18nKey]) => createNavigationLink(href, linkLabel, linkI18nKey)));
+  const items = groupDefinition.items.filter(isVisible);
+  content.append(...items.map(createNavigationLink));
   group.append(summary, content);
-  group.open = links.some(([href]) => navigationPathIsActive(href));
+  group.open = items.some((item) => navigationPathIsActive(item.href));
   return group;
 }
 
-function createNavigationLink(href, label, i18nKey = "") {
+function createNavigationLink(item) {
   const link = document.createElement("a");
-  link.href = href;
+  link.href = item.href;
   const copy = document.createElement("span");
-  copy.textContent = label;
-  if (i18nKey) copy.dataset.i18n = i18nKey;
+  copy.textContent = item.label;
+  if (item.i18n) copy.dataset.i18n = item.i18n;
   link.append(copy);
-  if (navigationPathIsActive(href)) link.setAttribute("aria-current", "page");
+  if (item.logout) link.dataset.publicLogout = "true";
+  if (navigationPathIsActive(item.href)) link.setAttribute("aria-current", "page");
   return link;
 }
 
@@ -225,25 +187,6 @@ function initializePublicTheme() {
 }
 
 function decoratePublicNavigation() {
-  const keysByPath = {
-    "/": "nav.home",
-    "/ueber-uns/": "footer.about",
-    "/flashbox-einrichten/": "nav.usb_helper",
-    "/nachbauprojekte/": "nav.rebuild_projects",
-    "/wissen/": "nav.knowledge",
-    "/community/": "nav.community",
-    "/hilfe/": "nav.help",
-    "/support/": "nav.support",
-    "/leistungen/": "nav.services",
-    "/shop/": "nav.shop",
-    "/app/auth/": "nav.login",
-  };
-  document.querySelectorAll(".site-menu a").forEach((link) => {
-    const pathname = new URL(link.href, window.location.origin).pathname;
-    if (keysByPath[pathname] && !link.dataset.publicLogout && !link.querySelector("[data-i18n]")) {
-      link.dataset.i18n = keysByPath[pathname];
-    }
-  });
   if (menuButton) menuButton.dataset.i18nAriaLabel = "menu.open";
   if (!document.body.classList.contains("public-session-authenticated")) {
     menu.dataset.i18nAriaLabel = "nav.public";

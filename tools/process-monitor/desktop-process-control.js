@@ -3,7 +3,6 @@ const path = require("node:path");
 const { execFile, spawn } = require("node:child_process");
 const { promisify } = require("node:util");
 const fs = require("node:fs");
-const { DatabaseSync } = require("node:sqlite");
 
 const execFileAsync = promisify(execFile);
 const VPN_SERVICE_NAME = "WireGuardTunnel$gernetix-vps";
@@ -34,31 +33,31 @@ const VPS_SERVICE_PORTS = Object.freeze({
   "private-dns": "53 TCP/UDP",
   nginx: "8080 intern · lokal 14300 per Tunnel / 80 ACME",
   "nginx-tls": "443",
+  certbot: "80/443 ACME",
+});
+const VPS_SERVICE_LABELS = Object.freeze({
+  "runtime-postgres": "Zentrale Kontodatenbank (PostgreSQL)", forgejo: "Forgejo", "project-server": "Project Server",
+  "compute-control-plane": "Compute Control Plane", "build-deploy-server": "Build & Deploy Server",
+  "build-router": "Build Router", "public-demo-server": "Oeffentlicher Demo-Katalog",
+  "device-management-server": "Device Management Server", "telemetry-server": "Telemetry Server",
+  "hardware-catalog": "Hardware Catalog", "hardware-shop": "Hardware Shop", "ai-usage-server": "AI Usage Server",
+  "device-voice-orchestrator": "Device Voice Orchestrator", "community-platform": "Community Platform",
+  "ai-context-server": "AI Context Server", "admin-tool": "Admin Tool", "admin-access-server": "Admin Access Server",
+  "identity-server": "Identity Server", "mqtt-broker": "MQTT Broker", "private-dns": "Private DNS",
+  nginx: "Nginx ACME", "nginx-tls": "Nginx TLS", certbot: "Certbot",
 });
 let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, "../..");
 let securityCache = null;
 let linkIntegrityCache = null;
 let userActionAlertsCache = null;
+let interfaceStatisticsCache = null;
 let stagingTunnel = null;
 let stagingTunnelError = "";
 let lastRemoteProcessItems = [];
 let lastRemoteProcessSuccessAt = "";
 const services = [
-  service("project-server", "Project Server", 4800), service("build-deploy-server", "Build & Deploy Server", 4400),
-  service("device-management-server", "Device Management Server", 4700), service("hardware-catalog", "Hardware Catalog", 4910, {PERSISTENCE_BACKEND:"memory"}),
-  service("hardware-shop", "Hardware Shop", 4900, {PERSISTENCE_BACKEND:"memory"}), service("ai-usage-server", "AI Usage Server", 5000, {PERSISTENCE_BACKEND:"memory"}),
-  service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
-  service("community-platform", "Community Platform", 5200),
   service("identity-server", "Identity Dev-Server", 4300, {}, {local:true}),
   service("build-worker", "Lokaler Build-Worker", 4400, {}, {local:true,autoStart:false,kind:"docker-build-worker"}),
-  service("admin-access-server", "Admin Access Server", 4610, {}, {autoStart:false}),
-  service("telemetry-server", "Telemetry Server", 5600, {}, {autoStart:false}),
-  service("public-demo-server", "Öffentlicher Demo-Katalog", 4920, {}, {autoStart:false}),
-  service("community-ai-assistant", "Community AI Assistant", 5300, {}, {autoStart:false}),
-  service("persistence-server", "Persistence Server", 5400, {}, {autoStart:false}),
-  service("device-voice-orchestrator", "Device Voice Orchestrator", 5800, {}, {autoStart:false}),
-  service("provisioning-tool", "Provisioning Tool Server", 4500, {}, {autoStart:false}),
-  service("recovery-tool", "Recovery Tool Server", 5100, {}, {autoStart:false})
 ];
 
 function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false,kind:options.kind||"node-service" }; }
@@ -97,20 +96,26 @@ function identityHealthError(body) {
   return "Identity-Health-Response unvollständig oder inkonsistent.";
 }
 async function check(item) {
-  const communityStorage=item.id==="community-platform"?communityStorageSummary():null;
   try {
     const workerConfig=item.kind==="docker-build-worker"?loadBuildWorkerConfig():null;
     const response=workerConfig?await dockerBuildWorkerHealth():await health(item.healthUrl),statusCode=response.statusCode,pid=item.kind==="docker-build-worker"?null:await pidForPort(item.port);
     const statusHealthy=statusCode>=200&&statusCode<300;
     const identityModeMismatch=item.id==="identity-server"&&statusHealthy&&!isIdentityRemoteDevHealth(response.body);
-    const identityDegraded=item.id==="identity-server"&&statusHealthy&&response.body?.service==="identity-server"&&response.body?.persistence_backend==="postgres"&&response.body?.remote_dev===true&&identityModeMismatch;
+    /*
+     * Zwei verschiedene Stoerungen, zwei verschiedene Meldungen: eine tote
+     * Kontodatenbank macht die Anmeldung unmoeglich und hat Vorrang; ein
+     * ausgefallener Nachbardienst laesst den Prozess laufen und wird als
+     * "degraded" gezeigt statt als gestoppt.
+     */
+    const persistenceUnavailable=item.id==="identity-server"&&response.body?.dependencies?.postgres?.status==="unavailable";
+    const identityDegraded=item.id==="identity-server"&&statusHealthy&&!persistenceUnavailable&&response.body?.dependencies?.status==="degraded";
     return {...item,healthy:statusHealthy&&!identityModeMismatch,degraded:identityDegraded,statusCode,pid,
       persistenceBackend:response.body?.persistence_backend||"",remoteDev:response.body?.remote_dev===true,
-      identityModeMismatch,error:identityModeMismatch ? `Identity-Healthprüfung fehlgeschlagen: ${identityHealthError(response.body)}` : "",
-      ...(workerConfig?{workerId:workerConfig.BUILD_WORKER_ID,bindAddress:workerConfig.BUILD_WORKER_BIND_ADDRESS,coordinationBackend:response.body?.coordination?.backend||response.body?.coordination_backend||"postgres"}:{}),
-      ...(communityStorage?{communityStorage}:{})};
+      identityModeMismatch,persistenceUnavailable,
+      error:persistenceUnavailable?"Zentrale PostgreSQL-Kontodatenbank nicht erreichbar. Anmeldung ist nicht verfuegbar.":identityModeMismatch?`Identity-Healthprüfung fehlgeschlagen: ${identityHealthError(response.body)}`:"",
+      ...(workerConfig?{workerId:workerConfig.BUILD_WORKER_ID,bindAddress:workerConfig.BUILD_WORKER_BIND_ADDRESS,coordinationBackend:response.body?.coordination?.backend||response.body?.coordination_backend||"postgres"}:{})};
   }
-  catch(error){ return {...item,healthy:false,statusCode:0,pid:item.kind==="docker-build-worker"?null:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
+  catch(error){ return {...item,healthy:false,statusCode:0,pid:item.kind==="docker-build-worker"?null:await pidForPort(item.port),error:error.message}; }
 }
 async function processStates(){ return Promise.all(services.filter((item)=>item.local).map(check)); }
 function dockerExecutable(options={}){
@@ -129,98 +134,41 @@ async function dockerBuildWorkerHealth(options={}){
   if(state!=="healthy")throw new Error(state?`Docker-Healthstatus: ${state}`:"Build-Worker-Container wurde nicht gefunden.");
   return {statusCode:200,body:{service:"build-deploy-server",coordination_backend:"postgres"}};
 }
-function communityStorageSummary(root=workspaceRoot){
-  const dbPath=path.join(root,".runtime","gernetix-community.sqlite");
-  const visiblePath=path.relative(root,dbPath)||path.basename(dbPath);
-  if(!fs.existsSync(dbPath))return {exists:false,path:visiblePath,bytes:0,questions:{total:0,public:0,private:0,open:0},answers:{total:0,verified:0},knowledgeDocuments:{total:0}};
-  let db;
+async function dockerDaemonReady(options={}){
+  const run=options.execFileAsync||execFileAsync;
   try{
-    db=new DatabaseSync(dbPath,{readOnly:true});
-    const tables=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row)=>row.name));
-    const count=(table,where="")=>tables.has(table)?Number(db.prepare(`SELECT COUNT(*) AS count FROM ${table}${where}`).get().count):0;
-    return {
-      exists:true,path:visiblePath,bytes:fs.statSync(dbPath).size,
-      questions:{
-        total:count("community_questions"),
-        public:count("community_questions"," WHERE visibility = 'public'"),
-        private:count("community_questions"," WHERE visibility = 'private'"),
-        open:count("community_questions"," WHERE status = 'open'")
-      },
-      answers:{
-        total:count("community_answers"),
-        verified:count("community_answers"," WHERE verification_state = 'verified'")
-      },
-      knowledgeDocuments:{total:count("community_knowledge_documents")}
-    };
-  }catch(error){return {exists:true,path:visiblePath,bytes:fs.statSync(dbPath).size,error:error.message};}
-  finally{try{db?.close();}catch{}}
+    await run(options.dockerCommand||dockerExecutable(options),["info","--format","{{.ServerVersion}}"],{windowsHide:true,timeout:5000,maxBuffer:256*1024});
+    return true;
+  }catch{return false;}
 }
-function interfaceStatistics(hours=24){
-  const dbPath=path.join(workspaceRoot,".runtime","gernetix-services.sqlite");
-  if(!fs.existsSync(dbPath))return {hours,items:[],summary:{calls:0,failed:0,targets:0}};
-  let db;
+async function ensureDockerReady(options={}){
+  const dockerCommand=options.dockerCommand||dockerExecutable(options);
+  if(await dockerDaemonReady({...options,dockerCommand}))return dockerCommand;
+  const platform=options.platform||process.platform,run=options.execFileAsync||execFileAsync;
+  if(platform!=="darwin")throw new Error("Docker Engine ist nicht erreichbar. Bitte Docker Desktop starten und den Build-Worker erneut versuchen.");
   try{
-    db=new DatabaseSync(dbPath,{readOnly:true});
-    const table=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gernetix_external_interface_calls'").get();
-    if(!table)return {hours,items:[],summary:{calls:0,failed:0,targets:0}};
-    const since=new Date(Date.now()-Math.max(1,Number(hours)||24)*3600000).toISOString();
-    const items=db.prepare(`SELECT source_service, target_service, COUNT(*) AS calls,
-      SUM(CASE WHEN succeeded = 0 THEN 1 ELSE 0 END) AS failed,
-      ROUND(AVG(duration_ms)) AS average_ms, MAX(duration_ms) AS maximum_ms, MAX(occurred_at) AS last_call
-      FROM gernetix_external_interface_calls WHERE occurred_at >= ?
-      GROUP BY source_service, target_service ORDER BY calls DESC, target_service`).all(since);
-    return {hours,items,summary:{calls:items.reduce((sum,item)=>sum+Number(item.calls),0),failed:items.reduce((sum,item)=>sum+Number(item.failed),0),targets:items.length}};
-  }catch(error){return {hours,items:[],summary:{calls:0,failed:0,targets:0},error:error.message};}
-  finally{try{db?.close();}catch{}}
+    await run("open",["-g","-a","Docker"],{windowsHide:true,timeout:10000});
+  }catch{
+    throw new Error("Docker Desktop konnte nicht geoeffnet werden. Bitte Docker Desktop installieren oder manuell starten.");
+  }
+  const wait=options.delay||delay,attempts=options.dockerReadyAttempts||120;
+  for(let index=0;index<attempts;index+=1){
+    if(await dockerDaemonReady({...options,dockerCommand}))return dockerCommand;
+    await wait(1000);
+  }
+  throw new Error("Docker Desktop wurde geoeffnet, aber die Docker-API war nach zwei Minuten noch nicht bereit.");
 }
-function runtimeAlerts(hours=24,limit=20){
-  const dbPath=path.join(workspaceRoot,".runtime","gernetix-services.sqlite");
-  if(!fs.existsSync(dbPath))return {hours,items:[],summary:{total:0,errors:0,warnings:0}};
-  let db;
-  try{
-    db=new DatabaseSync(dbPath,{readOnly:true});
-    const tableNames=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row)=>row.name));
-    const since=new Date(Date.now()-Math.max(1,Number(hours)||24)*3600000).toISOString();
-    const maxItems=Math.max(1,Math.min(100,Number(limit)||20));
-    const items=[];
-    if(tableNames.has("admin_tool_system_events")){
-      items.push(...db.prepare(`SELECT occurred_at,severity,source_service,target_service,message,route,event_type
-        FROM admin_tool_system_events WHERE occurred_at >= ? AND severity IN ('warning','error','critical')
-        ORDER BY occurred_at DESC LIMIT ?`).all(since,maxItems).map((item)=>({...item,kind:"system_event"})));
-    }
-    if(tableNames.has("admin_tool_user_action_events")){
-      items.push(...db.prepare(`SELECT occurred_at,action_type,action_id,span_type,phase,reason_code,route_id,release_id
-        FROM admin_tool_user_action_events WHERE occurred_at >= ? AND phase IN ('failed','timed_out','unhandled')
-        ORDER BY occurred_at DESC LIMIT ?`).all(since,maxItems).map((item)=>({
-          ...item,kind:"user_action",severity:item.phase==="timed_out"?"warning":"error",
-          source_service:"user_action",target_service:item.action_type,route:item.span_type,
-          event_type:`user_action_${item.phase}`,
-          message:`${item.reason_code||"unknown_client_failure"} · Action ${String(item.action_id||"").slice(0,13)}…`,
-        })));
-    }
-    const represented=new Set(items.map((item)=>alertKey(item.target_service,item.route)));
-    if(tableNames.has("gernetix_external_interface_calls")){
-      const failedCalls=db.prepare(`SELECT occurred_at,source_service,target_service,route,status_code
-        FROM gernetix_external_interface_calls WHERE occurred_at >= ? AND succeeded = 0
-        ORDER BY occurred_at DESC LIMIT ?`).all(since,maxItems);
-      for(const call of failedCalls){
-        const key=alertKey(call.target_service,call.route);
-        if(represented.has(key))continue;
-        represented.add(key);
-        items.push({...call,severity:"error",event_type:"interface_call_failed",kind:"interface_call",message:call.status_code?`Schnittstellenaufruf mit HTTP ${call.status_code} fehlgeschlagen.`:"Zielservice ist nicht erreichbar."});
-      }
-    }
-    items.sort((left,right)=>String(right.occurred_at).localeCompare(String(left.occurred_at)));
-    const selected=items.slice(0,maxItems);
-    return {hours,items:selected,summary:{total:selected.length,errors:selected.filter((item)=>["error","critical"].includes(item.severity)).length,warnings:selected.filter((item)=>item.severity==="warning").length}};
-  }catch(error){return {hours,items:[],summary:{total:0,errors:0,warnings:0},error:error.message};}
-  finally{try{db?.close();}catch{}}
+async function interfaceStatistics(hours=24,options={}){
+  return remoteInterfaceStatistics({...options,hours});
 }
-function alertKey(targetService,route){return `${String(targetService||"").replace(/-/g,"_")}|${String(route||"")}`;}
 async function operationsAlerts(hours=24,options={}){
-  const local=runtimeAlerts(hours);
+  /*
+   * Die lokale Runtime-SQLite ist keine Betriebsquelle mehr: die Domaenendienste
+   * laufen auf dem VPS. Geblieben sind die lokale Identity-Diagnose ueber den
+   * Loopback-Endpunkt und die Fernabfrage der Operations-Datenbank.
+   */
   const [identity,remote]=await Promise.all([localUserActionDiagnostics({...options,hours}),remoteUserActionAlerts({...options,hours})]);
-  return mergeRuntimeAlerts(local,identity,remote);
+  return mergeRuntimeAlerts(identity,remote);
 }
 async function localUserActionDiagnostics(options={}){
   const hours=Math.max(1,Number(options.hours)||24),readHealth=options.health||health;
@@ -233,6 +181,28 @@ async function localUserActionDiagnostics(options={}){
   }catch(error){
     return {hours,items:[],summary:alertSummary([]),error:`Lokale Identity-Diagnose nicht lesbar: ${error.message || error}`};
   }
+}
+async function remoteInterfaceStatistics(options={}){
+  if(!options.force&&!options.execFileAsync&&interfaceStatisticsCache?.expiresAt>Date.now())return interfaceStatisticsCache.value;
+  const hours=Math.max(1,Math.min(168,Number(options.hours)||24)),config=options.config||loadStagingConfig();
+  if(!config.GERNETIX_STAGING_SSH)return {hours,items:[],summary:{calls:0,failed:0,targets:0},error:"Schnittstellen-Operations sind fuer Staging nicht konfiguriert."};
+  const host=monitorSshTarget(config),run=options.execFileAsync||execFileAsync;
+  const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic interface-statistics";
+  let value;
+  try{
+    const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:15000,maxBuffer:1024*1024});
+    const payload=JSON.parse(String(stdout||"{}"));
+    const items=(Array.isArray(payload.items)?payload.items:[]).map((item)=>({
+      source_service:String(item.source_service||""),target_service:String(item.target_service||""),
+      calls:Number(item.calls||0),failed:Number(item.failed||0),average_ms:Number(item.average_ms||0),
+      maximum_ms:Number(item.maximum_ms||0),last_call:item.last_call||null,
+    }));
+    value={hours:Number(payload.hours||hours),host,items,summary:{
+      calls:Number(payload.summary?.calls||0),failed:Number(payload.summary?.failed||0),targets:Number(payload.summary?.targets||items.length),
+    }};
+  }catch(error){value={hours,host,items:[],summary:{calls:0,failed:0,targets:0},error:`Schnittstellen-Operations nicht lesbar: ${remoteError(error)}`};}
+  if(!options.execFileAsync)interfaceStatisticsCache={expiresAt:Date.now()+SECURITY_CACHE_MS,value};
+  return value;
 }
 async function remoteUserActionAlerts(options={}){
   if(!options.force&&!options.execFileAsync&&userActionAlertsCache?.expiresAt>Date.now())return userActionAlertsCache.value;
@@ -291,26 +261,76 @@ async function remoteProcessStates(options={}) {
   try {
     const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:12000,maxBuffer:2*1024*1024});
     const checkedAt=new Date().toISOString();
-    const items=parseComposePs(stdout).filter(isVisibleVpsService);
+    const database=await remoteAccountDatabaseState({...options,config,host,execFileAsync:run});
+    const items=applyAccountDatabaseState(completeVpsServiceStates(parseComposePs(stdout).filter(isVisibleVpsService)),database);
     lastRemoteProcessItems=items;
     lastRemoteProcessSuccessAt=checkedAt;
-    return {configured:true,host,items,checkedAt,lastSuccessfulAt:checkedAt,stale:false,error:""};
+    return {configured:true,host,items,database,checkedAt,lastSuccessfulAt:checkedAt,stale:false,error:""};
   } catch(error) {
     const checkedAt=new Date().toISOString();
     const knownItems=lastRemoteProcessItems.length
       ? lastRemoteProcessItems
-      : services.filter((item)=>!item.local).map((item)=>({id:item.id,name:item.name,portLabel:vpsServicePortLabel(item.id)}));
+      : Object.keys(VPS_SERVICE_PORTS).map((id)=>({id,name:VPS_SERVICE_LABELS[id]||id,portLabel:vpsServicePortLabel(id)}));
     const items=knownItems.map((item)=>({...item,healthy:false,state:"unknown",health:"",status:"Status nicht aktuell",stale:true,scope:"vps"}));
-    return {configured:true,host,items,checkedAt,lastSuccessfulAt:lastRemoteProcessSuccessAt,stale:true,error:remoteError(error)};
+    return {configured:true,host,items,database:{status:"unknown",reachable:false},checkedAt,lastSuccessfulAt:lastRemoteProcessSuccessAt,stale:true,error:remoteError(error)};
+  }
+}
+
+async function remoteAccountDatabaseState(options={}) {
+  const config=options.config||loadStagingConfig();
+  if(!config.GERNETIX_STAGING_SSH)return {status:"unknown",reachable:false,error:"VPS nicht konfiguriert."};
+  const host=options.host||monitorSshTarget(config),run=options.execFileAsync||execFileAsync;
+  const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic account-database-status";
+  try{
+    const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:12000,maxBuffer:256*1024});
+    const payload=JSON.parse(String(stdout||"{}"));
+    const reachable=payload.status==="healthy";
+    return {status:reachable?"healthy":"unavailable",reachable,checkedAt:new Date().toISOString(),error:""};
+  }catch(error){
+    return {status:"unknown",reachable:false,checkedAt:new Date().toISOString(),error:`Kontodatenbankstatus nicht lesbar: ${remoteErrorDetail(error)}`};
+  }
+}
+
+function applyAccountDatabaseState(items,database){
+  return items.map((item)=>item.id!=="runtime-postgres"?item:{
+    ...item,
+    containerHealthy:item.healthy,
+    accountDatabaseStatus:database.status,
+    accountDatabaseReachable:database.reachable,
+    healthy:item.healthy&&database.reachable,
+    status:database.status==="unavailable"?"Kontodatenbank nicht erreichbar":database.status==="unknown"?"Kontodatenbankstatus unbekannt":item.status,
+  });
+}
+
+async function startRemoteAccountDatabase(options={}){
+  const config=options.config||loadStagingConfig();
+  if(!config.GERNETIX_STAGING_SSH)throw new Error("VPS nicht konfiguriert: .env.staging.local fehlt oder enthält kein GERNETIX_STAGING_SSH.");
+  const host=monitorSshTarget(config),run=options.execFileAsync||execFileAsync;
+  const command="sudo -n /usr/local/sbin/gernetix-monitor-diagnostic start-account-database";
+  try{
+    const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:90000,maxBuffer:256*1024});
+    const payload=JSON.parse(String(stdout||"{}"));
+    if(payload.status!=="healthy")throw new Error("Die zentrale Kontodatenbank meldet nach dem Start keinen gesunden Zustand.");
+    return {status:"healthy",reachable:true,checkedAt:new Date().toISOString()};
+  }catch(error){
+    throw new Error(`Zentrale Kontodatenbank konnte nicht gestartet werden: ${remoteErrorDetail(error)}`);
   }
 }
 
 function isVisibleVpsService(item) {
-  return !item.id.endsWith("-migration");
+  return !/(?:-migration|-provisioning|-postgres-access)$/.test(item.id);
+}
+
+function completeVpsServiceStates(items) {
+  const current=new Map(items.map((item)=>[item.id,item]));
+  return Object.keys(VPS_SERVICE_PORTS).map((id)=>current.get(id)||{
+    id,name:VPS_SERVICE_LABELS[id]||id,portLabel:vpsServicePortLabel(id),container:"",
+    state:"stopped",health:"",status:"Nicht gestartet",healthy:false,scope:"vps",expected:true,
+  });
 }
 
 function vpsServicePortLabel(id) {
-  return VPS_SERVICE_PORTS[id] || String(services.find((item)=>item.id===id)?.port || "");
+  return VPS_SERVICE_PORTS[id] || "";
 }
 
 async function remoteLinkIntegrity(options={}) {
@@ -516,27 +536,6 @@ async function stopStagingTunnel(options={}) {
   }
   throw new Error("SSH-Diagnosetunnel wurde nicht rechtzeitig beendet.");
 }
-const SECURITY_CHECK_SCRIPT = `
-emit() {
-  key="$1"
-  command="$2"
-  if sh -c "$command"; then printf '%s=active\\n' "$key"; else printf '%s=missing\\n' "$key"; fi
-}
-emit firewall_protection 'systemctl is-active --quiet gernetix-firewall.service && nft list chain inet gernetix_host input 2>/dev/null | grep -q "policy drop"'
-emit ssh_wireguard_only 'nft list chain inet gernetix_host input 2>/dev/null | grep -q "iifname \\"wg0\\" tcp dport 22 accept"'
-emit ssh_password_disabled 'sshd -T 2>/dev/null | grep -q "^passwordauthentication no$"'
-emit fail2ban_sshd 'systemctl is-active --quiet fail2ban.service && fail2ban-client status sshd >/dev/null 2>&1'
-emit web_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_web_per_ip:10m rate=10r/s"'
-emit auth_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_auth_per_ip:10m rate=5r/m"'
-emit build_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_build_per_ip:10m rate=30r/s"'
-emit mqtt_tls_auth 'docker exec gernetix-mqtt-broker-1 grep -q "allow_anonymous false" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^require_certificate true" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^use_identity_as_username true" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^acl_file " /mosquitto/config/mosquitto.conf'
-emit mqtt_connection_rate 'nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv4" && nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv6"'
-emit mqtt_resource_limits 'docker exec gernetix-mqtt-broker-1 grep -q "max_connections 2048" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "max_packet_size 131072" /mosquitto/config/mosquitto.conf'
-emit admin_loopback 'ss -lnt 2>/dev/null | grep -q "127.0.0.1:4600"'
-emit services_private '! ss -lnt 2>/dev/null | grep -Eq "(0.0.0.0|\\[::\\]):(4300|4400|4700|4800|4900|4910|5000|5500)"'
-emit root_login_disabled 'sshd -T 2>/dev/null | grep -q "^permitrootlogin no$"'
-`.trim();
-
 function parseSecurityCheckOutput(output) {
   const checks = {};
   for (const line of String(output || "").split(/\r?\n/)) {
@@ -581,7 +580,7 @@ function securityRuleDefinitions(ready) {
     securityRule("mqtt-rate", "MQTT-Verbindungsrate", "Angriffsschutz", "VPS / nftables Forward", "60 neue TLS-Verbindungen pro Minute und Quell-IP, Burst 30, getrennt fuer IPv4 und IPv6.", "mqtt_connection_rate", ready.mqttRate, "Nach Aktivierung Drops messen und bei legitimen NAT-Flotten vorsichtig nachjustieren."),
     securityRule("mqtt-resources", "MQTT-Ressourcengrenzen", "Device-Sicherheit", "VPS / Mosquitto", "Maximal 2048 Verbindungen, 128 KiB Pakete und begrenzte Warteschlangen.", "mqtt_resource_limits", ready.mqttResources, "Broker-Auslastung und abgewiesene Pakete ueberwachen."),
     securityRule("admin-loopback", "Admin Tool nur auf Loopback", "Service-Isolation", "VPS / Docker", "Port 4600 nur auf 127.0.0.1; Zugriff ueber VPN-SSH-Tunnel.", "admin_loopback", false, "Keine oeffentliche Portfreigabe fuer das Admin Tool hinzufuegen."),
-    securityRule("private-services", "Domaenendienste nicht oeffentlich", "Service-Isolation", "VPS / Docker-Netze", "Interne Ports 4300 bis 5500 nicht am oeffentlichen Host veroeffentlichen.", "services_private", false, "Compose-Portfreigaben bei jeder Architektur-Aenderung pruefen."),
+    securityRule("private-services", "Domaenendienste nicht oeffentlich", "Service-Isolation", "VPS / Docker-Netze", "Alle internen App- und Routing-Ports von 4300 bis 5800 sowie 14400 duerfen nicht an 0.0.0.0 oder [::] lauschen.", "services_private", false, "Compose-Portfreigaben bei jeder Architektur-Aenderung pruefen."),
     securityRule("root-login", "Direkten Root-Login abschalten", "Offene Haertung", "VPS / OpenSSH", "Administration ausschliesslich als sven mit sudo.", "root_login_disabled", false, "sven/sudo in einer zweiten Sitzung testen und danach PermitRootLogin no setzen."),
     securityRule("backups", "Externe verschluesselte Backups", "Offene Haertung", "Getrenntes Backup-Ziel", "Fuehrende SQL-Datenbanken ausserhalb des VPS sichern und Restore testen.", "", false, "Backup-Ziel, Zeitplan, RPO/RTO und automatisierten Restore-Test einrichten."),
     securityRule("alerting", "Zentrale Sicherheitsalarmierung", "Offene Haertung", "Admin Tool / Betriebsmonitor", "Bans, ungewoehnliche Logins, Container- und Backupfehler aktiv melden.", "", false, "Alarmkanal mit Testereignis und nachvollziehbarer Quittierung einrichten."),
@@ -626,12 +625,16 @@ function recentServiceLog(id){try{return fs.readFileSync(serviceLogPath(id),"utf
 function serviceNodeExecutable(runtime=process){
   const configured=String(runtime.env?.GERNETIX_NODE_COMMAND||"").trim();
   if(configured)return configured;
-  return runtime.versions?.electron?"node":runtime.execPath;
+  return runtime.execPath;
 }
 function launchLoggedService(item, env){
   fs.mkdirSync(path.dirname(serviceLogPath(item.id)),{recursive:true});
   const output=fs.openSync(serviceLogPath(item.id),"a");
-  try{return spawn(serviceNodeExecutable(),["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env,stdio:["ignore",output,output]});}
+  try{
+    const child=spawn(serviceNodeExecutable(),["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env,stdio:["ignore",output,output]});
+    child.once("error",(error)=>{child.gernetixSpawnError=error;});
+    return child;
+  }
   finally{fs.closeSync(output);}
 }
 function remoteIdentityEnvironment(){
@@ -659,8 +662,9 @@ async function runBuildWorkerAction(action,options={}){
 
 async function startBuildWorker(options={}){
   const item=byId("build-worker"),checkService=options.checkService||check;
+  const dockerCommand=await ensureDockerReady(options);
   const current=await checkService(item);if(current.healthy)return current;
-  await runBuildWorkerAction("start",options);
+  await runBuildWorkerAction("start",{...options,dockerCommand});
   const wait=options.delay||delay;
   for(let i=0;i<80;i+=1){const state=await checkService(item);if(state.healthy)return state;await wait(500);}
   throw new Error("Lokaler Build-Worker wurde gestartet, meldet aber keinen gesunden Zustand.");
@@ -695,9 +699,9 @@ async function startIdentityRemoteDev(options={}){
   const wait=options.delay||delay;
   // 30s statt 10s: Der Bootstrap laeuft ueber den VPS-Tunnel und darf bei
   // langsamer Verbindung nicht abgeschnitten werden. Ein abgestuerzter Start
-  // bricht ohnehin sofort ueber exitCode ab.
-  for(let i=0;i<IDENTITY_START_ATTEMPTS;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null)break;await wait(250);}
-  const detail=recentServiceLog(item.id);
+  // oder ein gescheiterter Spawn bricht ohnehin sofort ab.
+  for(let i=0;i<IDENTITY_START_ATTEMPTS;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null||child.gernetixSpawnError)break;await wait(250);}
+  const detail=child.gernetixSpawnError?.message||recentServiceLog(item.id);
   if(child.exitCode===null&&!child.killed)child.kill?.("SIGTERM");
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
 }
@@ -728,14 +732,15 @@ function parseComposePs(output){
   let rows=[];
   try{const parsed=JSON.parse(text);rows=Array.isArray(parsed)?parsed:[parsed];}
   catch{rows=text.split(/\r?\n/).filter(Boolean).map((line)=>JSON.parse(line));}
-  return rows.map((row)=>{const state=String(row.State||row.state||"").toLowerCase();const health=String(row.Health||row.health||"").toLowerCase();return {
-    id:String(row.Service||row.service||row.Name||row.name||"unknown"),
-    name:String(row.Service||row.service||row.Name||row.name||"Unbekannter Container"),
+  return rows.map((row)=>{const state=String(row.State||row.state||"").toLowerCase();const health=String(row.Health||row.health||"").toLowerCase();const id=String(row.Service||row.service||row.Name||row.name||"unknown");return {
+    id,
+    name:VPS_SERVICE_LABELS[id]||id,
     container:String(row.Name||row.name||""),state:state||"unknown",health:health||"",status:String(row.Status||row.status||""),portLabel:vpsServicePortLabel(String(row.Service||row.service||row.Name||row.name||"unknown")),
     healthy:state==="running"&&(!health||health==="healthy"),scope:"vps"
   };});
 }
-function remoteError(error){const detail=String(error.stderr||error.message||error).trim().split(/\r?\n/).slice(-1)[0];return `VPS nicht erreichbar: ${detail}`;}
+function remoteErrorDetail(error){return String(error.stderr||error.message||error).trim().split(/\r?\n/).slice(-1)[0];}
+function remoteError(error){return `VPS nicht erreichbar: ${remoteErrorDetail(error)}`;}
 
 function parseWindowsServiceState(output) {
   const match = String(output || "").match(/STATE\s*:\s*(\d+)/i);
@@ -835,4 +840,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,dockerExecutable,identityDbTunnelState,identityHealthError,isIdentityRemoteDevHealth,interfaceStatistics,loadBuildWorkerConfig,localUserActionDiagnostics,mergeRuntimeAlerts,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteIdentityEnvironment,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,restoreIdentityDbAccess,runBuildWorkerAction,runtimeAlerts,securityRuleStates,serviceNodeExecutable,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={applyAccountDatabaseState,completeVpsServiceStates,configureWorkspace,dockerBuildWorkerHealth,dockerDaemonReady,dockerExecutable,ensureDockerReady,identityDbTunnelState,identityHealthError,interfaceStatistics,isIdentityRemoteDevHealth,loadBuildWorkerConfig,localUserActionDiagnostics,mergeRuntimeAlerts,operationsAlerts,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteAccountDatabaseState,remoteIdentityEnvironment,remoteInterfaceStatistics,remoteLinkIntegrity,remoteProcessStates,remoteUserActionAlerts,restoreIdentityDbAccess,runBuildWorkerAction,securityRuleStates,serviceNodeExecutable,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startRemoteAccountDatabase,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

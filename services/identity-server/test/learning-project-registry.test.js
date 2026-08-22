@@ -47,6 +47,7 @@ test("all active learning projects use one registry contract", () => {
     "embedded-runtime-and-interrupts",
     "embedded-c-hardware-control",
     "avr-framework-resource-budget",
+    "chicken-coop-door-smartphone-app",
   ];
 
   assert.deepEqual(learningProjectRegistry.models.map((model) => model.slug), expectedSlugs);
@@ -63,7 +64,7 @@ test("registry creates every project including programming fundamentals", () => 
   const { learningProjectRegistry } = createLearningProjectModels({ readWorkspaceText });
   const projects = learningProjectRegistry.createProjects(project, step);
 
-  assert.equal(projects.length, 23);
+  assert.equal(projects.length, 24);
   assert.equal(projects.find((item) => item.slug === "programming-fundamentals")?.title,
     "Grundlagen der Programmierung");
   assert.equal(projects.find((item) => item.slug === "arduino-blink")?.access_model, "free");
@@ -74,6 +75,7 @@ test("registry creates every project including programming fundamentals", () => 
     "Embedded C: Hardware sicher steuern");
   assert.equal(projects.find((item) => item.slug === "avr-framework-resource-budget")?.title,
     "Arduino oder direkt? Timer und Ressourcen auf dem AVR");
+  assert.equal(projects.find((item) => item.slug === "chicken-coop-door-smartphone-app")?.access_model, "free");
 });
 
 test("every registered project provides sources through the same call shape", () => {

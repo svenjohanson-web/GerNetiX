@@ -63,6 +63,54 @@ function registerAccountRoutes({
     });
   }
 
+  for (const method of ["GET", "PATCH"]) {
+    registry.register({
+      method,
+      path: "/api/account/contact-notifications",
+      async handler({ req, res }) {
+        const session = await requireSession(req, res);
+        if (!session) return;
+        try {
+          const result = method === "GET"
+            ? await auth().get_contact_notification_settings(session.account.user_id)
+            : await auth().update_notification_preferences(session.account.user_id, await readJsonBody(req));
+          sendJson(res, 200, result);
+        } catch (error) {
+          sendJson(res, error.status || 400, { error: error.code || "contact_notification_update_failed" });
+        }
+      },
+    });
+  }
+
+  registry.register({
+    method: "POST",
+    path: "/api/account/contact-email",
+    async handler({ req, res }) {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      try {
+        const body = await readJsonBody(req);
+        sendJson(res, 202, await auth().request_contact_email_change(session.account.user_id, body.email));
+      } catch (error) {
+        sendJson(res, error.status || 400, { error: error.code || "contact_email_update_failed" });
+      }
+    },
+  });
+
+  registry.register({
+    method: "DELETE",
+    path: "/api/account/contact-email",
+    async handler({ req, res }) {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      try {
+        sendJson(res, 200, await auth().remove_contact_email(session.account.user_id));
+      } catch (error) {
+        sendJson(res, error.status || 400, { error: error.code || "contact_email_remove_failed" });
+      }
+    },
+  });
+
   for (const method of ["GET", "POST"]) {
     registry.register({
       method,

@@ -87,7 +87,15 @@ async function proxyAdminRequest(req, res, url, service, config) {
   }
   if (!config.internalApiSigningKey) return sendJson(res, 503, { error: "admin_backend_not_configured" });
   const target = new URL(`${url.pathname}${url.search}`, config.adminToolBaseUrl);
-  const body = ["GET", "HEAD"].includes(req.method) ? undefined : await readRawBody(req);
+  let body = ["GET", "HEAD"].includes(req.method) ? undefined : await readRawBody(req);
+  if (req.method === "POST" && url.pathname === "/api/admin/identity/support-recovery") {
+    let parsed;
+    try { parsed = body?.length ? JSON.parse(body.toString("utf8")) : {}; } catch { return sendJson(res, 400, { error: "invalid_json" }); }
+    const reauthenticated = await service.reauthenticate(readSessionToken(req), String(parsed.admin_password || ""));
+    if (!reauthenticated) return sendJson(res, 403, { error: "admin_reauthentication_failed", message: "Das Admin-Passwort ist nicht korrekt." });
+    delete parsed.admin_password;
+    body = Buffer.from(JSON.stringify(parsed));
+  }
   const scopes = ["admin.gateway.proxy"];
   const serviceToken = issueInternalToken({ iss: "admin-access-server", sub: "admin-access-server", aud: "admin-tool", scopes }, config.internalApiSigningKey);
   const delegation = issueInternalToken({ iss: "admin-access-server", sub: actor.actor_id, aud: "admin-tool", kind: "delegated_admin_action", scopes, context: { role: actor.role, capabilities: actor.capabilities || [] } }, config.internalApiSigningKey);
@@ -217,6 +225,7 @@ async function proxyResponse(res, response, browserAsset) {
 function canAccessAdminRoute(actor, pathname) {
   if (actor.role === "administrator") return true;
   const capabilities = new Set(actor.capabilities || []);
+  if (pathname === "/api/admin/identity/support-recovery") return capabilities.has("admin_identity_recovery");
   if (!pathname.startsWith("/api/admin/community/")) return false;
   if (pathname === "/api/admin/community/overview") return false;
   if (pathname.startsWith("/api/admin/community/support-threads")) return capabilities.has("admin_community_support");

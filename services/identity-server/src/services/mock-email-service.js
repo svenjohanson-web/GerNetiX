@@ -27,6 +27,27 @@ class MockEmailService {
     this.logger.log(`[MockEmailService] password_reset ${email}: ${resetLink}`);
     return message;
   }
+
+  async send_community_notification_email(email, notification) {
+    const message = {
+      type: "community_notification",
+      email,
+      category: notification.category,
+      locale: notification.locale,
+      link: notification.link,
+      sent_at: new Date().toISOString(),
+    };
+    this.sentMessages.push(message);
+    this.logger.log("[MockEmailService] community_notification accepted");
+    return message;
+  }
+
+  async send_support_temporary_password_email(email, username, temporaryPassword, expiresAt) {
+    const message = { type: "support_temporary_password", email, username, temporary_password: temporaryPassword, expires_at: expiresAt, sent_at: new Date().toISOString() };
+    this.sentMessages.push(message);
+    this.logger.log(`[MockEmailService] support_temporary_password accepted`);
+    return message;
+  }
 }
 
 module.exports = { MockEmailService };

@@ -481,6 +481,23 @@ class PostgresAdminRepository {
     return result.rows.map((item) => ({ ...item, succeeded: Boolean(item.succeeded) }));
   }
 
+  async interfaceCallStatistics(filter = {}) {
+    const hours = Math.max(1, Math.min(168, Number(filter.hours) || 24));
+    const result = await this.pool.query(`
+      SELECT source_service, target_service, COUNT(*)::integer AS calls,
+        COUNT(*) FILTER (WHERE succeeded = false)::integer AS failed,
+        ROUND(AVG(duration_ms))::integer AS average_ms,
+        MAX(duration_ms)::integer AS maximum_ms, MAX(occurred_at) AS last_call
+      FROM operations_interface_calls
+      WHERE occurred_at >= now() - ($1::double precision * interval '1 hour')
+      GROUP BY source_service, target_service
+      ORDER BY calls DESC, target_service
+    `, [hours]);
+    return result.rows.map((item) => ({
+      ...item, calls:Number(item.calls), failed:Number(item.failed), average_ms:Number(item.average_ms || 0), maximum_ms:Number(item.maximum_ms || 0),
+    }));
+  }
+
   async replaceLinkInventory(sourceService, inventory) {
     const client = typeof this.pool.connect === "function" ? await this.pool.connect() : this.pool;
     const generatedAt = inventory.generated_at || new Date().toISOString();

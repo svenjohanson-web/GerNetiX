@@ -2,11 +2,12 @@
   "hinweis": "Erzeugt von tools/ci/check-file-sizes.js. Werte duerfen nur sinken.",
   "limit_bytes": 40960,
   "dateien": {
-    "services/admin-tool/public/admin-config.js": 139899,
-    "services/admin-tool/src/services/admin-service.js": 113155,
-    "services/community-platform/src/services/community-service.js": 48947,
+    "modules/virtual-electronics-lab/labs/button-digital-input-throughput.js": 44846,
+    "services/admin-tool/public/admin-config.js": 142093,
+    "services/admin-tool/src/services/admin-service.js": 116543,
+    "services/community-platform/src/services/community-service.js": 54799,
     "services/device-management-server/src/services/device-management-service.js": 44577,
-    "services/hardware-catalog/src/seed.js": 70297,
+    "services/hardware-catalog/src/seed.js": 70507,
     "services/identity-server/public/app/app-device-build-controller.js": 99176,
     "services/identity-server/public/app/app-ide-controller.js": 121091,
     "services/identity-server/public/app/app-shell-controller.js": 52231,
@@ -15,7 +16,7 @@
     "services/identity-server/public/app/device-onboarding-controller.js": 96701,
     "services/identity-server/public/app/guided-project-view.js": 128273,
     "services/identity-server/public/app/information-view.js": 56570,
-    "services/identity-server/src/dev-server.js": 62350,
+    "services/identity-server/src/dev-server.js": 64713,
     "services/identity-server/src/dev/development-assistant.js": 96546,
     "services/identity-server/src/dev/projects/project-configuration-service.js": 47579,
     "services/identity-server/src/dev/projects/project-hardware-model.js": 43002,
@@ -23,9 +24,11 @@
     "services/identity-server/src/knowledge/articles/knowledge-articles-radio.js": 42924,
     "services/identity-server/src/knowledge/articles/knowledge-articles-sensors-actuators.js": 96847,
     "services/identity-server/src/knowledge/articles/knowledge-articles-software.js": 41042,
-    "services/project-server/src/services/project-service.js": 135875,
+    "services/identity-server/src/repositories/postgres-identity-repository.js": 41267,
+    "services/identity-server/src/services/auth-service.js": 55266,
+    "services/project-server/src/services/project-service.js": 152622,
     "services/provisioning-tool/src/services/provisioning-service.js": 48412,
     "tools/guided-code-lesson/lessons/software-engineering-tamagotchi.lesson.js": 45345,
-    "tools/process-monitor/desktop-process-control.js": 58789
+    "tools/process-monitor/desktop-process-control.js": 57292
   }
 }

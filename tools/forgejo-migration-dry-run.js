@@ -172,7 +172,7 @@ function buildDryRunReport(inventory) {
   return deepSort(report);
 }
 
-function buildProjectPlan(projectId, project, currentSources, versions) {
+function buildProjectPlan(projectId, project, currentSources, versions, includeMigrationPayload = false) {
   const issues = [];
   const currentTree = prepareTree(projectId, "current", project, currentSources, issues);
   const versionMap = new Map();
@@ -234,7 +234,7 @@ function buildProjectPlan(projectId, project, currentSources, versions) {
       parentOid,
       creatorId: version.created_by_user_id || project.user_id,
       createdAt: version.created_at || project.created_at,
-      message: version.message || "Projektstand gespeichert",
+      message: versionCommitMessage(version),
       issues,
       location: versionId,
     });
@@ -275,7 +275,7 @@ function buildProjectPlan(projectId, project, currentSources, versions) {
       commit_oid: commitByVersion.get(versionId) || null,
       created_at: normalizedTimestamp(version.created_at),
       creator_ref_sha256: creatorReference(version.created_by_user_id || project.user_id),
-      message_sha256: sha256(normalizeCommitMessage(version.message || "Projektstand gespeichert")),
+      message_sha256: sha256(normalizeCommitMessage(versionCommitMessage(version))),
       includes_binary: version.includes_binary === true,
       binary_artifact_references: normalizeArtifactReferences(version.binary_artifacts),
       file_count: versionTrees.get(versionId)?.repository_file_count || 0,
@@ -295,6 +295,33 @@ function buildProjectPlan(projectId, project, currentSources, versions) {
     file_count: currentTree.repository_file_count,
   });
 
+  const migrationCommits = [];
+  if (includeMigrationPayload) {
+    const appendVersion = (versionId) => {
+      if (!versionId || migrationCommits.some((entry) => entry.source_version_id === versionId)) return;
+      const version = versionMap.get(versionId);
+      if (!version) return;
+      appendVersion(stringValue(version.parent_version_id));
+      migrationCommits.push(privateMigrationCommit(
+        versionTrees.get(versionId),
+        version.created_by_user_id || project.user_id,
+        version.created_at || project.created_at,
+        versionCommitMessage(version),
+        commitByVersion.get(versionId),
+        versionId,
+      ));
+    };
+    appendVersion(currentParentId);
+    migrationCommits.push(privateMigrationCommit(
+      currentTree,
+      project.user_id,
+      project.updated_at || project.created_at,
+      "Aktuellen SQL-Projektstand migrieren",
+      currentCommit.commit_oid,
+      null,
+    ));
+  }
+
   return {
     project_id: projectId,
     source_project_sha256: sha256(canonicalJson(project)),
@@ -313,7 +340,51 @@ function buildProjectPlan(projectId, project, currentSources, versions) {
       file_count: currentTree.repository_file_count,
       status: issues.some((entry) => entry.severity === "error") ? "blocked" : "dry_run_ready",
     },
+    ...(includeMigrationPayload ? { migration_commits: migrationCommits } : {}),
     issues: stableIssues(issues),
+  };
+}
+
+function privateMigrationCommit(tree, creatorId, createdAt, message, expectedCommitOid, sourceVersionId) {
+  const creatorHash = creatorReference(creatorId);
+  return {
+    source_version_id: sourceVersionId,
+    files: tree.repositoryFiles.map((file) => ({ path: file.path, content: file.content })),
+    author_name: `GerNetiX Migration ${creatorHash.slice(0, 12)}`,
+    author_email: `migration+${creatorHash.slice(0, 16)}@invalid.gernetix`,
+    git_timestamp: `${gitTimestamp(createdAt).value} +0000`,
+    message: normalizeCommitMessage(message).trimEnd(),
+    expected_commit_oid: expectedCommitOid,
+  };
+}
+
+function buildMigrationPayload(inventory) {
+  const report = buildDryRunReport(inventory);
+  if (!report.write_gate.allowed) {
+    const error = new Error("FORGEJO_MIGRATION_REPORT_BLOCKED");
+    error.code = "FORGEJO_MIGRATION_REPORT_BLOCKED";
+    error.report = report;
+    throw error;
+  }
+  const projectsById = new Map((inventory.projects || []).map((project) => [stringValue(project.project_id), project]));
+  const ignoredIssues = [];
+  const sourcesByProject = groupByProject(inventory.sources || [], "source", ignoredIssues);
+  const versionsByProject = groupByProject(inventory.versions || [], "version", ignoredIssues);
+  return {
+    source_fingerprint_sha256: report.source_fingerprint_sha256,
+    report_sha256: sha256(canonicalJson(report)),
+    projects: [...projectsById].sort(([left], [right]) => compareText(left, right)).map(([projectId, project]) => {
+      const plan = buildProjectPlan(projectId, project, sourcesByProject.get(projectId) || [], versionsByProject.get(projectId) || [], true);
+      return {
+        project_id: projectId,
+        source_sha256: plan.ledger_preview.source_sha256,
+        target_head_commit_oid: plan.target_head_commit_oid,
+        source_file_count: plan.current.source_file_count,
+        source_version_count: plan.version_count,
+        target_commit_count: plan.migration_commits.length,
+        commits: plan.migration_commits,
+      };
+    }),
   };
 }
 
@@ -612,6 +683,16 @@ function normalizeArtifactReferences(value) {
   })).sort((left, right) => compareText(left.artifact_id, right.artifact_id));
 }
 
+function versionCommitMessage(version) {
+  const base = String(version?.message || "Projektstand gespeichert").replace(/\r\n?/g, "\n").trimEnd()
+    || "Projektstand gespeichert";
+  const references = normalizeArtifactReferences(version?.binary_artifacts);
+  if (!references.length) return base;
+  return `${base}\n\n${references.map((reference) => (
+    `GerNetiX-Artifact: ${reference.artifact_id} sha256=${reference.sha256} bytes=${reference.size_bytes} name-sha256=${reference.file_name_sha256}`
+  )).join("\n")}`;
+}
+
 function legacySnapshotSha256(projectSnapshot, sources) {
   const project = objectValue(projectSnapshot);
   const canonical = {
@@ -840,6 +921,7 @@ if (require.main === module) {
 module.exports = {
   REPORT_SCHEMA_VERSION,
   buildDryRunReport,
+  buildMigrationPayload,
   canonicalJson,
   classifyFile,
   gitObjectOid,

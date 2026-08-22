@@ -124,6 +124,8 @@ test("blank llm config defaults to the cheapest OpenAI model", () => {
   assert.equal(store.getConfig().apiModel, "gpt-5-nano");
   assert.equal(store.resolveRoute("code_generation").provider, "api");
   assert.equal(store.resolveRoute("help_chat").provider, "api");
+  assert.equal(store.resolveRoute("electronics_lab_troubleshooting").provider, "api");
+  assert.equal(store.resolveRoute("electronics_lab_troubleshooting").costPolicy, "external_costs_with_preflight");
 });
 
 test("legacy local routing is migrated once to the OpenAI default", () => {

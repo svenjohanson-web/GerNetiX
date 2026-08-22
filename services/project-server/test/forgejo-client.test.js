@@ -91,6 +91,29 @@ test("grants a named developer write access without changing repository ownershi
   assert.deepEqual(JSON.parse(calls[0].options.body), { permission: "write" });
 });
 
+test("reports repository usage and detects orphan project repositories without deleting them", async () => {
+  const client = {
+    baseUrl: "http://forgejo:3000",
+    getRepository: async () => ({ id: 42, name: "project-bound", size: 12, lfs_size: 34, empty: false, archived: false }),
+    listOrganizationRepositories: async () => [
+      { id: 42, name: "project-bound", size: 12 },
+      { id: 43, name: "project-orphan", size: 2, archived: false },
+      { id: 44, name: "notes", size: 1 },
+    ],
+  };
+  const store = new ForgejoProjectRepositoryStore({
+    client,
+    git: { tree: async () => ["README.md", "gernetix/project.json"] },
+    organization: "gernetix-projects",
+  });
+  const binding = { provider: "forgejo", organization: "gernetix-projects", repository_name: "project-bound", clone_url: "http://forgejo:3000/gernetix-projects/project-bound.git", default_branch: "main", head_sha: "a".repeat(40), state: "active" };
+  const inspection = await store.inspectProjectRepository(binding);
+  assert.equal(inspection.repository_size_bytes, 12 * 1024);
+  assert.equal(inspection.lfs_size_bytes, 34);
+  assert.equal(inspection.object_count, 2);
+  assert.deepEqual((await store.listOrphanProjectRepositories([binding])).map((item) => item.repository_name), ["project-orphan"]);
+});
+
 function response(status, payload) {
   return { status, ok: status >= 200 && status < 300, json: async () => payload };
 }
