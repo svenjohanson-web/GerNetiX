@@ -20,9 +20,9 @@
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
-    "esptool-js": "^0.6.0",
-    "nodemailer": "^9.0.3",
-    "pg": "^8.16.3",
+    "esptool-js": "^0.6.1",
+    "nodemailer": "^9.0.5",
+    "pg": "^8.23.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
